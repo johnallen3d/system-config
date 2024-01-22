@@ -22,6 +22,7 @@
     pathsToLink = ["/Applications"];
 
     systemPath = [
+      "${pkgs.path}"
       "/usr/local/bin"
       "$HOME/bin"
       "$HOME/.local/bin"
