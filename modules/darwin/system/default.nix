@@ -26,7 +26,7 @@
 
     defaults = {
       ".GlobalPreferences" = {
-        "com.apple.mouse.scaling" = 1.5;
+        "com.apple.mouse.scaling" = 1.1;
       };
 
       NSGlobalDomain = {
