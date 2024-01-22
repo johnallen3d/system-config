@@ -10,7 +10,10 @@
       "borders"
     ];
 
-    taps = [];
+    taps = [
+      "FelixKratz/homebrew-formulae"
+      "nikitabobko/homebrew-tap"
+    ];
 
     casks = [
       "1password"
