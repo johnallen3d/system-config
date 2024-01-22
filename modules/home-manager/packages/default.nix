@@ -43,7 +43,6 @@
   # };
   programs.bash = {
     enable = true;
-    initExtra = builtins.readFile ../dotfiles/bashrc;
   };
   programs.bat = {
     enable = true;
@@ -76,6 +75,5 @@
   };
   programs.zsh = {
     enable = true;
-    initExtra = builtins.readFile ../dotfiles/zshrc;
   };
 }
