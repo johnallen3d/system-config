@@ -1,0 +1,74 @@
+#!/usr/bin/env -S cargo +nightly --quiet -Zscript
+```cargo
+[dependencies]
+mpd-easy = { path = "/Users/john.allen/dev/src/playground/mp-cli/lib" }
+```
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = std::env::args().collect();
+    let artist = artist_for(&args)?;
+    let album = album_for(artist)?;
+
+    let mut mpd = mpd_easy::Client::new(
+        "127.0.0.1",
+        "6600",
+        mpd_easy::OutputFormat::Json,
+    )?;
+
+    mpd.clear()?;
+    mpd.search_add("album", &album)?;
+    mpd.play(None)?;
+
+    Ok(())
+}
+
+fn artist_for<'a>(
+    args: &'a Vec<String>,
+) -> Result<&'a str, Box<dyn std::error::Error>> {
+    if args.len() != 2 {
+        usage();
+        Err("No artist provided")?;
+    }
+
+    Ok(&args[1])
+}
+
+fn album_for(artist: &str) -> Result<&str, Box<dyn std::error::Error>> {
+    let album = match artist {
+        "trey" => "Lonely Trip",
+        "gizz" => "Nonagon Infinity",
+        "goose" => "Alive and Well",
+        "nin" => "2014.08.07 Charlotte, PNC Music Pavilion",
+        "sarah" => "Blue Heron Suite",
+        "violent" => "Violent Femmes",
+        "caleb" => "Sandy Friends",
+        "dave" => "Live At Luther College",
+        "joseph" => "I'm alone, No You're Not",
+        &_ => {
+            println!("Unknown artist: {artist}");
+            usage();
+            Err("Unknown artist")?
+        }
+    };
+
+    Ok(album)
+}
+
+fn usage() {
+    let output = "Usage: play [artist]
+
+Available artists:
+  * caleb    - Caleb Grenier       - Sandy Friends
+  * dave     - Dave & Time         - Live At Luther College
+  * goose    - Goose               - Alive and Well
+  * joseph   - Joseph              - I'm Alone, No You're Not
+  * nin      - Nine Incch Nails    - Live in Charlotte 2014
+  * sarah    - Sarah Jarosz        - Blue Heron Suite
+  * trey     - Trey Anastasio      - Lonely Trip
+  * violent  - Violent Femmes      - Violent Femmes
+";
+
+    println!("{output}")
+}
+
+// vim: ft=rust

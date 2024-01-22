@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+sketchybar --bar color=0xff000000
+sketchybar --add item test left --set test label="Click Me" click_script='osascript -e "display dialog \"Works\""'
+# sketchybar --add slider slider left 100 --set slider slider.background.color=0xffffffff slider.highlight_color=0xffff0000 slider.background.height=15
+# sketchybar --add item test left --set test label="Click Me" script='osascript -e "display dialog \"Hallo\""' --subscribe test mouse.clicked

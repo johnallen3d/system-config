@@ -1,0 +1,75 @@
+#!/usr/bin/env -S cargo +nightly --quiet -Zscript
+```cargo
+[dependencies]
+comfy-table = "7.1.0"
+```
+
+use comfy_table::presets::UTF8_FULL;
+use comfy_table::*;
+
+fn main() {
+    let mut table = Table::new();
+
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("TYPE").fg(Color::Green),
+            Cell::new("TITLE").fg(Color::Green),
+            Cell::new("DESCRIPTION").fg(Color::Green),
+        ])
+        .add_row(vec![
+            Cell::new("feat"),
+            Cell::new("Features"),
+            Cell::new("A::new feature"),
+        ])
+        .add_row(vec![
+            Cell::new("fix"),
+            Cell::new("Bug Fixes"),
+            Cell::new("A bug Fix"),
+        ])
+        .add_row(vec![
+            Cell::new("docs"),
+            Cell::new("Documentation"),
+            Cell::new("Documentation only changes"),
+        ])
+        .add_row(vec![
+            Cell::new("style"),
+            Cell::new("Styles"),
+            Cell::new("Changes that do not impact meaning of code (e.g. white-space)"),
+        ])
+        .add_row(vec![
+            Cell::new("refactor"),
+            Cell::new("Code Refactoring"),
+            Cell::new("A code change that neither fixes a bug nor adds a feature"),
+        ])
+        .add_row(vec![
+            Cell::new("perf"),
+            Cell::new("Performance Improvements"),
+            Cell::new("A code change that improves performance"),
+        ])
+        .add_row(vec![
+            Cell::new("test"),
+            Cell::new("Tests"),
+            Cell::new("Adding missing tests or correcting existing tests"),
+        ])
+        .add_row(vec![
+            Cell::new("build"),
+            Cell::new("Builds"),
+            Cell::new("Changes that affect the build system or external dependencies"),
+        ])
+        .add_row(vec![
+            Cell::new("ci"),
+            Cell::new("Continuous Integrations"),
+            Cell::new("Changes to our CI configuration files and scripts"),
+        ])
+        .add_row(vec![
+            Cell::new("chore"),
+            Cell::new("Chores"),
+            Cell::new("Other changes that don't modify src or test files"),
+        ]);
+
+    println!("{table}");
+}
+
+// vim: ft=rust

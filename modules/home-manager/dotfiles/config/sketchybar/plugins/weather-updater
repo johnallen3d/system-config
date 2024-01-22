@@ -1,0 +1,35 @@
+#!/usr/bin/env -S /Users/john.allen/.cargo/bin/cargo +nightly --quiet -Zscript
+```cargo
+[dependencies]
+conditions = "0.3.0"
+sketchybar-rs = { path = "/Users/john.allen/dev/src/playground/sketchybar-rs" }
+tokio = { version = "1.33", features = ["macros"] }
+```
+use std::thread;
+use std::time::Duration;
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    let config = conditions::Config::load().unwrap();
+    let cache_path = conditions::Config::cache_path().unwrap();
+    let mut cache = conditions::Cache::new(Some(cache_path)).await.unwrap();
+    let mut conditions = conditions::Conditions::new(config, None);
+
+    loop {
+        let current = conditions
+            .fetch(&mut cache)
+            .await
+            .unwrap();
+
+        let message = format!(
+            "--set weather_logo icon=\"{}\" --set weather label=\"{}°F\"",
+            current.icon, current.temp
+        );
+
+        sketchybar_rs::message(&message, Some("sketchybar")).unwrap();
+
+        thread::sleep(Duration::from_secs(3600));
+    }
+}
+
+// vim: filetype=rust

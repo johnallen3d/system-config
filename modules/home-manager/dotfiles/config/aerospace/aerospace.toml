@@ -1,0 +1,209 @@
+# Place a copy of this config to ~/.aerospace.toml
+# After that, you can edit ~/.aerospace.toml to your liking
+
+# Feel free to omit keys that you don't use in your config.
+# If the key is absent in your config the default value is taken from this config
+
+# You can use it to add commands that run after login to macOS user session.
+# 'start-at-login' needs to be 'true' for 'after-login-command' to work
+# Available commands: https://nikitabobko.github.io/AeroSpace/commands.html
+after-login-command = []
+
+# You can use it to add commands that run after AeroSpace startup.
+# 'after-startup-command' is run after 'after-login-command'
+# Available commands : https://nikitabobko.github.io/AeroSpace/commands.html
+after-startup-command = ['workspace 5', 'layout h_accordion']
+
+# Start AeroSpace at login
+start-at-login = true
+
+# Normalizations. See: https://nikitabobko.github.io/AeroSpace/guide.html#normalization
+enable-normalization-flatten-containers = true
+enable-normalization-opposite-orientation-for-nested-containers = true
+
+# See: https://nikitabobko.github.io/AeroSpace/guide.html#layouts
+# The 'accordion-padding' specifies the size of accordion padding
+# You can set 0 to disable the padding feature
+accordion-padding = 30
+
+# Possible values: tiles|accordion
+default-root-container-layout = 'tiles'
+
+# Possible values: horizontal|vertical|auto
+# 'auto' means: wide monitor (anything wider than high) gets horizontal orientation,
+#               tall monitor (anything higher than wide) gets vertical orientation
+default-root-container-orientation = 'auto'
+
+gaps.inner.horizontal = 15
+gaps.inner.vertical = 15
+gaps.outer.left = 15
+gaps.outer.bottom = 55
+# https://github.com/nikitabobko/AeroSpace/issues/74
+gaps.outer.top = [{ monitor."Built-in Retina Display" = 30 }, 55]
+gaps.outer.right = 15
+
+# Visual indent makes it easier to understand that containers of the same orientation are nested.
+# If you have 'enable-normalization-opposite-orientation-for-nested-containers' enabled then
+# there is no way to observe the indent
+indent-for-nested-containers-with-the-same-orientation = 30
+
+# Layout of root containers of non-empty workspaces. The layout is applied only on startup
+# Possible values: smart|tiles|accordion
+# - 'tiles' and 'accordion' are self-describing
+# - 'smart' means some "smart logic". Currently, 3 and less windows will get 'tiles' layout,
+#   4 and more will get 'accordion' layout. 'smart' can change its behavior in future versions
+non-empty-workspaces-root-containers-layout-on-startup = 'smart'
+
+# 'main' binding mode declaration
+# See: https://nikitabobko.github.io/AeroSpace/guide.html#binding-modes
+# 'main' binding mode must be always presented
+[mode.main.binding]
+
+# All possible keys:
+# - Letters.        a, b, c, ..., z
+# - Numbers.        0, 1, 2, ..., 9
+# - Keypad numbers. keypad0, keypad1, keypad2, ..., keypad9
+# - F-keys.         f1, f2, ..., f20
+# - Special keys.   minus, equal, period, comma, slash, backslash, quote, semicolon, backtick,
+#                   leftSquareBracket, rightSquareBracket, space, enter, esc, backspace, tab
+# - Keypad special. keypadClear, keypadDecimalMark, keypadDivide, keypadEnter, keypadEqual,
+#                   keypadMinus, keypadMultiply, keypadPlus
+# - Arrows.         left, down, up, right
+
+# All possible modifiers: cmd, alt, ctrl, shift
+
+# All possible commands: https://nikitabobko.github.io/AeroSpace/commands.html
+
+# You can uncomment this line to open up terminal with alt + enter shortcut
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#exec-and-forget
+# alt-enter = 'exec-and-forget open -n /System/Applications/Utilities/Terminal.app'
+ctrl-alt-cmd-k = 'exec-and-forget /Users/john.allen/Applications/Home\ Manager\ Apps/kitty.app/Contents/MacOS/kitty --single-instance --directory ~'
+alt-cmd-l = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli pause && open -a ScreenSaverEngine'
+ctrl-cmd-p = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli toggle'
+ctrl-cmd-k = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume +6'
+ctrl-cmd-j = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume -4'
+ctrl-cmd-b = 'exec-and-forget bash ~/bin/toggle-air-pods'
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#layout
+alt-slash = 'layout tiles horizontal vertical'
+alt-comma = 'layout accordion horizontal vertical'
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#focus
+alt-h = 'focus --boundaries-action stop left'
+alt-j = 'focus --boundaries-action stop down'
+alt-k = 'focus --boundaries-action stop up'
+alt-l = 'focus --boundaries-action stop right'
+
+ctrl-alt-f = 'fullscreen'
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#move-through
+alt-shift-h = 'move-through left'
+alt-shift-j = 'move-through down'
+alt-shift-k = 'move-through up'
+alt-shift-l = 'move-through right'
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#resize
+# alt-shift-minus = 'resize smart -50'
+# alt-shift-equal = 'resize smart +50'
+shift-cmd-h = 'resize smart -300'
+shift-cmd-l = 'resize smart +300'
+shift-cmd-j = 'resize smart +300'
+shift-cmd-k = 'resize smart -300'
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#workspace
+ctrl-0 = 'workspace 0'
+ctrl-1 = 'workspace 1'
+ctrl-2 = 'workspace 2'
+ctrl-3 = 'workspace 3'
+ctrl-4 = 'workspace 4'
+ctrl-5 = 'workspace 5'
+# ctrl-6 = 'workspace 6' interferes with neovim "last buffer" shortcut
+ctrl-7 = 'workspace 7'
+ctrl-8 = 'workspace 8'
+ctrl-9 = 'workspace 9'
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#move-node-to-workspace
+shift-ctrl-0 = ['move-node-to-workspace 0', 'workspace 0']
+shift-ctrl-1 = ['move-node-to-workspace 1', 'workspace 1']
+shift-ctrl-2 = ['move-node-to-workspace 2', 'workspace 2']
+shift-ctrl-3 = ['move-node-to-workspace 3', 'workspace 3']
+shift-ctrl-4 = ['move-node-to-workspace 4', 'workspace 4']
+shift-ctrl-5 = ['move-node-to-workspace 5', 'workspace 5']
+shift-ctrl-7 = ['move-node-to-workspace 7', 'workspace 7']
+shift-ctrl-8 = ['move-node-to-workspace 8', 'workspace 8']
+shift-ctrl-9 = ['move-node-to-workspace 9', 'workspace 9']
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#workspace-back-and-forth
+alt-tab = 'workspace-back-and-forth'
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#move-workspace-to-monitor
+# alt-shift-tab = 'move-workspace-to-monitor next'
+
+# See: https://nikitabobko.github.io/AeroSpace/commands.html#mode
+alt-shift-semicolon = 'mode service'
+alt-shift-slash = 'mode join'
+
+# See: https://nikitabobko.github.io/AeroSpace/guide.html#assign-workspaces-to-monitors
+[workspace-to-monitor-force-assignment]
+1 = 'Built-in Retina Display'
+2 = 'Built-in Retina Display'
+3 = 'Built-in Retina Display'
+4 = 'Built-in Retina Display'
+5 = [
+  'LG HDR 4K',
+  'lg',
+  'dell',
+] # You can specify multiple patterns. The first matching pattern will be used
+6 = ['LG HDR 4K', 'lg', 'dell']
+7 = ['LG HDR 4K', 'lg', 'dell']
+8 = ['LG HDR 4K', 'lg', 'dell']
+9 = ['LG HDR 4K', 'lg', 'dell']
+0 = ['LG HDR 4K', 'lg', 'dell']
+
+# 'service' binding mode declaration.
+# See: https://nikitabobko.github.io/AeroSpace/guide.html#binding-modes
+[mode.service.binding]
+r = ['flatten-workspace-tree', 'mode main'] # reset layout
+#s = ['layout sticky tiling', 'mode main'] # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
+f = [
+  'layout floating tiling',
+  'mode main',
+] # Toggle between floating and tiling layout
+backspace = ['close-all-windows-but-current', 'mode main']
+esc = ['reload-config', 'mode main']
+
+# 'join' binding mode declaration
+# See: https://nikitabobko.github.io/AeroSpace/guide.html#binding-modes
+[mode.join.binding]
+alt-shift-h = ['join-with left', 'mode main']
+alt-shift-j = ['join-with down', 'mode main']
+alt-shift-k = ['join-with up', 'mode main']
+alt-shift-l = ['join-with right', 'mode main']
+esc = 'mode main'
+
+[[on-window-detected]]
+if.app-id = 'com.tinyspeck.slackmacgap'
+run = 'move-node-to-workspace 2'
+
+[[on-window-detected]]
+if.app-id = 'com.rambox'
+run = 'move-node-to-workspace 3'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.MobileSMS'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-id = 'md.obsidian'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+run = 'move-node-to-workspace 8'
+
+[[on-window-detected]]
+if.app-id = 'company.thebrowser.Browser'
+run = 'move-node-to-workspace 9'
+
+[[on-window-detected]]
+if.app-id = 'net.kovidgoyal.kitty'
+run = 'move-node-to-workspace 0'
