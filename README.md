@@ -10,13 +10,17 @@ Install Nix:
 sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
 
+Install command line tools for git (brute force):
+
+```bash
+xcode-select --install
+```
+
 Clone `system-config`
 
 ```bash
-cd ~
-mkdir -p dev/src
-# install command line tools for git (brute force)
-xcode-select --install
+mkdir -p ~/dev/src
+cd ~/dev/src
 git clone https://github.com/johnallen3d/system-config.git
 cd system-config
 ```
@@ -61,3 +65,11 @@ Things I'm not sure how to automate yet:
 ```bash
 ln -s (which sketchybar) $HOME/bin/bottombar
 ```
+
+- set the users default shell to `fish`
+
+```bash
+chsh -s /run/current-system/sw/bin/fish
+```
+
+- setup `op`, login and `gh` plugin
