@@ -2,7 +2,7 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 
 -- load settings I can't figure out how to set in lua
-vim.cmd.source(vim.fn.expand("$HOME/.config/lazy-vim/legacy.vim"))
+vim.cmd.source(vim.fn.expand("$HOME/.config/nvim/legacy.vim"))
 -- reset leader key provided by lazyvim
 vim.g.mapleader = ","
 -- hide netrw banner
