@@ -22,6 +22,8 @@
     flac
     gotop
     just
+    lua
+    # luajit
     less
     mas
     mpd
