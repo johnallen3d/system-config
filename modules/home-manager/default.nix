@@ -1,4 +1,8 @@
-{...}: {
+{
+  pkgs,
+  brew_bin,
+  ...
+}: {
   home.stateVersion = "24.05";
 
   imports = [
@@ -6,6 +10,17 @@
   ];
 
   home = {
+    sessionPath = [
+      "${pkgs.path}"
+      "/etc/profiles/per-user/$USER/bin/"
+      "/usr/local/bin"
+      "$HOME/bin"
+      "$HOME/.local/bin"
+      "$HOME/.cargo/bin"
+      "/run/current-system/sw/bin"
+      "${brew_bin}"
+    ];
+
     file = {
       ".ctags".source = ./dotfiles/ctags;
       ".irbrc".source = ./dotfiles/irbrc;

@@ -2,10 +2,12 @@
 set fish_greeting
 
 # use 1Password to authenticate `gh`
-source ~/.config/op/plugins.sh
+if test -e ~/.config/op/plugins.sh
+    source ~/.config/op/plugins.sh
+end
 
 if command -q nix-your-shell
-  nix-your-shell fish | source
+    nix-your-shell fish | source
 end
 
 # TODO: how to include this as a plugin: https://github.com/axkirillov/tokyonight-fish

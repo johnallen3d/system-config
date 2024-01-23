@@ -44,6 +44,7 @@
             useGlobalPkgs = true;
             useUserPackages = true;
             extraSpecialArgs = {
+              inherit brew_bin;
               inherit home;
               inherit full_name;
             };
