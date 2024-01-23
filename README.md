@@ -73,8 +73,8 @@ chsh -s /run/current-system/sw/bin/fish
 ```
 
 - [ ] setup `op`, login and `gh` plugin
-- [ ] can I add `$HOME` to Finder Favorites (sidebar)? - this seems to be stored in a binary file here: `~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.FavoriteItems.sfl3`
-- [ ] can I add "login items"? - possibly via plist files? https://stackoverflow.com/a/7643260/407530
-- [ ] debug lsd fonts
+- [ ] can I add `$HOME` to Finder Favorites (sidebar)? - this seems to be stored in a binary file [here](~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.FavoriteItems.sfl3):
+- [ ] can I add "login items"? - possibly via [plist files](https://stackoverflow.com/a/7643260/407530)?
+- [x] debug lsd fonts
 - [ ] debug services (bars, mpd)
-- [ ] debug Neovim setup
+- [x] debug Neovim setup
