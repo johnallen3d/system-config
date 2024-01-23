@@ -60,16 +60,21 @@ pushd ~/dev/src/system-config; nix flake update; nixswitch; popd
 
 Things I'm not sure how to automate yet:
 
-- creation of `~/bin/bottombar` (link to `sketchybar`)
+- [ ] creation of `~/bin/bottombar` (link to `sketchybar`)
 
 ```bash
 ln -s (which sketchybar) $HOME/bin/bottombar
 ```
 
-- set the users default shell to `fish`
+- [ ] set the users default shell to `fish`
 
 ```bash
 chsh -s /run/current-system/sw/bin/fish
 ```
 
-- setup `op`, login and `gh` plugin
+- [ ] setup `op`, login and `gh` plugin
+- [ ] can I add `$HOME` to Finder Favorites (sidebar)? - this seems to be stored in a binary file here: `~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.FavoriteItems.sfl3`
+- [ ] can I add "login items"? - possibly via plist files? https://stackoverflow.com/a/7643260/407530
+- [ ] debug lsd fonts
+- [ ] debug services (bars, mpd)
+- [ ] debug Neovim setup
