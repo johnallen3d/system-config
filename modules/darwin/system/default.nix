@@ -26,7 +26,7 @@
 
     defaults = {
       ".GlobalPreferences" = {
-        "com.apple.mouse.scaling" = 1.1;
+        "com.apple.mouse.scaling" = 1.5;
       };
 
       NSGlobalDomain = {
@@ -130,7 +130,7 @@
       universalaccess = {
         closeViewScrollWheelToggle = true;
         closeViewZoomFollowsFocus = true;
-        mouseDriverCursorSize = 2.0;
+        mouseDriverCursorSize = 1.2;
         reduceMotion = true;
         reduceTransparency = true;
       };
