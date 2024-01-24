@@ -86,7 +86,8 @@
         telescope-fzf-native-nvim
         telescope-nvim
         todo-comments-nvim
-        tokyonight-nvim
+        # TODO: update once v3.0.x is available in nixpkgs
+        # tokyonight-nvim
         trouble-nvim
         vim-illuminate
         vim-startuptime
