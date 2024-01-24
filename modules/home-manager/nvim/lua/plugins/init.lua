@@ -63,7 +63,11 @@ return {
 		},
 	},
 
-	{ "dkarter/bullets.vim" },
+	{
+		"dkarter/bullets.vim",
+		ft = "markdown",
+		lazy = true,
+	},
 
 	{
 		"prichrd/netrw.nvim",
