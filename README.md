@@ -78,3 +78,6 @@ chsh -s /run/current-system/sw/bin/fish
 - [x] debug lsd fonts
 - [ ] debug services (bars, mpd)
 - [x] debug Neovim setup
+- [ ] automate install of [SketchyBar Lua Plugin](https://github.com/FelixKratz/SbarLua?tab=readme-ov-file#sketchybar-lua-plugin)
+- [ ] Music?
+- [ ] Photos?
