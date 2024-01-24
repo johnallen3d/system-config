@@ -29,6 +29,7 @@
     mpd
     mpc-cli
     nix-your-shell
+    nodejs_21
     # opera
     ruby
     pandoc
