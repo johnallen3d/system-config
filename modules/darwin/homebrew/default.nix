@@ -2,7 +2,11 @@
   homebrew = {
     enable = true;
     caskArgs.no_quarantine = true;
-    onActivation = {autoUpdate = true;};
+    onActivation = {
+      autoUpdate = true;
+      cleanup = "zap";
+      upgrade = true;
+    };
     global.brewfile = true;
 
     brews = [
@@ -30,7 +34,6 @@
       "grammarly-desktop"
       "istat-menus"
       "karabiner-elements"
-      "kitty"
       "lunar"
       "marked"
       "mpv"
