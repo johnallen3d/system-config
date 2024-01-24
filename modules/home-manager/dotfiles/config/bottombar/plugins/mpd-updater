@@ -63,9 +63,9 @@ fn main() {
         let message =
             format!("--set mpd_logo background.image=\"/{CACHE}/cover.png\"");
         sketchybar_rs::message(&message, Some("bottombar")).unwrap();
-        let message =
-            format!("--set mpd_cover background.image=\"/{CACHE}/cover-large.png\"");
-        sketchybar_rs::message(&message, Some("bottombar")).unwrap();
+        // let message =
+        //     format!("--set mpd_cover background.image=\"/{CACHE}/cover-large.png\"");
+        // sketchybar_rs::message(&message, Some("bottombar")).unwrap();
 
         thread::sleep(Duration::from_secs(1));
     }
