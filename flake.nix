@@ -26,6 +26,8 @@
     host = "Johns-MacBook-Pro";
     user = "john.allen";
     home = "/Users/${user}";
+    # TODO: this _feels_ wrong
+    nix_bin = "/etc/profiles/per-user/${user}/bin";
     brew_bin = "/opt/homebrew/bin";
   in {
     darwinConfigurations.${host} = nix-darwin.lib.darwinSystem {
@@ -34,6 +36,7 @@
       specialArgs = {
         inherit brew_bin;
         inherit home;
+        inherit nix_bin;
         inherit user;
       };
       modules = [
@@ -45,8 +48,9 @@
             useUserPackages = true;
             extraSpecialArgs = {
               inherit brew_bin;
-              inherit home;
               inherit full_name;
+              inherit home;
+              inherit nix_bin;
             };
             users.${user}.imports = [./modules/home-manager];
           };

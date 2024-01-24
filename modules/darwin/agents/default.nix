@@ -1,12 +1,10 @@
 {
   home,
-  user,
   brew_bin,
+  nix_bin,
   ...
 }: let
-  NIX_BIN = "/etc/profiles/per-user/${user}/bin/";
-
-  AGENT_PATH = "${NIX_BIN}:${home}/.cargo/bin:${brew_bin}:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+  AGENT_PATH = "${nix_bin}:${home}/.cargo/bin:${brew_bin}:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
   AGENT_LANG = "en_US.UTF-8";
 
   service_log_path = "${home}/Library/Logs/org.nixos";
@@ -18,7 +16,7 @@ in {
     "bottombar" = {
       environment = {
         LANG = "${AGENT_LANG}";
-        PATH = "${AGENT_PATH}";
+        PATH = "${home}/bin:${AGENT_PATH}";
       };
       serviceConfig = {
         ProgramArguments = ["${home}/bin/bottombar"];
@@ -48,7 +46,7 @@ in {
       };
       serviceConfig = {
         ProgramArguments = [
-          "${NIX_BIN}/mpd"
+          "${nix_bin}/mpd"
           "${home}/.config/mpd/mpd.conf"
           "--no-daemon"
         ];
@@ -64,7 +62,7 @@ in {
         PATH = "${AGENT_PATH}";
       };
       serviceConfig = {
-        ProgramArguments = ["${NIX_BIN}/sketchybar"];
+        ProgramArguments = ["${nix_bin}/sketchybar"];
         KeepAlive = true;
         RunAtLoad = true;
         StandardErrorPath = service_err_path "sketchybar";

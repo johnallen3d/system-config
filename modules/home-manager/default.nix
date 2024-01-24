@@ -1,6 +1,7 @@
 {
   pkgs,
   brew_bin,
+  nix_bin,
   ...
 }: {
   home.stateVersion = "24.05";
@@ -12,7 +13,7 @@
   home = {
     sessionPath = [
       "${pkgs.path}"
-      "/etc/profiles/per-user/$USER/bin/"
+      "${nix_bin}"
       "/usr/local/bin"
       "$HOME/bin"
       "$HOME/.local/bin"
