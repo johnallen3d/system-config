@@ -127,13 +127,13 @@
       # see this comment
       # https://github.com/mathiasbynens/dotfiles/issues/820#issuecomment-498324762
       # eg.enable for kitty
-      universalaccess = {
-        closeViewScrollWheelToggle = true;
-        closeViewZoomFollowsFocus = true;
-        mouseDriverCursorSize = 1.2;
-        reduceMotion = true;
-        reduceTransparency = true;
-      };
+      # universalaccess = {
+      #   closeViewScrollWheelToggle = true;
+      #   closeViewZoomFollowsFocus = true;
+      #   mouseDriverCursorSize = 1.2;
+      #   reduceMotion = true;
+      #   reduceTransparency = true;
+      # };
 
       # https://medium.com/@zmre/nix-darwin-quick-tip-activate-your-preferences-f69942a93236
       CustomUserPreferences = {
