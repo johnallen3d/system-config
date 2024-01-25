@@ -19,4 +19,6 @@
     ./system
     ./environment
   ];
+
+  system.activationScripts.extraActivation.text = builtins.readFile ./loginitems.sh;
 }
