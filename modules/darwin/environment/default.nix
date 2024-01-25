@@ -3,6 +3,7 @@
   user,
   home,
   brew_bin,
+  nix_bin,
   ...
 }: {
   # https://github.com/nix-community/home-manager/issues/4026
@@ -24,19 +25,19 @@
 
     pathsToLink = ["/Applications"];
 
-    # # TODO: this is duplicated in the `home-manager` module, is there any
-    # # benefit to this being here (eg. available to services)? If so, how to
-    # # share this list?
-    # systemPath = [
-    #   "${pkgs.path}"
-    #   "/etc/profiles/per-user/$USER/bin"
-    #   "/usr/local/bin"
-    #   "$HOME/bin"
-    #   "$HOME/.local/bin"
-    #   "$HOME/.cargo/bin"
-    #   "/run/current-system/sw/bin"
-    #   "${brew_bin}"
-    # ];
+    # TODO: this is duplicated in the `home-manager` module, is there any
+    # benefit to this being here (eg. available to services)? If so, how to
+    # share this list?
+    systemPath = [
+      "${pkgs.path}"
+      "${nix_bin}"
+      "/usr/local/bin"
+      "$HOME/bin"
+      "$HOME/.local/bin"
+      "$HOME/.cargo/bin"
+      "/run/current-system/sw/bin"
+      "${brew_bin}"
+    ];
 
     variables = {
       EDITOR = "nvim";
