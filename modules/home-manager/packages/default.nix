@@ -3,6 +3,7 @@
     ../fish
     ../kitty
     ../git
+    ../lf
     ../nvim
     ../ripgrep
     ../starship
@@ -36,7 +37,6 @@
     sketchybar
     tree-sitter
     xsv
-    yazi
     youtube-dl
   ];
 

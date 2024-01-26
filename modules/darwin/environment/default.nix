@@ -54,7 +54,7 @@
       chat = "cd ~/Dropbox/Notes/scratch && nvim chat.md";
       db = "delete-branch";
       downloads = "cd ~/Downloads";
-      files = "yazi";
+      files = "lf";
       gb = "git bv";
       gc = "git commit -v";
       gco = "git checkout";
