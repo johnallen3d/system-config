@@ -1,5 +1,6 @@
 {pkgs, ...}: {
   imports = [
+    ../direnv
     ../fish
     ../kitty
     ../git

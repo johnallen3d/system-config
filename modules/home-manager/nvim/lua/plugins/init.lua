@@ -78,6 +78,8 @@ return {
 
 	{ "ryvnf/readline.vim", event = "CmdlineEnter" },
 
+	{ "direnv/direnv.vim" },
+
 	-- chat
 
 	{
