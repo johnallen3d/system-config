@@ -1,9 +1,12 @@
 {
   home,
   brew_bin,
-  nix_bin,
+  user,
   ...
 }: let
+  # TODO: this _feels_ wrong
+  nix_bin = "/etc/profiles/per-user/${user}/bin";
+
   AGENT_PATH = "${nix_bin}:${home}/.cargo/bin:${brew_bin}:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
   AGENT_LANG = "en_US.UTF-8";
 
