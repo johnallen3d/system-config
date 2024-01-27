@@ -1,5 +1,0 @@
-#! /usr/bin/env bash
-
-op item get ChatGPT --fields label=secret-key-nvim
-
-

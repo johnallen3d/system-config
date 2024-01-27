@@ -12,6 +12,7 @@
     brews = [
       "blueutil"
       "borders"
+      "switchaudio-osx"
     ];
 
     taps = [

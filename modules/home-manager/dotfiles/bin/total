@@ -1,6 +1,0 @@
-#! /usr/bin/env bash
-
-file="${1}"
-column="${2:-earnings}"
-
-cat "${file}" | xsv select "${column}" | grep -v "${column}" | paste -sd+ - | bc
