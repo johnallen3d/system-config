@@ -20,6 +20,22 @@
           mkdir -p "$DIR"
         }}
       '';
+
+      touch = ''
+        ''${{
+          printf "File name: "
+          read FILE
+          touch "$FILE"
+        }}
+      '';
+
+      yank-file = ''
+        $cat "$fx" | pbcopy
+      '';
+
+      yank-path = ''
+        $printf '%s' "$fx" | pbcopy
+      '';
     };
 
     keybindings = {
@@ -27,6 +43,7 @@
       DD = "delete";
       gd = "cd ~/Downloads";
       gh = "cd";
+      gs = "cd ~/dev/src/system-config";
     };
 
     extraConfig = let
