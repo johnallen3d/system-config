@@ -81,7 +81,7 @@ in {
   programs.bat = {
     enable = true;
     config = {
-      theme = "base16-256";
+      theme = "tokyonight_night";
     };
   };
   # programs.cava = {
