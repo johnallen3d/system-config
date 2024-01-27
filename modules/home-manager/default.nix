@@ -10,6 +10,7 @@
       ".ctags".source = ./dotfiles/ctags;
       ".irbrc".source = ./dotfiles/irbrc;
       ".pryrc".source = ./dotfiles/pryrc;
+      ".sqliterc".source = ./dotfiles/sqliterc;
 
       ".config/stylua.toml".source = ./dotfiles/config/stylua.toml;
 

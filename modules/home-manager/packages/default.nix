@@ -65,6 +65,7 @@ in {
       ruby
       pandoc
       sketchybar
+      sqlite
       tree-sitter
       xsv
       youtube-dl
