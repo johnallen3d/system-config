@@ -11,6 +11,7 @@
         "$git_state"
         "$git_status"
         "$cmd_duration"
+        "$shell"
         "$line_break"
         "$character"
       ];
@@ -19,6 +20,12 @@
       ];
       git_status = {
         "stashed" = "";
+      };
+      shell = {
+        disabled = false;
+        bash_indicator = "";
+        fish_indicator = "";
+        zsh_indicator = "";
       };
       directory = {
         "truncation_length" = 8;
