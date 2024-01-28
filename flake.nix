@@ -38,7 +38,9 @@
         };
         modules = [
           ./modules/darwin
-          ./hosts/m1-mbp.nix
+          # can't log with AppleID on virtual machine
+          # therefore can only use mas here
+          ./modules/darwin/homebrew/mas.nix
           home-manager.darwinModules.home-manager
           {
             home-manager = {
@@ -49,7 +51,10 @@
                 inherit full_name;
                 inherit home;
               };
-              users.${user}.imports = [./modules/home-manager];
+              users.${user}.imports = [
+                ./modules/home-manager
+                ./hosts/m1-mbp.nix
+              ];
             };
           }
         ];
@@ -65,7 +70,6 @@
         };
         modules = [
           ./modules/darwin
-          ./hosts/macos-virtual.nix
           home-manager.darwinModules.home-manager
           {
             home-manager = {
@@ -76,7 +80,10 @@
                 inherit full_name;
                 inherit home;
               };
-              users.${user}.imports = [./modules/home-manager];
+              users.${user}.imports = [
+                ./modules/home-manager
+                ./hosts/macos-virtual.nix
+              ];
             };
           }
         ];

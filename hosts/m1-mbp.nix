@@ -1,6 +1,6 @@
 {...}: {
   imports = [
-    # can't log with AppleID on virtual machine, therefore can't use mas
-    ../modules/darwin/homebrew/mas.nix
+    # kitty not loading in virtual machine 😢
+    ../modules/home-manager/kitty
   ];
 }

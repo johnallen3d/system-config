@@ -27,7 +27,6 @@ in {
   imports = [
     ../direnv
     ../fish
-    ../kitty
     ../git
     ../lf
     ../nvim
