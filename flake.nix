@@ -55,7 +55,7 @@
         ];
       };
 
-      "Johns-Virtual-Machine" = nix-darwin.lib.darwinSystem {
+      "macos-virtual" = nix-darwin.lib.darwinSystem {
         system = arch;
         pkgs = import nixpkgs {system = arch;};
         specialArgs = {
