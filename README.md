@@ -51,9 +51,9 @@ darwin-rebuild switch --option eval-cache false --flake ~/dev/src/system-config/
 ## Update Installed Packages
 
 ```bash
-nix flake update
+nix flake update --commit-lock-file
 # or from another directory
-pushd ~/dev/src/system-config; nix flake update; nixswitch; popd
+pushd ~/dev/src/system-config; nix flake update --commit-lock-file; nixswitch; popd
 ```
 
 ## TODO
