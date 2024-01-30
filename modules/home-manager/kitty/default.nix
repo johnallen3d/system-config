@@ -85,7 +85,8 @@
       allow_remote_control = "yes";
       listen_on = "unix:/tmp/kitty";
       shell_integration = "enabled";
-      action_alias = "kitty_scrollback_nvim kitten ${home}/.local/share/lazy-vim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py --nvim-args -u NONE +'nnoremap yy \"+yy; nnoremap y \"+y; vnoremap y \"+y'";
+      # action_alias = "kitty_scrollback_nvim kitten ${home}/.local/share/lazy-vim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py --nvim-args -u NONE +'nnoremap yy \"+yy; nnoremap y \"+y; vnoremap y \"+y'";
+      action_alias = "kitty_scrollback_nvim kitten ${home}/.local/share/nvim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py";
 
       confirm_os_window_close = "0";
       macos_titlebar_color = "background";
