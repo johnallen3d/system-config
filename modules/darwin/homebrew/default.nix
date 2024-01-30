@@ -35,6 +35,7 @@
       "grammarly-desktop"
       "istat-menus"
       "karabiner-elements"
+      "lm-studio"
       "lunar"
       "marked"
       "mpv"

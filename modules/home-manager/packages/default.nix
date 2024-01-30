@@ -65,6 +65,7 @@ in {
       pandoc
       sketchybar
       sqlite
+      tart
       tree-sitter
       xsv
       youtube-dl
