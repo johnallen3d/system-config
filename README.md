@@ -4,6 +4,11 @@ Manage macOS using [Nix](https://nixos.org/nix/), [nix-darwin](https://github.co
 
 ## Prerequisites
 
+Set hostname to a known (configured) value:
+
+- m1-mpb
+- macos-virtual
+
 Install Nix:
 
 ```bash
@@ -16,6 +21,14 @@ Install command line tools for git (brute force):
 xcode-select --install
 ```
 
+~Give Terminal.app "Full Disk Access" in System Preferences > Privacy & Security > Privacy > Full Disk Access. This is required for some of the `nix-darwin` system settings to apply successfully.~ I've [disabled this](https://github.com/johnallen3d/system-config/commit/e3274eb53b74653790df34cf5ad0790fdfadd20e) for now.
+
+Install Homebrew:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
 Clone `system-config`
 
 ```bash
@@ -23,14 +36,6 @@ mkdir -p ~/dev/src
 cd ~/dev/src
 git clone https://github.com/johnallen3d/system-config.git
 cd system-config
-```
-
-Give Terminal.app "Full Disk Access" in System Preferences > Privacy & Security > Privacy > Full Disk Access. This is required for some of the `nix-darwin` system settings to apply successfully.
-
-Install Homebrew:
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
 Install `nix-darwin` and initial apply:
@@ -81,3 +86,4 @@ chsh -s /run/current-system/sw/bin/fish
 - [ ] automate install of [SketchyBar Lua Plugin](https://github.com/FelixKratz/SbarLua?tab=readme-ov-file#sketchybar-lua-plugin)
 - [ ] Music?
 - [ ] Photos?
+- [ ] how to correctly set "allow unfree" specifically for `tart`
