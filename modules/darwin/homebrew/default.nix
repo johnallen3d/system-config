@@ -46,11 +46,11 @@
       "rambox"
       "raycast"
       "rocket"
+      "tailscale"
       "visual-studio-code"
     ];
 
     # TODO:
     # Cody
-    # WireGuard
   };
 }

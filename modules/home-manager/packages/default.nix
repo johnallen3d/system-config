@@ -65,6 +65,7 @@ in {
       pandoc
       sketchybar
       sqlite
+      tailscale
       tart
       tree-sitter
       xsv
