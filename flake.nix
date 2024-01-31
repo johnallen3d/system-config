@@ -19,18 +19,9 @@
     nixpkgs,
     ...
   }: let
-    system = "aarch64-darwin";
-    full_name = "John Allen";
-    user = "john.allen";
-    home = "/Users/${user}";
-    brew_bin = "/opt/homebrew/bin";
-
-    makeDarwinSystem =
-      import ./lib/mksystem.nix {
-        inherit home-manager nix-darwin nixpkgs;
-      } {
-        inherit system user home brew_bin full_name;
-      };
+    makeDarwinSystem = import ./lib/mksystem.nix {
+      inherit home-manager nix-darwin nixpkgs;
+    };
   in {
     darwinConfigurations = {
       m1-mbp = makeDarwinSystem {
