@@ -1,4 +1,4 @@
-local vault_path = vim.fn.expand("~")
+local vault_path = os.getenv("HOME")
 	.. "/Library/Mobile Documents/iCloud~md~obsidian/Documents/Personal"
 
 return {
