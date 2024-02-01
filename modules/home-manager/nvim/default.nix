@@ -56,6 +56,7 @@
         cmp-buffer
         cmp-nvim-lsp
         cmp-path
+        cmp-tabby
         cmp_luasnip
         conform-nvim
         dashboard-nvim
@@ -83,6 +84,7 @@
         nvim-web-devicons
         persistence-nvim
         plenary-nvim
+        tabby-nvim
         telescope-fzf-native-nvim
         telescope-nvim
         todo-comments-nvim

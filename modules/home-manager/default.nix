@@ -24,6 +24,8 @@
         source = ./dotfiles/bin;
       };
 
+      ".tabby-client/agent/config.toml".source = ./dotfiles/tabby.toml;
+
       # bin = {
       #   "bottombar".source = config.lib.file.mkOutOfStoreSymlink ./some-source-file;
       # };

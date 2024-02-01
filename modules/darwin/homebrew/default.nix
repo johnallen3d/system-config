@@ -9,15 +9,17 @@
     };
     global.brewfile = true;
 
+    taps = [
+      "FelixKratz/homebrew-formulae"
+      "nikitabobko/homebrew-tap"
+      "tabbyml/homebrew-tabby"
+    ];
+
     brews = [
       "blueutil"
       "borders"
       "switchaudio-osx"
-    ];
-
-    taps = [
-      "FelixKratz/homebrew-formulae"
-      "nikitabobko/homebrew-tap"
+      "tabby"
     ];
 
     casks = [

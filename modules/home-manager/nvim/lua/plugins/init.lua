@@ -268,13 +268,30 @@ return {
 	},
 
 	{
+		{
+			"TabbyML/vim-tabby",
+			event = "BufRead",
+			init = function()
+				vim.g.tabby_keybinding_accept = "<C-CR>"
+			end,
+		},
+	},
+
+	{
 		"hrsh7th/nvim-cmp",
 		dependencies = {
 			"dmitmel/cmp-cmdline-history",
 			"hrsh7th/cmp-buffer",
 			"hrsh7th/cmp-cmdline",
 			"hrsh7th/cmp-emoji",
-			"sourcegraph/sg.nvim",
+			-- "sourcegraph/sg.nvim",
+			{
+				"nzlov/cmp-tabby",
+				opts = {
+					host = "http://localhost:8080",
+					max_lines = 1000,
+				},
+			},
 		},
 		---@param opts cmp.ConfigSchema
 		opts = function(_, opts)
@@ -287,7 +304,8 @@ return {
 			local cmp = require("cmp")
 
 			opts.sources = cmp.config.sources(vim.list_extend(opts.sources, {
-				{ name = "cody", priority = 1001 },
+				{ name = "cmp_tabby", priority = 1001 },
+				-- { name = "cody" },
 				{ name = "emoji" },
 			}))
 
