@@ -1,14 +1,5 @@
 {...}: {
   programs.fish.functions = {
-    cd = {
-      body = ''
-        builtin cd $argv
-
-        if test $status = 0
-          ll
-        end
-      '';
-    };
     # https://github.com/fish-shell/fish-shell/wiki/Bash-Style-Command-Substitution-and-Chaining-(!!-!$)
     bind_bang = {
       body = ''
@@ -30,6 +21,21 @@
         case "*"
           commandline -i '$'
         end
+      '';
+    };
+    cd = {
+      body = ''
+        builtin cd $argv
+
+        if test $status = 0
+          ll
+        end
+      '';
+    };
+    chat = {
+      body = ''
+        cd ~/Dropbox/Notes/scratch
+        nvim -c "lua require('gp').setup()" -c "GpChatNew" chat.md
       '';
     };
     fish_user_key_bindings = {
