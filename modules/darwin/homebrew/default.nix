@@ -49,8 +49,5 @@
       "tailscale"
       "visual-studio-code"
     ];
-
-    # TODO:
-    # Cody
   };
 }
