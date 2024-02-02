@@ -52,8 +52,12 @@
       plugins = with pkgs.vimPlugins; [
         # LazyVim
         LazyVim
+
         bufferline-nvim
         cmp-buffer
+        cmp-cmdline
+        cmp-cmdline-history
+        cmp-emoji
         cmp-nvim-lsp
         cmp-path
         cmp-tabby
