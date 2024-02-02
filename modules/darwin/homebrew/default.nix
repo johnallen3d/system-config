@@ -18,6 +18,8 @@
     brews = [
       "blueutil"
       "borders"
+      # TODO: can we find a better/more nix way?
+      "pyenv"
       "switchaudio-osx"
       "tabby"
     ];

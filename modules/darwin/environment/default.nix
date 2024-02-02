@@ -40,6 +40,8 @@
       TIME_STYLE = "long-iso";
       MANPAGER = "nvim +Man!";
       FZF_DEFAULT_COMMAND = "rg --files --hidden --follow --glob \"!doc/*\"";
+      # TODO: can we find a better/more nix way?
+      PYENV_ROOT = "$HOME/.pyenv";
     };
 
     shellAliases = {

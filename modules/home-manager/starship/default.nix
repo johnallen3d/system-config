@@ -17,9 +17,13 @@
       ];
       right_format = lib.concatStrings [
         "$nix_shell"
+        "$python"
       ];
       git_status = {
         "stashed" = "";
+      };
+      python = {
+        pyenv_version_name = true;
       };
       shell = {
         disabled = false;
