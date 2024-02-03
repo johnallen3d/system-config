@@ -5,17 +5,18 @@ return {
 			"dmitmel/cmp-cmdline-history",
 			"hrsh7th/cmp-cmdline",
 			"hrsh7th/cmp-emoji",
-			{
-				"nzlov/cmp-tabby",
-				config = function()
-					local tabby = require("cmp_tabby.config")
+			"sourcegraph/sg.nvim",
+			-- {
+			-- 	"nzlov/cmp-tabby",
+			-- 	config = function()
+			-- 		local tabby = require("cmp_tabby.config")
 
-					tabby:setup({
-						host = "http://localhost:8080",
-						max_lines = 1000,
-					})
-				end,
-			},
+			-- 		tabby:setup({
+			-- 			host = "http://localhost:8080",
+			-- 			max_lines = 1000,
+			-- 		})
+			-- 	end,
+			-- },
 		},
 		---@param opts cmp.ConfigSchema
 		opts = function(_, opts)
@@ -28,7 +29,8 @@ return {
 			local cmp = require("cmp")
 
 			opts.sources = cmp.config.sources(vim.list_extend(opts.sources, {
-				{ name = "cmp_tabby", priority = 1001 },
+				-- { name = "cmp_tabby", priority = 1001 },
+				{ name = "cody", priority = 1001 },
 				{ name = "emoji" },
 			}))
 

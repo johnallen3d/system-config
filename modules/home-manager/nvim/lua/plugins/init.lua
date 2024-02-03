@@ -255,13 +255,13 @@ return {
 		},
 	},
 
-	-- {
-	-- 	"TabbyML/vim-tabby",
-	-- 	event = "BufRead",
-	-- 	init = function()
-	-- 		vim.g.tabby_keybinding_accept = "<C-CR>"
-	-- 	end,
-	-- },
+	{
+		"TabbyML/vim-tabby",
+		event = "BufRead",
+		init = function()
+			vim.g.tabby_keybinding_accept = "<C-CR>"
+		end,
+	},
 
 	{
 		"kndndrj/nvim-dbee",
