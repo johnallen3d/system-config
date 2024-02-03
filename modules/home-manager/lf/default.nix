@@ -13,11 +13,35 @@
     };
 
     commands = {
+      extract = ''
+        ''${{
+            set -f
+            case $f in
+                *.tar.bz|*.tar.bz2|*.tbz|*.tbz2) tar xjvf $f;;
+                *.tar.gz|*.tgz) tar xzvf $f;;
+                *.tar.xz|*.txz) tar xJvf $f;;
+                *.zip) unzip $f;;
+                *.rar) unrar x $f;;
+                *.7z) 7z x $f;;
+            esac
+        }}
+      '';
+
       mkdir = ''
         ''${{
           printf "Directory name: "
           read DIR
           mkdir -p "$DIR"
+        }}
+      '';
+
+      tar = ''
+        ''${{
+            set -f
+            mkdir $1
+            cp -r $fx $1
+            tar --create --gzip --keep-old-files --file $1.tar.gz $1
+            rm -rf $1
         }}
       '';
 
@@ -36,6 +60,23 @@
       yank-path = ''
         $printf '%s' "$fx" | pbcopy
       '';
+
+      z = ''
+        %{{
+          result="$(zoxide query --exclude $PWD $@ | sed 's/\\/\\\\/g;s/"/\\"/g')"
+          lf -remote "send $id cd \"$result\""
+        }}
+      '';
+
+      zip = ''
+        ''${{
+            set -f
+            mkdir $1
+            cp -r $fx $1
+            zip -r $1.zip $1
+            rm -rf $1
+        }}
+      '';
     };
 
     keybindings = {
@@ -44,6 +85,7 @@
       gd = "cd ~/Downloads";
       gh = "cd";
       gs = "cd ~/dev/src/system-config";
+      x = ":extract";
     };
 
     extraConfig = let
