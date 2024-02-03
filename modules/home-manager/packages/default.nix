@@ -41,6 +41,7 @@ in {
       bashInteractive
       bacon
       # brave
+      cargo-sweep
       coreutils
       curl
       erdtree
