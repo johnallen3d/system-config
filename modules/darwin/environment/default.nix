@@ -68,6 +68,7 @@
       password = "passgen";
       pi = "kitty +kitten ssh pi@pi.local";
       recent = "lsd -la --sort time --color=always | head";
+      rm = "trash";
       spp = "git stash && git pull && git stash pop";
       tree = "erd";
       uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";

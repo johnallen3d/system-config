@@ -22,6 +22,7 @@
       "pyenv"
       "switchaudio-osx"
       "tabby"
+      "trash"
     ];
 
     casks = [
