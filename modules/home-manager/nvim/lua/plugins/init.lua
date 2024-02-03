@@ -257,7 +257,8 @@ return {
 
 	{
 		"TabbyML/vim-tabby",
-		event = "BufRead",
+		ft = "rust",
+		-- event = "BufRead",
 		init = function()
 			vim.g.tabby_keybinding_accept = "<C-CR>"
 		end,
