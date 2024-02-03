@@ -44,7 +44,6 @@ in {
       cargo-sweep
       coreutils
       curl
-      erdtree
       fd
       ffmpeg
       findutils # find / xargs

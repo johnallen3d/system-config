@@ -70,7 +70,7 @@
       recent = "lsd -la --sort time --color=always | head";
       rm = "trash";
       spp = "git stash && git pull && git stash pop";
-      tree = "erd";
+      tree = "lsd --tree";
       uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
       vi = "nvim";
       vim = "nvim";
