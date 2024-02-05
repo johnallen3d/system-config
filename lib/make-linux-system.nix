@@ -9,13 +9,13 @@
 }: let
   system = "aarch64-linux";
   home = "/home/${user}";
+  pkgs = import nixpkgs {
+    inherit system;
+    config.allowUnfree = true;
+  };
 in
   nixpkgs.lib.nixosSystem {
     inherit system;
-    pkgs = import nixpkgs {
-      inherit system;
-      config.allowUnfree = true;
-    };
 
     specialArgs = {
       inherit user home full_name;
@@ -32,6 +32,7 @@ in
           home-manager.useUserPackages = true;
           home-manager.extraSpecialArgs = {
             inherit user full_name;
+            op_ssh_sign_path = "${pkgs._1password-gui}/bin/op-ssh-sign";
           };
 
           home-manager.users."john.allen".imports = [

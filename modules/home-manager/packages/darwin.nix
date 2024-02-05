@@ -17,7 +17,6 @@ in {
   home.packages = with pkgs;
     [
       mas
-      opera
       sketchybar
       tart
     ]

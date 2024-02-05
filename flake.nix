@@ -34,8 +34,6 @@
         host = "m1-mbp";
         extraModules = [
           ./modules/darwin/homebrew/mas.nix
-          # TODO: this leaves sketchybar out of macos-virtual
-          ./modules/home-manager/packages/darwin.nix
         ];
       };
 

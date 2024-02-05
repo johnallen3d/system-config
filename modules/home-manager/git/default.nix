@@ -1,6 +1,7 @@
 {
   full_name,
   pkgs,
+  op_ssh_sign_path,
   ...
 }: {
   programs.git = {
@@ -45,8 +46,7 @@
         format = "ssh";
       };
       "gpg \"ssh\"" = {
-        # program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
-        program = "${pkgs._1password-gui}/bin/op-ssh-sign";
+        program = op_ssh_sign_path;
       };
       init = {
         defaultBranch = "main";
