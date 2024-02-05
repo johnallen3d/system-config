@@ -35,7 +35,7 @@
     chat = {
       body = ''
         cd ~/Dropbox/Notes/scratch
-        nvim -c "lua require('gp').setup()" -c "GpChatNew" chat.md
+        nvim -c "GpChatNew" chat.md
       '';
     };
     fish_user_key_bindings = {
