@@ -1,15 +1,23 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   system.stateVersion = "23.11";
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
+  nix = {
+    optimise.automatic = true;
+    gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 30d";
+    };
+
+    settings = {
+      cores = 0; # max
+      max-jobs = 10;
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+    };
+  };
 
   imports = [
     /etc/nixos/hardware-configuration.nix
@@ -81,6 +89,17 @@
   users.users."john.allen" = {
     isNormalUser = true;
     extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+  };
+
+  fonts = {
+    # paid fonts (eg. Font Awesome Pro) installed at "modules/home-manager/default.nix"
+    fontDir.enable = true;
+
+    packages = with pkgs; [
+      cascadia-code
+      monaspace
+      (nerdfonts.override {fonts = ["CascadiaCode" "Hack"];})
+    ];
   };
 
   # TODO: this isn't working but is what's documented
