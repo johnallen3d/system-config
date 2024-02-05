@@ -22,6 +22,7 @@
 
   imports = [
     ./functions.nix
-    ./path_fix.nix
+    # TODO: this is broken on NixOS
+    # ./path_fix.nix
   ];
 }

@@ -1,4 +1,8 @@
-{full_name, ...}: {
+{
+  full_name,
+  pkgs,
+  ...
+}: {
   programs.git = {
     enable = true;
     userName = "${full_name}";
@@ -41,7 +45,8 @@
         format = "ssh";
       };
       "gpg \"ssh\"" = {
-        program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
+        # program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
+        program = "${pkgs._1password-gui}/bin/op-ssh-sign";
       };
       init = {
         defaultBranch = "main";

@@ -1,14 +1,6 @@
-{
-  pkgs,
-  brew_bin,
-  ...
-}: let
+{pkgs, ...}: let
   scripts = [
     (import ./bin/chat-gpt-key.nix {inherit pkgs;})
-    (import ./bin/connect-air-pods.nix {
-      inherit pkgs;
-      inherit brew_bin;
-    })
     (import ./bin/csv-headers.nix {inherit pkgs;})
     (import ./bin/delete-branch.nix {inherit pkgs;})
     (import ./bin/find-and-replace.nix {inherit pkgs;})
@@ -17,10 +9,6 @@
     (import ./bin/md-to-doc.nix {inherit pkgs;})
     (import ./bin/scratch.nix {inherit pkgs;})
     (import ./bin/set-wallpaper.nix {inherit pkgs;})
-    (import ./bin/toggle-air-pods.nix {
-      inherit pkgs;
-      inherit brew_bin;
-    })
     (import ./bin/wav-to-mp3.nix {inherit pkgs;})
   ];
 in {
@@ -55,19 +43,17 @@ in {
       lua
       # luajit
       less
-      mas
       mpd
       mpc-cli
       nix-your-shell
       nodejs_21
-      # opera
       ruby
       pandoc
-      sketchybar
+      pyenv
       sqlite
       tailscale
-      tart
       tree-sitter
+      wget
       xsv
       youtube-dl
     ]

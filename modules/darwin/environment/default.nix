@@ -2,7 +2,7 @@
   pkgs,
   user,
   home,
-  brew_bin,
+  # brew_bin,
   ...
 }: {
   # https://github.com/nix-community/home-manager/issues/4026
@@ -14,24 +14,22 @@
   programs.fish.enable = true;
 
   environment = {
-    loginShell = pkgs.fish;
-
     shells = with pkgs; [
       bash
       fish
       zsh
     ];
 
-    pathsToLink = ["/Applications"];
+    # pathsToLink = ["/Applications"];
 
-    systemPath = [
-      "${pkgs.path}"
-      "/usr/local/bin"
-      "$HOME/bin"
-      "$HOME/.local/bin"
-      "$HOME/.cargo/bin"
-      "${brew_bin}"
-    ];
+    # systemPath = [
+    #   "${pkgs.path}"
+    #   "/usr/local/bin"
+    #   "$HOME/bin"
+    #   "$HOME/.local/bin"
+    #   "$HOME/.cargo/bin"
+    #   "${brew_bin}"
+    # ];
 
     variables = {
       EDITOR = "nvim";

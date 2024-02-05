@@ -1,14 +1,4 @@
-{pkgs, ...}: {
-  fonts = {
-    # paid fonts (eg. Font Awesome Pro) installed at "modules/home-manager/default.nix"
-    fontDir.enable = true;
-    fonts = with pkgs; [
-      cascadia-code
-      monaspace
-      (nerdfonts.override {fonts = ["CascadiaCode" "Hack"];})
-    ];
-  };
-
+{...}: {
   security = {
     pam = {
       # allow biometric when password required for `sudo`!!!! 😁

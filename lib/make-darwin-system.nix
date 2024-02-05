@@ -2,15 +2,15 @@
   home-manager,
   nix-darwin,
   nixpkgs,
+  user,
+  full_name,
 }: {
   host,
   extraModules ? [],
 }: let
   system = "aarch64-darwin";
-  user = "john.allen";
   home = "/Users/${user}";
   brew_bin = "/opt/homebrew/bin";
-  full_name = "John Allen";
 in
   nix-darwin.lib.darwinSystem {
     inherit system;
@@ -20,6 +20,7 @@ in
     };
     modules =
       [
+        ../modules/common
         ../modules/darwin
         home-manager.darwinModules.home-manager
         {
