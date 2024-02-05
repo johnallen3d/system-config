@@ -17,6 +17,8 @@ in
   nixpkgs.lib.nixosSystem {
     inherit system;
 
+    pkgs = pkgs;
+
     specialArgs = {
       inherit user home full_name;
     };
