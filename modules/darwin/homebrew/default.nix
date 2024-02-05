@@ -52,6 +52,7 @@
       "raycast"
       "rocket"
       "tailscale"
+      "utm"
       "visual-studio-code"
     ];
   };
