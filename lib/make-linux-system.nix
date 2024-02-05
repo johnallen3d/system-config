@@ -25,8 +25,6 @@ in
       [
         ../modules/common
         ../modules/linux
-        # TODO: check on this?
-        ../modules/darwin/environment
 
         home-manager.nixosModules.home-manager
         {
