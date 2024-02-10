@@ -25,8 +25,8 @@
       # include = "colors.conf";
 
       font_family = "Monaspace Xenon SemiBold";
-      italic_font = "Monaspace Radon SemiBold Italic";
       bold_font = "Monaspace Neon Bold";
+      italic_font = "Monaspace Radon SemiBold Italic";
       bold_italic_font = "Monaspace Krypton Bold Italic";
       font_size = "14.00";
 

@@ -22,6 +22,5 @@
 
   imports = [
     ./functions.nix
-    ./path_fix.nix
   ];
 }

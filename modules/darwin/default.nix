@@ -1,4 +1,4 @@
-{...}: {
+{pkgs, ...}: {
   system.stateVersion = 4;
   services.nix-daemon.enable = true;
 
@@ -31,4 +31,15 @@
   ];
 
   system.activationScripts.extraActivation.text = builtins.readFile ./activation.sh;
+
+  fonts = {
+    # paid fonts (eg. Font Awesome Pro) installed at "modules/home-manager/default.nix"
+    fontDir.enable = true;
+
+    fonts = with pkgs; [
+      cascadia-code
+      monaspace
+      (nerdfonts.override {fonts = ["CascadiaCode" "Hack"];})
+    ];
+  };
 }

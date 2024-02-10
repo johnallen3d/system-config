@@ -50,7 +50,11 @@ nix \
 ## Apply Changes
 
 ```bash
-darwin-rebuild switch --option eval-cache false --flake ~/dev/src/system-config/.#
+# on macOS
+set -xg NIXPKGS_ALLOW_UNFREE 1; darwin-rebuild switch --impure --flake ~/dev/src/system-config/
+
+# on NixOS
+sudo nixos-rebuild switch --flake ~/dev/src/system-config/.# --impure
 ```
 
 ## Update Installed Packages
