@@ -105,7 +105,7 @@
         askForPasswordDelay = 10; # seconds
       };
 
-      spaces = {spans-displays = true;};
+      spaces = {spans-displays = false;};
 
       trackpad = {
         Clicking = true;

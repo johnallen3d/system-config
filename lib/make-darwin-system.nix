@@ -33,6 +33,7 @@ in
             };
             users.${user}.imports = [
               ../modules/home-manager
+              ../modules/home-manager/fish/path_fix.nix
               ../hosts/${host}.nix
             ];
           };

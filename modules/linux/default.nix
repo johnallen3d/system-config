@@ -102,8 +102,6 @@
     ];
   };
 
-  # TODO: this isn't working but is what's documented
-  # https://nixos.wiki/wiki/1Password
   programs._1password.enable = true;
   programs._1password-gui = {
     enable = true;
