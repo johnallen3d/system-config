@@ -1,4 +1,8 @@
-{pkgs, ...}:
+{
+  pkgs,
+  brew_bin,
+  ...
+}:
 pkgs.writeShellScriptBin "chat-gpt-key" ''
-  /opt/homebrew/bin/op item get ChatGPT --fields label=secret-key-nvim
+  ${brew_bin}/op item get ChatGPT --fields label=secret-key-nvim
 ''
