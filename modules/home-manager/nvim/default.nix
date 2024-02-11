@@ -181,6 +181,7 @@
               "getscriptPlugin",
               "gzip",
               "logipat",
+              "pkl",
               "matchit",
               "matchparen",
               -- "netrw",

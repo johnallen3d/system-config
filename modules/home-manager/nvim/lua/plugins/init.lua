@@ -34,6 +34,7 @@ return {
 	},
 
 	{ "NoahTheDuke/vim-just" },
+	{ "apple/pkl-neovim", ft = "pkl" },
 
 	{
 		"norcalli/nvim-colorizer.lua",
