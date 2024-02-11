@@ -34,6 +34,7 @@ in
           home-manager.useUserPackages = true;
           home-manager.extraSpecialArgs = {
             inherit user full_name;
+            op_path = "${pkgs._1password}/bin/op";
             op_ssh_sign_path = "${pkgs._1password-gui}/bin/op-ssh-sign";
           };
 

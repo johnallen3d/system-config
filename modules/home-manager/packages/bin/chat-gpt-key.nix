@@ -1,8 +1,8 @@
 {
   pkgs,
-  brew_bin,
+  op_path,
   ...
 }:
 pkgs.writeShellScriptBin "chat-gpt-key" ''
-  ${brew_bin}/op item get ChatGPT --fields label=secret-key-nvim
+  ${op_path} item get ChatGPT --fields label=secret-key-nvim
 ''

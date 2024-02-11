@@ -11,6 +11,7 @@
   system = "aarch64-darwin";
   home = "/Users/${user}";
   brew_bin = "/opt/homebrew/bin";
+  op_path = "${brew_bin}/op";
   op_ssh_sign_path = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
 in
   nix-darwin.lib.darwinSystem {
@@ -29,7 +30,7 @@ in
             useGlobalPkgs = true;
             useUserPackages = true;
             extraSpecialArgs = {
-              inherit brew_bin full_name home op_ssh_sign_path;
+              inherit brew_bin full_name home op_path op_ssh_sign_path;
             };
             users.${user}.imports = [
               ../modules/home-manager

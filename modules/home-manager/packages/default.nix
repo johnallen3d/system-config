@@ -1,6 +1,13 @@
-{pkgs, ...}: let
+{
+  pkgs,
+  op_path,
+  ...
+}: let
   scripts = [
-    (import ./bin/chat-gpt-key.nix {inherit pkgs;})
+    (import ./bin/chat-gpt-key.nix {
+      inherit pkgs;
+      inherit op_path;
+    })
     (import ./bin/csv-headers.nix {inherit pkgs;})
     (import ./bin/delete-branch.nix {inherit pkgs;})
     (import ./bin/find-and-replace.nix {inherit pkgs;})
