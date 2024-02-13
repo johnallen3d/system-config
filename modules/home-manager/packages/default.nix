@@ -63,6 +63,7 @@ in {
       wget
       xsv
       youtube-dl
+      yt-dlp
     ]
     ++ scripts;
 
