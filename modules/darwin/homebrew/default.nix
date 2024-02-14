@@ -54,6 +54,7 @@
       "tailscale"
       "utm"
       "visual-studio-code"
+      "whatsapp"
     ];
   };
 }
