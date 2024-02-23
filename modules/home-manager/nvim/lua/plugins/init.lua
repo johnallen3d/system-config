@@ -33,7 +33,7 @@ return {
 		},
 	},
 
-	{ "NoahTheDuke/vim-just" },
+	{ "NoahTheDuke/vim-just", ft = "just" },
 	{ "apple/pkl-neovim", ft = "pkl" },
 
 	{
