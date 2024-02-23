@@ -71,6 +71,10 @@ in {
     enable = true;
     settings = {
       keymap_mode = "emacs";
+      show_help = false;
+      show_preview = true;
+      style = "compact";
+      update_check = false;
     };
   };
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
