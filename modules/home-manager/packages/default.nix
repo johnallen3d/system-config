@@ -67,6 +67,12 @@ in {
     ]
     ++ scripts;
 
+  programs.atuin = {
+    enable = true;
+    settings = {
+      keymap_mode = "emacs";
+    };
+  };
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
   # programs.bacon = {
   #   enable = true;
