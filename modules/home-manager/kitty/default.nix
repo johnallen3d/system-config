@@ -45,6 +45,8 @@
 
       wheel_scroll_multiplier = "3.0";
 
+      notify_on_cmd_finish = "unfocused";
+
       url_color = "#0087BD";
       url_style = "curly";
       open_url_with = "default";
