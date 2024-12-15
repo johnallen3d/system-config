@@ -20,7 +20,7 @@
       enableZshIntegration = false;
       mode = "no-cursor";
     };
-    theme = "Tokyo Night Moon";
+    themeFile = "tokyo_night_moon";
     settings = {
       # include = "colors.conf";
 

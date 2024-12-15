@@ -1,5 +1,11 @@
 {...}: {
   programs.fish.functions = {
+    argo_pass = {
+      body = ''
+        set ARGOCD_PASSWORD $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+        echo $ARGOCD_PASSWORD | pbcopy
+      '';
+    };
     # https://github.com/fish-shell/fish-shell/wiki/Bash-Style-Command-Substitution-and-Chaining-(!!-!$)
     bind_bang = {
       body = ''
@@ -34,8 +40,8 @@
     };
     chat = {
       body = ''
-        cd ~/Dropbox/Notes/scratch
-        nvim -c "GpChatNew" chat.md
+        cd ~/.local/share/nvim/gp/chats/
+        nvim scratch.md
       '';
     };
     fish_user_key_bindings = {
@@ -109,6 +115,13 @@
     #     nix-your-shell fish nix-shell -- $argv
     #   '';
     # };
+    nix-rebuild = {
+      body = ''
+        nix flake update
+        set -xg NIXPKGS_ALLOW_UNFREE 1
+        darwin-rebuild switch --impure --flake ~/dev/src/system-config/
+      '';
+    };
     t = {
       body = ''
         if count $argv > /dev/null

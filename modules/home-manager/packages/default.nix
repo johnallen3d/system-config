@@ -1,5 +1,6 @@
 {
   pkgs,
+  rip2,
   op_path,
   ...
 }: let
@@ -20,6 +21,7 @@
   ];
 in {
   imports = [
+    ../alacritty
     ../direnv
     ../fish
     ../git
@@ -29,46 +31,98 @@ in {
     ../starship
   ];
 
+  # TODO: https://github.com/Mintplex-Labs/anything-llm
+
   home.packages = with pkgs;
     [
       alejandra
-      awscli
+      argo
+      argocd
+      awscli2
+      azure-cli
       bashInteractive
       bacon
       # brave
       cargo-sweep
+      cmus
       coreutils
       curl
+      devbox
+      doctl
+      # dotnet-runtime -> this is included in the dotnet-sdk
+      # dotnet-sdk -> trying to install this via homebrew for better tools support
+      duckdb
+      entr
       fd
       ffmpeg
       findutils # find / xargs
       flac
+      flyctl
+      fswatch
       gawk
+      go
+      glow
       gnugrep
       gotop
+      home-manager
+      hurl
       just
+      k3d
+      k8sgpt
+      k9s
+      # not currently supported on ARM architecture
+      # installed via: curl -fsSL https://kcl-lang.io/script/install-cli.sh | /bin/bash
+      # https://www.kcl-lang.io/docs/user_docs/getting-started/install#using-script-to-install-the-latest-release
+      # kcl-cli
+      kind
+      kubecolor
+      kubectl
+      kubernetes-helm
+      kubeseal
+      kubie
+      linode-cli
       lua
       # luajit
       less
+      minikube
+      minio-client
+      mkdocs
       mpd
-      mpc-cli
+      # mpc-cli
       nix-your-shell
-      nodejs_21
+      nodejs_22
+      oras
+      rip2.packages.${pkgs.system}.default
       ruby
+      runme
       pandoc
+      postgresql
       pyenv
+      python312Packages.mkdocs-material
+      qmk
       sqlite
       tailscale
       tree-sitter
+      # very out of date: curl -LsSf https://astral.sh/uv/install.sh | sh
+      # uv
+      vals
+      viddy
+      yq-go
       wget
+      xc
       xsv
-      youtube-dl
+      yazi
+      # youtube-dl
       yt-dlp
+      zellij
     ]
     ++ scripts;
 
   programs.atuin = {
     enable = true;
+    flags = [
+      "--disable-up-arrow"
+    ];
     settings = {
       keymap_mode = "emacs";
       show_help = false;

@@ -1,5 +1,4 @@
-local vault_path = os.getenv("HOME")
-	.. "/Library/Mobile Documents/iCloud~md~obsidian/Documents/Personal"
+local vault_path = os.getenv("HOME") .. "notes"
 
 return {
 	"epwalsh/obsidian.nvim",
@@ -22,6 +21,9 @@ return {
 	},
 
 	opts = {
+		-- in favor of [render-markdown.nvim](https://github.com/MeanderingProgrammer/render-markdown.nvim?tab=readme-ov-file#obsidiannvim)
+		ui = { enable = false },
+
 		workspaces = {
 			{
 				name = "default",
@@ -33,23 +35,33 @@ return {
 			folder = "journal",
 		},
 
-		completion = {
-			prepend_note_id = false,
-			prepend_note_path = false,
-			use_path_only = true,
-		},
-		note_id_func = function(title)
-			return title
-		end,
+		-- completion = {
+		-- 	prepend_note_id = false,
+		-- 	prepend_note_path = false,
+		-- 	use_path_only = true,
+		-- },
+		-- note_id_func = function(title)
+		-- 	return title
+		-- end,
 
 		sort_by = "path",
+
+		attachments = {
+			-- default folder to place images in via `:ObsidianPasteImg`.
+			img_folder = "images",
+		},
 	},
 
 	keys = {
 		{
 			"<leader>od",
 			"<cmd>ObsidianToday<CR>",
-			desc = "Daily journal entry (Obsidian)",
+			desc = "Today's journal entry (Obsidian)",
+		},
+		{
+			"<leader>oy",
+			"<cmd>ObsidianYesterday<CR>",
+			desc = "Yesterday's journal entry (Obsidian)",
 		},
 		{
 			"<leader>oc",

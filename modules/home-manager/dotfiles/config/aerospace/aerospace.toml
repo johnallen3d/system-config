@@ -38,14 +38,8 @@ gaps.inner.horizontal = 15
 gaps.inner.vertical = 15
 gaps.outer.left = 15
 gaps.outer.bottom = 55
-# https://github.com/nikitabobko/AeroSpace/issues/74
 gaps.outer.top = [{ monitor."Built-in Retina Display" = 30 }, 55]
 gaps.outer.right = 15
-
-# Visual indent makes it easier to understand that containers of the same orientation are nested.
-# If you have 'enable-normalization-opposite-orientation-for-nested-containers' enabled then
-# there is no way to observe the indent
-indent-for-nested-containers-with-the-same-orientation = 30
 
 # Layout of root containers of non-empty workspaces. The layout is applied only on startup
 # Possible values: smart|tiles|accordion
@@ -82,6 +76,10 @@ alt-cmd-l = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli pause && open -
 ctrl-cmd-p = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli toggle'
 ctrl-cmd-k = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume +6'
 ctrl-cmd-j = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume -4'
+
+# alt-cmd-l = 'exec-and-forget  /etc/profiles/per-user/john.allen/bin/cmus-remote --pause-playback && open -a ScreenSaverEngine'
+# ctrl-cmd-p = 'exec-and-forget /etc/profiles/per-user/john.allen/bin/cmus-remote --pause'                                       # behaves like toggle
+
 ctrl-cmd-b = 'exec-and-forget bash ~/bin/toggle-air-pods'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands.html#layout
@@ -117,7 +115,7 @@ ctrl-2 = 'workspace 2'
 ctrl-3 = 'workspace 3'
 ctrl-4 = 'workspace 4'
 ctrl-5 = 'workspace 5'
-# ctrl-6 = 'workspace 6' interferes with neovim "last buffer" shortcut
+ctrl-6 = 'workspace 6'
 ctrl-7 = 'workspace 7'
 ctrl-8 = 'workspace 8'
 ctrl-9 = 'workspace 9'
@@ -139,7 +137,9 @@ alt-tab = 'workspace-back-and-forth'
 # alt-shift-tab = 'move-workspace-to-monitor next'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands.html#mode
+# 'service' binding mode declaration
 alt-shift-semicolon = 'mode service'
+# 'join' binding mode declaration
 alt-shift-slash = 'mode join'
 
 # See: https://nikitabobko.github.io/AeroSpace/guide.html#assign-workspaces-to-monitors
@@ -171,7 +171,6 @@ f = [
 backspace = ['close-all-windows-but-current', 'mode main']
 esc = ['reload-config', 'mode main']
 
-# 'join' binding mode declaration
 # See: https://nikitabobko.github.io/AeroSpace/guide.html#binding-modes
 [mode.join.binding]
 alt-shift-h = ['join-with left', 'mode main']
@@ -184,8 +183,12 @@ esc = 'mode main'
 if.app-id = 'com.tinyspeck.slackmacgap'
 run = 'move-node-to-workspace 2'
 
+# [[on-window-detected]]
+# if.app-id = 'com.rambox'
+# run = 'move-node-to-workspace 3'
+
 [[on-window-detected]]
-if.app-id = 'com.rambox'
+if.app-id = 'com.apple.mail'
 run = 'move-node-to-workspace 3'
 
 [[on-window-detected]]
@@ -197,7 +200,15 @@ if.app-id = 'md.obsidian'
 run = 'move-node-to-workspace 5'
 
 [[on-window-detected]]
+if.app-id = 'com.microsoft.VSCode'
+run = 'move-node-to-workspace 6'
+
+[[on-window-detected]]
 if.app-id = 'codes.rambo.VirtualBuddy'
+run = 'move-node-to-workspace 7'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.iCal'
 run = 'move-node-to-workspace 7'
 
 [[on-window-detected]]
@@ -210,4 +221,8 @@ run = 'move-node-to-workspace 9'
 
 [[on-window-detected]]
 if.app-id = 'net.kovidgoyal.kitty'
+run = 'move-node-to-workspace 0'
+
+[[on-window-detected]]
+if.app-id = 'org.alacritty'
 run = 'move-node-to-workspace 0'

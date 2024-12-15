@@ -3,6 +3,7 @@
     enable = true;
     enableIonIntegration = false;
     enableNushellIntegration = false;
+    enableTransience = true;
     settings = {
       format = lib.concatStrings [
         "$directory"
@@ -18,9 +19,17 @@
       right_format = lib.concatStrings [
         "$nix_shell"
         "$python"
+        "$kubernetes"
       ];
+      character = {
+        success_symbol = "[](bold green) ";
+        error_symbol = "[✗](bold red) ";
+      };
       git_status = {
         "stashed" = "";
+      };
+      kubernetes = {
+        disabled = true;
       };
       python = {
         pyenv_version_name = true;

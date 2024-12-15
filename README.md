@@ -1,4 +1,4 @@
-# Nix
+Nix
 
 Manage macOS using [Nix](https://nixos.org/nix/), [nix-darwin](https://github.com/LnL7/nix-darwin) and [Home Manager](https://github.com/nix-community/home-manager).
 

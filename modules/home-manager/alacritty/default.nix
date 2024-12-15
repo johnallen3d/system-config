@@ -1,30 +1,85 @@
-{...}: {
+{...}: let
+  makeFontConfig = {
+    family,
+    normalStyle ? "SemiBold",
+    boldStyle ? "Bold",
+    italicStyle ? "SemiBold Italic",
+    size ? 15.0,
+  }: {
+    normal = {
+      inherit family;
+      style = normalStyle;
+    };
+    bold = {
+      inherit family;
+      style = boldStyle;
+    };
+    italic = {
+      inherit family;
+      style = italicStyle;
+    };
+    inherit size;
+  };
+
+  fonts = {
+    fira = makeFontConfig {
+      family = "FiraCode Nerd Font";
+    };
+    jetbrains = makeFontConfig {
+      family = "JetBrainsMono Nerd Font";
+      size = 15.5;
+    };
+    monaspice = makeFontConfig {
+      family = "MonaspiceXe Nerd Font Mono";
+      normalStyle = "Medium";
+      boldStyle = "Bold";
+      italicStyle = "Bold Italic";
+      size = 15.5;
+    };
+  };
+
+  selectedFont = fonts.jetbrains;
+in {
   programs.alacritty = {
     enable = true;
     settings = {
       env = {
-        TERM = "screen-256color";
+        TERM = "xterm-256color";
       };
+
+      # shell = {
+      #   program = "/etc/profiles/per-user/john.allen/bin/fish";
+      #   args = ["-l" "-c" "zellij"];
+      # };
 
       window = {
+        decorations = "Buttonless";
+        dynamic_padding = true;
+        option_as_alt = "Both";
         padding = {
-          x = 2;
-          y = 2;
+          x = 4;
+          y = 4;
         };
       };
 
-      # tip - on linux run `fc-list` to see a list of installed fonts
+      # TODO: <C-6> is not working, neither do any of these bindings to "fix"
+      # https://github.com/alacritty/alacritty/issues/1108
+      # keyboard.bindings = [
+      #   {
+      #     key = "Key6";
+      #     mods = "Control";
+      #     chars = "\u001e";
+      #   }
+      # ];
+
+      # tips: run to see a list of installed fonts
+      #   - on linux `fc-list`
+      #   - on macos: `atsutil fonts -list`
       font = {
-        normal = {
-          family = "Monaspace Xenon SemiBold";
-        };
-        bold = {
-          family = "Monaspace Neon Bold";
-        };
-        italic = {
-          family = "Monaspace Radon SemiBold Italic";
-        };
-        size = 8.0;
+        normal = selectedFont.normal;
+        bold = selectedFont.bold;
+        italic = selectedFont.italic;
+        size = selectedFont.size;
       };
 
       colors = {

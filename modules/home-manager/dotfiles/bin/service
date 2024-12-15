@@ -1,9 +1,9 @@
 #!/usr/bin/env -S cargo +nightly --quiet -Zscript
-```cargo
+---cargo
 [dependencies]
 strum = "0.25"
 strum_macros = "0.25"
-```
+---
 use std::str::FromStr;
 
 use strum::EnumProperty;

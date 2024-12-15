@@ -12,16 +12,20 @@
     taps = [
       "FelixKratz/homebrew-formulae"
       "nikitabobko/homebrew-tap"
-      "tabbyml/homebrew-tabby"
+      "siderolabs/tap"
     ];
 
     brews = [
       "blueutil"
       "borders"
-      # TODO: can we find a better/more nix way?
-      "pyenv"
+      "cloudflared"
+      "dagger"
+      "datafusion"
+      "dotnet@6"
+      "libspatialite"
+      "pyenv" # TODO: can we find a better/more nix way?
       "switchaudio-osx"
-      "tabby"
+      "talosctl"
       "trash"
     ];
 
@@ -36,21 +40,25 @@
       "discord"
       "disk-inventory-x"
       "docker"
+      # "dotnet-sdk" # this is v8
       "dropbox"
-      "grammarly-desktop"
       "istat-menus"
+      "jordanbaird-ice"
       "karabiner-elements"
-      "lm-studio"
-      "lunar"
+      # "lunar"
       "marked"
-      "mpv"
+      # issues with macOS Sequoia
+      # https://github.com/canonical/multipass/issues/3661#issuecomment-2363403467
+      # "multipass"
       "notunes"
       "obsidian"
       "ollama"
       "opera"
-      "rambox"
+      "orbstack"
       "raycast"
       "rocket"
+      "stolendata-mpv"
+      "syncthing"
       "tailscale"
       "utm"
       "visual-studio-code"

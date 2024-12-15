@@ -2,6 +2,7 @@
 set fish_greeting
 
 # TODO: can we find a better/more nix way?
+fish_add_path --prepend $HOME/.npm-global/bin
 fish_add_path --prepend $PYENV_ROOT
 pyenv init - | source
 

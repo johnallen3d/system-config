@@ -1,8 +1,8 @@
 #!/usr/bin/env -S cargo +nightly --quiet -Zscript
-```cargo
+---cargo
 [dependencies]
 comfy-table = "7.1.0"
-```
+---
 
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::*;

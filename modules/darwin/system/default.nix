@@ -95,9 +95,10 @@
       };
 
       menuExtraClock = {
+        IsAnalog = true;
         Show24Hour = true;
         ShowAMPM = false;
-        ShowDate = 1;
+        ShowDate = 0;
       };
 
       screensaver = {
@@ -105,7 +106,7 @@
         askForPasswordDelay = 10; # seconds
       };
 
-      spaces = {spans-displays = false;};
+      spaces = {spans-displays = true;};
 
       trackpad = {
         Clicking = true;

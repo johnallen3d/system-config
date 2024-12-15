@@ -1,10 +1,10 @@
 #!/usr/bin/env -S /Users/john.allen/.cargo/bin/cargo +nightly --quiet -Zscript
-```cargo
+---cargo
 [dependencies]
 conditions = "0.3.0"
 sketchybar-rs = { path = "/Users/john.allen/dev/src/playground/sketchybar-rs" }
 tokio = { version = "1.33", features = ["macros"] }
-```
+---
 use std::thread;
 use std::time::Duration;
 

@@ -33,13 +33,15 @@
   system.activationScripts.extraActivation.text = builtins.readFile ./activation.sh;
 
   fonts = {
-    # paid fonts (eg. Font Awesome Pro) installed at "modules/home-manager/default.nix"
-    fontDir.enable = true;
-
-    fonts = with pkgs; [
+    packages = with pkgs; [
       cascadia-code
+      fira-code
+      jetbrains-mono
       monaspace
-      (nerdfonts.override {fonts = ["CascadiaCode" "Hack"];})
+      nerd-fonts.caskaydia-cove
+      nerd-fonts.fira-code
+      nerd-fonts.hack
+      nerd-fonts.jetbrains-mono
     ];
   };
 }

@@ -25,6 +25,22 @@ return {
 	},
 
 	{
+		"folke/snacks.nvim",
+		opts = {
+			scroll = { enabled = false },
+		},
+	},
+
+	{
+		"williamboman/mason.nvim",
+		opts = {
+			ensure_installed = {
+				"kcl",
+			},
+		},
+	},
+
+	{
 		"folke/noice.nvim",
 		opts = {
 			presets = {
@@ -33,8 +49,36 @@ return {
 		},
 	},
 
+	{
+		"folke/flash.nvim",
+		opts = {
+			modes = {
+				search = {
+					enabled = true,
+				},
+			},
+		},
+	},
+
 	{ "NoahTheDuke/vim-just", ft = "just" },
-	{ "apple/pkl-neovim", ft = "pkl" },
+	{
+		"cameron-wags/rainbow_csv.nvim",
+		ft = {
+			"csv",
+			"tsv",
+			"csv_semicolon",
+			"csv_whitespace",
+			"csv_pipe",
+			"rfc_csv",
+			"rfc_semicolon",
+		},
+		cmd = {
+			"RainbowDelim",
+			"RainbowDelimSimple",
+			"RainbowDelimQuoted",
+			"RainbowMultiDelim",
+		},
+	},
 
 	{
 		"norcalli/nvim-colorizer.lua",
@@ -45,8 +89,9 @@ return {
 		"mfussenegger/nvim-lint",
 		opts = {
 			linters = {
-				markdownlint = {
-					args = { "--disable", "MD013", "--disable", "MD041", "--" },
+				["markdownlint-cli2"] = {
+					-- args = { "--disable", "MD013", "--disable", "MD041", "--" },
+					args = { "--config", "~/.config/markdownlint/config.yml" },
 				},
 			},
 		},
@@ -59,10 +104,20 @@ return {
 	},
 
 	{
-		"prichrd/netrw.nvim",
+		"stevearc/oil.nvim",
 		event = "VeryLazy",
-		name = "netrw",
 		config = true,
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		opts = {
+			keymaps = {
+				-- this was overriding dfault mapping (split navigation)
+				["<C-h>"] = { "<C-w>h" },
+				["<C-l>"] = { "<C-w>l" },
+			},
+			view_options = {
+				show_hidden = true,
+			},
+		},
 	},
 
 	{ "ryvnf/readline.vim", event = "CmdlineEnter" },
@@ -70,102 +125,6 @@ return {
 	{ "direnv/direnv.vim" },
 
 	-- chat
-
-	{
-		"sourcegraph/sg.nvim",
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"nvim-telescope/telescope.nvim",
-		},
-		config = true,
-	},
-
-	-- {
-	-- 	"jackMort/ChatGPT.nvim",
-	-- 	event = "VeryLazy",
-	-- 	-- cmd = "ChatGPT",
-	-- 	config = function()
-	-- 		require("chatgpt").setup({
-	-- 			-- tired of being pompted for each launch of NVIM, set env var instead
-	-- 			-- api_key_cmd = "op read op://private/ChatGPT/secret-key-nvim --no-newline",
-	-- 			openai_params = {
-	-- 				model = "gpt-4-1106-preview",
-	-- 				max_tokens = 2000,
-	-- 			},
-	-- 			openai_edit_params = {
-	-- 				model = "gpt-4-1106-preview",
-	-- 				max_tokens = 2000,
-	-- 			},
-	-- 		})
-	-- 	end,
-	-- 	dependencies = {
-	-- 		"MunifTanjim/nui.nvim",
-	-- 		"nvim-lua/plenary.nvim",
-	-- 		"nvim-telescope/telescope.nvim",
-	-- 	},
-	-- 	keys = {
-	-- 		{
-	-- 			"<leader>gc",
-	-- 			"<cmd>ChatGPT<CR>",
-	-- 			desc = "Open prompt (ChatGPT)",
-	-- 		},
-	-- 		{
-	-- 			"<leader>ge",
-	-- 			"<cmd>ChatGPTEditWithInstruction<CR>",
-	-- 			desc = "Edit with instruction (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>gg",
-	-- 			"<cmd>ChatGPTRun grammar_correction<CR>",
-	-- 			desc = "Grammar Correction (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>gd",
-	-- 			"<cmd>ChatGPTRun docstring<CR>",
-	-- 			desc = "Docstring (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>gt",
-	-- 			"<cmd>ChatGPTRun add_tests<CR>",
-	-- 			desc = "Add Tests (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>go",
-	-- 			"<cmd>ChatGPTRun optimize_code<CR>",
-	-- 			desc = "Optimize Code (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>gs",
-	-- 			"<cmd>ChatGPTRun summarize<CR>",
-	-- 			desc = "Summarize (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>gf",
-	-- 			"<cmd>ChatGPTRun fix_bugs<CR>",
-	-- 			desc = "Fix Bugs (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>gx",
-	-- 			"<cmd>ChatGPTRun explain_code<CR>",
-	-- 			desc = "Explain Code (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 		{
-	-- 			"<leader>gl",
-	-- 			"<cmd>ChatGPTRun code_readability_analysis<CR>",
-	-- 			desc = "Code Readability Analysis (ChatGPT)",
-	-- 			mode = { "n", "v" },
-	-- 		},
-	-- 	},
-	-- },
-	-- /chat
 
 	{
 		"simrat39/symbols-outline.nvim",
@@ -206,35 +165,9 @@ return {
 	},
 
 	{
-		"nvim-telescope/telescope.nvim",
-		keys = {
-			{ "<leader>gc", false },
-		},
-		opts = function(_, opts)
-			local actions = require("telescope.actions")
-
-			return vim.tbl_extend("force", opts, {
-				defaults = {
-					mappings = {
-						i = {
-							["<esc>"] = actions.close,
-							["<Down>"] = actions.close,
-							["<Up>"] = actions.close,
-						},
-						n = {
-							["<esc>"] = actions.close,
-							["<Down>"] = actions.close,
-							["<Up>"] = actions.close,
-						},
-					},
-				},
-			})
-		end,
-	},
-
-	{
 		"neovim/nvim-lspconfig",
 		opts = {
+			inlay_hints = { enabled = false },
 			servers = {
 				slint_lsp = {
 					root_dir = require("lspconfig.util").root_pattern(
@@ -257,57 +190,14 @@ return {
 	},
 
 	{
-		"TabbyML/vim-tabby",
-		ft = "rust",
-		-- event = "BufRead",
+		"neovim/nvim-lspconfig",
+	},
+
+	{
+		"kcl-lang/kcl.nvim",
+		dependencies = "neovim/nvim-lspconfig",
 		init = function()
-			vim.g.tabby_keybinding_accept = "<C-CR>"
-		end,
-	},
-
-	{
-		"kndndrj/nvim-dbee",
-		ft = "sql",
-		dependencies = {
-			"MunifTanjim/nui.nvim",
-		},
-		build = function()
-			-- Install tries to automatically detect the install method.
-			-- if it fails, try calling it with one of these parameters:
-			--    "curl", "wget", "bitsadmin", "go"
-			require("dbee").install()
-		end,
-		config = function()
-			require("dbee").setup({
-				sources = {
-					require("dbee.sources").MemorySource:new({
-						{
-							id = "duck-in-memory",
-							name = "duck-in-memory",
-							type = "duck",
-							url = "",
-						},
-						{
-							id = "calculate-sample",
-							name = "Calculate Sample",
-							type = "sqlite",
-							url = os.getenv("HOME")
-								.. "/dev/src/playground/calculate/tmp/sample.sqlite",
-						},
-					}),
-				},
-			})
-		end,
-	},
-
-	{
-		"mikesmithgh/kitty-scrollback.nvim",
-		enabled = true,
-		lazy = true,
-		cmd = { "KittyScrollbackGenerateKittens", "KittyScrollbackCheckHealth" },
-		event = { "User KittyScrollbackLaunch" },
-		config = function()
-			require("kitty-scrollback").setup()
+			require("lspconfig").kcl.setup({})
 		end,
 	},
 }
