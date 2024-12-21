@@ -27,16 +27,23 @@ return {
 			menu = {
 				border = "rounded",
 			},
+			documentation = {
+				auto_show = true,
+				auto_show_delay_ms = 0,
+				window = {
+					border = "rounded",
+				},
+			},
 		},
 
 		sources = {
 			-- default = { 'lsp', 'path', 'snippets', 'buffer' },
-			default = { "lsp", "path", "buffer" },
+			default = { "lsp", "path", "buffer", "emoji" },
 			-- TODO: why you no working???
-			cmdline = { "path" },
-			completion = {
-				enabled_providers = { "emoji" },
-			},
+			-- cmdline = { "path" },
+			-- completion = {
+			-- 	enabled_providers = { "emoji" },
+			-- },
 			-- lazy vim boilerplate to avoid blink.compat sources.provider
 			compat = { "emoji" },
 		},

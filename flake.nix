@@ -52,6 +52,10 @@
       drummer = makeLinuxSystem {
         host = "drummer";
       };
+
+      pi-01 = makeLinuxSystem {
+        host = "pi-01";
+      };
     };
   };
 }

@@ -10,5 +10,4 @@ return {
 	{ "nvim-neo-tree/neo-tree.nvim", enabled = false },
 	{ "nvimdev/dashboard-nvim", enabled = false },
 	{ "rafamadriz/friendly-snippets", enabled = false },
-	{ "zbirenbaum/copilot.lua", enabled = false },
 }
