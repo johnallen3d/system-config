@@ -1,5 +1,3 @@
 {...}: {
-  imports = [
-    ../modules/home-manager/alacritty
-  ];
+  imports = [];
 }
