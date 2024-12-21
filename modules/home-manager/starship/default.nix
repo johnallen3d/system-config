@@ -13,6 +13,7 @@
         "$git_status"
         "$cmd_duration"
         "$shell"
+        "$hostname"
         "$line_break"
         "$character"
       ];

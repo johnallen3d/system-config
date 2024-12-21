@@ -31,7 +31,10 @@
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
       inherit home-manager nix-darwin nixpkgs rip2 user full_name;
     };
-    makeLinuxSystem = import ./lib/make-linux-system.nix {
+    makeNixosSystem = import ./lib/make-nixos-system.nix {
+      inherit home-manager nixpkgs rip2 user full_name;
+    };
+    makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
       inherit home-manager nixpkgs rip2 user full_name;
     };
   in {
@@ -49,11 +52,18 @@
     };
 
     nixosConfigurations = {
-      drummer = makeLinuxSystem {
+      drummer = makeNixosSystem {
         host = "drummer";
       };
+    };
 
-      pi-01 = makeLinuxSystem {
+    homeConfigurations = {
+      "john.allen@xcel" = makeHomeManagerSystem {
+        system = "aarch64-linux";
+        host = "xcel";
+      };
+      "john.allen@pi-01" = makeHomeManagerSystem {
+        system = "aarch64-linux";
         host = "pi-01";
       };
     };

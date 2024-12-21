@@ -137,6 +137,18 @@ in {
   # };
   programs.bash = {
     enable = true;
+
+    profileExtra = ''
+      if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then
+        . ~/.nix-profile/etc/profile.d/nix.sh
+      fi
+      export PATH=$HOME/.nix-profile/bin:$PATH
+    '';
+    initExtra = ''
+      if [ -e "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" ]; then
+        . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
+      fi
+    '';
   };
   programs.bat = {
     enable = true;

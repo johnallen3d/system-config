@@ -55,6 +55,12 @@ set -xg NIXPKGS_ALLOW_UNFREE 1; darwin-rebuild switch --impure --flake ~/dev/src
 
 # on NixOS
 sudo nixos-rebuild switch --flake ~/dev/src/system-config/.# --impure
+
+# on Debian/Pi (using home-manager)
+home-manager switch --flake ~/dev/src/system-config/.#john.allen@pi-01
+
+# on Debian/Orb (using home-manager)
+home-manager switch --flake ~/dev/src/system-config/.#john.allen@xcel --impure
 ```
 
 ## Update Installed Packages
