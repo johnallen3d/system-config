@@ -40,7 +40,7 @@ return {
 			-- default = { 'lsp', 'path', 'snippets', 'buffer' },
 			default = { "lsp", "path", "buffer", "emoji" },
 			-- TODO: why you no working???
-			-- cmdline = { "path" },
+			cmdline = { "lsp", "path" },
 			-- completion = {
 			-- 	enabled_providers = { "emoji" },
 			-- },

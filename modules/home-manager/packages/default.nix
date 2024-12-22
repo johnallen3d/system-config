@@ -68,7 +68,6 @@ in {
       hurl
       just
       k3d
-      k8sgpt
       k9s
       # not currently supported on ARM architecture
       # installed via: curl -fsSL https://kcl-lang.io/script/install-cli.sh | /bin/bash
