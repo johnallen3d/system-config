@@ -26,6 +26,7 @@ in
 
     modules =
       [
+        ../modules/common/home-manager.nix
         ../modules/home-manager
         ../hosts/${host}.nix
         ../modules/home-manager/packages/linux.nix

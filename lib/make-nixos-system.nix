@@ -26,8 +26,8 @@ in
 
     modules =
       [
-        ../modules/common
-        ../modules/linux
+        ../modules/common/nixos.nix
+        ../modules/nixos
 
         home-manager.nixosModules.home-manager
         {

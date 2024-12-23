@@ -70,7 +70,6 @@ nix flake update --commit-lock-file
 # or from another directory
 pushd ~/dev/src/system-config; nix flake update --commit-lock-file; nixswitch; popd
 ```
-
 ## TODO
 
 Things I'm not sure how to automate yet:

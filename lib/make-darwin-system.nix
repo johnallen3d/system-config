@@ -23,7 +23,7 @@ in
     };
     modules =
       [
-        ../modules/common
+        ../modules/common/nix-darwin.nix
         ../modules/darwin
         home-manager.darwinModules.home-manager
         {

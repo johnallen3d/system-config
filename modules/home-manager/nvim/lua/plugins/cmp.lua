@@ -11,10 +11,6 @@ return {
 				debug = true,
 			},
 		},
-		-- "dmitmel/cmp-cmdline-history",
-		-- "hrsh7th/cmp-cmdline",
-		-- "hrsh7th/cmp-emoji",
-		-- "sourcegraph/sg.nvim",
 	},
 
 	opts = {
@@ -37,14 +33,8 @@ return {
 		},
 
 		sources = {
-			-- default = { 'lsp', 'path', 'snippets', 'buffer' },
-			default = { "lsp", "path", "buffer", "emoji" },
-			-- TODO: why you no working???
-			cmdline = { "lsp", "path" },
-			-- completion = {
-			-- 	enabled_providers = { "emoji" },
-			-- },
-			-- lazy vim boilerplate to avoid blink.compat sources.provider
+			default = { "lsp", "path", "buffer", "emoji", "dadbod" },
+			cmdline = { "lsp", "path" }, -- "help"
 			compat = { "emoji" },
 		},
 	},
