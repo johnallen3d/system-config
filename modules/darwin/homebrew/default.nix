@@ -19,13 +19,13 @@
       "blueutil"
       "borders"
       "cloudflared"
-      "dagger"
+      # "dagger"
       "datafusion"
-      "dotnet@6"
-      "libspatialite"
+      # "dotnet@6"
+      # "libspatialite"
       "pyenv" # TODO: can we find a better/more nix way?
       "switchaudio-osx"
-      "talosctl"
+      # "talosctl"
       "trash"
     ];
 
@@ -60,7 +60,7 @@
       "stolendata-mpv"
       "syncthing"
       "tailscale"
-      "utm"
+      # "utm"
       "visual-studio-code"
       "whatsapp"
     ];
