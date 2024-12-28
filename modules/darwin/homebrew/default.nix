@@ -42,6 +42,7 @@
       "docker"
       # "dotnet-sdk" # this is v8
       "dropbox"
+      "ghostty"
       "istat-menus"
       "jordanbaird-ice"
       "karabiner-elements"

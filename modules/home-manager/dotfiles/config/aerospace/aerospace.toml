@@ -71,11 +71,13 @@ non-empty-workspaces-root-containers-layout-on-startup = 'smart'
 # You can uncomment this line to open up terminal with alt + enter shortcut
 # See: https://nikitabobko.github.io/AeroSpace/commands.html#exec-and-forget
 # alt-enter = 'exec-and-forget open -n /System/Applications/Utilities/Terminal.app'
-ctrl-alt-cmd-k = 'exec-and-forget /Users/john.allen/Applications/Home\ Manager\ Apps/kitty.app/Contents/MacOS/kitty --single-instance --directory ~'
+# ctrl-alt-cmd-k = 'exec-and-forget /Users/john.allen/Applications/Home\ Manager\ Apps/kitty.app/Contents/MacOS/kitty --single-instance --directory ~'
 alt-cmd-l = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli pause && open -a ScreenSaverEngine'
 ctrl-cmd-p = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli toggle'
-ctrl-cmd-k = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume +6'
-ctrl-cmd-j = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume -4'
+# this mapping doesn't appear to be working
+# re-alocating to Ghosty split resize up/down
+# ctrl-cmd-k = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume +6'
+# ctrl-cmd-j = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli volume -4'
 
 # alt-cmd-l = 'exec-and-forget  /etc/profiles/per-user/john.allen/bin/cmus-remote --pause-playback && open -a ScreenSaverEngine'
 # ctrl-cmd-p = 'exec-and-forget /etc/profiles/per-user/john.allen/bin/cmus-remote --pause'                                       # behaves like toggle
@@ -225,4 +227,8 @@ run = 'move-node-to-workspace 0'
 
 [[on-window-detected]]
 if.app-id = 'org.alacritty'
+run = 'move-node-to-workspace 0'
+
+[[on-window-detected]]
+if.app-id = 'com.mitchellh.ghostty'
 run = 'move-node-to-workspace 0'
