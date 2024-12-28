@@ -71,7 +71,6 @@ non-empty-workspaces-root-containers-layout-on-startup = 'smart'
 # You can uncomment this line to open up terminal with alt + enter shortcut
 # See: https://nikitabobko.github.io/AeroSpace/commands.html#exec-and-forget
 # alt-enter = 'exec-and-forget open -n /System/Applications/Utilities/Terminal.app'
-# ctrl-alt-cmd-k = 'exec-and-forget /Users/john.allen/Applications/Home\ Manager\ Apps/kitty.app/Contents/MacOS/kitty --single-instance --directory ~'
 alt-cmd-l = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli pause && open -a ScreenSaverEngine'
 ctrl-cmd-p = 'exec-and-forget /Users/john.allen/.cargo/bin/mp-cli toggle'
 # this mapping doesn't appear to be working
@@ -220,10 +219,6 @@ run = 'move-node-to-workspace 8'
 [[on-window-detected]]
 if.app-id = 'company.thebrowser.Browser'
 run = 'move-node-to-workspace 9'
-
-[[on-window-detected]]
-if.app-id = 'net.kovidgoyal.kitty'
-run = 'move-node-to-workspace 0'
 
 [[on-window-detected]]
 if.app-id = 'org.alacritty'

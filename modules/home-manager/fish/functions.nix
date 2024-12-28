@@ -105,32 +105,11 @@
         end
       '';
     };
-    # nix = {
-    #   body = ''
-    #     nix-your-shell fish nix -- $argv
-    #   '';
-    # };
-    # nix-shell = {
-    #   body = ''
-    #     nix-your-shell fish nix-shell -- $argv
-    #   '';
-    # };
     nix-rebuild = {
       body = ''
         nix flake update
         set -xg NIXPKGS_ALLOW_UNFREE 1
         darwin-rebuild switch --impure --flake ~/dev/src/system-config/
-      '';
-    };
-    t = {
-      body = ''
-        if count $argv > /dev/null
-          set title $argv[1]
-        else
-          set title (basename $PWD)
-        end
-
-        kitty @ set-tab-title $title
       '';
     };
   };

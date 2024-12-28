@@ -117,7 +117,6 @@
       # if error: "Could not write domain com.apple.universalaccess"
       # see this comment
       # https://github.com/mathiasbynens/dotfiles/issues/820#issuecomment-498324762
-      # eg.enable for kitty
       # universalaccess = {
       #   closeViewScrollWheelToggle = true;
       #   closeViewZoomFollowsFocus = true;

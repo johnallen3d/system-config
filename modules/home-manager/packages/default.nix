@@ -25,7 +25,6 @@ in {
     ../direnv
     ../fish
     ../git
-    ../lf
     ../nvim
     ../ripgrep
     ../starship
@@ -38,8 +37,8 @@ in {
       alejandra
       argo
       argocd
-      awscli2
-      azure-cli
+      # awscli2
+      # azure-cli
       bashInteractive
       bacon
       # brave

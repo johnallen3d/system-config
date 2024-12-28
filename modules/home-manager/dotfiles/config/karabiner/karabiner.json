@@ -150,39 +150,6 @@
                 "type": "basic"
               }
             ]
-          },
-          {
-            "description": "Remap LCommand + q to LCommand + w in Kitty and Warp",
-            "manipulators": [
-              {
-                "conditions": [
-                  {
-                    "bundle_identifiers": [
-                      "^net.kovidgoyal.kitty",
-                      "dev.warp.Warp-Stable"
-                    ],
-                    "type": "frontmost_application_if"
-                  }
-                ],
-                "from": {
-                  "key_code": "q",
-                  "modifiers": {
-                    "mandatory": [
-                      "left_command"
-                    ]
-                  }
-                },
-                "to": [
-                  {
-                    "key_code": "w",
-                    "modifiers": [
-                      "left_command"
-                    ]
-                  }
-                ],
-                "type": "basic"
-              }
-            ]
           }
         ]
       },

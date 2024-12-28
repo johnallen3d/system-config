@@ -4,7 +4,7 @@
     ":q" = "exit";
     db = "delete-branch";
     downloads = "cd ~/Downloads";
-    files = "lf";
+    files = "yazi";
     gb = "git bv";
     gc = "git commit -v";
     gco = "git checkout";
@@ -12,7 +12,6 @@
     gp = "git push";
     gpf = "git push --force-with-lease";
     gst = "git status --short";
-    icat = "kitty +kitten icat";
     ip = "ipconfig getifaddr en0";
     j = "z";
     k = "kubecolor";
@@ -23,7 +22,6 @@
     pass = "passgen";
     passgen = "dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | rev | cut -b 2- | rev";
     password = "passgen";
-    pi = "kitty +kitten ssh pi@pi.local";
     recent = "lsd -la --sort time --color=always | head";
     rm = "echo Use 'rip' instead of rm";
     spp = "git stash && git pull && git stash pop";
