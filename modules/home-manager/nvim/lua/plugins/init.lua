@@ -120,7 +120,8 @@ return {
 		},
 	},
 
-	{ "ryvnf/readline.vim", event = "CmdlineEnter" },
+  -- TODO: `<C-F>` mapping is overriding with my blink.cmp keypmap
+	-- 	{ "ryvnf/readline.vim", event = "CmdlineEnter" },
 
 	{ "direnv/direnv.vim" },
 
@@ -149,6 +150,7 @@ return {
 
 	{
 		"nvim-lualine/lualine.nvim",
+		enable = false,
 		event = "VeryLazy",
 		opts = {
 			sections = {
@@ -187,10 +189,6 @@ return {
 				},
 			},
 		},
-	},
-
-	{
-		"neovim/nvim-lspconfig",
 	},
 
 	{
