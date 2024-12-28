@@ -10,4 +10,5 @@ return {
 	{ "nvim-neo-tree/neo-tree.nvim", enabled = false },
 	{ "nvimdev/dashboard-nvim", enabled = false },
 	{ "rafamadriz/friendly-snippets", enabled = false },
+	{ "MeanderingProgrammer/render-markdown.nvim", enabled = false },
 }
