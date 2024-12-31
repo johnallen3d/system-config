@@ -14,6 +14,9 @@ return {
 		require("markview").setup({
 			headings = presets.headings.glow,
 			horizontal_rules = presets.horizontal_rules.thin,
+			code_blocks = {
+				min_width = 80,
+			},
 		})
 	end,
 }
