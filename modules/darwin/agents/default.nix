@@ -83,6 +83,8 @@ in {
       serviceConfig = {
         ProgramArguments = [
           "${pkgs.sketchybar}/bin/sketchybar"
+          "--config"
+          "${home}/.config/sketchybar/sketchybarrc.lua"
         ];
         KeepAlive = true;
         RunAtLoad = true;

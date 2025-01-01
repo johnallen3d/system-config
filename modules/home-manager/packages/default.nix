@@ -79,7 +79,8 @@ in {
       kubeseal
       kubie
       linode-cli
-      lua
+      # TODO: for some reason using this version of Lua causes issues with SbarLua
+      # lua
       # luajit
       less
       minikube

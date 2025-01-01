@@ -19,9 +19,10 @@ Sbar = require("sketchybar")
 Sbar.set_bar_name("sketchybar")
 
 -- Load the init.lua file
+Sbar.begin_config()
 require("init")
-
 Sbar.hotload(true)
+Sbar.end_config()
 
 -- Load helper scripts
 os.execute("killall weather-updater")

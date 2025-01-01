@@ -23,6 +23,8 @@
       "datafusion"
       # "dotnet@6"
       # "libspatialite"
+      # using this vs nix-package due to issues with SbarLua
+      "lua"
       "pyenv" # TODO: can we find a better/more nix way?
       "switchaudio-osx"
       # "talosctl"
