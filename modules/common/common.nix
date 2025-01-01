@@ -8,6 +8,7 @@
     gb = "git bv";
     gc = "git commit -v";
     gco = "git checkout";
+    ghostty = "/Applications/Ghostty.app/Contents/MacOS/ghostty";
     gl = "git pull";
     gp = "git push";
     gpf = "git push --force-with-lease";

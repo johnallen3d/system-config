@@ -42,7 +42,8 @@
       "docker"
       # "dotnet-sdk" # this is v8
       "dropbox"
-      "ghostty"
+      # using nightly for now, remove alias when switching back
+      # "ghostty"
       "istat-menus"
       "jordanbaird-ice"
       "karabiner-elements"
