@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ "$SENDER" = "front_app_switched" ]; then
 	BUNDLE_ID="$(osascript -e "id of app \"$INFO\"")"
