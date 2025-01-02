@@ -8,19 +8,18 @@
   AGENT_PATH = with pkgs;
     (lib.makeBinPath [
       bash
+      bc
       coreutils
       findutils
+      gawk
       gnused
-      lua
+      procps
       sketchybar
     ])
-    + ":"
+    + ":${home}/.cargo/bin:"
     + lib.concatStringsSep ":" [
       brew_bin
       "/usr/bin"
-      "/bin"
-      "/usr/sbin"
-      "/sbin"
     ];
 
   service_log_path = "${home}/Library/Logs/org.nixos";
@@ -49,7 +48,9 @@ in {
         PATH = "${home}/bin:${AGENT_PATH}";
       };
       serviceConfig = {
-        ProgramArguments = ["${home}/bin/bottombar"];
+        ProgramArguments = [
+          "${home}/bin/bottombar"
+        ];
         KeepAlive = true;
         RunAtLoad = true;
         StandardErrorPath = service_err_path "bottombar";
@@ -83,8 +84,6 @@ in {
       serviceConfig = {
         ProgramArguments = [
           "${pkgs.sketchybar}/bin/sketchybar"
-          "--config"
-          "${home}/.config/sketchybar/sketchybarrc.lua"
         ];
         KeepAlive = true;
         RunAtLoad = true;
