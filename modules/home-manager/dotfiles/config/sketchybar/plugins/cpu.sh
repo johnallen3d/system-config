@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-cpu_usage="$(ps -axro pcpu | awk '{sum+=$1} END {print sum}')"
-average_by_core=$(echo "${cpu_usage}/10" | bc)
+num_cores=$(sysctl -n hw.ncpu)
+load_averages=$(sysctl -n vm.loadavg | awk '{print $2}')
+cpu_usage=$(echo "scale=2; $load_averages * 100 / $num_cores" | bc)
+cpu_usage=$(printf "%.0f" "$cpu_usage")
 
-echo "${average_by_core}%"
-
-sketchybar -m --set cpu label="${average_by_core}%"
+sketchybar -m --set cpu label="${cpu_usage}%"
