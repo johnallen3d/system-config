@@ -30,8 +30,6 @@ in {
     ../starship
   ];
 
-  # TODO: https://github.com/Mintplex-Labs/anything-llm
-
   home.packages = with pkgs;
     [
       alejandra

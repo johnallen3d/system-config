@@ -62,16 +62,6 @@ in {
         };
       };
 
-      # TODO: <C-6> is not working, neither do any of these bindings to "fix"
-      # https://github.com/alacritty/alacritty/issues/1108
-      # keyboard.bindings = [
-      #   {
-      #     key = "Key6";
-      #     mods = "Control";
-      #     chars = "\u001e";
-      #   }
-      # ];
-
       # tips: run to see a list of installed fonts
       #   - on linux `fc-list`
       #   - on macos: `atsutil fonts -list`

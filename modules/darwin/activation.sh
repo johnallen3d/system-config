@@ -32,7 +32,7 @@ for app in "${apps[@]}"; do
 done
 
 #
-# TODO: this works however  runs every time and will open/close a Finder window
+# TODO: this works however runs every time and will open/close a Finder window
 # each time. 🤮 So far I'm unable to test if the desired favorite already
 # exists. presumably the file here has this information but I haven't het
 # figured out how to read it.
