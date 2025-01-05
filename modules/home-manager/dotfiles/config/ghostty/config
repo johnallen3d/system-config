@@ -21,7 +21,6 @@ keybind = super+shift+i=inspector:toggle
 keybind = super+c=copy_to_clipboard
 keybind = super+shift+f=write_scrollback_file:paste
 keybind = super+n=new_window
-# TODO: this doesn't work
 keybind = super+q=close_surface
 keybind = super+v=paste_from_clipboard
 keybind = super+w=close_surface
