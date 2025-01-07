@@ -25,6 +25,10 @@ keybind = super+q=close_surface
 keybind = super+v=paste_from_clipboard
 keybind = super+w=close_surface
 
+keybind = super+equal=increase_font_size:1
+keybind = super+minus=decrease_font_size:1
+keybind = super+zero=reset_font_size
+
 keybind = super+shift+enter=new_split:auto
 keybind = super+ctrl+h=goto_split:left
 keybind = super+ctrl+j=goto_split:bottom
