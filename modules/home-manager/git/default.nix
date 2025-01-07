@@ -1,6 +1,5 @@
 {
   full_name,
-  pkgs,
   op_ssh_sign_path,
   ...
 }: {
@@ -32,12 +31,6 @@
       };
       commit = {
         gpgSign = true;
-      };
-      "credential \"https://github.com\"" = {
-        helper = "!/etc/profiles/per-user/john.allen/bin/gh auth git-credential";
-      };
-      "credential \"https://gist.github.com\"" = {
-        helper = "!/etc/profiles/per-user/john.allen/bin/gh auth git-credential";
       };
       github = {
         user = "johnallen3d";
