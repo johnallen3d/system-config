@@ -81,6 +81,11 @@ return {
 	},
 
 	{
+		"bezhermoso/tree-sitter-ghostty",
+		build = "make nvim_install",
+	},
+
+	{
 		"norcalli/nvim-colorizer.lua",
 		cmd = "ColorizerAttachToBuffer",
 	},
@@ -120,7 +125,7 @@ return {
 		},
 	},
 
-  -- TODO: `<C-F>` mapping is overriding with my blink.cmp keypmap
+	-- TODO: `<C-F>` mapping is overriding with my blink.cmp keypmap
 	-- 	{ "ryvnf/readline.vim", event = "CmdlineEnter" },
 
 	{ "direnv/direnv.vim" },

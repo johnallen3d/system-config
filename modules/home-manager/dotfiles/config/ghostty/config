@@ -1,3 +1,6 @@
+#
+# vim: ft=ghostty
+#
 # appearance
 bold-is-bright = true
 macos-titlebar-style = hidden
