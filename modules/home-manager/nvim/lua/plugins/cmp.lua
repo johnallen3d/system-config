@@ -2,15 +2,8 @@ return {
 	"saghen/blink.cmp",
 
 	dependencies = {
-		{ "Allaman/emoji.nvim", opts = { enable_cmp_integration = true } },
-		{
-			"saghen/blink.compat",
-			opts = {
-				impersonate_nvim_cmp = true,
-				enable_events = true,
-				debug = true,
-			},
-		},
+		"moyiz/blink-emoji.nvim",
+		"Kaiser-Yang/blink-cmp-dictionary",
 	},
 
 	opts = {
@@ -37,9 +30,31 @@ return {
 		},
 
 		sources = {
-			default = { "lsp", "path", "buffer", "emoji", "dadbod" },
+			default = {
+				"lsp",
+				"path",
+				"buffer",
+				"copilot",
+				"emoji",
+			},
 			cmdline = { "cmdline" },
-			compat = { "emoji" },
+			providers = {
+				copilot = {
+					name = "copilot",
+					module = "blink-cmp-copilot",
+					score_offset = -100,
+					async = true,
+				},
+				dictionary = {
+					module = "blink-cmp-dictionary",
+					name = "dictionary",
+				},
+				emoji = {
+					module = "blink-emoji",
+					name = "emoji",
+					score_offset = 10,
+				},
+			},
 		},
 	},
 }
