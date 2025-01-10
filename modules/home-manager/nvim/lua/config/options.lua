@@ -15,20 +15,14 @@ vim.opt.undodir = vim.fn.expand("$HOME/tmp/vim-undo-history")
 vim.opt.swapfile = false
 -- treesitter folding
 vim.wo.foldlevel = 99 -- start with all folds open
--- causing freezes - https://github.com/neovim/neovim/issues/24186
--- vim.wo.foldmethod = "expr"
--- vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
--- telescope bug: https://github.com/nvim-telescope/telescope.nvim/issues/699#issuecomment-1159637962
-vim.api.nvim_create_autocmd({ "BufEnter" }, {
-	pattern = { "*" },
-	command = "normal zx",
-})
+vim.wo.foldmethod = "expr"
+vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 -- show a marker at 80th character
 vim.opt.colorcolumn = "81"
 -- disable 🐭
 vim.opt.mouse = ""
 -- hide sign column
-vim.o.signcolumn = "no"
+vim.opt.signcolumn = "no"
 -- hide the number column
 vim.opt.number = false
 vim.opt.relativenumber = false
@@ -37,3 +31,5 @@ vim.opt.gdefault = true
 -- disable nvim-cmp transparency
 vim.opt.pumblend = 0
 vim.opt.conceallevel = 1
+-- show filename and line numbers in status bar
+vim.opt.statusline = "%f %=%l/%L"

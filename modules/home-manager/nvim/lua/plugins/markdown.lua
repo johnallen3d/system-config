@@ -5,7 +5,7 @@ return {
 
 	dependencies = {
 		"nvim-treesitter/nvim-treesitter",
-		"nvim-tree/nvim-web-devicons",
+		"echasnovski/mini.icons", -- or "nvim-tree/nvim-web-devicons",
 	},
 
 	config = function()
@@ -15,6 +15,7 @@ return {
 			headings = presets.headings.glow,
 			horizontal_rules = presets.horizontal_rules.thin,
 			code_blocks = {
+				icons = "mini",
 				min_width = 80,
 			},
 		})

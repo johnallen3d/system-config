@@ -18,7 +18,7 @@ vim.api.nvim_set_keymap("v", "P", "p", default_options)
 -- Ctrl+A to "select all" in current buffer
 vim.api.nvim_set_keymap("n", "<C-A>", "ggVG", default_options)
 
----
+--
 -- which-key
 --
 local wk = require("which-key")

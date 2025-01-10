@@ -82,7 +82,9 @@ return {
 
 	{
 		"bezhermoso/tree-sitter-ghostty",
+		lazy = true,
 		build = "make nvim_install",
+		ft = "ghostty",
 	},
 
 	{
@@ -130,46 +132,28 @@ return {
 
 	{ "direnv/direnv.vim" },
 
-	-- chat
-
-	{
-		"simrat39/symbols-outline.nvim",
-		cmd = "SymbolsOutline",
-		keys = {
-			{
-				"<leader>cs",
-				"<cmd>SymbolsOutline<cr>",
-				desc = "Symbols Outline",
-			},
-		},
-		opts = {
-			-- add your options that should be passed to the setup() function here
-			position = "right",
-		},
-	},
-
 	{
 		"echasnovski/mini.comment",
 		opts = { options = { ignore_blank_line = true } },
 	},
 
-	{
-		"nvim-lualine/lualine.nvim",
-		enable = false,
-		event = "VeryLazy",
-		opts = {
-			sections = {
-				lualine_a = {},
-				lualine_b = {},
-				lualine_c = { { "filename", path = 1 } },
-				lualine_x = {
-					{ "location", padding = { left = 0, right = 1 } },
-				},
-				lualine_y = {},
-				lualine_z = {},
-			},
-		},
-	},
+	-- {
+	-- 	"nvim-lualine/lualine.nvim",
+	-- 	enable = false,
+	-- 	event = "VeryLazy",
+	-- 	opts = {
+	-- 		sections = {
+	-- 			lualine_a = {},
+	-- 			lualine_b = {},
+	-- 			lualine_c = { { "filename", path = 1 } },
+	-- 			lualine_x = {
+	-- 				{ "location", padding = { left = 0, right = 1 } },
+	-- 			},
+	-- 			lualine_y = {},
+	-- 			lualine_z = {},
+	-- 		},
+	-- 	},
+	-- },
 
 	{
 		"neovim/nvim-lspconfig",
