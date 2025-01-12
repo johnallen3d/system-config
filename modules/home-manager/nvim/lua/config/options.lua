@@ -13,10 +13,8 @@ vim.opt.spellfile = vim.fn.expand("$HOME/.config/nvim/spell/en.utf-8.add")
 vim.opt.undodir = vim.fn.expand("$HOME/tmp/vim-undo-history")
 -- disable swap files
 vim.opt.swapfile = false
--- treesitter folding
-vim.wo.foldlevel = 99 -- start with all folds open
-vim.wo.foldmethod = "expr"
-vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+-- start with all folds open
+vim.wo.foldlevel = 99
 -- show a marker at 80th character
 vim.opt.colorcolumn = "81"
 -- disable 🐭
