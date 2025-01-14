@@ -46,7 +46,6 @@ keybind = super+ctrl+alt+l=resize_split:right,100
 confirm-close-surface = false
 copy-on-select = clipboard
 quit-after-last-window-closed = true
-shell-integration = fish
 # TODO: working directory is _always_ home
 # window-inherit-working-directory = true
 # working-directory = home

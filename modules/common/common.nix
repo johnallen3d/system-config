@@ -43,6 +43,9 @@
     MANPAGER = "nvim +Man!";
     FZF_DEFAULT_COMMAND = "rg --files --hidden --follow --glob \"!doc/*\"";
     PYENV_ROOT = "$HOME/.pyenv";
+    # NOTE: this is meant as a macOS only workaround
+    # see https://github.com/ghostty-org/ghostty/discussions/2832
+    XDG_DATA_DIRS = ["/Applications/Ghostty.app/Contents/Resources/ghostty/shell-integration"];
   };
 
   commonShells = with pkgs; [
