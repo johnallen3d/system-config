@@ -46,6 +46,5 @@ keybind = super+ctrl+alt+l=resize_split:right,100
 confirm-close-surface = false
 copy-on-select = clipboard
 quit-after-last-window-closed = true
-# TODO: working directory is _always_ home
-# window-inherit-working-directory = true
-# working-directory = home
+# allow cursor to be a block: https://ghostty.org/docs/config/reference#cursor-style
+shell-integration-features = no-cursor
