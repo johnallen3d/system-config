@@ -32,7 +32,8 @@ keybind = super+equal=increase_font_size:1
 keybind = super+minus=decrease_font_size:1
 keybind = super+zero=reset_font_size
 
-keybind = super+shift+enter=new_split:auto
+keybind = super+d=new_split:right
+keybind = super+shift+d=new_split:down
 keybind = super+ctrl+h=goto_split:left
 keybind = super+ctrl+j=goto_split:bottom
 keybind = super+ctrl+k=goto_split:top
