@@ -5,6 +5,11 @@ return {
 		"Kaiser-Yang/blink-cmp-dictionary",
 		"moyiz/blink-emoji.nvim",
 		"mikavilpas/blink-ripgrep.nvim",
+		{
+			"kristijanhusak/vim-dadbod-completion",
+			ft = { "sql", "mysql", "plsql" },
+			lazy = true,
+		},
 	},
 
 	opts = {
@@ -38,6 +43,7 @@ return {
 				"ripgrep",
 				"copilot",
 				"emoji",
+				"dadbod",
 			},
 			cmdline = { "cmdline" },
 			providers = {
@@ -46,6 +52,10 @@ return {
 					module = "blink-cmp-copilot",
 					score_offset = -100,
 					async = true,
+				},
+				dadbod = {
+					name = "Dadbod",
+					module = "vim_dadbod_completion.blink",
 				},
 				dictionary = {
 					module = "blink-cmp-dictionary",
