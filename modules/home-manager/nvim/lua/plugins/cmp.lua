@@ -3,13 +3,15 @@ return {
 
 	dependencies = {
 		"Kaiser-Yang/blink-cmp-dictionary",
-		"moyiz/blink-emoji.nvim",
 		"mikavilpas/blink-ripgrep.nvim",
+
 		{
 			"kristijanhusak/vim-dadbod-completion",
 			ft = { "sql", "mysql", "plsql" },
 			lazy = true,
 		},
+
+		{ "moyiz/blink-emoji.nvim", ft = "md" },
 	},
 
 	opts = {
@@ -64,7 +66,6 @@ return {
 				emoji = {
 					module = "blink-emoji",
 					name = "emoji",
-					score_offset = -25,
 				},
 				ripgrep = {
 					module = "blink-ripgrep",
