@@ -107,7 +107,13 @@
     };
     nix-rebuild = {
       body = ''
-        nix flake update
+        argparse 'switch-only' -- $argv
+        or return
+
+        if not set -q _flag_switch_only
+          nix flake update
+        end
+
         set -xg NIXPKGS_ALLOW_UNFREE 1
         darwin-rebuild switch --impure --flake ~/dev/src/system-config/
       '';
