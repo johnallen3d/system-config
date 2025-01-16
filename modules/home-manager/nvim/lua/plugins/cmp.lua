@@ -2,8 +2,9 @@ return {
 	"saghen/blink.cmp",
 
 	dependencies = {
-		"moyiz/blink-emoji.nvim",
 		"Kaiser-Yang/blink-cmp-dictionary",
+		"moyiz/blink-emoji.nvim",
+		"mikavilpas/blink-ripgrep.nvim",
 	},
 
 	opts = {
@@ -34,6 +35,7 @@ return {
 				"lsp",
 				"path",
 				"buffer",
+				"ripgrep",
 				"copilot",
 				"emoji",
 			},
@@ -52,7 +54,12 @@ return {
 				emoji = {
 					module = "blink-emoji",
 					name = "emoji",
-					score_offset = 10,
+					score_offset = -25,
+				},
+				ripgrep = {
+					module = "blink-ripgrep",
+					name = "Ripgrep",
+					score_offset = -10,
 				},
 			},
 		},
