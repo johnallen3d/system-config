@@ -43,18 +43,18 @@ return {
 				"path",
 				"buffer",
 				"ripgrep",
-				"copilot",
+				-- "copilot",
 				"emoji",
 				"dadbod",
 			},
 			cmdline = { "cmdline" },
 			providers = {
-				copilot = {
-					name = "copilot",
-					module = "blink-cmp-copilot",
-					score_offset = -100,
-					async = true,
-				},
+				-- copilot = {
+				-- 	name = "copilot",
+				-- 	module = "blink-cmp-copilot",
+				-- 	score_offset = -100,
+				-- 	async = true,
+				-- },
 				dadbod = {
 					name = "Dadbod",
 					module = "vim_dadbod_completion.blink",

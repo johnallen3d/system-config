@@ -103,7 +103,7 @@ return {
 			"MunifTanjim/nui.nvim",
 			--- The below dependencies are optional,
 			"echasnovski/mini.icons", -- or "nvim-tree/nvim-web-devicons"
-			"zbirenbaum/copilot.lua", -- for providers='copilot'
+			-- "zbirenbaum/copilot.lua", -- for providers='copilot'
 			{
 				-- Make sure to set this up properly if you have lazy=true
 				"MeanderingProgrammer/render-markdown.nvim",
