@@ -40,6 +40,9 @@ in {
       bashInteractive
       bacon
       # brave
+      cargo-careful
+      cargo-machete
+      cargo-nextest
       cargo-sweep
       cmus
       coreutils
