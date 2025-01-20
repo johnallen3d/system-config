@@ -1,5 +1,5 @@
 return {
-	{ "MeanderingProgrammer/render-markdown.nvim", enabled = false },
+	-- { "MeanderingProgrammer/render-markdown.nvim", enabled = false },
 	{ "akinsho/bufferline.nvim", enabled = false },
 	{ "catppuccin/nvim", enabled = false },
 	{ "echasnovski/mini.pairs", enabled = false },
