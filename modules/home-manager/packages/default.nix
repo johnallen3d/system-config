@@ -44,7 +44,6 @@ in {
       cargo-machete
       cargo-nextest
       cargo-sweep
-      cmus
       coreutils
       curl
       devbox
@@ -79,7 +78,6 @@ in {
       kubernetes-helm
       kubeseal
       kubie
-      linode-cli
       # TODO: for some reason using this version of Lua causes issues with SbarLua
       # lua
       # luajit
@@ -94,17 +92,15 @@ in {
       oras
       rip2.packages.${pkgs.system}.default
       ruby
-      runme
       pandoc
       postgresql
-      pyenv
+      # pyenv
       python312Packages.mkdocs-material
       qmk
       sqlite
       tailscale
       tree-sitter
-      # very out of date: curl -LsSf https://astral.sh/uv/install.sh | sh
-      # uv
+      uv
       vals
       viddy
       yq-go
