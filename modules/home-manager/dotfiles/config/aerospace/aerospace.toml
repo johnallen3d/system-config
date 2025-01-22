@@ -205,7 +205,8 @@ if.app-id = 'com.microsoft.VSCode'
 run = 'move-node-to-workspace 6'
 
 [[on-window-detected]]
-if.app-id = 'codes.rambo.VirtualBuddy'
+# OrbStack
+if.app-id = 'dev.kdrag0n.MacVirt'
 run = 'move-node-to-workspace 7'
 
 [[on-window-detected]]
