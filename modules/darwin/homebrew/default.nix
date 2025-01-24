@@ -64,6 +64,7 @@
       "stolendata-mpv"
       "syncthing"
       "tailscale"
+      "tableplus"
       # "utm"
       "visual-studio-code"
       "whatsapp"
