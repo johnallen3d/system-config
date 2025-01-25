@@ -102,7 +102,7 @@ return {
 			"nvim-lua/plenary.nvim",
 			"MunifTanjim/nui.nvim",
 			--- The below dependencies are optional,
-			"echasnovski/mini.icons", -- or "nvim-tree/nvim-web-devicons"
+			"echasnovski/mini.icons",
 			-- "zbirenbaum/copilot.lua", -- for providers='copilot'
 			{
 				-- Make sure to set this up properly if you have lazy=true

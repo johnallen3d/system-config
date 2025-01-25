@@ -13,7 +13,7 @@ return {
 
 -- 	dependencies = {
 -- 		"nvim-treesitter/nvim-treesitter",
--- 		"echasnovski/mini.icons", -- or "nvim-tree/nvim-web-devicons",
+-- 		"echasnovski/mini.icons",
 -- 	},
 
 -- 	config = function()
