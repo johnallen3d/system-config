@@ -110,23 +110,6 @@ return {
 		lazy = true,
 	},
 
-	{
-		"stevearc/oil.nvim",
-		event = "VeryLazy",
-		config = true,
-		dependencies = { "nvim-tree/nvim-web-devicons" },
-		opts = {
-			keymaps = {
-				-- this was overriding dfault mapping (split navigation)
-				["<C-h>"] = { "<C-w>h" },
-				["<C-l>"] = { "<C-w>l" },
-			},
-			view_options = {
-				show_hidden = true,
-			},
-		},
-	},
-
 	-- TODO: `<C-F>` mapping is overriding with my blink.cmp keypmap
 	-- 	{ "ryvnf/readline.vim", event = "CmdlineEnter" },
 
