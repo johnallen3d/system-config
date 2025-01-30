@@ -106,7 +106,6 @@ in {
       yq-go
       wget
       xc
-      xsv
       yazi
       # youtube-dl
       yt-dlp
