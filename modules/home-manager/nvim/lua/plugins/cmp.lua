@@ -4,6 +4,7 @@ return {
 	dependencies = {
 		"Kaiser-Yang/blink-cmp-dictionary",
 		"mikavilpas/blink-ripgrep.nvim",
+		"olimorris/codecompanion.nvim",
 
 		{
 			"kristijanhusak/vim-dadbod-completion",
@@ -43,18 +44,18 @@ return {
 				"path",
 				"buffer",
 				"ripgrep",
-				-- "copilot",
+				"codecompanion",
 				"emoji",
 				"dadbod",
 			},
 			cmdline = { "cmdline" },
 			providers = {
-				-- copilot = {
-				-- 	name = "copilot",
-				-- 	module = "blink-cmp-copilot",
-				-- 	score_offset = -100,
-				-- 	async = true,
-				-- },
+				codecompanion = {
+					name = "CodeCompanion",
+					module = "codecompanion.providers.completion.blink",
+					score_offset = -100,
+					enabled = true,
+				},
 				dadbod = {
 					name = "Dadbod",
 					module = "vim_dadbod_completion.blink",
