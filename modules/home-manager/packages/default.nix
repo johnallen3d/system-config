@@ -35,7 +35,7 @@ in {
       alejandra
       argo
       argocd
-      # awscli2
+      awscli2
       # azure-cli
       bashInteractive
       bacon
