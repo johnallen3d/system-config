@@ -3,6 +3,11 @@ return {
 	opts = {
 		scroll = { enabled = false },
 
+		indent = {
+			chunk = {
+				enabled = true,
+			},
+		},
 		picker = {
 			layout = "vscode",
 
