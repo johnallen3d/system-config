@@ -1,4 +1,4 @@
-Nix
+# System Config
 
 Manage macOS using [Nix](https://nixos.org/nix/), [nix-darwin](https://github.com/LnL7/nix-darwin) and [Home Manager](https://github.com/nix-community/home-manager).
 
@@ -70,6 +70,7 @@ nix flake update --commit-lock-file
 # or from another directory
 pushd ~/dev/src/system-config; nix flake update --commit-lock-file; nixswitch; popd
 ```
+
 ## TODO
 
 Things I'm not sure how to automate yet:
