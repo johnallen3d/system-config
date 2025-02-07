@@ -1,17 +1,24 @@
 return {
 	{
-		"dkarter/bullets.vim",
-		ft = "markdown",
-		lazy = true,
+		"MeanderingProgrammer/render-markdown.nvim",
+		ft = { "markdown", "codecompanion" },
+		opts = {
+			render_modes = true,
+			sign = {
+				enabled = false,
+			},
+		},
 	},
 
-	{
-		"wurli/contextindent.nvim",
-		-- This is the only config option; you can use it to restrict the files
-		-- which this plugin will affect (see :help autocommand-pattern).
-		opts = { pattern = "*" },
-		dependencies = { "nvim-treesitter/nvim-treesitter" },
-	},
+	-- TODO: check up on this issue
+	-- https://github.com/folke/snacks.nvim/issues/812
+	-- {
+	-- 	"bullets-vim/bullets.vim",
+	-- 	ft = { "markdown" },
+	-- 	config = function()
+	-- 		vim.g.bullets_delete_last_bullet_if_empty = 1
+	-- 	end,
+	-- },
 
 	{
 		"mfussenegger/nvim-lint",
@@ -25,27 +32,3 @@ return {
 		},
 	},
 }
-
--- return {
--- 	"OXY2DEV/markview.nvim",
--- 	lazy = false, -- Recommended
--- 	-- ft = "markdown" -- If you decide to lazy-load anyway
-
--- 	dependencies = {
--- 		"nvim-treesitter/nvim-treesitter",
--- 		"echasnovski/mini.icons",
--- 	},
-
--- 	config = function()
--- 		local presets = require("markview.presets")
-
--- 		require("markview").setup({
--- 			headings = presets.headings.glow,
--- 			horizontal_rules = presets.horizontal_rules.thin,
--- 			code_blocks = {
--- 				icons = "mini",
--- 				min_width = 80,
--- 			},
--- 		})
--- 	end,
--- }

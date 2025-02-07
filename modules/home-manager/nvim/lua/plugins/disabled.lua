@@ -1,5 +1,4 @@
 return {
-	-- { "MeanderingProgrammer/render-markdown.nvim", enabled = false },
 	{ "akinsho/bufferline.nvim", enabled = false },
 	{ "catppuccin/nvim", enabled = false },
 	{ "echasnovski/mini.pairs", enabled = false },
@@ -13,5 +12,5 @@ return {
 	{ "nvim-neo-tree/neo-tree.nvim", enabled = false },
 	{ "nvimdev/dashboard-nvim", enabled = false },
 	{ "rafamadriz/friendly-snippets", enabled = false },
-  { "ibhagwan/fzf-lua", enabled =false },
+	{ "ibhagwan/fzf-lua", enabled = false },
 }

@@ -102,5 +102,12 @@ return {
 				},
 			},
 		},
+		keys = {
+			{
+				"<leader>cc",
+				"<cmd>CodeCompanionChat Toggle<CR>",
+				desc = "Toggle LLM Chat (CodeCompanion)",
+			},
+		},
 	},
 }
