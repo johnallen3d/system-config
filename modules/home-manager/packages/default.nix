@@ -113,19 +113,6 @@ in {
     ]
     ++ scripts;
 
-  programs.atuin = {
-    enable = true;
-    flags = [
-      "--disable-up-arrow"
-    ];
-    settings = {
-      keymap_mode = "emacs";
-      show_help = false;
-      show_preview = true;
-      style = "compact";
-      update_check = false;
-    };
-  };
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
   # programs.bacon = {
   #   enable = true;
