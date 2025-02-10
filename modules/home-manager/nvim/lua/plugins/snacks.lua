@@ -20,4 +20,11 @@ return {
 			},
 		},
 	},
+	keys = {
+		{
+			"<leader>sl",
+			'<cmd>lua Snacks.picker.lsp_symbols({layout = {preset = "vscode", preview = "main"}})<CR>',
+			desc = "LSP Symbols picker",
+		},
+	},
 }
