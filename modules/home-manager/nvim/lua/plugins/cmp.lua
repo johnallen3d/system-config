@@ -2,9 +2,8 @@ return {
 	"saghen/blink.cmp",
 
 	dependencies = {
-		"Kaiser-Yang/blink-cmp-dictionary",
+		"ribru17/blink-cmp-spell",
 		"mikavilpas/blink-ripgrep.nvim",
-		"olimorris/codecompanion.nvim",
 
 		{
 			"kristijanhusak/vim-dadbod-completion",
@@ -44,25 +43,29 @@ return {
 				"path",
 				"buffer",
 				"ripgrep",
-				"codecompanion",
+				"spell",
 				"emoji",
 				"dadbod",
 			},
 			cmdline = { "cmdline" },
-			providers = {
+			per_filetype = {
 				codecompanion = {
-					name = "CodeCompanion",
-					module = "codecompanion.providers.completion.blink",
-					score_offset = -100,
-					enabled = true,
+					"codecompanion",
+					"lsp",
+					"path",
+					"buffer",
+					"ripgrep",
+					"emoji",
 				},
+			},
+			providers = {
 				dadbod = {
-					name = "Dadbod",
 					module = "vim_dadbod_completion.blink",
+					name = "dadbod",
 				},
-				dictionary = {
-					module = "blink-cmp-dictionary",
-					name = "dictionary",
+				spell = {
+					module = "blink-cmp-spell",
+					name = "spell",
 				},
 				emoji = {
 					module = "blink-emoji",
@@ -70,9 +73,24 @@ return {
 				},
 				ripgrep = {
 					module = "blink-ripgrep",
-					name = "Ripgrep",
+					name = "ripgrep",
 					score_offset = -10,
 				},
+			},
+		},
+
+		fuzzy = {
+			sorts = {
+				function(a, b)
+					local sort = require("blink.cmp.fuzzy.sort")
+					if a.source_id == "spell" and b.source_id == "spell" then
+						return sort.label(a, b)
+					end
+				end,
+				-- This is the normal default order, which we fall back to
+				"score",
+				"kind",
+				"label",
 			},
 		},
 	},
