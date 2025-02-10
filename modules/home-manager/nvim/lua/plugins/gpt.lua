@@ -86,28 +86,37 @@ return {
 		},
 	},
 
-	{
-		"olimorris/codecompanion.nvim",
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"nvim-treesitter/nvim-treesitter",
-		},
-		opts = {
-			strategies = {
-				chat = {
-					adapter = "anthropic",
-				},
-				inline = {
-					adapter = "anthropic",
-				},
-			},
-		},
-		keys = {
-			{
-				"<leader>cc",
-				"<cmd>CodeCompanionChat Toggle<CR>",
-				desc = "Toggle LLM Chat (CodeCompanion)",
-			},
-		},
-	},
+  {
+    "olimorris/codecompanion.nvim",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-treesitter/nvim-treesitter",
+    },
+    opts = {
+      strategies = {
+        chat = {
+          adapter = "anthropic",
+        },
+        inline = {
+          adapter = "anthropic",
+        },
+      },
+      display = {
+        chat = {
+          window = {
+            opts = {
+              spell = true,
+            },
+          },
+        },
+      },
+    },
+    keys = {
+      {
+        "<leader>cc",
+        "<cmd>CodeCompanionChat Toggle<CR>",
+        desc = "Toggle LLM Chat (CodeCompanion)",
+      },
+    },
+  },
 }
