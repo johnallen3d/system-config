@@ -1,6 +1,5 @@
 {pkgs, ...}: {
   system.stateVersion = 4;
-  services.nix-daemon.enable = true;
 
   nix = {
     gc = {
