@@ -11,6 +11,11 @@ return {
 			lazy = true,
 		},
 
+		{
+			"Kaiser-Yang/blink-cmp-git",
+			dependencies = { "nvim-lua/plenary.nvim" },
+		},
+
 		{ "moyiz/blink-emoji.nvim", ft = "md" },
 	},
 
@@ -40,6 +45,7 @@ return {
 		sources = {
 			default = {
 				"lsp",
+				"git",
 				"path",
 				"buffer",
 				"ripgrep",
@@ -63,18 +69,22 @@ return {
 					module = "vim_dadbod_completion.blink",
 					name = "dadbod",
 				},
-				spell = {
-					module = "blink-cmp-spell",
-					name = "spell",
-				},
 				emoji = {
 					module = "blink-emoji",
 					name = "emoji",
+				},
+				git = {
+					module = "blink-cmp-git",
+					name = "git",
 				},
 				ripgrep = {
 					module = "blink-ripgrep",
 					name = "ripgrep",
 					score_offset = -10,
+				},
+				spell = {
+					module = "blink-cmp-spell",
+					name = "spell",
 				},
 			},
 		},
