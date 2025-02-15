@@ -1,5 +1,6 @@
 {
   full_name,
+  lib,
   op_ssh_sign_path,
   ...
 }: {
@@ -8,8 +9,10 @@
     userName = "${full_name}";
     userEmail = "john@threedogconsulting.com";
     signing = {
-      # signByDefault = true;
+      signByDefault = true;
       key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFHBm+OH64z4tbmeAbNKge88yfQ82na+sLLfaSisfSpa";
+      format = "ssh";
+      signer = op_ssh_sign_path;
     };
     extraConfig = {
       color = {
@@ -29,17 +32,8 @@
         newNormal = "green bold";
         newHighlight = "green bold 22";
       };
-      commit = {
-        gpgSign = true;
-      };
       github = {
         user = "johnallen3d";
-      };
-      gpg = {
-        format = "ssh";
-      };
-      "gpg \"ssh\"" = {
-        program = op_ssh_sign_path;
       };
       init = {
         defaultBranch = "main";
