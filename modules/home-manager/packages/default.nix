@@ -98,6 +98,7 @@ in {
       python312Packages.mkdocs-material
       qmk
       sqlite
+      tabiew
       tailscale
       tree-sitter
       uv
