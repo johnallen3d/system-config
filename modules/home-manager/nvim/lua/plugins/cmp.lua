@@ -23,10 +23,6 @@ return {
 		keymap = {
 			preset = "default",
 			["<C-f>"] = { "select_and_accept" },
-			cmdline = {
-				preset = "default",
-				["<C-f>"] = { "select_and_accept", "fallback" },
-			},
 		},
 
 		completion = {
@@ -42,6 +38,10 @@ return {
 			},
 		},
 
+		cmdline = {
+			enabled = true,
+		},
+
 		sources = {
 			default = {
 				"lsp",
@@ -53,7 +53,6 @@ return {
 				"emoji",
 				"dadbod",
 			},
-			cmdline = { "cmdline" },
 			per_filetype = {
 				codecompanion = {
 					"codecompanion",
