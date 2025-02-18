@@ -35,4 +35,17 @@ return {
 			require("lspconfig").kcl.setup({})
 		end,
 	},
+
+	-- TODO: keep an eye out for a Nix package or brew for this
+	-- curl -L "https://github.com/cordx56/rustowl/releases/download/v0.1.1/install.sh" | sh
+	{
+		"cordx56/rustowl",
+		enabled = false,
+		dependencies = { "neovim/nvim-lspconfig" },
+		ft = { "rust" },
+		config = function()
+			local lspconfig = require("lspconfig")
+			lspconfig.rustowlsp.setup({})
+		end,
+	},
 }
