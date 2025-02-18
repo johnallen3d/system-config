@@ -47,7 +47,6 @@
       # using nightly for now, remove alias when switching back
       # "ghostty"
       "istat-menus"
-      "jordanbaird-ice"
       "karabiner-elements"
       # "lunar"
       "marked"
