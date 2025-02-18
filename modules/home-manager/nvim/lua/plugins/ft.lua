@@ -29,6 +29,7 @@ return {
 
 	{
 		"kcl-lang/kcl.nvim",
+		ft = "kcl",
 		dependencies = "neovim/nvim-lspconfig",
 		init = function()
 			require("lspconfig").kcl.setup({})
