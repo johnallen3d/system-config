@@ -65,6 +65,7 @@ in {
       gotop
       home-manager
       hurl
+      imagemagick
       just
       k3d
       k9s

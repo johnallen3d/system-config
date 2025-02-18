@@ -1,13 +1,17 @@
 return {
 	"folke/snacks.nvim",
 	opts = {
+		dashboard = { enabled = false },
 		scroll = { enabled = false },
+
+		image = { enabled = false },
 
 		indent = {
 			chunk = {
 				enabled = true,
 			},
 		},
+
 		picker = {
 			layout = "vscode",
 
@@ -20,6 +24,7 @@ return {
 			},
 		},
 	},
+
 	keys = {
 		{
 			"<leader>sl",
