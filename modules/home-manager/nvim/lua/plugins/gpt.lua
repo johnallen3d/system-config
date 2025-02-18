@@ -10,19 +10,8 @@ local chat_prompt = "You are a general AI assistant.\n\n"
 	.. "- Take a deep breath; You've got this!\n"
 
 return {
-	-- {
-	-- 	"sourcegraph/sg.nvim",
-	-- 	dependencies = {
-	-- 		"nvim-lua/plenary.nvim",
-	-- 		"nvim-telescope/telescope.nvim",
-	-- 	},
-	-- 	config = true,
-	-- },
-
 	{
 		"robitx/gp.nvim",
-		enable = true,
-		lazy = false,
 		keys = {
 			{
 				"<leader>gf",
@@ -86,37 +75,37 @@ return {
 		},
 	},
 
-  {
-    "olimorris/codecompanion.nvim",
-    dependencies = {
-      "nvim-lua/plenary.nvim",
-      "nvim-treesitter/nvim-treesitter",
-    },
-    opts = {
-      strategies = {
-        chat = {
-          adapter = "anthropic",
-        },
-        inline = {
-          adapter = "anthropic",
-        },
-      },
-      display = {
-        chat = {
-          window = {
-            opts = {
-              spell = true,
-            },
-          },
-        },
-      },
-    },
-    keys = {
-      {
-        "<leader>cc",
-        "<cmd>CodeCompanionChat Toggle<CR>",
-        desc = "Toggle LLM Chat (CodeCompanion)",
-      },
-    },
-  },
+	{
+		"olimorris/codecompanion.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-treesitter/nvim-treesitter",
+		},
+		opts = {
+			strategies = {
+				chat = {
+					adapter = "anthropic",
+				},
+				inline = {
+					adapter = "anthropic",
+				},
+			},
+			display = {
+				chat = {
+					window = {
+						opts = {
+							spell = true,
+						},
+					},
+				},
+			},
+		},
+		keys = {
+			{
+				"<leader>cc",
+				"<cmd>CodeCompanionChat Toggle<CR>",
+				desc = "Toggle LLM Chat (CodeCompanion)",
+			},
+		},
+	},
 }
