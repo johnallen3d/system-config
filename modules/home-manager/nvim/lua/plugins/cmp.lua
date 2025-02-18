@@ -40,6 +40,9 @@ return {
 
 		cmdline = {
 			enabled = true,
+			-- TODO: this should not be necessary any more
+			-- https://github.com/LazyVim/LazyVim/pull/5620/files
+			sources = { "cmdline" },
 		},
 
 		sources = {
