@@ -3,6 +3,7 @@ return {
 	{ "catppuccin/nvim", enabled = false },
 	{ "echasnovski/mini.pairs", enabled = false },
 	{ "folke/persistence.nvim", enabled = false },
+	{ "echasnovski/mini.ai", enabled = false },
 	{ "garymjr/nvim-snippets", enabled = false },
 	{ "goolord/alpha-nvim", enabled = false },
 	{ "iamcco/markdown-preview.nvim", enabled = false },

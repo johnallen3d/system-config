@@ -18,8 +18,6 @@ return {
 		},
 	},
 
-	{ "direnv/direnv.vim" },
-
 	{
 		"bezhermoso/tree-sitter-ghostty",
 		lazy = true,
