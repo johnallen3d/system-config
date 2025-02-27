@@ -21,8 +21,8 @@ return {
 		{ "moyiz/blink-emoji.nvim", ft = "md" },
 	},
 
-  -- forced to move from setting `opts` to `config` in order to wire up the
-  -- `minuet` keymap
+	-- forced to move from setting `opts` to `config` in order to wire up the
+	-- `minuet` keymap
 	config = function()
 		require("blink.cmp").setup({
 			keymap = {
@@ -50,9 +50,11 @@ return {
 
 			cmdline = {
 				enabled = true,
-				-- TODO: this should not be necessary any more
-				-- https://github.com/LazyVim/LazyVim/pull/5620/files
-				sources = { "cmdline" },
+				completion = { menu = { auto_show = true } },
+				keymap = {
+					preset = "default",
+					["<C-f>"] = { "select_and_accept" },
+				},
 			},
 
 			sources = {
