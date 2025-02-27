@@ -32,6 +32,7 @@ in {
 
   home.packages = with pkgs;
     [
+      aider-chat
       alejandra
       argo
       argocd
