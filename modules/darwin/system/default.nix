@@ -1,11 +1,4 @@
 {...}: {
-  security = {
-    pam = {
-      # allow biometric when password required for `sudo`!!!! 😁
-      enableSudoTouchIdAuth = true;
-    };
-  };
-
   # services = {karabiner-elements = {enable = true;};};
 
   system = {
