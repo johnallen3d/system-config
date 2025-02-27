@@ -13,6 +13,7 @@
       "FelixKratz/homebrew-formulae"
       "nikitabobko/homebrew-tap"
       "siderolabs/tap"
+      "common-fate/granted"
     ];
 
     brews = [
@@ -22,6 +23,7 @@
       # "dagger"
       "datafusion"
       # "dotnet@6"
+      "granted"
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"

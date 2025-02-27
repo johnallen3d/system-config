@@ -2,6 +2,7 @@
   shellAliases = {
     ":e" = "nvim";
     ":q" = "exit";
+    assume = "source /opt/homebrew/bin/assume.fish";
     db = "delete-branch";
     downloads = "cd ~/Downloads";
     files = "yazi";
