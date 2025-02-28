@@ -68,6 +68,7 @@
       restore = "checkout --";
       undo = "reset HEAD^";
       bv = "branch -vv --format='%(color:red)%(objectname:short) %(color:yellow)%(refname:short)%(color:reset) (%(color:green)%(committerdate:relative)%(color:reset)) %(color:cyan)%(upstream:short)%(color:reset)'";
+      conv-commits = "!git log --pretty=format:\"%s\" | grep -Eo \"^[a-z]+(\\([a-z]+\\))?:\" | sed \"s/:$//\" | sort | uniq";
       # url =! "bash -c 'git config --get remote.origin.url | sed -E "s/.+:\\(.+\\)\\.git$/https:\\\\/\\\\/github\\\\.com\\\\/\\\\1/g"'";
     };
     ignores = [
