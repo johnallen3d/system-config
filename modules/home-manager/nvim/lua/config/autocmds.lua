@@ -8,3 +8,18 @@ vim.api.nvim_create_autocmd("FocusLost", {
 	command = ":silent! wall",
 	group = "AutoSave",
 })
+
+if vim.fn.has("mac") == 1 then
+	vim.api.nvim_create_autocmd("FileType", {
+		pattern = "markdown",
+		callback = function()
+			vim.api.nvim_buf_set_keymap(
+				0,
+				"n",
+				"<Leader>m",
+				'<cmd>silent !open -a Marked\\ 2.app "%:p"<CR>',
+				{ noremap = true }
+			)
+		end,
+	})
+end
