@@ -1,4 +1,15 @@
 {...}: {
+  security = {
+    pam = {
+      # allow biometric when password required for `sudo`!!!! 😁
+      services = {
+        sudo_local = {
+          touchIdAuth = true;
+        };
+      };
+    };
+  };
+
   # services = {karabiner-elements = {enable = true;};};
 
   system = {
