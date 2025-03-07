@@ -101,7 +101,6 @@ in {
       qmk
       sqlite
       tabiew
-      tailscale
       tree-sitter
       uv
       vals
