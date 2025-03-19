@@ -60,6 +60,7 @@ in {
       flyctl
       fswatch
       gawk
+      google-cloud-sdk
       go
       glow
       gnugrep
