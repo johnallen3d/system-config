@@ -119,44 +119,4 @@ return {
 			},
 		},
 	},
-
-	{
-		"milanglacier/minuet-ai.nvim",
-
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-		},
-
-		config = function()
-			require("minuet").setup({
-				virtualtext = {
-					auto_trigger_ft = { "lua", "rust", "sh" },
-				},
-
-				blink = {
-					enable_auto_complete = true,
-				},
-
-				provider = "openai_fim_compatible",
-				n_completions = 1, -- recommend for local model for resource saving
-				context_window = 512,
-				provider_options = {
-					openai_fim_compatible = {
-						api_key = function()
-							return "not-necessary-for-local"
-						end,
-						name = "Ollama",
-						end_point = "http://localhost:11434/v1/completions",
-						-- model = "hf.co/bartowski/zed-industries_zeta-GGUF:IQ4_NL",
-						-- model = "hf.co/bartowski/zed-industries_zeta-GGUF:IQ4_XS",
-						model = "qwen2.5-coder:7b",
-						optional = {
-							max_tokens = 56,
-							top_p = 0.9,
-						},
-					},
-				},
-			})
-		end,
-	},
 }
