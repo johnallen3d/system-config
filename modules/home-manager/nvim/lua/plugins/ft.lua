@@ -41,7 +41,7 @@ return {
 	},
 
 	-- TODO: keep an eye out for a Nix package or brew for this
-	-- curl -L "https://github.com/cordx56/rustowl/releases/download/v0.1.1/install.sh" | sh
+  -- curl -L "https://github.com/cordx56/rustowl/releases/latest/download/install.sh" | sh
 	{
 		"cordx56/rustowl",
 		enabled = false,
