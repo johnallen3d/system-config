@@ -20,6 +20,8 @@ return {
 		cmd = { "CsvViewEnable", "CsvViewDisable", "CsvViewToggle" },
 	},
 
+	{ "direnv/direnv.vim" },
+
 	{
 		"bezhermoso/tree-sitter-ghostty",
 		lazy = true,
