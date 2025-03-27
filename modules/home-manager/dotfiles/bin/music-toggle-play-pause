@@ -1,0 +1,3 @@
+#! /usr/bin/env -S osascript
+
+tell app "Music" to playpause
