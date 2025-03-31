@@ -19,7 +19,7 @@ return {
 			},
 			strategies = {
 				chat = {
-					adapter = "xai",
+					adapter = "copilot",
 				},
 				inline = {
 					adapter = "copilot",
