@@ -19,7 +19,8 @@ return {
 			},
 			strategies = {
 				chat = {
-					adapter = "copilot",
+					adapter = os.getenv("NVIM_CODECOMPANION_CHAT_ADAPTER")
+						or "copilot",
 				},
 				inline = {
 					adapter = "copilot",
