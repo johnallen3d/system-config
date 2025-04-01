@@ -1,3 +1,19 @@
+-- https://github.com/LazyVim/LazyVim/discussions/5862#discussioncomment-12668307
+vim.diagnostic.config({
+	virtual_text = {
+		enabled = true,
+		severity = {
+			max = vim.diagnostic.severity.WARN,
+		},
+	},
+	virtual_lines = {
+		enabled = false,
+		severity = {
+			min = vim.diagnostic.severity.ERROR,
+		},
+	},
+})
+
 return {
 	{
 		"neovim/nvim-lspconfig",
@@ -10,8 +26,8 @@ return {
 
 		opts = {
 			diagnostics = {
-				virtual_text = true,
-				virtual_lines = true,
+				virtual_text = false,
+				virtual_lines = false,
 			},
 			inlay_hints = { enabled = false },
 			codelens = { enabled = false },
