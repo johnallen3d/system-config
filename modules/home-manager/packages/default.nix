@@ -41,6 +41,7 @@ in {
       bashInteractive
       bacon
       # brave
+      bun
       cargo-careful
       cargo-machete
       cargo-nextest
@@ -93,11 +94,14 @@ in {
       nix-your-shell
       nodejs_22
       oras
+      # TODO: "marked as broken"
+      # release-plz
       rip2.packages.${pkgs.system}.default
       ruby
       pandoc
       postgresql
       # pyenv
+      python3
       python312Packages.mkdocs-material
       qmk
       sqlite

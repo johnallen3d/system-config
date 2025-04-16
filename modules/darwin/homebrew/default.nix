@@ -40,6 +40,8 @@
       "aerospace"
       "arc"
       "brave-browser"
+      "carbon-copy-cloner"
+      "claude"
       "cleanshot"
       "discord"
       "disk-inventory-x"
