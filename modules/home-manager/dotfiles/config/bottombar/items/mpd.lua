@@ -19,7 +19,7 @@ local colors = require("colors")
 -- 	position = "center",
 -- })
 
-Sbar.add("item", "mpd", {
+local mpd = {
 	icon = {
 		drawing = true,
 		color = colors.orange,
@@ -33,8 +33,16 @@ Sbar.add("item", "mpd", {
 		string = "Loading…",
 		padding_right = 24,
 	},
-	click_script = "mp-cli --format=none toggle",
+	click_script = "osascript -e 'tell application \"Music\" to playpause'",
 	position = "center",
-})
+	update_freq = 1,
+	script = "~/.config/bottombar/plugins/music.sh",
+}
 
-return { "mpd_logo", "mpd" }
+Sbar.add("item", "mpd", mpd)
+
+-- TODO: how to make this work
+Sbar.add("event", "song_update", "com.apple.iTunes.playerInfo")
+mpd:subscribe({ "mpd", "song_update" })
+
+return { "mpd" }
