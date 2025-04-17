@@ -49,7 +49,7 @@
       # "dotnet-sdk" # this is v8
       "dropbox"
       # using nightly for now, remove alias when switching back
-      # "ghostty"
+      "ghostty"
       "istat-menus"
       "karabiner-elements"
       # "lunar"
