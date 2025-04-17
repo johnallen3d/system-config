@@ -43,12 +43,11 @@
       "carbon-copy-cloner"
       "claude"
       "cleanshot"
+      "cloudmounter"
       "discord"
       "disk-inventory-x"
       "docker"
       # "dotnet-sdk" # this is v8
-      "dropbox"
-      # using nightly for now, remove alias when switching back
       "ghostty"
       "istat-menus"
       "karabiner-elements"
