@@ -39,8 +39,8 @@
     };
   in {
     darwinConfigurations = {
-      m1-mbp = makeDarwinSystem {
-        host = "m1-mbp";
+      m4-mbp = makeDarwinSystem {
+        host = "m4-mbp";
         extraModules = [
           ./modules/darwin/homebrew/mas.nix
         ];

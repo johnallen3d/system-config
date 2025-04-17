@@ -18,7 +18,6 @@ in {
     [
       mas
       sketchybar
-      tart
     ]
     ++ scripts;
 }
