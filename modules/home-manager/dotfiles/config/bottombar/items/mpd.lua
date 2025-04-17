@@ -42,7 +42,7 @@ local mpd = {
 Sbar.add("item", "mpd", mpd)
 
 -- TODO: how to make this work
-Sbar.add("event", "song_update", "com.apple.iTunes.playerInfo")
-mpd:subscribe({ "mpd", "song_update" })
+-- Sbar.add("event", "song_update", "com.apple.iTunes.playerInfo")
+-- mpd:subscribe({ "mpd", "song_update" })
 
 return { "mpd" }

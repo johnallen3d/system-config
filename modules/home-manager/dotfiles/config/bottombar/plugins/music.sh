@@ -59,13 +59,13 @@ sleep 1
 
 APP_STATE=$(pgrep -x Music)
 if [[ ! $APP_STATE ]]; then
-  sketchybar -m --set music drawing=off
+  bottombar -m --set mpd drawing=off
   exit 0
 fi
 
 PLAYER_STATE=$(osascript -e "tell application \"Music\" to set playerState to (get player state) as text")
 if [[ $PLAYER_STATE == "stopped" ]]; then
-  sketchybar --set music drawing=off
+  bottombar --set mpd drawing=off
   exit 0
 fi
 
@@ -84,11 +84,11 @@ elapsed=$(osascript -e 'tell application "Music" to get player position')
 track_length=$(osascript -e 'tell application "Music" to get duration of current track')
 
 if [[ $PLAYER_STATE == "paused" ]]; then
-  icon=""
+  icon=""
 fi
 
 if [[ $PLAYER_STATE == "playing" ]]; then
-  icon=""
+  icon=""
 fi
 
 elapsed=$(format_time "$elapsed")
