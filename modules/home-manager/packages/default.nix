@@ -92,7 +92,7 @@ in {
       mpd
       # mpc-cli
       nix-your-shell
-      nodejs_22
+      nodejs_23
       oras
       # TODO: "marked as broken"
       # release-plz
