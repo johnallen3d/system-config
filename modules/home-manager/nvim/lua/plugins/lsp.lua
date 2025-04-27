@@ -1,4 +1,3 @@
--- https://github.com/LazyVim/LazyVim/discussions/5862#discussioncomment-12668307
 vim.diagnostic.config({
 	virtual_text = {
 		enabled = true,
@@ -8,9 +7,6 @@ vim.diagnostic.config({
 	},
 	virtual_lines = {
 		enabled = false,
-		severity = {
-			min = vim.diagnostic.severity.ERROR,
-		},
 	},
 })
 
