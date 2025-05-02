@@ -29,6 +29,7 @@
       "lua"
       "pyenv" # TODO: can we find a better/more nix way?
       "switchaudio-osx"
+      "tabiew" # TODO: prefer nix package when fixed
       # "talosctl"
       "trash"
     ];

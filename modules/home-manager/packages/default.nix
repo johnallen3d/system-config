@@ -104,8 +104,8 @@ in {
       python3
       python312Packages.mkdocs-material
       qmk
+      qsv
       sqlite
-      tabiew
       tree-sitter
       uv
       vals
