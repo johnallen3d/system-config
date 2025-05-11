@@ -64,7 +64,8 @@
       "orbstack"
       "raycast"
       "rocket"
-      "stolendata-mpv"
+      # this is blowing up 🤷‍♂️
+      # "stolendata-mpv"
       "syncthing"
       "tailscale"
       "tableplus"
