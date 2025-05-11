@@ -40,16 +40,36 @@ return {
 		end,
 	},
 
-	-- TODO: keep an eye out for a Nix package or brew for this
-  -- curl -L "https://github.com/cordx56/rustowl/releases/latest/download/install.sh" | sh
 	{
-		"cordx56/rustowl",
-		enabled = false,
-		dependencies = { "neovim/nvim-lspconfig" },
-		ft = { "rust" },
-		config = function()
-			local lspconfig = require("lspconfig")
-			lspconfig.rustowlsp.setup({})
-		end,
+		"mrcjkb/rustaceanvim",
+		opts = {
+			server = {
+				default_settings = {
+					["rust-analyzer"] = {
+						procMacro = {
+							ignored = {
+								["async-trait"] = vim.NIL,
+							},
+						},
+					},
+				},
+			},
+		},
 	},
+
+	-- {
+	-- 	"cordx56/rustowl",
+	-- 	version = "*",
+	-- 	build = "cargo install --path . --locked",
+	-- 	lazy = false, -- this plugin is already lazy
+	-- 	opts = {
+	-- 		client = {
+	-- 			on_attach = function(_, buffer)
+	-- 				vim.keymap.set("n", "<leader>o", function()
+	-- 					require("rustowl").toggle(buffer)
+	-- 				end, { buffer = buffer, desc = "Toggle RustOwl" })
+	-- 			end,
+	-- 		},
+	-- 	},
+	-- },
 }
