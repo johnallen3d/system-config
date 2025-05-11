@@ -15,6 +15,13 @@ return {
 		picker = {
 			layout = "vscode",
 
+			-- play nice with oil.nvim
+			-- https://github.com/folke/snacks.nvim/issues/1814#issuecomment-2865194886
+			main = {
+				file = false,
+				current = true,
+			},
+
 			win = {
 				input = {
 					keys = {
