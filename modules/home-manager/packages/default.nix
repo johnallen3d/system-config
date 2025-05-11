@@ -116,6 +116,8 @@ in {
       yazi
       # youtube-dl
       yt-dlp
+      # slightly outdated
+      # zed-editor
       zellij
     ]
     ++ scripts;

@@ -72,6 +72,7 @@
       # "utm"
       "visual-studio-code"
       "whatsapp"
+      "zed"
     ];
   };
 }
