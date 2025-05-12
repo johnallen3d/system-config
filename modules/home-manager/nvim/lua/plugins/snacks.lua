@@ -22,6 +22,15 @@ return {
 				current = true,
 			},
 
+			sources = {
+				files = {
+					hidden = true,
+				},
+				grep = {
+					hidden = true,
+				},
+			},
+
 			win = {
 				input = {
 					keys = {
