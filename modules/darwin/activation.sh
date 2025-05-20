@@ -20,8 +20,9 @@ apps=(
   "CleanShot X"
   Dropbox
   # Lunar
-  noTunes
-  Ollama
+  # noTunes
+  # Ollama
+  OrbStack
   # Rambox
   Raycast
   Rocket
