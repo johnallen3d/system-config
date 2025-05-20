@@ -115,7 +115,7 @@
         end
 
         set -xg NIXPKGS_ALLOW_UNFREE 1
-        darwin-rebuild switch --impure --flake ~/dev/src/system-config/
+        sudo darwin-rebuild switch --impure --flake ~/dev/src/system-config/
       '';
     };
   };
