@@ -1,6 +1,5 @@
 {
   pkgs,
-  rip2,
   op_path,
   ...
 }: let
@@ -96,7 +95,6 @@ in {
       oras
       # TODO: "marked as broken"
       # release-plz
-      rip2.packages.${pkgs.system}.default
       ruby
       pandoc
       postgresql

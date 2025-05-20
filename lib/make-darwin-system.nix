@@ -2,7 +2,6 @@
   home-manager,
   nix-darwin,
   nixpkgs,
-  rip2,
   user,
   full_name,
 }: {
@@ -19,7 +18,7 @@ in
     inherit system;
     pkgs = import nixpkgs {inherit system;};
     specialArgs = {
-      inherit brew_bin home user rip2;
+      inherit brew_bin home user;
     };
     modules =
       [
@@ -31,7 +30,7 @@ in
             useGlobalPkgs = true;
             useUserPackages = true;
             extraSpecialArgs = {
-              inherit brew_bin full_name home op_path op_ssh_sign_path rip2;
+              inherit brew_bin full_name home op_path op_ssh_sign_path;
             };
             users.${user}.imports = [
               ../modules/home-manager

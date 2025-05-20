@@ -1,7 +1,6 @@
 {
   home-manager,
   nixpkgs,
-  rip2,
   user,
   full_name,
 }: {

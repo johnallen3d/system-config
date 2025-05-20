@@ -25,7 +25,6 @@
     passgen = "dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | rev | cut -b 2- | rev";
     password = "passgen";
     recent = "lsd -la --sort time --color=always | head";
-    rm = "echo Use 'rip' instead of rm";
     spp = "git stash && git pull && git stash pop";
     tree = "lsd --tree";
     uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
