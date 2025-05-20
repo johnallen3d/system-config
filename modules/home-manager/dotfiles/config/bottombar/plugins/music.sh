@@ -77,9 +77,21 @@ format_time() {
   printf "%02d:%02d" $minutes $seconds
 }
 
-title=$(osascript -e 'tell application "Music" to get name of current track')
-artist=$(osascript -e 'tell application "Music" to get artist of current track')
-album=$(osascript -e 'tell application "Music" to get album of current track')
+truncate_with_ellipsis() {
+  local text="$1"
+  local max_length="$2"
+
+  if [[ ${#text} -gt $max_length ]]; then
+    echo "${text:0:$((max_length - 3))}..."
+  else
+    echo "$text"
+  fi
+}
+
+title=$(truncate_with_ellipsis "$(osascript -e 'tell application "Music" to get name of current track')" 30)
+artist=$(truncate_with_ellipsis "$(osascript -e 'tell application "Music" to get artist of current track')" 30)
+album=$(truncate_with_ellipsis "$(osascript -e 'tell application "Music" to get album of current track')" 30)
+
 elapsed=$(osascript -e 'tell application "Music" to get player position')
 track_length=$(osascript -e 'tell application "Music" to get duration of current track')
 
