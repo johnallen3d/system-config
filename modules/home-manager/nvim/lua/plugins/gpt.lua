@@ -6,6 +6,16 @@ return {
 			"nvim-treesitter/nvim-treesitter",
 		},
 		opts = {
+			extensions = {
+				mcphub = {
+					callback = "mcphub.extensions.codecompanion",
+					opts = {
+						make_vars = true,
+						make_slash_commands = true,
+						show_result_in_chat = true,
+					},
+				},
+			},
 			adapters = {
 				copilot = function()
 					return require("codecompanion.adapters").extend("copilot", {
@@ -21,16 +31,6 @@ return {
 				chat = {
 					adapter = os.getenv("NVIM_CODECOMPANION_CHAT_ADAPTER")
 						or "copilot",
-					tools = {
-						["mcp"] = {
-							callback = function()
-								return require(
-									"mcphub.extensions.codecompanion"
-								)
-							end,
-							description = "Call tools and resources from the MCP Servers",
-						},
-					},
 				},
 				inline = {
 					adapter = "copilot",
@@ -67,16 +67,6 @@ return {
 			require("mcphub").setup({
 				auto_approve = true,
 				use_bundled_binary = true,
-				extensions = {
-					codecompanion = {
-						-- Show the mcp tool result in the chat buffer
-						show_result_in_chat = true,
-						-- Make chat #variables from MCP server resources
-						make_vars = true,
-						-- make /slash_commands from MCP server prompts
-						make_slash_commands = true,
-					},
-				},
 			})
 		end,
 	},
