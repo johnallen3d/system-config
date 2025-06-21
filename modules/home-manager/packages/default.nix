@@ -31,7 +31,6 @@ in {
 
   home.packages = with pkgs;
     [
-      aider-chat
       alejandra
       argo
       argocd
@@ -51,7 +50,7 @@ in {
       doctl
       # dotnet-runtime -> this is included in the dotnet-sdk
       # dotnet-sdk -> trying to install this via homebrew for better tools support
-      duckdb
+      # duckdb
       entr
       fd
       ffmpeg
@@ -66,15 +65,12 @@ in {
       gnugrep
       gotop
       home-manager
-      hurl
+      # hurl
       imagemagick
       just
       k3d
       k9s
-      # not currently supported on ARM architecture
-      # installed via: curl -fsSL https://kcl-lang.io/script/install-cli.sh | /bin/bash
-      # https://www.kcl-lang.io/docs/user_docs/getting-started/install#using-script-to-install-the-latest-release
-      # kcl-cli
+      kcl
       kind
       kubecolor
       kubectl
@@ -98,9 +94,6 @@ in {
       ruby
       pandoc
       postgresql
-      # pyenv
-      python3
-      python312Packages.mkdocs-material
       qmk
       qsv
       sqlite

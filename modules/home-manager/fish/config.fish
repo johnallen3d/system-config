@@ -7,8 +7,6 @@ fish_add_path --move --path $HOME/.cargo/bin
 
 # TODO: can we find a better/more nix way?
 fish_add_path --prepend $HOME/.npm-global/bin
-fish_add_path --prepend $PYENV_ROOT
-pyenv init - | source
 
 # use 1Password to authenticate `gh`
 if test -e ~/.config/op/plugins.sh
@@ -19,4 +17,4 @@ if command -q nix-your-shell
     nix-your-shell fish | source
 end
 
-fish_config theme choose "tokyo-night-moon"
+fish_config theme choose tokyo-night-moon

@@ -23,11 +23,11 @@
       # "dagger"
       "datafusion"
       # "dotnet@6"
+      "duckdb"
       "granted"
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"
-      "pyenv" # TODO: can we find a better/more nix way?
       "switchaudio-osx"
       "tabiew" # TODO: prefer nix package when fixed
       # "talosctl"
