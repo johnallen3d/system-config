@@ -49,3 +49,4 @@ copy-on-select = clipboard
 quit-after-last-window-closed = true
 # allow cursor to be a block: https://ghostty.org/docs/config/reference#cursor-style
 shell-integration-features = no-cursor
+clipboard-paste-protection = false
