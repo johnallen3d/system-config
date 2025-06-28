@@ -47,6 +47,7 @@ in {
       coreutils
       curl
       devbox
+      docker-client
       doctl
       # dotnet-runtime -> this is included in the dotnet-sdk
       # dotnet-sdk -> trying to install this via homebrew for better tools support
@@ -96,6 +97,7 @@ in {
       postgresql
       qmk
       qsv
+      skim # fzf alternative
       sqlite
       tree-sitter
       uv

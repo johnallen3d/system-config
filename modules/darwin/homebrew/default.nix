@@ -11,9 +11,10 @@
 
     taps = [
       "FelixKratz/homebrew-formulae"
+      "common-fate/granted"
+      "kcl-lang/tap"
       "nikitabobko/homebrew-tap"
       "siderolabs/tap"
-      "common-fate/granted"
     ];
 
     brews = [
@@ -25,6 +26,7 @@
       # "dotnet@6"
       "duckdb"
       "granted"
+      "kcl-lsp"
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"
@@ -40,6 +42,7 @@
       "aerial"
       "aerospace"
       "arc"
+      "betterdisplay"
       "brave-browser"
       "carbon-copy-cloner"
       "claude"
@@ -47,7 +50,6 @@
       "cloudmounter"
       "discord"
       "disk-inventory-x"
-      "docker"
       # "dotnet-sdk" # this is v8
       "ghostty"
       "istat-menus"
