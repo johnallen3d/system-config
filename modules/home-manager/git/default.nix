@@ -76,6 +76,8 @@
       ".*.sw*"
       ".un~"
       ".DS_Store"
+      ".gemini/"
+      "GEMINI.md"
       "tags"
       "tags.lock"
       "tags.temp"
