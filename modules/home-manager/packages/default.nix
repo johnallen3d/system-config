@@ -85,7 +85,7 @@ in {
       minikube
       minio-client
       mkdocs
-      mpd
+      # mpd
       # mpc-cli
       nix-your-shell
       nodejs_24
@@ -150,9 +150,9 @@ in {
   programs.lsd = {
     enable = true;
   };
-  programs.ncmpcpp = {
-    enable = true;
-  };
+  # programs.ncmpcpp = {
+  #   enable = true;
+  # };
   # programs.vscode = {
   #   enable = false;
   # };

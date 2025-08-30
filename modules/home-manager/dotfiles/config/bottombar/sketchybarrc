@@ -24,6 +24,9 @@ Sbar.hotload(true)
 -- os.execute("pgrep mpd-updater | xargs kill -9")
 -- os.execute(os.getenv("HOME") .. "/.config/bottombar/plugins/mpd-updater &")
 
+os.execute("pgrep sketchy-apple-music | xargs kill -9")
+os.execute(os.getenv("HOME") .. "/.cargo/bin/sketchy-apple-music &")
+
 -- Run the event loop of the sketchybar module (without this there will be no
 -- bi-directional communication between the lua module and sketchybar)
 Sbar.event_loop()

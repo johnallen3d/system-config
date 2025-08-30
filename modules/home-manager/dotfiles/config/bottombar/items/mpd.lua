@@ -33,10 +33,11 @@ local mpd = {
 		string = "Loading…",
 		padding_right = 24,
 	},
-	click_script = "osascript -e 'tell application \"Music\" to playpause'",
 	position = "center",
-	update_freq = 1,
-	script = "~/.config/bottombar/plugins/music.sh",
+	-- update_freq = 1,
+	-- script = "~/.config/bottombar/plugins/music.sh",
+	-- click_script = "osascript -e 'tell application \"Music\" to playpause'",
+	-- script = "~/.cargo/bin/sketchy-apple-music",
 }
 
 Sbar.add("item", "mpd", mpd)
