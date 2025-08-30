@@ -46,6 +46,7 @@
       "arc"
       "betterdisplay"
       "brave-browser"
+      "bruno"
       "carbon-copy-cloner"
       "claude"
       "cleanshot"
@@ -56,6 +57,7 @@
       "ghostty"
       "istat-menus"
       "karabiner-elements"
+      "kindavim"
       # "lunar"
       "marked"
       # issues with macOS Sequoia
@@ -76,7 +78,9 @@
       # "utm"
       "visual-studio-code"
       "whatsapp"
+      "wooshy"
       "zed"
+      "zen"
     ];
   };
 }
