@@ -28,4 +28,4 @@ vim.opt.gdefault = true
 vim.opt.pumblend = 0
 vim.opt.conceallevel = 1
 -- show filename and line numbers in status bar
-vim.opt.statusline = "%f %=%l/%L"
+vim.opt.statusline = "%f %=%l/%L %c"
