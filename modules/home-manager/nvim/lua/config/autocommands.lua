@@ -1,4 +1,3 @@
---
 vim.api.nvim_create_autocmd({ "FocusGained", "TermClose", "TermLeave" }, {
   desc = "Check if we need to reload the file when it changed",
   group = vim.api.nvim_create_augroup("auto-load", { clear = true }),
@@ -39,5 +38,30 @@ vim.api.nvim_create_autocmd("FileType", {
   pattern = "*",
   callback = function()
     pcall(vim.treesitter.start)
+  end,
+})
+
+vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
+  desc = "Always keep the cursor centered",
+  group = vim.api.nvim_create_augroup("cursor-position", { clear = true }),
+  pattern = "*",
+  callback = function()
+    local line = vim.api.nvim_win_get_cursor(0)[1]
+
+    if vim.b["last_line"] == nil then
+      vim.b["last_line"] = line
+    end
+
+    if line ~= vim.b["last_line"] then
+      local column = vim.fn.getcurpos()[3]
+      local mode = vim.fn.mode()
+
+      vim.cmd("norm! zz")
+      vim.b["last_line"] = line
+
+      if mode:match("^i") then
+        vim.api.nvim_win_set_cursor(0, { line, column })
+      end
+    end
   end,
 })

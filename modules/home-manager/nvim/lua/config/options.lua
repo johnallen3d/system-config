@@ -72,7 +72,6 @@ opt.fillchars = {
   eob = " ", -- Hide ~ at end of buffer
 }
 opt.termguicolors = true -- Enable true color support
-opt.sidescrolloff = 8 -- Keep 8 columns of context when scrolling horizontally
 opt.list = true -- Show invisible characters (tabs, trailing spaces, etc.)
 
 -- Editing/Indentation
