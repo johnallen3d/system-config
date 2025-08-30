@@ -56,6 +56,9 @@ map("v", "<", "<gv", opts("Outdent and reselect"))
 -- disable "Q" (ex mode)
 map("n", "Q", "<nop>", opts("Go to right split"))
 
+-- Noice
+map("n", "<leader>nd", ":Noice dismiss<cr>", opts("Dismiss Noice pop-up"))
+
 -- show diagnostics on current line
 map(
   "n",
