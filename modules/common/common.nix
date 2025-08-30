@@ -30,6 +30,7 @@
     uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
     vi = "nvim";
     vim = "nvim";
+    vi-sk = "nvim (sk)";
     weather = "curl wttr.in";
     whatismyip = "curl -4 ifconfig.co/";
     yt = "youtube-dl -f bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
@@ -41,7 +42,7 @@
     GIT_EDITOR = "nvim";
     TIME_STYLE = "long-iso";
     MANPAGER = "nvim +Man!";
-    FZF_DEFAULT_COMMAND = "rg --files --hidden --follow --glob \"!doc/*\"";
+    SKIM_DEFAULT_COMMAND = "fd --type f || git ls-tree -r --name-only HEAD || rg --files || find .";
     PYENV_ROOT = "$HOME/.pyenv";
     # NOTE: this is meant as a macOS only workaround
     # see https://github.com/ghostty-org/ghostty/discussions/2832

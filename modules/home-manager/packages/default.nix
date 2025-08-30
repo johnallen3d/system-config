@@ -144,10 +144,6 @@ in {
   #   enable = true;
   #   settings = {};
   # };
-  programs.fzf = {
-    enable = true;
-    enableFishIntegration = true;
-  };
   programs.jq = {
     enable = true;
   };
