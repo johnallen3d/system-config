@@ -1,56 +1,79 @@
--- Keymaps are automatically loaded on the VeryLazy event
--- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
+local map = vim.keymap.set
 
---
--- standalone keymaps
---
+-- set leader key
+---@diagnostic disable-next-line: inject-field
+vim.g.mapleader = ","
 
-local default_options = { noremap = true, silent = true }
+-- merge default options with description and extras
+local function opts(desc, extra)
+  local o = { noremap = true, silent = true, desc = desc }
+  if extra then
+    for k, v in pairs(extra) do
+      o[k] = v
+    end
+  end
+  return o
+end
 
--- use `-` to access netrw in current directory
--- vim.api.nvim_set_keymap("n", "-", ':Explore <bar> :sil! /<C-R>=expand("%:t")<CR><CR>', default_options)
-vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
+-- better up/down
+map(
+  { "n", "x" },
+  "j",
+  "v:count == 0 ? 'gj' : 'j'",
+  opts("Down", { expr = true })
+)
+map(
+  { "n", "x" },
+  "<Down>",
+  "v:count == 0 ? 'gj' : 'j'",
+  opts("Down", { expr = true })
+)
+map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", opts("Up", { expr = true }))
+map(
+  { "n", "x" },
+  "<Up>",
+  "v:count == 0 ? 'gk' : 'k'",
+  opts("Up", { expr = true })
+)
 
 -- map p (lower) to P (upper) in visual mode to not stomp on register
-vim.api.nvim_set_keymap("v", "p", "P", default_options)
-vim.api.nvim_set_keymap("v", "P", "p", default_options)
+map("v", "p", "P", opts("Paste without overwriting register"))
+map("v", "P", "p", opts("Overwrite with register on paste"))
 
 -- Ctrl+A to "select all" in current buffer
-vim.api.nvim_set_keymap("n", "<C-A>", "ggVG", default_options)
+map("n", "<C-A>", "ggVG", opts("Select all in buffer"))
 
---
--- which-key
---
-local wk = require("which-key")
+-- Use Ctrl-h/j/k/l to navigate between splits
+map("n", "<C-h>", "<C-w>h", opts("Go to left split"))
+map("n", "<C-j>", "<C-w>j", opts("Go to below split"))
+map("n", "<C-k>", "<C-w>k", opts("Go to above split"))
+map("n", "<C-l>", "<C-w>l", opts("Go to right split"))
 
-vim.o.timeoutlen = 300
+-- Reselect visual selection after indent/outdent
+map("v", ">", ">gv", opts("Indent and reselect"))
+map("v", "<", "<gv", opts("Outdent and reselect"))
 
-wk.setup({
-	show_keys = false,
-	show_help = false,
-	triggers = "auto",
-	plugins = { spelling = true },
-	key_labels = { ["<leader>"] = "," },
-})
+-- disable "Q" (ex mode)
+map("n", "Q", "<nop>", opts("Go to right split"))
 
-wk.add({
-	{
-		{ "<leader>w", group = "windows" },
-		{ "<leader>w=", "<C-W>=", desc = "balance-window" },
-		{ "<leader>wH", "<C-W>5<", desc = "expand-window-left" },
-		{ "<leader>wJ", ":resize +5<CR>", desc = "expand-window-below" },
-		{ "<leader>wK", ":resize -5<CR>", desc = "expand-window-up" },
-		{ "<leader>wL", "<C-W>5>", desc = "expand-window-right" },
-		{
-			"<leader>ws",
-			":split <bar> :Oil<CR>",
-			desc = "split window horizontal",
-		},
-		{
-			"<leader>wv",
-			":vsplit <bar> :Oil<CR>",
-			desc = "split window vertical",
-		},
-		{ "<leader>z", "mz[s1z=e`z", desc = "correct last typo" },
-	},
-})
+-- show diagnostics on current line
+map(
+  "n",
+  "<leader>cd",
+  vim.diagnostic.open_float,
+  opts("Line Diagnostics", { noremap = nil })
+)
+
+-- copy diagnostic message to clipboard
+vim.keymap.set("n", "<leader>cc", function()
+  local line = vim.api.nvim_win_get_cursor(0)[1] - 1
+  ---@type { message: string }|nil
+  local diag = vim.diagnostic.get(0, { lnum = line })[1]
+  local msg = diag and diag.message
+  if type(msg) == "string" then
+    vim.fn.setreg("+", msg)
+    vim.notify("Diagnostic copied to clipboard!", vim.log.levels.INFO)
+  else
+    vim.notify("No diagnostic message found on this line.", vim.log.levels.WARN)
+  end
+end, opts("Copy diagnostic message to clipboard", { noremap = nil }))

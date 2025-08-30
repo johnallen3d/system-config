@@ -13,6 +13,7 @@
       "$HOME/.local/bin"
       "$HOME/.cargo/bin"
       "${brew_bin}"
+      "$HOME/.local/share/bob/nvim-bin"
     ];
   };
 }

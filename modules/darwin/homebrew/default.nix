@@ -37,6 +37,7 @@
       # trying: curl -fsSL https://opencode.ai/install | bash
       # with autoupdate enabled
       # "opencode"
+      "sqruff"
       "switchaudio-osx"
       "tabiew" # TODO: prefer nix package when fixed
       # "talosctl"

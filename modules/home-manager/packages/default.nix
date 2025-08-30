@@ -31,6 +31,7 @@ in {
 
   home.packages = with pkgs;
     [
+      actionlint
       alejandra
       argo
       argocd
@@ -38,6 +39,7 @@ in {
       # azure-cli
       bashInteractive
       bacon
+      biome
       # brave
       bun
       cargo-careful
@@ -60,6 +62,7 @@ in {
       flyctl
       fswatch
       gawk
+      github-mcp-server
       google-cloud-sdk
       go
       glow
@@ -71,7 +74,8 @@ in {
       just
       k3d
       k9s
-      kcl
+      # TODO: build failing on 2025-08-28
+      # kcl
       kind
       kubecolor
       kubectl
@@ -82,32 +86,44 @@ in {
       # lua
       # luajit
       less
+      lua-language-server
+      markdownlint-cli2
+      marksman
       minikube
       minio-client
       mkdocs
       # mpd
       # mpc-cli
       nix-your-shell
+      nixd
       nodejs_24
       oras
       # TODO: "marked as broken"
       # release-plz
       ruby
+      ruff
       pandoc
       postgresql
+      prettier
+      basedpyright
       qmk
       qsv
       skim # fzf alternative
       sqlite
+      # this is quite outdated and under active development
+      # sqruff
+      stylua
       tree-sitter
       uv
       vals
       viddy
-      yq-go
+      vsce
+      vscode-langservers-extracted
       wget
       xc
       yazi
       # youtube-dl
+      yq-go
       yt-dlp
       # slightly outdated
       # zed-editor

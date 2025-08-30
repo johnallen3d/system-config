@@ -1,0 +1,15 @@
+{
+  "runtime.version": "LuaJIT",
+  "runtime.path": [
+    "lua/?.lua",
+    "lua/?/init.lua"
+  ],
+  "diagnostics.globals": ["vim"],
+  "workspace.checkThirdParty": false,
+  "workspace.library": [
+    "~/.config/nvim-next"
+  ],
+  "format.defaultConfig": {
+    "max_line_length": "80"
+  }
+}
