@@ -1,16 +1,17 @@
 local M = {}
 
 vim.lsp.enable({
+  "basedpyright",
   "biome",
+  "harper-ls",
+  "jsonls",
   "kcl_ls",
-  "nixd",
-  "rust-analyzer",
   "lua_ls",
   "marksman",
+  "nixd",
   "ruff",
-  "basedpyright",
+  "rust-analyzer",
   "sqruff",
-  "jsonls",
 })
 
 --- Shared on_attach for all LSP servers.

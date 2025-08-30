@@ -68,6 +68,7 @@ in {
       glow
       gnugrep
       gotop
+      harper
       home-manager
       # hurl
       imagemagick
