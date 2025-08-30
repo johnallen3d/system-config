@@ -1,0 +1,5 @@
+#! /usr/bin/env bash
+
+osascript -e 'display notification "Opencode response completed"'
+
+afplay ~/bin/opencode-bell.wav
