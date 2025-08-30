@@ -15,6 +15,7 @@
     gp = "git push";
     gpf = "git push --force-with-lease";
     gst = "git status --short";
+    icat = "viu";
     ip = "ipconfig getifaddr en0";
     j = "z";
     k = "kubecolor";

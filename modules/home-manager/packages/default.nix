@@ -118,6 +118,7 @@ in {
       uv
       vals
       viddy
+      viu
       vsce
       vscode-langservers-extracted
       wget
