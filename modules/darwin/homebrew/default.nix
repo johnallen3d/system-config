@@ -16,6 +16,8 @@
       "kcl-lang/tap"
       "nikitabobko/homebrew-tap"
       "siderolabs/tap"
+      # opencode, see note below
+      # "sst/tap"
     ];
 
     brews = [
@@ -31,6 +33,10 @@
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"
+      # not being kept up to date with raprid releases
+      # trying: curl -fsSL https://opencode.ai/install | bash
+      # with autoupdate enabled
+      # "opencode"
       "switchaudio-osx"
       "tabiew" # TODO: prefer nix package when fixed
       # "talosctl"

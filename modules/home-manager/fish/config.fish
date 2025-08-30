@@ -4,6 +4,8 @@ set fish_greeting
 fish_add_path --move --prepend --path $HOME/.nix-profile/bin
 fish_add_path --move --prepend --path /nix/var/nix/profiles/default/bin
 fish_add_path --move --path $HOME/.cargo/bin
+# TODO: remove me if switching back to brew installed
+fish_add_path /Users/john.allen/.opencode/bin
 
 # TODO: can we find a better/more nix way?
 fish_add_path --prepend $HOME/.npm-global/bin
