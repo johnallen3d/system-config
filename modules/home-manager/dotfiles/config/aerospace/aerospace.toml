@@ -34,6 +34,9 @@ default-root-container-layout = 'tiles'
 #               tall monitor (anything higher than wide) gets vertical orientation
 default-root-container-orientation = 'auto'
 
+# Mouse follows focus when focused monitor changes
+on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+
 gaps.inner.horizontal = 15
 gaps.inner.vertical = 15
 gaps.outer.left = 15
