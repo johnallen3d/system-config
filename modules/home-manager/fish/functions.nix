@@ -48,7 +48,6 @@
       body = ''
         bind ! bind_bang
         bind '$' bind_dollar
-        # fzf_key_bindings
       '';
     };
     ip = {
