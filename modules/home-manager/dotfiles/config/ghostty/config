@@ -1,12 +1,15 @@
-#
-# vim: ft=ghostty
-#
+# switch to the prerelease channel
+auto-update-channel = tip
+
 # appearance
 bold-is-bright = true
 macos-titlebar-style = hidden
 theme = /Users/john.allen/.local/share/nvim/lazy/tokyonight.nvim/extras/ghostty/tokyonight_moon
 window-colorspace = display-p3
 window-padding-x = 4
+
+# shader
+custom-shader = ./cursor-shader.glsl
 
 # font-family = "JetBrainsMono Nerd Font Mono" # this is built-in default
 font-family = "FiraCode Nerd Font Mono"
