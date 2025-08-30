@@ -31,7 +31,7 @@ return {
     ["harper-ls"] = {
       userDictPath = vim.fn.expand("$HOME/.config/nvim/spell/en.utf-8.add"),
       linters = {
-        SentenceCapitalization = true,
+        SentenceCapitalization = false,
       },
       markdown = {
         -- [ignores this part]()
