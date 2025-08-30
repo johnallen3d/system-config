@@ -1,6 +1,5 @@
 {
   full_name,
-  lib,
   op_ssh_sign_path,
   ...
 }: {
@@ -10,7 +9,7 @@
     userEmail = "john@threedogconsulting.com";
     signing = {
       signByDefault = true;
-      key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFHBm+OH64z4tbmeAbNKge88yfQ82na+sLLfaSisfSpa";
+      key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINGs0qwPKIoejl6w0R0UKGM4i3WoyJI9WooAkEvSQKq6";
       format = "ssh";
       signer = op_ssh_sign_path;
     };
