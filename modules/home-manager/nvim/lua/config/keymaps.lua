@@ -49,7 +49,7 @@ map("n", "<C-j>", "<C-w>j", opts("Go to below split"))
 map("n", "<C-k>", "<C-w>k", opts("Go to above split"))
 map("n", "<C-l>", "<C-w>l", opts("Go to right split"))
 
--- Reselect visual selection after indent/outdent
+-- Re-select visual selection after indent/outdent
 map("v", ">", ">gv", opts("Indent and reselect"))
 map("v", "<", "<gv", opts("Outdent and reselect"))
 

@@ -12,10 +12,11 @@ opt.completeopt = "menuone,noselect" -- Completion options (blink.cmp handles it
 opt.winborder = "rounded" -- Use rounded window borders
 opt.cursorcolumn = false -- Disable cursor column highlight
 
--- Statusline/Commandline
+-- Statusline/Command line
 opt.statusline = "%f %=%l/%L %c" -- Show filename and line/col in statusline
 opt.laststatus = 3 -- Global statusline (one at bottom)
-opt.cmdheight = 0 -- hidde the status bar
+opt.cmdheight = 0 -- hidden the status bar
+opt.wildmode = "longest:full,full" -- Command-line completion mode
 
 -- Clipboard & Mouse
 opt.clipboard = "unnamedplus" -- Use system clipboard for all yank/paste
@@ -77,9 +78,6 @@ opt.list = true -- Show invisible characters (tabs, trailing spaces, etc.)
 -- Editing/Indentation
 opt.expandtab = true -- Use spaces instead of tabs
 opt.virtualedit = "block" -- Allow cursor to move where there is no text in visual block mode
-
--- Statusline/Commandline
-opt.wildmode = "longest:full,full" -- Command-line completion mode
 
 -- Disable mouse wheel scrolling
 opt.mousescroll = "ver:0,hor:0"
