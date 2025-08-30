@@ -1,0 +1,20 @@
+{
+  // markdownlint configuration
+  "config": {
+    // Use default rules
+    "default": true,
+    // Configure MD009 (Trailing spaces)
+    "MD009": {
+      // Number of spaces allowed at line breaks
+      "br_spaces": 0,
+      // Enable strict mode for trailing spaces
+      "strict": true
+    }
+    // Disable MD013 (Line length)
+    "MD013": false,
+    // Disable MD041 (First line in file should be a top-level heading)
+    "MD041": false,
+    "MD047": false
+  }
+}
+
