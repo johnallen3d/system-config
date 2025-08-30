@@ -18,7 +18,6 @@
     ip = "ipconfig getifaddr en0";
     j = "z";
     k = "kubecolor";
-    lazy = "cd ~/dev/src/system-config/modules/home-manager/nvim && nvim ./lua/plugins/init.lua";
     music = "ncmpcpp";
     nix-build = "darwin-rebuild switch --flake ~/dev/src/system-config/.#";
     notes = "cd ~/notes && nvim mindfulness/practice.md";
