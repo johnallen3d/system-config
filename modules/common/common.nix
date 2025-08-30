@@ -27,6 +27,9 @@
     recent = "lsd -la --sort time --color=always | head";
     spp = "git stash && git pull && git stash pop";
     tree = "lsd --tree";
+    # tw = "tw --theme tokyo-night ";
+    # can't ever remember the name of this command (`tw`), maybe this will stick? 🤷‍♂️
+    tab = "tw --theme tokyo-night ";
     uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
     vi = "nvim";
     vim = "nvim";
