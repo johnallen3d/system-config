@@ -12,6 +12,7 @@
     taps = [
       "FelixKratz/homebrew-formulae"
       "common-fate/granted"
+      "dmno-dev/tap"
       "kcl-lang/tap"
       "nikitabobko/homebrew-tap"
       "siderolabs/tap"
@@ -34,6 +35,7 @@
       "tabiew" # TODO: prefer nix package when fixed
       # "talosctl"
       "trash"
+      "varlock"
     ];
 
     casks = [
