@@ -21,7 +21,7 @@ return {
 					return require("codecompanion.adapters").extend("copilot", {
 						schema = {
 							model = {
-								default = "claude-3.7-sonnet",
+								default = "claude-sonnet-4",
 							},
 						},
 					})
@@ -30,10 +30,10 @@ return {
 			strategies = {
 				chat = {
 					adapter = os.getenv("NVIM_CODECOMPANION_CHAT_ADAPTER")
-						or "copilot",
+						or "copilot", -- "xai"
 				},
 				inline = {
-					adapter = "copilot",
+					adapter = "copilot", -- "xai"
 				},
 			},
 			display = {
