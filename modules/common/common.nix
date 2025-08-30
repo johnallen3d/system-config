@@ -4,6 +4,7 @@
     ":q" = "exit";
     assume = "source /opt/homebrew/bin/assume.fish";
     db = "delete-branch";
+    dadbod = "nvim +DBUI";
     downloads = "cd ~/Downloads";
     files = "yazi";
     gb = "git bv";
