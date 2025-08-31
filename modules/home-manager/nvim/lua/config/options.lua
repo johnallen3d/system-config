@@ -17,6 +17,15 @@ opt.statusline = "%f %=%l/%L %c" -- Show filename and line/col in statusline
 opt.laststatus = 3 -- Global statusline (one at bottom)
 opt.cmdheight = 0 -- hidden the status bar
 opt.wildmode = "longest:full,full" -- Command-line completion mode
+-- adjust the foldcolumn to hide the fold counts
+opt.statuscolumn =
+  '%=%l%s%#FoldColumn#%{foldlevel(v:lnum) > foldlevel(v:lnum - 1) ? (foldclosed(v:lnum) == -1 ? " " : " ") : "  " }%*'
+
+-- Folds/Folding (see also `./plugins/nvim-ufo.lua`)
+vim.o.foldcolumn = "1" -- '0' to hide, '1' to show fold column
+vim.o.foldlevel = 99 -- Using ufo provider need a large value
+vim.o.foldlevelstart = 99
+vim.o.foldenable = true
 
 -- Clipboard & Mouse
 opt.clipboard = "unnamedplus" -- Use system clipboard for all yank/paste
@@ -33,12 +42,6 @@ opt.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
 opt.ignorecase = true -- Ignore case in search
 opt.gdefault = true -- :s///g flag by default
 opt.hlsearch = false -- Disable highlight search
-
--- Folds/Folding
-opt.foldmethod = "indent"
-opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
-opt.foldtext = "" -- enables syntax highlighting
-opt.foldlevel = 99
 
 -- Undo/Swap/Backup
 opt.undofile = true -- Enable persistent undo

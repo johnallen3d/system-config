@@ -53,6 +53,20 @@ map("n", "<C-l>", "<C-w>l", opts("Go to right split"))
 map("v", ">", ">gv", opts("Indent and reselect"))
 map("v", "<", "<gv", opts("Outdent and reselect"))
 
+-- Remap fold toggles using ufo provider
+map("n", "zR", function()
+  require("ufo").openAllFolds()
+end, opts("Open all folds"))
+map("n", "zM", function()
+  require("ufo").closeAllFolds()
+end, opts("Close all folds"))
+map("n", "zK", function()
+  local winid = require("ufo").peekFoldedLinesUnderCursor()
+  if not winid then
+    vim.lsp.buf.hover()
+  end
+end, opts("Peek into current fold"))
+
 -- disable "Q" (ex mode)
 map("n", "Q", "<nop>", opts("Go to right split"))
 
