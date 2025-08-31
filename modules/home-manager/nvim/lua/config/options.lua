@@ -13,9 +13,9 @@ opt.winborder = "rounded" -- Use rounded window borders
 opt.cursorcolumn = false -- Disable cursor column highlight
 
 -- Statusline/Command line
-opt.statusline = "%f %=%l/%L %c" -- Show filename and line/col in statusline
+opt.statusline = "%{expand('%:~:.')}%=%l:%L │ %c" -- Show path from project root and line/col with separator
 opt.laststatus = 3 -- Global statusline (one at bottom)
-opt.cmdheight = 0 -- hidden the status bar
+opt.cmdheight = 0 -- hide the commandline
 opt.wildmode = "longest:full,full" -- Command-line completion mode
 -- adjust the foldcolumn to hide the fold counts
 opt.statuscolumn =
