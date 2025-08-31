@@ -18,6 +18,9 @@ require("noice").setup({
     inc_rename = false, -- input dialog for inc-rename.nvim
     lsp_doc_border = true,
   },
+  messages = {
+    view_search = false, -- hide search count messages
+  },
   routes = {
     -- vim-dadbod-ui: hide notifications
     {
