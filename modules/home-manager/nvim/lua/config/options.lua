@@ -13,7 +13,7 @@ opt.winborder = "rounded" -- Use rounded window borders
 opt.cursorcolumn = false -- Disable cursor column highlight
 
 -- Statusline/Command line
-opt.statusline = "%{expand('%:~:.')}%=%l:%L %#TabLineSel# %c %*" -- Show path from project root and line/col
+opt.statusline = "%{expand('%:~:.')}%=%l:%L %#TabLineSel# %2c %*" -- Show path from project root and line/col
 
 opt.laststatus = 3 -- Global statusline (one at bottom)
 opt.cmdheight = 0 -- hide the commandline
