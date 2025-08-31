@@ -60,12 +60,12 @@ end, opts("Open all folds"))
 map("n", "zM", function()
   require("ufo").closeAllFolds()
 end, opts("Close all folds"))
-map("n", "zK", function()
+map("n", "K", function()
   local winid = require("ufo").peekFoldedLinesUnderCursor()
   if not winid then
     vim.lsp.buf.hover()
   end
-end, opts("Peek into current fold"))
+end, opts("Peek into current fold (fall back to lsp hover)"))
 
 -- disable "Q" (ex mode)
 map("n", "Q", "<nop>", opts("Go to right split"))
