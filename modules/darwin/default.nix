@@ -16,6 +16,11 @@
     settings = {
       cores = 0; # max
       max-jobs = 10;
+
+      trusted-users = [
+        "root"
+        "john.allen"
+      ];
     };
 
     extraOptions = ''
