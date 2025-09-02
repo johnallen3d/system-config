@@ -38,12 +38,6 @@
         end
       '';
     };
-    chat = {
-      body = ''
-        cd ~/.local/share/nvim/gp/chats/
-        nvim scratch.md
-      '';
-    };
     fish_user_key_bindings = {
       body = ''
         bind ! bind_bang

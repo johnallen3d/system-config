@@ -167,6 +167,8 @@ in {
   };
   programs.lsd = {
     enable = true;
+    # don't user default aliases; see modules/home-manager/fish/functions.nix
+    enableFishIntegration = false;
   };
   # programs.ncmpcpp = {
   #   enable = true;

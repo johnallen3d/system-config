@@ -3,8 +3,8 @@
     ":e" = "nvim";
     ":q" = "exit";
     assume = "source /opt/homebrew/bin/assume.fish";
-    db = "delete-branch";
     dadbod = "nvim +DBUI";
+    db = "delete-branch";
     downloads = "cd ~/Downloads";
     files = "yazi";
     gb = "git bv";
@@ -16,11 +16,9 @@
     gpf = "git push --force-with-lease";
     gst = "git status --short";
     icat = "viu";
-    ip = "ipconfig getifaddr en0";
     j = "z";
     k = "kubecolor";
     music = "ncmpcpp";
-    nix-build = "darwin-rebuild switch --flake ~/dev/src/system-config/.#";
     notes = "cd ~/notes && nvim mindfulness/practice.md";
     pass = "passgen";
     passgen = "dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | rev | cut -b 2- | rev";
