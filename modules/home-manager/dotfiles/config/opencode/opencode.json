@@ -62,14 +62,5 @@
       "command": ["biome", "format", "--write", "$FILE"],
       "extensions": [".js", ".jsx", ".ts", ".tsx"]
     }
-  },
-  "experimental": {
-    "hook": {
-      "session_completed": [
-        {
-          "command": ["/Users/john.allen/bin/opencode-notification"]
-        }
-      ]
-    }
   }
 }
