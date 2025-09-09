@@ -49,9 +49,19 @@ map("n", "<C-j>", "<C-w>j", opts("Go to below split"))
 map("n", "<C-k>", "<C-w>k", opts("Go to above split"))
 map("n", "<C-l>", "<C-w>l", opts("Go to right split"))
 
+-- Split resizing
+map("i", "<leader>w=", "<C-W>=", opts("balance-window"))
+map("i", "<leader>wH", "<C-W>5<", opts("expand-window-left"))
+map("i", "<leader>wJ", ":resize +5<CR>", opts("expand-window-below"))
+map("i", "<leader>wK", ":resize -5<CR>", opts("expand-window-up"))
+map("i", "<leader>wL", "<C-W>5>", opts("expand-window-right"))
+
 -- Re-select visual selection after indent/outdent
 map("v", ">", ">gv", opts("Indent and reselect"))
 map("v", "<", "<gv", opts("Outdent and reselect"))
+
+-- Spelling
+map("i", "<leader>z", "mz[s1z=e`z", opts("correct last typo"))
 
 -- Remap fold toggles using ufo provider
 map("n", "zR", function()
