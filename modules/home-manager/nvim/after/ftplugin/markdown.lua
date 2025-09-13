@@ -1,4 +1,5 @@
 vim.opt_local.wrap = true
+vim.opt_local.spell = true
 
 if vim.fn.has("mac") == 1 then
   vim.keymap.set("n", "<Leader>m", function()

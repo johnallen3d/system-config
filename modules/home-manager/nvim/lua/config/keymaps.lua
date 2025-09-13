@@ -61,7 +61,7 @@ map("v", ">", ">gv", opts("Indent and reselect"))
 map("v", "<", "<gv", opts("Outdent and reselect"))
 
 -- Spelling
-map("i", "<leader>z", "mz[s1z=e`z", opts("correct last typo"))
+map("n", "<leader>z", "mz[s1z=e`z", opts("correct last typo"))
 
 -- Remap fold toggles using ufo provider
 map("n", "zR", function()

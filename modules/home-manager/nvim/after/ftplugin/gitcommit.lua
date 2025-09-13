@@ -1,2 +1,2 @@
 -- Enable spell checking for commit messages
-vim.opt.spell = true
+vim.opt_local.spell = true
