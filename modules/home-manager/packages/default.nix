@@ -75,8 +75,7 @@ in {
       just
       k3d
       k9s
-      # TODO: build failing on 2025-08-28
-      # kcl
+      kcl
       kind
       kubecolor
       kubectl

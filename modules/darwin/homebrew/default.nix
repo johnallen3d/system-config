@@ -38,11 +38,10 @@
       # with autoupdate enabled
       # "opencode"
       "sqruff"
-      "switchaudio-osx"
+      # "switchaudio-osx"
       "tabiew" # TODO: prefer nix package when fixed
       # "talosctl"
       "trash"
-      "varlock"
     ];
 
     casks = [
@@ -70,7 +69,6 @@
       # issues with macOS Sequoia
       # https://github.com/canonical/multipass/issues/3661#issuecomment-2363403467
       # "multipass"
-      "notunes"
       "obsidian"
       "ollama-app"
       "opera"
