@@ -16,15 +16,14 @@ conform.setup({
       "ruff_format",
       "ruff_organize_imports",
     },
+    rust = { "rustfmt" },
     sql = { "sqruff" },
     typescript = { "biome" },
   },
-
-  format_on_save = function(bufnr)
-    if #conform.list_formatters(bufnr) > 0 then
-      return { lsp_fallback = true }
-    end
-  end,
+  format_on_save = {
+    timeout_ms = 500,
+    lsp_format = "fallback",
+  },
   notify_on_error = true,
 })
 

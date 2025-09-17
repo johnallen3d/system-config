@@ -10,7 +10,6 @@ vim.lsp.enable({
   "marksman",
   "nixd",
   "ruff",
-  "rust-analyzer",
   "sqruff",
 })
 
@@ -29,6 +28,7 @@ function M.on_attach(client, bufnr)
   vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
   vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
   vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+  vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
 end
 
 return M
