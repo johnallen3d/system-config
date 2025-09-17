@@ -3,3 +3,6 @@ vim.filetype.add({
     [".*%.envrc"] = "direnv",
   },
 })
+
+
+vim.bo.commentstring = "# %s"
