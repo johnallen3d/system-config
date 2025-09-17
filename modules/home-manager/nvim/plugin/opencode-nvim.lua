@@ -2,8 +2,6 @@ vim.pack.add({
   "https://github.com/NickvanDyke/opencode.nvim",
 })
 
-require("opencode").setup()
-
 local map = vim.keymap.set
 
 map("n", "<leader>oa", function()
