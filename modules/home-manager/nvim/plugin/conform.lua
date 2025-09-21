@@ -7,6 +7,7 @@ conform.setup({
     ["*"] = { "trim_whitespace" },
     javascript = { "biome" },
     json = { "prettier" },
+    kcl = { "kcl" },
     lua = { "stylua" },
     nix = { "alejandra" },
     markdown = { "prettier", "markdownlint-cli2" },
