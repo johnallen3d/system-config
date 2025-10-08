@@ -39,6 +39,7 @@ in {
       # azure-cli
       bashInteractive
       bacon
+      basedpyright
       biome
       # brave
       bun
@@ -105,7 +106,7 @@ in {
       pandoc
       postgresql
       prettier
-      basedpyright
+      rainfrog
       qmk
       qsv
       skim # fzf alternative
