@@ -14,6 +14,7 @@
       "common-fate/granted"
       "dmno-dev/tap"
       "kcl-lang/tap"
+      "ksdme/tap"
       "nikitabobko/homebrew-tap"
       "siderolabs/tap"
       # opencode, see note below
@@ -42,6 +43,7 @@
       "tabiew" # TODO: prefer nix package when fixed
       # "talosctl"
       "trash"
+      "ut"
     ];
 
     casks = [
