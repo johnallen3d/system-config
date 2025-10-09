@@ -1,7 +1,7 @@
 {pkgs, ...}:
 pkgs.writeShellScriptBin "scratch" ''
   type="$1"
-  path="$HOME/Library/Mobile\ Documents/com~apple~CloudDocs/scratch"
+  path="$HOME/Library/Mobile Documents/com~apple~CloudDocs/scratch"
 
   # if type is not blank
   if [ -n "$type" ]; then
