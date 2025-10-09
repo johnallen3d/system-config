@@ -31,15 +31,15 @@ in {
 
   home.packages = with pkgs;
     [
-      actionlint
+      # actionlint # broken in nixpkgs oct 2025 - ruby nokogiri build fails
       alejandra
       argo
       argocd
-      awscli2
+      # awscli2 # broken in nixpkgs oct 2025 - build hangs
       # azure-cli
       bashInteractive
       bacon
-      basedpyright
+      # basedpyright # broken in nixpkgs oct 2025 - keytar build fails
       biome
       # brave
       bun
@@ -89,7 +89,7 @@ in {
       less
       lua-language-server
       markdownlint-cli2
-      marksman
+      # marksman # broken in nixpkgs oct 2025 - dotnet build takes forever
       minikube
       minio-client
       mkdocs
@@ -107,7 +107,7 @@ in {
       postgresql
       prettier
       rainfrog
-      qmk
+      # qmk
       qsv
       skim # fzf alternative
       sqlite
