@@ -37,7 +37,7 @@ in {
       alejandra
       argo
       argocd
-      # awscli2 # broken in nixpkgs oct 2025 - build hangs
+      awscli2
       # azure-cli
       bashInteractive
       bacon
