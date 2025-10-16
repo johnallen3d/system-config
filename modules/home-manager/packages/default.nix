@@ -41,7 +41,7 @@ in {
       # azure-cli
       bashInteractive
       bacon
-      # basedpyright # broken in nixpkgs oct 2025 - keytar build fails
+      basedpyright
       biome
       # brave
       bun
