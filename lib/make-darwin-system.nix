@@ -16,7 +16,34 @@
 in
   nix-darwin.lib.darwinSystem {
     inherit system;
-    pkgs = import nixpkgs {inherit system;};
+    pkgs = import nixpkgs {
+      inherit system;
+      overlays = [ (final: prev: {
+        actionlint = let version = "1.7.7"; in prev.stdenv.mkDerivation {
+          pname = "actionlint";
+          inherit version;
+          src = prev.fetchurl {
+            url = "https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_darwin_arm64.tar.gz";
+            # NOTE: fill in real hash after first failed build
+            hash = "sha256-JpMxW5CTrqy069kamT/qVPwhUFe/DaJlkFa0vAM4c9s=";
+          };
+          sourceRoot = ".";
+          nativeBuildInputs = [];
+          buildInputs = [];
+          dontBuild = true;
+          installPhase = ''
+            runHook preInstall
+            mkdir -p $out/bin
+            install -m755 actionlint $out/bin/
+            runHook postInstall
+          '';
+          meta = prev.actionlint.meta // {
+            description = "actionlint prebuilt binary (temp nokogiri workaround)";
+            broken = false;
+          };
+        };
+      }) ];
+    };
     specialArgs = {
       inherit brew_bin home user;
     };

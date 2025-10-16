@@ -31,7 +31,9 @@ in {
 
   home.packages = with pkgs;
     [
-      # actionlint # broken in nixpkgs oct 2025 - ruby nokogiri build fails
+      # broken in nixpkgs oct 2025 - ruby nokogiri build fails
+      # installing via `./overlays/actionlint.nix`
+      actionlint
       alejandra
       argo
       argocd
