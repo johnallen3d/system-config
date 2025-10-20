@@ -20,6 +20,7 @@ conform.setup({
     rust = { "rustfmt" },
     sql = { "sqruff" },
     typescript = { "biome" },
+    yaml = { "yamlfmt" },
   },
   format_on_save = {
     timeout_ms = 500,

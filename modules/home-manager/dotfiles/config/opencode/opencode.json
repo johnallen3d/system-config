@@ -54,13 +54,17 @@
     }
   },
   "formatter": {
+    "biome": {
+      "command": ["biome", "format", "--write", "$FILE"],
+      "extensions": [".js", ".jsx", ".ts", ".tsx"]
+    },
     "stylua": {
       "command": ["stylua", "$FILE"],
       "extensions": [".lua"]
     },
-    "biome": {
-      "command": ["biome", "format", "--write", "$FILE"],
-      "extensions": [".js", ".jsx", ".ts", ".tsx"]
+    "yamlfmt": {
+      "command": ["yamlfmt", "$FILE"],
+      "extensions": [".yaml", ".yml"]
     }
   }
 }

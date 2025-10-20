@@ -125,6 +125,7 @@ in {
       vscode-langservers-extracted
       wget
       xc
+      yamlfmt
       yazi
       # youtube-dl
       yq-go
