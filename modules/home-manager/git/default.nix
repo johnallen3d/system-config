@@ -5,15 +5,24 @@
 }: {
   programs.git = {
     enable = true;
-    userName = "${full_name}";
-    userEmail = "john@threedogconsulting.com";
-    signing = {
-      signByDefault = true;
-      key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINGs0qwPKIoejl6w0R0UKGM4i3WoyJI9WooAkEvSQKq6";
-      format = "ssh";
-      signer = op_ssh_sign_path;
-    };
-    extraConfig = {
+    settings = {
+      user = {
+        name = "${full_name}";
+        email = "john@threedogconsulting.com";
+      };
+      aliases = {
+        lol = "log --color --pretty=format:\"%C(yellow)%h%C(reset) %s%C(bold red)%d%C(reset) %C(green)%ad%C(reset) %C(blue)[%an]%C(reset)\" --relative-date --decorate --oneline";
+        head = "lol -n 10";
+        blog = "log --graph --format=format:'%C(bold magenta)%h%C(reset) %C(white)%ai%C(reset) %C(bold dim white)%aN%C(auto)%+D%C(reset)%n%C(bold white)%s%C(reset)%+b%n'";
+        graph = "log --color --graph --pretty=format:\"%h | %ad | %an | %s%d\" --date=short";
+        hist = "log --pretty=oneline --graph";
+        unstage = "reset HEAD --";
+        restore = "checkout --";
+        undo = "reset HEAD^";
+        bv = "branch -vv --format='%(color:red)%(objectname:short) %(color:yellow)%(refname:short)%(color:reset) (%(color:green)%(committerdate:relative)%(color:reset)) %(color:cyan)%(upstream:short)%(color:reset)'";
+        conv-commits = "!git log --pretty=format:\"%s\" | grep -Eo \"^[a-z]+(\\([a-z]+\\))?:\" | sed \"s/:$//\" | sort | uniq";
+        # url =! "bash -c 'git config --get remote.origin.url | sed -E "s/.+:\\(.+\\)\\.git$/https:\\\\/\\\\/github\\\\.com\\\\/\\\\1/g"'";
+      };
       color = {
         ui = "always";
       };
@@ -57,18 +66,11 @@
         autoupdate = true;
       };
     };
-    aliases = {
-      lol = "log --color --pretty=format:\"%C(yellow)%h%C(reset) %s%C(bold red)%d%C(reset) %C(green)%ad%C(reset) %C(blue)[%an]%C(reset)\" --relative-date --decorate --oneline";
-      head = "lol -n 10";
-      blog = "log --graph --format=format:'%C(bold magenta)%h%C(reset) %C(white)%ai%C(reset) %C(bold dim white)%aN%C(auto)%+D%C(reset)%n%C(bold white)%s%C(reset)%+b%n'";
-      graph = "log --color --graph --pretty=format:\"%h | %ad | %an | %s%d\" --date=short";
-      hist = "log --pretty=oneline --graph";
-      unstage = "reset HEAD --";
-      restore = "checkout --";
-      undo = "reset HEAD^";
-      bv = "branch -vv --format='%(color:red)%(objectname:short) %(color:yellow)%(refname:short)%(color:reset) (%(color:green)%(committerdate:relative)%(color:reset)) %(color:cyan)%(upstream:short)%(color:reset)'";
-      conv-commits = "!git log --pretty=format:\"%s\" | grep -Eo \"^[a-z]+(\\([a-z]+\\))?:\" | sed \"s/:$//\" | sort | uniq";
-      # url =! "bash -c 'git config --get remote.origin.url | sed -E "s/.+:\\(.+\\)\\.git$/https:\\\\/\\\\/github\\\\.com\\\\/\\\\1/g"'";
+    signing = {
+      signByDefault = true;
+      key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINGs0qwPKIoejl6w0R0UKGM4i3WoyJI9WooAkEvSQKq6";
+      format = "ssh";
+      signer = op_ssh_sign_path;
     };
     ignores = [
       "*~"
