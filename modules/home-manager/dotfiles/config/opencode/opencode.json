@@ -65,6 +65,10 @@
     "yamlfmt": {
       "command": ["yamlfmt", "$FILE"],
       "extensions": [".yaml", ".yml"]
+    },
+    "rustfmt": {
+      "command": ["rustfmt", "$FILE"],
+      "extensions": [".rs"]
     }
   }
 }
