@@ -77,8 +77,9 @@ map("n", "K", function()
   end
 end, opts("Peek into current fold (fall back to lsp hover)"))
 
--- disable "Q" (ex mode)
-map("n", "Q", "<nop>", opts("Go to right split"))
+-- disable "Q" (ex mode) and "q:" (command-line window)
+map("n", "Q", "<nop>")
+map("n", "q:", "<nop>")
 
 -- Noice
 map("n", "<leader>nd", ":Noice dismiss<cr>", opts("Dismiss Noice pop-up"))
