@@ -13,7 +13,7 @@ vim.pack.add({
   { src = "https://github.com/ribru17/blink-cmp-spell" },
   { src = "https://github.com/moyiz/blink-emoji.nvim" },
   { src = "https://github.com/giuxtaposition/blink-cmp-copilot" },
-})
+}, { confirm = false })
 
 -- recommended copilot setup for best support with blink
 require("copilot").setup({

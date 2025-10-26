@@ -1,7 +1,7 @@
 vim.pack.add({
   "https://github.com/tpope/vim-dadbod",
   "https://github.com/kristijanhusak/vim-dadbod-ui",
-})
+}, { confirm = false })
 
 -- DuckDB output mode picker
 local duckdb_modes = {

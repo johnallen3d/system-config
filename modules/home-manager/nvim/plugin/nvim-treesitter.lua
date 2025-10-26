@@ -3,7 +3,7 @@ vim.pack.add({
     src = "https://github.com/nvim-treesitter/nvim-treesitter",
     version = "main",
   },
-})
+}, { confirm = false })
 
 local ensure_installed = {
   "bash",

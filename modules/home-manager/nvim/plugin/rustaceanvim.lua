@@ -1,4 +1,4 @@
-vim.pack.add({ "https://github.com/mrcjkb/rustaceanvim" })
+vim.pack.add({ "https://github.com/mrcjkb/rustaceanvim" }, { confirm = false })
 
 local shared_on_attach = require("config.lsp").on_attach
 

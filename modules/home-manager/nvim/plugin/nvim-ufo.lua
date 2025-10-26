@@ -1,7 +1,7 @@
 vim.pack.add({
   { src = "https://github.com/kevinhwang91/nvim-ufo" },
   { src = "https://github.com/kevinhwang91/promise-async" },
-})
+}, { confirm = false })
 
 require("ufo").setup({
   provider_selector = function(_bufnr, _filetype, _buftype)

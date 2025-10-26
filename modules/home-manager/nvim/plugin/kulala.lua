@@ -1,4 +1,7 @@
-vim.pack.add({ "https://github.com/mistweaverco/kulala.nvim" })
+vim.pack.add(
+  { "https://github.com/mistweaverco/kulala.nvim" },
+  { confirm = false }
+)
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "http", "rest" },

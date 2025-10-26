@@ -1,4 +1,7 @@
-vim.pack.add({ "https://github.com/bullets-vim/bullets.vim" })
+vim.pack.add(
+  { "https://github.com/bullets-vim/bullets.vim" },
+  { confirm = false }
+)
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "markdown",

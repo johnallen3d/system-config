@@ -1,6 +1,6 @@
 vim.pack.add({
   "https://github.com/NickvanDyke/opencode.nvim",
-})
+}, { confirm = false })
 
 local map = vim.keymap.set
 
