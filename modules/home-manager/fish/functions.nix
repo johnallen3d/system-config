@@ -107,7 +107,6 @@
           nix flake update
         end
 
-        set -xg NIXPKGS_ALLOW_UNFREE 1
         sudo darwin-rebuild switch --impure --flake ~/dev/src/system-config/
       '';
     };
