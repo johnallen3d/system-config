@@ -70,30 +70,3 @@ nix flake update --commit-lock-file
 # or from another directory
 pushd ~/dev/src/system-config; nix flake update --commit-lock-file; nixswitch; popd
 ```
-
-## TODO
-
-Things I'm not sure how to automate yet:
-
-- [ ] creation of `~/bin/bottombar` (link to `sketchybar`)
-
-```bash
-ln -s (which sketchybar) $HOME/bin/bottombar
-```
-
-- [ ] set the users default shell to `fish`
-
-```bash
-chsh -s /run/current-system/sw/bin/fish
-```
-
-- [ ] setup `op`, login and `gh` plugin
-- [ ] can I add `$HOME` to Finder Favorites (sidebar)? - this seems to be stored in a binary file [here](~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.FavoriteItems.sfl3):
-- [ ] can I add "login items"? - possibly via [plist files](https://stackoverflow.com/a/7643260/407530)?
-- [x] debug lsd fonts
-- [ ] debug services (bars, mpd)
-- [x] debug Neovim setup
-- [ ] automate install of [SketchyBar Lua Plugin](https://github.com/FelixKratz/SbarLua?tab=readme-ov-file#sketchybar-lua-plugin)
-- [ ] Music?
-- [ ] Photos?
-- [ ] how to correctly set "allow unfree" specifically for `tart`
