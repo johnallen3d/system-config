@@ -1,4 +1,4 @@
-{...}: {
+{pkgs, ...}: {
   home.stateVersion = "24.05";
 
   imports = [
@@ -23,6 +23,8 @@
         recursive = true;
         source = ./dotfiles/bin;
       };
+
+      "bin/bottombar".source = "${pkgs.sketchybar}/bin/sketchybar";
 
       ".tabby-client/agent/config.toml".source = ./dotfiles/tabby.toml;
 
