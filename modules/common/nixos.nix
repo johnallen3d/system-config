@@ -10,6 +10,8 @@ in {
   environment.variables = common.commonVariables;
   environment.shellAliases = common.shellAliases;
 
+  programs.fish.enable = true;
+
   users.users.${config.user} = lib.mkIf (config ? user) {
     home = lib.mkIf (config ? home) config.home;
     shell = pkgs.fish;
