@@ -6,8 +6,11 @@ Manage macOS using [Nix](https://nixos.org/nix/), [nix-darwin](https://github.co
 
 Set hostname to a known (configured) value:
 
-- m1-mpb
-- macos-virtual
+- m4-mbp (macOS)
+- macos-virtual (macOS)
+- drummer (NixOS)
+- xcel (Debian, Home Manager)
+- pi-01 (Debian/Pi, Home Manager)
 
 Install Nix:
 
@@ -54,7 +57,7 @@ nix \
 set -xg NIXPKGS_ALLOW_UNFREE 1; darwin-rebuild switch --impure --flake ~/dev/src/system-config/
 
 # on NixOS
-sudo nixos-rebuild switch --flake ~/dev/src/system-config/.# --impure
+sudo nixos-rebuild switch --impure --flake ~/dev/src/system-config/.#
 
 # on Debian/Pi (using home-manager)
 home-manager switch -b backup --flake ~/dev/src/system-config/.#john.allen@pi-01
