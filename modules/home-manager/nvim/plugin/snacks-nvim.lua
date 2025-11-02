@@ -8,8 +8,6 @@ require("snacks").setup({
   },
 
   picker = {
-    layout = "vscode",
-
     -- play nice with oil.nvim
     -- https://github.com/folke/snacks.nvim/issues/1814#issuecomment-2865194886
     main = {
@@ -20,9 +18,11 @@ require("snacks").setup({
     sources = {
       files = {
         hidden = true,
+        layout = "vscode",
       },
       grep = {
         hidden = true,
+        layout = "vscode",
       },
     },
 
@@ -44,3 +44,15 @@ end, { desc = "Find files (snacks)" })
 map("n", "<leader>sg", function()
   Snacks.picker.grep({ live = true })
 end, { desc = "Live grep (snacks)" })
+map("n", "<leader>gi", function()
+  Snacks.picker.gh_issue()
+end, { desc = "GitHub Issues (open)" })
+map("n", "<leader>gI", function()
+  Snacks.picker.gh_issue({ state = "all" })
+end, { desc = "GitHub Issues (all)" })
+map("n", "<leader>gp", function()
+  Snacks.picker.gh_pr()
+end, { desc = "GitHub Pull Requests (open)" })
+map("n", "<leader>gP", function()
+  Snacks.picker.gh_pr({ state = "all" })
+end, { desc = "GitHub Pull Requests (all)" })
