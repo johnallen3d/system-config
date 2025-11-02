@@ -35,8 +35,6 @@ in {
       # installing via `./overlays/actionlint.nix`
       actionlint
       alejandra
-      argo
-      argocd
       awscli2
       # azure-cli
       bashInteractive
