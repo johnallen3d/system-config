@@ -13,6 +13,6 @@
   xdg.configFile."nvim/init.lua".source = ./init.lua;
   xdg.configFile."nvim/lsp".source = ./lsp;
   xdg.configFile."nvim/lua".source = ./lua;
-  xdg.configFile."nvim/plugin".source = ./plugin;
+  # xdg.configFile."nvim/plugin".source = ./plugin;
   xdg.configFile."nvim/syntax".source = ./syntax;
 }
