@@ -42,6 +42,11 @@ in
             broken = false;
           };
         };
+        # Temporary workaround for fish pexpect test failures on darwin
+        # See: https://github.com/NixOS/nixpkgs/issues/461406
+        fish = prev.fish.overrideAttrs (old: {
+          doCheck = false;
+        });
       }) ];
     };
     specialArgs = {
