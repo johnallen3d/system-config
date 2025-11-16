@@ -70,6 +70,7 @@ in {
       gnugrep
       gotop
       harper
+      home-assistant-cli
       home-manager
       # hurl
       imagemagick
