@@ -40,12 +40,14 @@
 
   commonVariables = {
     EDITOR = "nvim";
-    VISUAL = "nvim";
     GIT_EDITOR = "nvim";
-    TIME_STYLE = "long-iso";
+    VISUAL = "nvim";
+
+    LEADR_CONFIG_DIR = "$HOME/.config/leadr/";
     MANPAGER = "nvim +Man!";
-    SKIM_DEFAULT_COMMAND = "fd --type f || git ls-tree -r --name-only HEAD || rg --files || find .";
     PYENV_ROOT = "$HOME/.pyenv";
+    SKIM_DEFAULT_COMMAND = "fd --type f || git ls-tree -r --name-only HEAD || rg --files || find .";
+    TIME_STYLE = "long-iso";
     # NOTE: this is meant as a macOS only workaround
     # see https://github.com/ghostty-org/ghostty/discussions/2832
     XDG_DATA_DIRS = ["/Applications/Ghostty.app/Contents/Resources/ghostty/shell-integration"];

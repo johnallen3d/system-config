@@ -19,5 +19,7 @@ if command -q nix-your-shell
     nix-your-shell fish | source
 end
 
+leadr --fish | source
+
 sk --shell fish | source
 fish_config theme choose tokyo-night-moon
