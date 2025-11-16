@@ -31,8 +31,6 @@ in {
 
   home.packages = with pkgs;
     [
-      # broken in nixpkgs oct 2025 - ruby nokogiri build fails
-      # installing via `./overlays/actionlint.nix`
       actionlint
       alejandra
       awscli2
