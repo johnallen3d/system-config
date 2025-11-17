@@ -65,7 +65,7 @@
       "ghostty"
       "istat-menus"
       "karabiner-elements"
-      "kindavim"
+      # "kindavim"
       # "lunar"
       "marked-app"
       # issues with macOS Sequoia
@@ -85,7 +85,7 @@
       # "utm"
       "visual-studio-code"
       "whatsapp"
-      "wooshy"
+      # "wooshy"
       "zed"
       "zen"
     ];
