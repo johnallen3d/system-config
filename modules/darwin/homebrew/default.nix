@@ -16,6 +16,7 @@
       "kcl-lang/tap"
       "ksdme/tap"
       "nikitabobko/homebrew-tap"
+      "plutov/tap"
       "siderolabs/tap"
       # opencode, see note below
       # "sst/tap"
@@ -74,6 +75,7 @@
       "obsidian"
       "ollama-app"
       "opera"
+      "oq" # TUI for reading openapi specs
       "orbstack"
       "raycast"
       "rocket"
