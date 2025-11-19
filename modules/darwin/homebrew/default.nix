@@ -41,7 +41,8 @@
       # "opencode"
       "sqruff"
       # "switchaudio-osx"
-      "tabiew" # TODO: prefer nix package when fixed
+      # TODO: prefer nix package when fixed
+      "tabiew" # 👇 tui for parquet
       # "talosctl"
       "trash"
       "ut"
