@@ -99,6 +99,7 @@ alt-l = 'focus --boundaries-action stop right'
 ctrl-alt-f = 'fullscreen'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands.html#move-through
+# note this is very much like swap
 alt-shift-h = 'move-through left'
 alt-shift-j = 'move-through down'
 alt-shift-k = 'move-through up'
