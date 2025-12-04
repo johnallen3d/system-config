@@ -38,7 +38,7 @@ in {
       bashInteractive
       bacon
       basedpyright
-      biome
+      # biome
       # brave
       bun
       cargo-careful
