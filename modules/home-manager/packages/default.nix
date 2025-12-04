@@ -18,6 +18,7 @@
     (import ./bin/set-wallpaper.nix {inherit pkgs;})
     (import ./bin/wav-to-mp3.nix {inherit pkgs;})
   ];
+  nail-parquet = import ./nail-parquet.nix {inherit pkgs;};
 in {
   imports = [
     ../alacritty
@@ -130,7 +131,8 @@ in {
       # zed-editor
       zellij
     ]
-    ++ scripts;
+    ++ scripts
+    ++ [nail-parquet];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
   # programs.bacon = {
