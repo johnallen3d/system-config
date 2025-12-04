@@ -29,15 +29,6 @@
         end
       '';
     };
-    cd = {
-      body = ''
-        builtin cd $argv
-
-        if test $status = 0
-          ll
-        end
-      '';
-    };
     fish_user_key_bindings = {
       body = ''
         bind ! bind_bang
