@@ -19,13 +19,17 @@ font-thicken = true
 # keymaps
 keybind = clear
 
+keybind = super+k=toggle_command_palette
 keybind = global:cmd+`=toggle_quick_terminal
 
 keybind = super+shift+r=reload_config
 keybind = super+shift+i=inspector:toggle
 
 keybind = super+c=copy_to_clipboard
-keybind = super+shift+f=write_scrollback_file:paste
+keybind = super+f=start_search
+# don't use escape for `end_search` as it conflicts with nvim 🤦‍♂️
+keybind = super+shift+f=end_search
+# keybind = super+shift+f=write_scrollback_file:paste
 keybind = super+n=new_window
 keybind = super+q=close_surface
 keybind = super+v=paste_from_clipboard
