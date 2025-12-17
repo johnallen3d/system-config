@@ -28,6 +28,7 @@
       "cloudflared"
       # "dagger"
       "datafusion"
+      "dbmate"
       # "dotnet@6"
       "duckdb"
       "granted"
