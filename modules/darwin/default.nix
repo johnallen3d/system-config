@@ -21,6 +21,9 @@
         "root"
         "john.allen"
       ];
+
+      extra-substituters = [ "https://nix-community.cachix.org" ];
+      extra-trusted-public-keys = [ "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUage0tHzD5IbNoKnQ3p2anhjLmQ=" ];
     };
 
     extraOptions = ''
