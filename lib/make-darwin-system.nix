@@ -18,6 +18,7 @@ in
     inherit system;
     pkgs = import nixpkgs {
       inherit system;
+      config.allowUnfree = true;
       overlays = [ (final: prev: {
         actionlint = let version = "1.7.7"; in prev.stdenv.mkDerivation {
           pname = "actionlint";
