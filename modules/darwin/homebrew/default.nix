@@ -18,11 +18,13 @@
       "nikitabobko/homebrew-tap"
       "plutov/tap"
       "siderolabs/tap"
+      "steveyegge/beads"
       # opencode, see note below
       # "sst/tap"
     ];
 
     brews = [
+      "bd"
       "blueutil"
       "borders"
       "cloudflared"
