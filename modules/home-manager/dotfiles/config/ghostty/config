@@ -51,6 +51,9 @@ keybind = super+ctrl+alt+k=resize_split:up,100
 keybind = super+ctrl+alt+l=resize_split:right,100
 keybind = super+ctrl+equal=equalize_splits
 
+# for claude code 🙄
+keybind = shift+enter=text:\n
+
 # other features
 confirm-close-surface = false
 copy-on-select = clipboard
