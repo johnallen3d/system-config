@@ -122,6 +122,7 @@ in {
       viu
       vsce
       vscode-langservers-extracted
+      websocat
       wget
       xc
       yamlfmt
