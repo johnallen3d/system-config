@@ -1,4 +1,2 @@
-#! /usr/bin/env -S osascript
-
-tell app "Music" to pause
-
+#!/usr/bin/env bash
+/etc/profiles/per-user/john.allen/bin/mpc pause

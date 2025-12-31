@@ -5,7 +5,7 @@ mpd_host = "localhost"
 mpd_port = "6600"
 
 ##### directories ######
-mpd_music_dir = "~/Music/Music/Music/Media.localized/Music"
+mpd_music_dir = "~/Music/Music/Media.localized/Music"
 ncmpcpp_directory = "~/.config/ncmpcpp"
 # execute_on_song_change = "~/bin/music extract"
 

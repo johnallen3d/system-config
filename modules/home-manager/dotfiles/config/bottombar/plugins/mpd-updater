@@ -73,7 +73,7 @@ fn main() {
 
 fn update_artwork(file: &str) {
     // TODO: should be able to get this from mpd status
-    let music_dir = "/Users/john.allen/Music/Music/Music/Media.localized/Music";
+    let music_dir = "/Users/john.allen/Music/Music/Media.localized/Music";
     let full_path = format!("{music_dir}/{file}");
     // dbg!(&full_path);
 

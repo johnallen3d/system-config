@@ -58,24 +58,23 @@ in {
       };
     };
 
-    # mpd broken in nixpkgs oct 2025 - test build fails
-    # "mpd" = {
-    #   environment = {
-    #     LANG = "${AGENT_LANG}";
-    #     PATH = "${AGENT_PATH}";
-    #   };
-    #   serviceConfig = {
-    #     ProgramArguments = [
-    #       "${pkgs.mpd}/bin/mpd"
-    #       "${home}/.config/mpd/mpd.conf"
-    #       "--no-daemon"
-    #     ];
-    #     KeepAlive = true;
-    #     RunAtLoad = true;
-    #     StandardErrorPath = service_err_path "mpd";
-    #     StandardOutPath = service_out_path "mpd";
-    #   };
-    # };
+    "mpd" = {
+      environment = {
+        LANG = "${AGENT_LANG}";
+        PATH = "${AGENT_PATH}";
+      };
+      serviceConfig = {
+        ProgramArguments = [
+          "${pkgs.mpd}/bin/mpd"
+          "${home}/.config/mpd/mpd.conf"
+          "--no-daemon"
+        ];
+        KeepAlive = true;
+        RunAtLoad = true;
+        StandardErrorPath = service_err_path "mpd";
+        StandardOutPath = service_out_path "mpd";
+      };
+    };
 
     "sketchybar" = {
       environment = {

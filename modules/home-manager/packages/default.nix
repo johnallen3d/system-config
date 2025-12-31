@@ -94,8 +94,9 @@ in {
       minikube
       minio-client
       mkdocs
-      # mpd
-      # mpc-cli
+      mpd
+      mpc
+      ncmpcpp
       nix-your-shell
       nixd
       nodejs_24
@@ -174,9 +175,6 @@ in {
     # don't user default aliases; see modules/home-manager/fish/functions.nix
     enableFishIntegration = false;
   };
-  # programs.ncmpcpp = {
-  #   enable = true;
-  # };
   # programs.vscode = {
   #   enable = false;
   # };

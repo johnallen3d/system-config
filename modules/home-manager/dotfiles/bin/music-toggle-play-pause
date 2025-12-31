@@ -1,3 +1,2 @@
-#! /usr/bin/env -S osascript
-
-tell app "Music" to playpause
+#!/usr/bin/env bash
+/etc/profiles/per-user/john.allen/bin/mpc toggle
