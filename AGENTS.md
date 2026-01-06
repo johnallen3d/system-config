@@ -9,6 +9,21 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - **Apply NixOS**: `sudo nixos-rebuild switch --impure --flake .#`
 - **Lint**: `nix flake check`
 - **Update**: `nix flake update --commit-lock-file`
+- **Search packages**: `nix search nixpkgs <name>`
+
+## Adding Packages
+
+**Preference order**: nix packages > homebrew
+
+**Package locations**:
+- `modules/home-manager/packages/default.nix` - General packages (all platforms)
+- `modules/home-manager/packages/darwin.nix` - macOS-only packages
+- `modules/home-manager/packages/linux.nix` - Linux-only packages
+
+**Process**:
+1. Search nixpkgs first: `nix search nixpkgs <package-name>`
+2. Add to appropriate file in `home.packages` list (alphabetically sorted)
+3. Build to verify: `nix build .#darwinConfigurations.m4-mbp.system`
 
 ## Policy
 
