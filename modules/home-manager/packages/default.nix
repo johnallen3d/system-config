@@ -64,6 +64,7 @@ in {
       flyctl
       fswatch
       gawk
+      github-copilot-cli
       github-mcp-server
       google-cloud-sdk
       go
