@@ -21,8 +21,9 @@ require("init")
 Sbar.hotload(true)
 
 -- Load helper scripts
-os.execute("pgrep mpd-updater | xargs kill -9")
-os.execute(os.getenv("HOME") .. "/.config/bottombar/plugins/mpd-updater &")
+-- mpd-updater disabled - switched to feishin (Navidrome client)
+-- os.execute("pgrep mpd-updater | xargs kill -9")
+-- os.execute(os.getenv("HOME") .. "/.config/bottombar/plugins/mpd-updater &")
 
 -- os.execute("pgrep sketchy-apple-music | xargs kill -9")
 -- os.execute(os.getenv("HOME") .. "/.cargo/bin/sketchy-apple-music &")

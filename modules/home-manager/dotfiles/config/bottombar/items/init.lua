@@ -1,3 +1,4 @@
-require("items.art")
-require("items.mpd")
+-- mpd disabled - switched to feishin (Navidrome client)
+-- require("items.art")
+-- require("items.mpd")
 -- require("items.center_bracket")

@@ -58,6 +58,7 @@ in {
       # duckdb
       entr
       fd
+      feishin
       ffmpeg
       findutils # find / xargs
       flac
@@ -95,9 +96,6 @@ in {
       minikube
       minio-client
       mkdocs
-      mpd
-      mpc
-      ncmpcpp
       nix-your-shell
       nixd
       nodejs_24
