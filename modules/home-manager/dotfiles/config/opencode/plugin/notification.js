@@ -8,7 +8,7 @@ export const NotificationPlugin = async ({ client, $ }) => {
 			}
 
 			// Send notification when agent needs permission
-			if (event.type === "permission.updated") {
+			if (event.type === "permission.asked") {
 				await $`osascript -e 'display notification "Permission requested" with title "opencode"'`;
 				await $`afplay /System/Library/Sounds/Funk.aiff`;
 			}

@@ -3,6 +3,7 @@
   "theme": "tokyonight",
   "model": "github-copilot/claude-sonnet-4-5",
   "autoupdate": true,
+  "permission": "allow",
   "keybinds": {
     "leader": "ctrl+l"
   },
