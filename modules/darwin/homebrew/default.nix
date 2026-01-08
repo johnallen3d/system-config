@@ -38,6 +38,7 @@
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"
+      "mole"
       # not being kept up to date with raprid releases
       # trying: curl -fsSL https://opencode.ai/install | bash
       # with autoupdate enabled
