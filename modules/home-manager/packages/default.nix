@@ -34,6 +34,7 @@ in {
   home.packages = with pkgs;
     [
       actionlint
+      aichat
       alejandra
       awscli2
       # azure-cli
@@ -90,12 +91,14 @@ in {
       # lua
       # luajit
       less
+      # llm # broken in nixpkgs jan 2025 - test failures
       lua-language-server
       markdownlint-cli2
       # marksman # broken in nixpkgs oct 2025 - dotnet build takes forever
       minikube
       minio-client
       mkdocs
+      mods
       nix-your-shell
       nixd
       nodejs_24

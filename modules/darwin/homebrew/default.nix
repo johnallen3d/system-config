@@ -38,6 +38,7 @@
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"
+      "llm" # broken in nixpkgs jan 2025
       "mole"
       # not being kept up to date with raprid releases
       # trying: curl -fsSL https://opencode.ai/install | bash
