@@ -1,4 +1,3 @@
--- mpd disabled - switched to feishin (Navidrome client)
--- require("items.art")
--- require("items.mpd")
+require("items.music_art")
+require("items.music")
 -- require("items.center_bracket")

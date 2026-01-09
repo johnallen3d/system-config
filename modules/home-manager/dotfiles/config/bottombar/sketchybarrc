@@ -21,12 +21,8 @@ require("init")
 Sbar.hotload(true)
 
 -- Load helper scripts
--- mpd-updater disabled - switched to feishin (Navidrome client)
--- os.execute("pgrep mpd-updater | xargs kill -9")
--- os.execute(os.getenv("HOME") .. "/.config/bottombar/plugins/mpd-updater &")
-
--- os.execute("pgrep sketchy-apple-music | xargs kill -9")
--- os.execute(os.getenv("HOME") .. "/.cargo/bin/sketchy-apple-music &")
+os.execute("pgrep -f feishin-updater | xargs kill -9 2>/dev/null")
+os.execute(os.getenv("HOME") .. "/.config/bottombar/plugins/feishin-updater &")
 
 -- Run the event loop of the sketchybar module (without this there will be no
 -- bi-directional communication between the lua module and sketchybar)
