@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-python3 -c '
+/etc/profiles/per-user/john.allen/bin/python3 -c '
 import Quartz
 e = Quartz.NSEvent.otherEventWithType_location_modifierFlags_timestamp_windowNumber_context_subtype_data1_data2_(14,(0,0),0xa00,0,0,0,8,(16<<16)|(0xa<<8),-1)
 Quartz.CGEventPost(1, e.CGEvent())

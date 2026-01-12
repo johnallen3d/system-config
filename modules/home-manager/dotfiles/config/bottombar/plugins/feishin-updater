@@ -10,7 +10,7 @@ NAVIDROME_USER="jallen7usa"
 NAVIDROME_SALT="88adee"
 NAVIDROME_TOKEN="db8275be2b57c729ee20b84f9597fc2a"
 
-COVER_ART_PATH="/tmp/feishin-cover.jpg"
+COVER_ART_PATH="/tmp/feishin-cover.png"
 last_track=""
 
 fetch_album_art() {
@@ -36,8 +36,11 @@ fetch_album_art() {
         return 1
     fi
 
-    # Download cover art (128px for good quality at 0.33 scale)
-    curl -sf "${NAVIDROME_URL}/rest/getCoverArt?u=${NAVIDROME_USER}&s=${NAVIDROME_SALT}&t=${NAVIDROME_TOKEN}&v=1.16.1&c=bottombar&id=${cover_id}&size=128" -o "$COVER_ART_PATH"
+    # Download cover art and convert to PNG for bottombar (handles WebP, JPEG, etc.)
+    local temp_file="/tmp/feishin-cover-raw"
+    curl -sf "${NAVIDROME_URL}/rest/getCoverArt?u=${NAVIDROME_USER}&s=${NAVIDROME_SALT}&t=${NAVIDROME_TOKEN}&v=1.16.1&c=bottombar&id=${cover_id}&size=128" -o "$temp_file"
+    sips -s format png -Z 128 "$temp_file" --out "$COVER_ART_PATH" >/dev/null 2>&1
+    rm -f "$temp_file"
 }
 
 while true; do
