@@ -21,8 +21,8 @@ require("init")
 Sbar.hotload(true)
 
 -- Load helper scripts
-os.execute("pgrep -f feishin-updater | xargs kill -9 2>/dev/null")
-os.execute(os.getenv("HOME") .. "/.config/bottombar/plugins/feishin-updater &")
+os.execute("pgrep -f mpv-updater | xargs kill -9 2>/dev/null")
+os.execute(os.getenv("HOME") .. "/.config/bottombar/plugins/mpv-updater &")
 
 -- Run the event loop of the sketchybar module (without this there will be no
 -- bi-directional communication between the lua module and sketchybar)

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+sock=/tmp/mpv-music.sock
+path="$1"
+
+if [[ ! -S "$sock" ]]; then
+  mpv --idle=yes --input-ipc-server="$sock" &
+  sleep 0.2
+fi
+
+echo '{ "command": ["loadfile", "'"$path"'", "replace"] }' \
+  | socat - "$sock"

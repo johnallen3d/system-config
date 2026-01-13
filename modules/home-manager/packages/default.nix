@@ -91,6 +91,7 @@ in {
       # lua
       # luajit
       less
+      lf
       # llm # broken in nixpkgs jan 2025 - test failures
       lua-language-server
       markdownlint-cli2
@@ -99,6 +100,7 @@ in {
       minio-client
       mkdocs
       mods
+      nix-search-cli
       nix-your-shell
       nixd
       nodejs_24
@@ -114,6 +116,7 @@ in {
       # qmk
       qsv
       skim # fzf alternative
+      socat
       sqlite
       # this is quite outdated and under active development
       # sqruff
@@ -129,7 +132,7 @@ in {
       wget
       xc
       yamlfmt
-      yazi
+      # yazi
       # youtube-dl
       yq-go
       yt-dlp

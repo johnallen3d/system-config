@@ -28,9 +28,9 @@
     tree = "lsd --tree";
     # tw = "tw --theme tokyo-night ";
     # can't ever remember the name of this command (`tw`), maybe this will stick? 🤷‍♂️
-    tab = "tw --theme tokyo-night ";
-    par = "tw --theme tokyo-night ";
-    parquet = "tw --theme tokyo-night ";
+    tab = "tw ";
+    par = "tw ";
+    parquet = "tw ";
     uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
     vi = "nvim";
     vim = "nvim";

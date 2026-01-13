@@ -87,7 +87,7 @@
       "raycast"
       "rocket"
       # this is blowing up 🤷‍♂️
-      # "stolendata-mpv"
+      "stolendata-mpv"
       "syncthing-app"
       "tailscale-app"
       "tableplus"

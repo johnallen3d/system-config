@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+# MPV bottombar updater
+# Queries mpv IPC socket for current track info
+
+# Ensure PATH includes nix-installed binaries
+export PATH="/etc/profiles/per-user/$USER/bin:/run/current-system/sw/bin:$HOME/bin:$PATH"
+
+MPV_SOCKET="/tmp/mpv-music.sock"
+COVER_ART_PATH="/tmp/mpv-cover.png"
+COVER_ART_TMP="/tmp/mpv-cover-tmp.png"
+last_path=""
+
+get_mpv_property() {
+    local prop="$1"
+    echo "{ \"command\": [\"get_property\", \"$prop\"] }" \
+        | socat - "$MPV_SOCKET" 2>/dev/null \
+        | jq -r '.data'
+}
+
+extract_cover_art() {
+    # Extract embedded album art, convert to PNG with sips
+    local raw_file="/tmp/mpv-cover-raw.jpg"
+    rm -f "$raw_file"
+    if ffmpeg -y -i "$1" -an -c:v copy "$raw_file" 2>/dev/null; then
+        sips -s format png -Z 128 "$raw_file" --out "$COVER_ART_PATH" >/dev/null 2>&1
+        rm -f "$raw_file"
+        return 0
+    fi
+    return 1
+}
+
+while true; do
+    # Check if socket exists
+    if [[ ! -S "$MPV_SOCKET" ]]; then
+        bottombar -m --set music drawing=off --set music_art drawing=off
+        sleep 5
+        continue
+    fi
+
+    # Get current file path
+    path=$(get_mpv_property "path")
+
+    if [[ -z "$path" || "$path" == "null" ]]; then
+        bottombar -m --set music drawing=off --set music_art drawing=off
+        sleep 2
+        continue
+    fi
+
+    # Get pause state (returns "true" or "false")
+    paused=$(get_mpv_property "pause")
+    if [[ "$paused" == "true" ]]; then
+        icon="▶"
+    else
+        icon="⏸"
+    fi
+
+    # Get media title (from metadata) or fall back to filename
+    title=$(get_mpv_property "media-title")
+    if [[ -z "$title" || "$title" == "null" ]]; then
+        # Extract filename without path and extension
+        title=$(basename "$path" | sed 's/\.[^.]*$//')
+    fi
+
+    # Get artist from metadata
+    artist=$(echo '{ "command": ["get_property", "metadata/by-key/artist"] }' \
+        | socat - "$MPV_SOCKET" 2>/dev/null \
+        | jq -r '.data')
+
+    if [[ -n "$artist" && "$artist" != "null" ]]; then
+        label="$title • $artist"
+    else
+        label="$title"
+    fi
+
+    # Escape quotes for bottombar
+    label=${label//\'/}
+
+    # Extract album art if track changed
+    if [[ "$path" != "$last_path" ]]; then
+        if [[ -f "$path" ]]; then
+            if extract_cover_art "$path"; then
+                sleep 0.1  # Brief delay for file system sync
+                bottombar -m --set music_art background.image="$COVER_ART_PATH"
+            fi
+        fi
+        last_path="$path"
+    fi
+
+    # Update music item
+    bottombar -m --set music icon="$icon" icon.drawing=on icon.font="Cascadia Code PL:SemiBold:16.00" label="$label" drawing=on
+    bottombar -m --set music_art drawing=on
+
+    sleep 1
+done

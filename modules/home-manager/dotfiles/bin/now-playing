@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+echo '{ "command": ["get_property", "playlist"] }' \
+  | socat - /tmp/mpv-music.sock \
+  | jq -r '.data[].filename' \
+  | sed 's|^/Users/john\.allen/Music/Music/Media\.localized/Music/||'

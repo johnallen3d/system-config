@@ -1,0 +1,2 @@
+map p $~/bin/mpv-open "$fx"
+map P %echo "HIT"

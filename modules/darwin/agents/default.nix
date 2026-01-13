@@ -73,5 +73,23 @@ in {
         StandardOutPath = service_out_path "sketchybar";
       };
     };
+
+    "mpv-music" = {
+      environment = {
+        LANG = "${AGENT_LANG}";
+        PATH = "${AGENT_PATH}";
+      };
+      serviceConfig = {
+        ProgramArguments = [
+          "/Applications/mpv.app/Contents/MacOS/mpv"
+          "--idle=yes"
+          "--input-ipc-server=/tmp/mpv-music.sock"
+        ];
+        KeepAlive = true;
+        RunAtLoad = true;
+        StandardErrorPath = service_err_path "mpv-music";
+        StandardOutPath = service_out_path "mpv-music";
+      };
+    };
   };
 }
