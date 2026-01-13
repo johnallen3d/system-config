@@ -51,8 +51,6 @@ enum Service {
     Borders,
     #[strum(props(FullName = "org.nixos.bottombar.plist"))]
     Bottombar,
-    #[strum(props(FullName = "org.nixos.mpd.plist"))]
-    Mpd,
     #[strum(props(FullName = "org.nixos.sketchybar.plist"))]
     Sketchybar,
 }

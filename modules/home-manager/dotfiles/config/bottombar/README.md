@@ -1,6 +1,6 @@
 # Bottombar
 
-A bottom-positioned sketchybar instance for displaying music info (MPV/MPD).
+A bottom-positioned sketchybar instance for displaying music info (MPV).
 
 ## Components
 
