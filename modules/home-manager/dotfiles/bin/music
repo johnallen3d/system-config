@@ -20,6 +20,12 @@ case "${1:-}" in
     toggle)
         cmd '{ "command": ["cycle", "pause"] }'
         ;;
+    prev)
+        cmd '{ "command": ["playlist-prev"] }'
+        ;;
+    next)
+        cmd '{ "command": ["playlist-next"] }'
+        ;;
     open)
         path="$2"
         if [[ -z "$path" ]]; then
@@ -30,7 +36,10 @@ case "${1:-}" in
             mpv --idle=yes --input-ipc-server="$MPV_SOCKET" &
             sleep 0.2
         fi
+        cmd '{ "command": ["set_property", "resume-playback", false] }'
         cmd "{ \"command\": [\"loadfile\", \"$path\", \"replace\"] }"
+        cmd '{ "command": ["set_property", "resume-playback", true] }'
+        cmd '{ "command": ["set_property", "pause", false] }'
         ;;
     status)
         if [[ ! -S "$MPV_SOCKET" ]]; then

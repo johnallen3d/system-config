@@ -1,2 +1,1 @@
-map p $~/bin/music open "$fx"
-map P %echo "HIT"
+map o $~/bin/music open "$fx"; quit
