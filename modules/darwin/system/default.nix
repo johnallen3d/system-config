@@ -10,6 +10,10 @@
     };
   };
 
+  environment.etc."sudoers.d/darwin-rebuild".text = ''
+    john.allen ALL=(ALL) NOPASSWD: /run/current-system/sw/bin/darwin-rebuild
+  '';
+
   # services = {karabiner-elements = {enable = true;};};
 
   system = {
