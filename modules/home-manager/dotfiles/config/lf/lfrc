@@ -1,2 +1,2 @@
-map p $~/bin/mpv-open "$fx"
+map p $~/bin/music open "$fx"
 map P %echo "HIT"

@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+# Unified music control script for MPV
+
+MPV_SOCKET="/tmp/mpv-music.sock"
+MUSIC_DIR="$HOME/Music/Music/Media.localized/Music"
+SOCAT="/etc/profiles/per-user/$USER/bin/socat"
+
+cmd() {
+    echo "$1" | $SOCAT - "$MPV_SOCKET" 2>/dev/null
+}
+
+case "${1:-}" in
+    play)
+        cmd '{ "command": ["set_property", "pause", false] }'
+        ;;
+    pause)
+        cmd '{ "command": ["set_property", "pause", true] }'
+        ;;
+    toggle)
+        cmd '{ "command": ["cycle", "pause"] }'
+        ;;
+    open)
+        path="$2"
+        if [[ -z "$path" ]]; then
+            echo "Usage: music open <path>"
+            exit 1
+        fi
+        if [[ ! -S "$MPV_SOCKET" ]]; then
+            mpv --idle=yes --input-ipc-server="$MPV_SOCKET" &
+            sleep 0.2
+        fi
+        cmd "{ \"command\": [\"loadfile\", \"$path\", \"replace\"] }"
+        ;;
+    status)
+        if [[ ! -S "$MPV_SOCKET" ]]; then
+            echo "MPV not running"
+            exit 1
+        fi
+
+        current_pos=$(cmd '{ "command": ["get_property", "playlist-pos"] }' | jq -r '.data')
+        playlist=$(cmd '{ "command": ["get_property", "playlist"] }' | jq -r '.data')
+        count=$(echo "$playlist" | jq 'length')
+
+        if [[ "$count" == "0" || "$count" == "null" ]]; then
+            echo "Playlist is empty"
+            exit 0
+        fi
+
+        printf "%-3s %-25s %-25s %-30s\n" "#" "Artist" "Album" "Track"
+        printf "%s\n" "$(printf '%.0s─' {1..85})"
+
+        for i in $(seq 0 $((count - 1))); do
+            file=$(echo "$playlist" | jq -r ".[$i].filename")
+            track=$(basename "$file" | sed 's/\.[^.]*$//')
+            album=$(basename "$(dirname "$file")")
+            artist=$(basename "$(dirname "$(dirname "$file")")")
+
+            [[ ${#artist} -gt 23 ]] && artist="${artist:0:20}..."
+            [[ ${#album} -gt 23 ]] && album="${album:0:20}..."
+            [[ ${#track} -gt 28 ]] && track="${track:0:25}..."
+
+            if [[ "$i" == "$current_pos" ]]; then
+                printf "▶  \033[1m%-25s %-25s %-30s\033[0m\n" "$artist" "$album" "$track"
+            else
+                printf "%-3s %-25s %-25s %-30s\n" "$((i + 1))" "$artist" "$album" "$track"
+            fi
+        done
+        ;;
+    "")
+        exec lf "$MUSIC_DIR"
+        ;;
+    *)
+        echo "Usage: music [play|pause|toggle|status|open <path>]"
+        echo "  (no args)  Open music library in lf"
+        echo "  play       Resume playback"
+        echo "  pause      Pause playback"
+        echo "  toggle     Toggle play/pause"
+        echo "  status     Show current playlist"
+        echo "  open       Load file into MPV"
+        exit 1
+        ;;
+esac

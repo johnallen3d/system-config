@@ -1,7 +1,4 @@
 {pkgs, ...}: let
-  # Relative path from home directory to music library
-  musicLibraryPath = "Music/Music/Media.localized/Music";
-
   shellAliases = {
     ":e" = "nvim";
     ":q" = "exit";
@@ -21,7 +18,6 @@
     icat = "viu";
     j = "z";
     k = "kubecolor";
-    music = "lf ~/${musicLibraryPath}/";
     notes = "cd ~/notes && nvim mindfulness/practice.md";
     pass = "passgen";
     passgen = "dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | rev | cut -b 2- | rev";
@@ -64,5 +60,5 @@
     zsh
   ];
 in {
-  inherit shellAliases commonVariables commonShells musicLibraryPath;
+  inherit shellAliases commonVariables commonShells;
 }

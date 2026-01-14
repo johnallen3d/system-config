@@ -67,10 +67,31 @@ while true; do
         | socat - "$MPV_SOCKET" 2>/dev/null \
         | jq -r '.data')
 
+    # Get time position and duration
+    time_pos=$(get_mpv_property "time-pos")
+    duration=$(get_mpv_property "duration")
+
+    # Format time as mm:ss
+    format_time() {
+        local secs="${1%.*}"  # Remove decimal
+        if [[ -n "$secs" && "$secs" != "null" && "$secs" =~ ^[0-9]+$ ]]; then
+            printf "%d:%02d" $((secs / 60)) $((secs % 60))
+        fi
+    }
+
+    time_str=""
+    if [[ -n "$time_pos" && "$time_pos" != "null" && -n "$duration" && "$duration" != "null" ]]; then
+        pos_fmt=$(format_time "$time_pos")
+        dur_fmt=$(format_time "$duration")
+        if [[ -n "$pos_fmt" && -n "$dur_fmt" ]]; then
+            time_str=" [$pos_fmt/$dur_fmt]"
+        fi
+    fi
+
     if [[ -n "$artist" && "$artist" != "null" ]]; then
-        label="$title • $artist"
+        label="$title • $artist$time_str"
     else
-        label="$title"
+        label="$title$time_str"
     fi
 
     # Escape quotes for bottombar

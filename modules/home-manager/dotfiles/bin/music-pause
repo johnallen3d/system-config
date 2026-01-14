@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-
-echo '{ "command": ["set_property", "pause", true] }' \
-  | /etc/profiles/per-user/john.allen/bin/socat - /tmp/mpv-music.sock
