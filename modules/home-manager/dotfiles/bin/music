@@ -35,6 +35,16 @@ case "${1:-}" in
             echo "Repeat: on"
         fi
         ;;
+    shuffle)
+        current=$(cmd '{ "command": ["get_property", "shuffle"] }' | jq -r '.data')
+        if [[ "$current" == "true" ]]; then
+            cmd '{ "command": ["set_property", "shuffle", false] }'
+            echo "Shuffle: off"
+        else
+            cmd '{ "command": ["set_property", "shuffle", true] }'
+            echo "Shuffle: on"
+        fi
+        ;;
     restart)
         cmd '{ "command": ["set_property", "playlist-pos", 0] }'
         ;;
@@ -56,9 +66,21 @@ case "${1:-}" in
             mpv --idle=yes --input-ipc-server="$MPV_SOCKET" &
             sleep 0.2
         fi
-        cmd '{ "command": ["set_property", "resume-playback", false] }'
-        cmd "{ \"command\": [\"loadfile\", \"$path\", \"replace\"] }"
-        cmd '{ "command": ["set_property", "resume-playback", true] }'
+        cmd '{ "command": ["playlist-clear"] }'
+        if [[ -d "$path" ]]; then
+            # Directory: find all audio files recursively, sorted
+            first=true
+            while IFS= read -r file; do
+                if $first; then
+                    cmd "{ \"command\": [\"loadfile\", \"$file\", \"replace\"] }"
+                    first=false
+                else
+                    cmd "{ \"command\": [\"loadfile\", \"$file\", \"append\"] }"
+                fi
+            done < <(find "$path" -type f \( -iname "*.mp3" -o -iname "*.m4a" -o -iname "*.flac" -o -iname "*.opus" -o -iname "*.ogg" -o -iname "*.wav" \) | sort)
+        else
+            cmd "{ \"command\": [\"loadfile\", \"$path\", \"replace\"] }"
+        fi
         cmd '{ "command": ["set_property", "pause", false] }'
         ;;
     status)
@@ -82,6 +104,8 @@ case "${1:-}" in
         for i in $(seq 0 $((count - 1))); do
             file=$(echo "$playlist" | jq -r ".[$i].filename")
             track=$(basename "$file" | sed 's/\.[^.]*$//')
+            # Strip "NN - Artist - " prefix if present
+            track=$(echo "$track" | sed -E 's/^[0-9]+ - [^-]+ - //')
             album=$(basename "$(dirname "$file")")
             artist=$(basename "$(dirname "$(dirname "$file")")")
 
@@ -97,16 +121,18 @@ case "${1:-}" in
         done
 
         loop_status=$(cmd '{ "command": ["get_property", "loop-playlist"] }' | jq -r '.data')
-        if [[ "$loop_status" == "inf" ]]; then
+        shuffle_status=$(cmd '{ "command": ["get_property", "shuffle"] }' | jq -r '.data')
+        if [[ "$loop_status" == "inf" || "$shuffle_status" == "true" ]]; then
             printf "%s\n" "$(printf '%.0s─' {1..85})"
-            printf "🔁 Repeat: on\n"
+            [[ "$loop_status" == "inf" ]] && printf "🔁 Repeat: on\n"
+            [[ "$shuffle_status" == "true" ]] && printf "🔀 Shuffle: on\n"
         fi
         ;;
     "")
         exec lf "$MUSIC_DIR"
         ;;
     *)
-        echo "Usage: music [play|pause|toggle|prev|next|repeat|restart|jump|status|open <path>]"
+        echo "Usage: music [play|pause|toggle|prev|next|repeat|shuffle|restart|jump|status|open <path>]"
         echo "  (no args)  Open music library in lf"
         echo "  play       Resume playback"
         echo "  pause      Pause playback"
@@ -114,6 +140,7 @@ case "${1:-}" in
         echo "  prev       Previous track"
         echo "  next       Next track"
         echo "  repeat     Toggle playlist repeat"
+        echo "  shuffle    Toggle shuffle mode"
         echo "  restart    Jump to beginning of playlist"
         echo "  jump <n>   Jump to track number n"
         echo "  status     Show current playlist"
