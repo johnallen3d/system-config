@@ -15,7 +15,9 @@ local ensure_installed = {
   "gitcommit",
   "gitignore",
   "json",
-  "jsonc",
+  -- not currently supported; gitlab hosted
+  -- https://github.com/nvim-treesitter/nvim-treesitter/commit/d2350758
+  -- "jsonc",
   "just",
   "kcl",
   "lua",
