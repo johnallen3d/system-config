@@ -1,1 +1,1 @@
-map o $~/bin/music open "$fx"; quit
+map o $"$HOME/bin/music" open "$fx"

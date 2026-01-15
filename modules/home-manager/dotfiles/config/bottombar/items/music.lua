@@ -14,7 +14,7 @@ Sbar.add("item", "music", {
 	},
 	label = {
 		string = "Loading…",
-		padding_right = 24,
+		padding_right = 8,
 	},
 	position = "center",
 })

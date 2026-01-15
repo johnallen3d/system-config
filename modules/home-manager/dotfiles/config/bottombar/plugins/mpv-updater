@@ -55,6 +55,13 @@ while true; do
         icon="⏸"
     fi
 
+    # Get repeat/loop status (appended to label since icon uses different font)
+    loop_status=$(get_mpv_property "loop-playlist")
+    repeat_indicator=""
+    if [[ "$loop_status" == "inf" ]]; then
+        repeat_indicator=" ↻"
+    fi
+
     # Get media title (from metadata) or fall back to filename
     title=$(get_mpv_property "media-title")
     if [[ -z "$title" || "$title" == "null" ]]; then
@@ -89,9 +96,9 @@ while true; do
     fi
 
     if [[ -n "$artist" && "$artist" != "null" ]]; then
-        label="$title • $artist$time_str"
+        label="$title • $artist$time_str$repeat_indicator"
     else
-        label="$title$time_str"
+        label="$title$time_str$repeat_indicator"
     fi
 
     # Escape quotes for bottombar

@@ -26,6 +26,19 @@ case "${1:-}" in
     next)
         cmd '{ "command": ["playlist-next"] }'
         ;;
+    repeat)
+        current=$(cmd '{ "command": ["get_property", "loop-playlist"] }' | jq -r '.data')
+        if [[ "$current" == "inf" ]]; then
+            cmd '{ "command": ["set_property", "loop-playlist", "no"] }'
+            echo "Repeat: off"
+        else
+            cmd '{ "command": ["set_property", "loop-playlist", "inf"] }'
+            echo "Repeat: on"
+        fi
+        ;;
+    restart)
+        cmd '{ "command": ["set_property", "playlist-pos", 0] }'
+        ;;
     open)
         path="$2"
         if [[ -z "$path" ]]; then
@@ -75,16 +88,26 @@ case "${1:-}" in
                 printf "%-3s %-25s %-25s %-30s\n" "$((i + 1))" "$artist" "$album" "$track"
             fi
         done
+
+        loop_status=$(cmd '{ "command": ["get_property", "loop-playlist"] }' | jq -r '.data')
+        if [[ "$loop_status" == "inf" ]]; then
+            printf "%s\n" "$(printf '%.0s─' {1..85})"
+            printf "🔁 Repeat: on\n"
+        fi
         ;;
     "")
         exec lf "$MUSIC_DIR"
         ;;
     *)
-        echo "Usage: music [play|pause|toggle|status|open <path>]"
+        echo "Usage: music [play|pause|toggle|prev|next|repeat|restart|status|open <path>]"
         echo "  (no args)  Open music library in lf"
         echo "  play       Resume playback"
         echo "  pause      Pause playback"
         echo "  toggle     Toggle play/pause"
+        echo "  prev       Previous track"
+        echo "  next       Next track"
+        echo "  repeat     Toggle playlist repeat"
+        echo "  restart    Jump to beginning of playlist"
         echo "  status     Show current playlist"
         echo "  open       Load file into MPV"
         exit 1
