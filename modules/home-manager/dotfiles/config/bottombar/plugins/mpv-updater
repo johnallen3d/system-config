@@ -33,7 +33,7 @@ extract_cover_art() {
 while true; do
     # Check if socket exists
     if [[ ! -S "$MPV_SOCKET" ]]; then
-        bottombar -m --set music drawing=off --set music_art drawing=off --set music_mode drawing=off
+        bottombar -m --set music drawing=off --set music_art drawing=off --set music_repeat drawing=off --set music_shuffle drawing=off
         sleep 5
         continue
     fi
@@ -42,7 +42,7 @@ while true; do
     path=$(get_mpv_property "path")
 
     if [[ -z "$path" || "$path" == "null" ]]; then
-        bottombar -m --set music drawing=off --set music_art drawing=off --set music_mode drawing=off
+        bottombar -m --set music drawing=off --set music_art drawing=off --set music_repeat drawing=off --set music_shuffle drawing=off
         sleep 2
         continue
     fi
@@ -58,11 +58,6 @@ while true; do
     # Get repeat/loop and shuffle status
     loop_status=$(get_mpv_property "loop-playlist")
     shuffle_status=$(get_mpv_property "shuffle")
-
-    # Build Font Awesome mode icons (repeat: U+F363, shuffle: U+F074)
-    mode_icons=""
-    [[ "$loop_status" == "inf" ]] && mode_icons+=$'\uf363'
-    [[ "$shuffle_status" == "true" ]] && mode_icons+=$' \uf074'
 
     # Get media title (from metadata) or fall back to filename
     title=$(get_mpv_property "media-title")
@@ -121,11 +116,18 @@ while true; do
     bottombar -m --set music icon="$icon" icon.drawing=on icon.font="Font Awesome 6 Pro:Regular:14.0" label="$label" drawing=on
     bottombar -m --set music_art drawing=on
 
-    # Update mode indicators (repeat/shuffle) - only show if active
-    if [[ -n "$mode_icons" ]]; then
-        bottombar -m --set music_mode icon="$mode_icons" icon.drawing=on icon.font="Font Awesome 6 Pro:Regular:14.0" drawing=on
+    # Update repeat indicator - show only if active
+    if [[ "$loop_status" == "inf" ]]; then
+        bottombar -m --set music_repeat icon.drawing=on drawing=on
     else
-        bottombar -m --set music_mode drawing=off
+        bottombar -m --set music_repeat drawing=off
+    fi
+
+    # Update shuffle indicator - show only if active
+    if [[ "$shuffle_status" == "true" ]]; then
+        bottombar -m --set music_shuffle icon.drawing=on drawing=on
+    else
+        bottombar -m --set music_shuffle drawing=off
     fi
 
     sleep 1
