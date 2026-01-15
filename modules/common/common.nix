@@ -46,6 +46,7 @@
 
     LEADR_CONFIG_DIR = "$HOME/.config/leadr/";
     MANPAGER = "nvim +Man!";
+    MUSIC_DIR = "$HOME/Music/Music/Media.localized/Music";
     PYENV_ROOT = "$HOME/.pyenv";
     SKIM_DEFAULT_COMMAND = "fd --type f || git ls-tree -r --name-only HEAD || rg --files || find .";
     TIME_STYLE = "long-iso";

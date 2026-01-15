@@ -3,7 +3,6 @@
 # Unified music control script for MPV
 
 MPV_SOCKET="/tmp/mpv-music.sock"
-MUSIC_DIR="$HOME/Music/Music/Media.localized/Music"
 SOCAT="/etc/profiles/per-user/$USER/bin/socat"
 
 cmd() {

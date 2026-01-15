@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# Quick play script - maps artist shortcuts to albums and plays via MPV
+# Requires MUSIC_DIR env var (set via nix)
+
+# Map shortcuts to Artist/Album paths (validated against library)
+get_album_path() {
+    case "$1" in
+        caleb)      echo "Caleb Grenier/Sandy Friends" ;;
+        dave)       echo "Dave Matthews & Tim Reynolds/Live At Luther College" ;;
+        gizz)       echo "King Gizzard & The Lizard Wizard/Nonagon Infinity" ;;
+        gogo)       echo "GoGo Penguin/Man Made Object" ;;
+        goose)      echo "Goose/Alive and Well" ;;
+        hania)      echo "Hania Rani/Ghosts" ;;
+        joseph)     echo "JOSEPH/I'm Alone, No You're Not" ;;
+        khruangbin) echo "Khruangbin/A LA SALA" ;;
+        nin)        echo "Nine Inch Nails/2014.08.07 Charlotte, PNC Music Pavilion" ;;
+        sarah)      echo "Sarah Jarosz/Blue Heron Suite" ;;
+        tool)       echo "Tool/Undertow" ;;
+        trey)       echo "Trey Anastasio/Lonely Trip" ;;
+        violent)    echo "Violent Femmes/Violent Femmes" ;;
+        *)          return 1 ;;
+    esac
+}
+
+usage() {
+    cat <<'EOF'
+Usage: play <artist>
+
+Available artists:
+  caleb      - Caleb Grenier       - Sandy Friends
+  dave       - Dave & Tim          - Live At Luther College
+  gizz       - King Gizzard        - Nonagon Infinity
+  gogo       - GoGo Penguin        - Man Made Object
+  goose      - Goose               - Alive and Well
+  hania      - Hania Rani          - Ghosts
+  joseph     - JOSEPH              - I'm Alone, No You're Not
+  khruangbin - Khruangbin          - A LA SALA
+  nin        - Nine Inch Nails     - Charlotte 2014
+  sarah      - Sarah Jarosz        - Blue Heron Suite
+  tool       - Tool                - Undertow
+  trey       - Trey Anastasio      - Lonely Trip
+  violent    - Violent Femmes      - Violent Femmes
+EOF
+}
+
+if [[ -z "$MUSIC_DIR" ]]; then
+    echo "MUSIC_DIR not set"
+    exit 1
+fi
+
+if [[ -z "$1" ]]; then
+    usage
+    exit 1
+fi
+
+album_path=$(get_album_path "$1")
+if [[ -z "$album_path" ]]; then
+    echo "Unknown artist: $1"
+    usage
+    exit 1
+fi
+
+full_path="$MUSIC_DIR/$album_path"
+if [[ ! -d "$full_path" ]]; then
+    echo "Album not found: $full_path"
+    exit 1
+fi
+
+music open "$full_path"
+echo "Now playing: $album_path"
