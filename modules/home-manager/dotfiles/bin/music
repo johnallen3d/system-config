@@ -39,6 +39,14 @@ case "${1:-}" in
     restart)
         cmd '{ "command": ["set_property", "playlist-pos", 0] }'
         ;;
+    jump)
+        track_num="$2"
+        if [[ -z "$track_num" || ! "$track_num" =~ ^[0-9]+$ ]]; then
+            echo "Usage: music jump <track number>"
+            exit 1
+        fi
+        cmd "{ \"command\": [\"set_property\", \"playlist-pos\", $((track_num - 1))] }"
+        ;;
     open)
         path="$2"
         if [[ -z "$path" ]]; then
@@ -99,7 +107,7 @@ case "${1:-}" in
         exec lf "$MUSIC_DIR"
         ;;
     *)
-        echo "Usage: music [play|pause|toggle|prev|next|repeat|restart|status|open <path>]"
+        echo "Usage: music [play|pause|toggle|prev|next|repeat|restart|jump|status|open <path>]"
         echo "  (no args)  Open music library in lf"
         echo "  play       Resume playback"
         echo "  pause      Pause playback"
@@ -108,6 +116,7 @@ case "${1:-}" in
         echo "  next       Next track"
         echo "  repeat     Toggle playlist repeat"
         echo "  restart    Jump to beginning of playlist"
+        echo "  jump <n>   Jump to track number n"
         echo "  status     Show current playlist"
         echo "  open       Load file into MPV"
         exit 1
