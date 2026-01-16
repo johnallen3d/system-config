@@ -1,1 +1,16 @@
+set previewer ~/.config/lf/preview
+set cleaner ~/.config/lf/cleaner
+
 map o $"$HOME/bin/music" open "$fx"
+
+# Open text files in $EDITOR, others with system default
+cmd open ${{
+    case $(file --mime-type -Lb $f) in
+        text/*|application/json|application/*+json|application/javascript|inode/x-empty)
+            $EDITOR $fx
+            ;;
+        *)
+            open $fx || $EDITOR $fx
+            ;;
+    esac
+}}

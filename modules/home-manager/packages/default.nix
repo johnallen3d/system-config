@@ -45,6 +45,7 @@ in {
       # brave
       bun
       cargo-careful
+      chafa
       cargo-machete
       cargo-nextest
       cargo-sweep
@@ -79,6 +80,7 @@ in {
       imagemagick
       just
       k3d
+      kitty
       k9s
       kcl
       kind
@@ -110,6 +112,7 @@ in {
       ruby
       ruff
       pandoc
+      poppler-utils
       postgresql
       prettier
       rainfrog

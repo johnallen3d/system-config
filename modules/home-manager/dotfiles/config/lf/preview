@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# lf previewer script
+
+file="$1"
+w="$2"
+h="$3"
+x="$4"
+y="$5"
+
+# Handle by extension first for formats with generic MIME types
+case "$file" in
+    *.parquet)
+        duckdb -c "SELECT * FROM '$file' LIMIT 50" 2>/dev/null
+        exit
+        ;;
+    *.docx)
+        pandoc -t plain "$file" 2>/dev/null | head -200
+        exit
+        ;;
+    *.xlsx)
+        duckdb -c "INSTALL spatial; LOAD spatial; SELECT * FROM st_read('$file') LIMIT 50" 2>/dev/null
+        exit
+        ;;
+esac
+
+case "$(file -Lb --mime-type "$file")" in
+    image/*)
+        kitten icat --stdin=no --transfer-mode=memory --place="${w}x${h}@${x}x${y}" "$file" </dev/null >/dev/tty
+        exit 1
+        ;;
+    application/pdf)
+        pdftotext "$file" - | head -200
+        ;;
+    application/zip|application/gzip|application/x-tar|application/x-xz)
+        tar -tvf "$file" 2>/dev/null || unzip -l "$file" 2>/dev/null
+        ;;
+    application/json)
+        jq -C . "$file" 2>/dev/null || cat "$file"
+        ;;
+    *)
+        bat --color=always --style=plain --paging=never "$file" 2>/dev/null || cat "$file"
+        ;;
+esac
