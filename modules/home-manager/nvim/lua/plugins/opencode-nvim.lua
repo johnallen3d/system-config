@@ -9,7 +9,7 @@ map("n", "<leader>oa", function()
 end, { desc = "Ask opencode" })
 
 map("v", "<leader>oa", function()
-  require("opencode").ask("@selection: ")
+  require("opencode").ask("@this: ")
 end, { desc = "Ask opencode about selection" })
 
 map({ "n", "v" }, "<leader>op", function()
