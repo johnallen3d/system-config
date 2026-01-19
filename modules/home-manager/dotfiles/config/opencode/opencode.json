@@ -14,7 +14,7 @@
       "prompt": "{file:./prompts/beast-mode.txt}"
     }
   },
-  "plugin": ["opencode-skills"],
+  "plugin": [],
   "mcp": {
     "mcp-server-motherduck": {
       "type": "local",
