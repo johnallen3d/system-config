@@ -71,6 +71,11 @@ while true; do
         | socat - "$MPV_SOCKET" 2>/dev/null \
         | jq -r '.data')
 
+    # Get album from metadata
+    album=$(echo '{ "command": ["get_property", "metadata/by-key/album"] }' \
+        | socat - "$MPV_SOCKET" 2>/dev/null \
+        | jq -r '.data')
+
     # Get time position and duration
     time_pos=$(get_mpv_property "time-pos")
     duration=$(get_mpv_property "duration")
@@ -92,11 +97,15 @@ while true; do
         fi
     fi
 
+    # Build label with available metadata
+    label="$title"
     if [[ -n "$artist" && "$artist" != "null" ]]; then
-        label="$title • $artist$time_str"
-    else
-        label="$title$time_str"
+        label="$label • $artist"
     fi
+    if [[ -n "$album" && "$album" != "null" ]]; then
+        label="$label • $album"
+    fi
+    label="$label$time_str"
 
     # Escape quotes for bottombar
     label=${label//\'/}
