@@ -81,6 +81,11 @@ case "${1:-}" in
         else
             cmd "{ \"command\": [\"loadfile\", \"$path\", \"replace\"] }"
         fi
+        # Shuffle playlist if shuffle mode is enabled
+        shuffle_enabled=$(cmd '{ "command": ["get_property", "shuffle"] }' | jq -r '.data')
+        if [[ "$shuffle_enabled" == "true" ]]; then
+            cmd '{ "command": ["playlist-shuffle"] }'
+        fi
         cmd '{ "command": ["set_property", "pause", false] }'
         ;;
     status)
