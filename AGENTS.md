@@ -28,6 +28,8 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 Never create git commits unless explicitly requested.
 
+After making changes to scripts, configs, or packages, run `nix-rebuild --switch-only` so the user can test immediately.
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
