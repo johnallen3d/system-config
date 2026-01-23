@@ -115,11 +115,12 @@ case "${1:-}" in
             exit 1
         fi
 
+        # Get playlist and current position in one response, process entirely in jq
+        response=$(cmd '{ "command": ["get_property", "playlist"] }')
         current_pos=$(cmd '{ "command": ["get_property", "playlist-pos"] }' | jq -r '.data')
-        playlist=$(cmd '{ "command": ["get_property", "playlist"] }' | jq -r '.data')
-        count=$(echo "$playlist" | jq 'length')
+        count=$(echo "$response" | jq -r '.data | length')
 
-        if [[ "$count" == "0" || "$count" == "null" ]]; then
+        if [[ "$count" == "0" || "$count" == "null" || -z "$count" ]]; then
             echo "Playlist is empty"
             exit 0
         fi
@@ -127,24 +128,29 @@ case "${1:-}" in
         printf "%-3s %-25s %-25s %-30s\n" "#" "Artist" "Album" "Track"
         printf "%s\n" "$(printf '%.0s─' {1..85})"
 
-        for i in $(seq 0 $((count - 1))); do
-            file=$(echo "$playlist" | jq -r ".[$i].filename")
-            track=$(basename "$file" | sed 's/\.[^.]*$//')
-            # Strip "NN - Artist - " prefix if present
-            track=$(echo "$track" | sed -E 's/^[0-9]+ - [^-]+ - //')
-            album=$(basename "$(dirname "$file")")
-            artist=$(basename "$(dirname "$(dirname "$file")")")
-
-            [[ ${#artist} -gt 23 ]] && artist="${artist:0:20}..."
-            [[ ${#album} -gt 23 ]] && album="${album:0:20}..."
-            [[ ${#track} -gt 28 ]] && track="${track:0:25}..."
-
-            if [[ "$i" == "$current_pos" ]]; then
-                printf "▶  \033[1m%-25s %-25s %-30s\033[0m\n" "$artist" "$album" "$track"
-            else
-                printf "%-3s %-25s %-25s %-30s\n" "$((i + 1))" "$artist" "$album" "$track"
-            fi
-        done
+        # Single jq call processes ALL tracks - outputs tab-separated: artist, album, track
+        # This replaces ~9 subprocess calls per track with 1 total
+        echo "$response" | jq -r '
+            .data[].filename | split("/") |
+            (if length >= 3 then .[-3] else "Unknown" end) as $artist_raw |
+            (if length >= 2 then .[-2] else "Unknown" end) as $album_raw |
+            (if length >= 1 then .[-1] else "Unknown" end) as $track_raw |
+            ($artist_raw | if length > 23 then .[0:20] + "..." else . end) as $artist |
+            ($album_raw | if length > 23 then .[0:20] + "..." else . end) as $album |
+            ($track_raw | sub("\\.[^.]*$"; "") | sub("^[0-9]+ - [^-]+ - "; "") |
+                if length > 28 then .[0:25] + "..." else . end) as $track |
+            [$artist, $album, $track] | @tsv
+        ' | {
+            i=0
+            while IFS=$'\t' read -r artist album track; do
+                if [[ "$i" == "$current_pos" ]]; then
+                    printf "▶  \033[1m%-25s %-25s %-30s\033[0m\n" "$artist" "$album" "$track"
+                else
+                    printf "%-3s %-25s %-25s %-30s\n" "$((i + 1))" "$artist" "$album" "$track"
+                fi
+                ((i++))
+            done
+        }
 
         loop_status=$(cmd '{ "command": ["get_property", "loop-playlist"] }' | jq -r '.data')
         shuffle_status=$(cmd '{ "command": ["get_property", "shuffle"] }' | jq -r '.data')
