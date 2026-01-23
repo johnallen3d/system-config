@@ -3,6 +3,17 @@
 # Quick play script - maps artist shortcuts to albums and plays via MPV
 # Requires MUSIC_DIR env var (set via nix)
 
+DEBUG=""
+for arg in "$@"; do
+    [[ "$arg" == "--debug" ]] && DEBUG="--debug"
+done
+# Remove --debug from args
+args=()
+for arg in "$@"; do
+    [[ "$arg" != "--debug" ]] && args+=("$arg")
+done
+set -- "${args[@]}"
+
 # Map shortcuts to Artist/Album paths (validated against library)
 get_album_path() {
     case "$1" in
@@ -28,7 +39,7 @@ get_album_path() {
 
 usage() {
     cat <<'EOF'
-Usage: play <artist>
+Usage: play [--debug] <artist>
 
 Available artists:
   caamp      - Caamp               - Lavender Days
@@ -73,5 +84,5 @@ if [[ ! -d "$full_path" ]]; then
     exit 1
 fi
 
-music open "$full_path"
+music $DEBUG open "$full_path"
 echo "Now playing: $album_path"

@@ -4,49 +4,70 @@
 
 MPV_SOCKET="/tmp/mpv-music.sock"
 SOCAT="/etc/profiles/per-user/$USER/bin/socat"
+DEBUG=false
+
+# Parse --debug flag from anywhere in args
+for arg in "$@"; do
+    [[ "$arg" == "--debug" ]] && DEBUG=true
+done
+# Remove --debug from args
+args=()
+for arg in "$@"; do
+    [[ "$arg" != "--debug" ]] && args+=("$arg")
+done
+set -- "${args[@]}"
 
 cmd() {
     echo "$1" | $SOCAT - "$MPV_SOCKET" 2>/dev/null
 }
 
+# Silent version - only outputs in debug mode
+cmd_quiet() {
+    if $DEBUG; then
+        cmd "$1"
+    else
+        cmd "$1" >/dev/null
+    fi
+}
+
 case "${1:-}" in
     play)
-        cmd '{ "command": ["set_property", "pause", false] }'
+        cmd_quiet '{ "command": ["set_property", "pause", false] }'
         ;;
     pause)
-        cmd '{ "command": ["set_property", "pause", true] }'
+        cmd_quiet '{ "command": ["set_property", "pause", true] }'
         ;;
     toggle)
-        cmd '{ "command": ["cycle", "pause"] }'
+        cmd_quiet '{ "command": ["cycle", "pause"] }'
         ;;
     prev)
-        cmd '{ "command": ["playlist-prev"] }'
+        cmd_quiet '{ "command": ["playlist-prev"] }'
         ;;
     next)
-        cmd '{ "command": ["playlist-next"] }'
+        cmd_quiet '{ "command": ["playlist-next"] }'
         ;;
     repeat)
         current=$(cmd '{ "command": ["get_property", "loop-playlist"] }' | jq -r '.data')
         if [[ "$current" == "inf" ]]; then
-            cmd '{ "command": ["set_property", "loop-playlist", "no"] }'
+            cmd_quiet '{ "command": ["set_property", "loop-playlist", "no"] }'
             echo "Repeat: off"
         else
-            cmd '{ "command": ["set_property", "loop-playlist", "inf"] }'
+            cmd_quiet '{ "command": ["set_property", "loop-playlist", "inf"] }'
             echo "Repeat: on"
         fi
         ;;
     shuffle)
         current=$(cmd '{ "command": ["get_property", "shuffle"] }' | jq -r '.data')
         if [[ "$current" == "true" ]]; then
-            cmd '{ "command": ["set_property", "shuffle", false] }'
+            cmd_quiet '{ "command": ["set_property", "shuffle", false] }'
             echo "Shuffle: off"
         else
-            cmd '{ "command": ["set_property", "shuffle", true] }'
+            cmd_quiet '{ "command": ["set_property", "shuffle", true] }'
             echo "Shuffle: on"
         fi
         ;;
     restart)
-        cmd '{ "command": ["set_property", "playlist-pos", 0] }'
+        cmd_quiet '{ "command": ["set_property", "playlist-pos", 0] }'
         ;;
     jump)
         track_num="$2"
@@ -54,7 +75,7 @@ case "${1:-}" in
             echo "Usage: music jump <track number>"
             exit 1
         fi
-        cmd "{ \"command\": [\"set_property\", \"playlist-pos\", $((track_num - 1))] }"
+        cmd_quiet "{ \"command\": [\"set_property\", \"playlist-pos\", $((track_num - 1))] }"
         ;;
     open)
         path="$2"
@@ -66,27 +87,27 @@ case "${1:-}" in
             mpv --idle=yes --input-ipc-server="$MPV_SOCKET" &
             sleep 0.2
         fi
-        cmd '{ "command": ["playlist-clear"] }'
+        cmd_quiet '{ "command": ["playlist-clear"] }'
         if [[ -d "$path" ]]; then
             # Directory: find all audio files recursively, sorted
             first=true
             while IFS= read -r file; do
                 if $first; then
-                    cmd "{ \"command\": [\"loadfile\", \"$file\", \"replace\"] }"
+                    cmd_quiet "{ \"command\": [\"loadfile\", \"$file\", \"replace\"] }"
                     first=false
                 else
-                    cmd "{ \"command\": [\"loadfile\", \"$file\", \"append\"] }"
+                    cmd_quiet "{ \"command\": [\"loadfile\", \"$file\", \"append\"] }"
                 fi
             done < <(find "$path" -type f \( -iname "*.mp3" -o -iname "*.m4a" -o -iname "*.flac" -o -iname "*.opus" -o -iname "*.ogg" -o -iname "*.wav" \) | sort)
         else
-            cmd "{ \"command\": [\"loadfile\", \"$path\", \"replace\"] }"
+            cmd_quiet "{ \"command\": [\"loadfile\", \"$path\", \"replace\"] }"
         fi
         # Shuffle playlist if shuffle mode is enabled
         shuffle_enabled=$(cmd '{ "command": ["get_property", "shuffle"] }' | jq -r '.data')
         if [[ "$shuffle_enabled" == "true" ]]; then
-            cmd '{ "command": ["playlist-shuffle"] }'
+            cmd_quiet '{ "command": ["playlist-shuffle"] }'
         fi
-        cmd '{ "command": ["set_property", "pause", false] }'
+        cmd_quiet '{ "command": ["set_property", "pause", false] }'
         ;;
     status)
         if [[ ! -S "$MPV_SOCKET" ]]; then
@@ -137,7 +158,7 @@ case "${1:-}" in
         exec lf "$MUSIC_DIR"
         ;;
     *)
-        echo "Usage: music [play|pause|toggle|prev|next|repeat|shuffle|restart|jump|status|open <path>]"
+        echo "Usage: music [--debug] [play|pause|toggle|prev|next|repeat|shuffle|restart|jump|status|open <path>]"
         echo "  (no args)  Open music library in lf"
         echo "  play       Resume playback"
         echo "  pause      Pause playback"
@@ -150,6 +171,9 @@ case "${1:-}" in
         echo "  jump <n>   Jump to track number n"
         echo "  status     Show current playlist"
         echo "  open       Load file into MPV"
+        echo ""
+        echo "Options:"
+        echo "  --debug    Show JSON responses from MPV"
         exit 1
         ;;
 esac
