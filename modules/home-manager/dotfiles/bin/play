@@ -6,6 +6,7 @@
 # Map shortcuts to Artist/Album paths (validated against library)
 get_album_path() {
     case "$1" in
+        caamp)      echo "Caamp/Lavender Days" ;;
         caleb)      echo "Caleb Grenier/Sandy Friends" ;;
         dave)       echo "Dave Matthews & Tim Reynolds/Live At Luther College" ;;
         gizz)       echo "King Gizzard & The Lizard Wizard/Nonagon Infinity" ;;
@@ -15,6 +16,8 @@ get_album_path() {
         joseph)     echo "JOSEPH/I'm Alone, No You're Not" ;;
         khruangbin) echo "Khruangbin/A LA SALA" ;;
         nin)        echo "Nine Inch Nails/2014.08.07 Charlotte, PNC Music Pavilion" ;;
+        noah)       echo "Noah Kahan/Cape Elizabeth" ;;
+        ray)        echo "Ray LaMontagne/Ouroboros" ;;
         sarah)      echo "Sarah Jarosz/Blue Heron Suite" ;;
         tool)       echo "Tool/Undertow" ;;
         trey)       echo "Trey Anastasio/Lonely Trip" ;;
@@ -28,6 +31,7 @@ usage() {
 Usage: play <artist>
 
 Available artists:
+  caamp      - Caamp               - Lavender Days
   caleb      - Caleb Grenier       - Sandy Friends
   dave       - Dave & Tim          - Live At Luther College
   gizz       - King Gizzard        - Nonagon Infinity
@@ -37,6 +41,8 @@ Available artists:
   joseph     - JOSEPH              - I'm Alone, No You're Not
   khruangbin - Khruangbin          - A LA SALA
   nin        - Nine Inch Nails     - Charlotte 2014
+  noah       - Noah Kahan          - Cape Elizabeth
+  ray        - Ray LaMontagne      - Ouroboros
   sarah      - Sarah Jarosz        - Blue Heron Suite
   tool       - Tool                - Undertow
   trey       - Trey Anastasio      - Lonely Trip
