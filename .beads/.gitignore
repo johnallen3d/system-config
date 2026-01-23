@@ -11,6 +11,7 @@ daemon.log
 daemon.pid
 bd.sock
 sync-state.json
+last-touched
 
 # Local version tracking (prevents upgrade notification spam after git ops)
 .local_version
@@ -19,6 +20,10 @@ sync-state.json
 db.sqlite
 bd.db
 
+# Worktree redirect file (contains relative path to main repo's .beads/)
+# Must not be committed as paths would be wrong in other clones
+redirect
+
 # Merge artifacts (temporary files from 3-way merge)
 beads.base.jsonl
 beads.base.meta.json
@@ -26,6 +31,11 @@ beads.left.jsonl
 beads.left.meta.json
 beads.right.jsonl
 beads.right.meta.json
+
+# Sync state (local-only, per-machine)
+# These files are machine-specific and should not be shared across clones
+.sync.lock
+sync_base.jsonl
 
 # NOTE: Do NOT add negation patterns (e.g., !issues.jsonl) here.
 # They would override fork protection in .git/info/exclude, allowing
