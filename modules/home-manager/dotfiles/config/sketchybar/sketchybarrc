@@ -1,5 +1,10 @@
 #!/usr/bin/env lua
 
+-- NOTE: If sketchybar appears broken (missing time, date, front_app), use
+-- `sketchybar --reload` instead of killing the process. When killed, the Lua
+-- event loop doesn't reinitialize properly - items appear but callbacks never
+-- fire to populate them.
+
 -- Add the sketchybar module to the package cpath (the module could be
 -- installed into the default search path then this would not be needed)
 package.cpath = package.cpath
