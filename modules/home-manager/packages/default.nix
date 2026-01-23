@@ -19,6 +19,7 @@
     (import ./bin/set-wallpaper.nix {inherit pkgs;})
     (import ./bin/wav-to-mp3.nix {inherit pkgs;})
   ];
+  mpv-queue = import ./mpv-queue.nix {inherit pkgs;};
   nail-parquet = import ./nail-parquet.nix {inherit pkgs;};
 in {
   imports = [
@@ -144,7 +145,7 @@ in {
       zellij
     ]
     ++ scripts
-    ++ [nail-parquet];
+    ++ [mpv-queue nail-parquet];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
   # programs.bacon = {
