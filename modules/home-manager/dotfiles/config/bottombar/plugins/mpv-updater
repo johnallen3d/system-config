@@ -56,7 +56,9 @@ while true; do
     fi
 
     # Get repeat/loop and shuffle status
-    loop_status=$(get_mpv_property "loop-playlist")
+    # Check both loop-file (single track repeat, 'L' key) and loop-playlist (playlist repeat)
+    loop_file=$(get_mpv_property "loop-file")
+    loop_playlist=$(get_mpv_property "loop-playlist")
     shuffle_status=$(get_mpv_property "shuffle")
 
     # Get media title (from metadata) or fall back to filename
@@ -125,8 +127,8 @@ while true; do
     bottombar -m --set music icon="$icon" icon.drawing=on icon.font="Font Awesome 6 Pro:Regular:14.0" label="$label" drawing=on
     bottombar -m --set music_art drawing=on
 
-    # Update repeat indicator - show only if active
-    if [[ "$loop_status" == "inf" ]]; then
+    # Update repeat indicator - show if either loop-file or loop-playlist is active
+    if [[ "$loop_file" == "inf" || "$loop_playlist" == "inf" ]]; then
         bottombar -m --set music_repeat icon.drawing=on drawing=on
     else
         bottombar -m --set music_repeat drawing=off
