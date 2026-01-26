@@ -18,6 +18,7 @@
     icat = "viu";
     j = "z";
     k = "kubecolor";
+    mq = "mpv-queue";
     music = "mpv-queue";
     notes = "cd ~/notes && nvim mindfulness/practice.md";
     pass = "passgen";
