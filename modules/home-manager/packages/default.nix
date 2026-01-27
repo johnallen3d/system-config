@@ -50,7 +50,6 @@ in {
       cargo-machete
       cargo-nextest
       cargo-sweep
-      claude-code
       coreutils
       curl
       devbox
