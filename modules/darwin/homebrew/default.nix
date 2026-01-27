@@ -91,6 +91,7 @@
       "syncthing-app"
       "tailscale-app"
       "tableplus"
+      "telegram-desktop"
       # "utm"
       "visual-studio-code"
       "whatsapp"
