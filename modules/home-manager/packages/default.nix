@@ -61,7 +61,6 @@ in {
       # duckdb
       entr
       fd
-      feishin
       ffmpeg
       findutils # find / xargs
       flac
