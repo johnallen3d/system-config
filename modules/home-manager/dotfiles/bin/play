@@ -84,5 +84,5 @@ if [[ ! -d "$full_path" ]]; then
     exit 1
 fi
 
-music $DEBUG open "$full_path"
+mpv-queue $DEBUG open "$full_path"
 echo "Now playing: $album_path"
