@@ -55,6 +55,7 @@ in {
       devbox
       docker-client
       doctl
+      doppler
       # dotnet-runtime -> this is included in the dotnet-sdk
       # dotnet-sdk -> trying to install this via homebrew for better tools support
       # duckdb
