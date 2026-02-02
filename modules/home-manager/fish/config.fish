@@ -20,6 +20,7 @@ if command -q nix-your-shell
 end
 
 leadr --fish | source
-
+mise activate fish | source
 sk --shell fish | source
+
 fish_config theme choose tokyo-night-moon

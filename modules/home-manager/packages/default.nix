@@ -100,6 +100,7 @@ in {
       # marksman # broken in nixpkgs oct 2025 - dotnet build takes forever
       minikube
       minio-client
+      mise
       mkdocs
       mods
       nix-search-cli
