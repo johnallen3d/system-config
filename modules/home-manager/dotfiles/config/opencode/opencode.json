@@ -3,7 +3,10 @@
   "theme": "tokyonight",
   "model": "github-copilot/claude-sonnet-4-5",
   "autoupdate": true,
-  "permission": "allow",
+  "permission": {
+    "*": "allow",
+    "git push": "deny"
+  },
   "keybinds": {
     "leader": "ctrl+l"
   },
