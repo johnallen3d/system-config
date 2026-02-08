@@ -23,7 +23,7 @@ Sbar.add("item", "date_logo", {
 		align = "center",
 	},
 	background = {
-		color = colors.magenta,
+		color = colors.purple,
 		height = settings.logo.size,
 	},
 	label = {
