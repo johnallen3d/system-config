@@ -228,6 +228,14 @@ if.app-id = 'com.apple.iCal'
 run = 'move-node-to-workspace 7'
 
 [[on-window-detected]]
+if.app-id = 'com.tdesktop.Telegram'
+run = 'move-node-to-workspace 7'
+
+[[on-window-detected]]
+if.app-id = 'io.robbie.HomeAssistant'
+run = 'move-node-to-workspace 7'
+
+[[on-window-detected]]
 if.app-id = 'com.apple.finder'
 run = 'move-node-to-workspace 8'
 
