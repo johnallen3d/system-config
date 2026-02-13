@@ -89,6 +89,11 @@
         end
       '';
     };
+    fetch = {
+      body = ''
+        macchina $argv
+      '';
+    };
     nix-rebuild = {
       body = ''
         argparse 'switch-only' -- $argv

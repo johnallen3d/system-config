@@ -16,6 +16,7 @@
 in {
   home.packages = with pkgs;
     [
+      macchina
       mas
       sketchybar
       (python3.withPackages (ps: [ps.pyobjc-framework-Quartz]))
