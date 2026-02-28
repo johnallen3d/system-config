@@ -18,6 +18,7 @@
       "nikitabobko/homebrew-tap"
       "plutov/tap"
       "siderolabs/tap"
+      "steipete/tap"
       "steveyegge/beads"
       # opencode, see note below
       # "sst/tap"
@@ -33,6 +34,7 @@
       "dbmate"
       # "dotnet@6"
       "duckdb"
+      "gogcli"
       "granted"
       "kcl-lsp"
       # "libspatialite"
