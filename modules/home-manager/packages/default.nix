@@ -101,7 +101,8 @@ in {
       # marksman # broken in nixpkgs oct 2025 - dotnet build takes forever
       minikube
       minio-client
-      mise
+      # preferring brew install for more up-to-date versions ATM
+      # mise
       mkdocs
       mods
       nix-search-cli
