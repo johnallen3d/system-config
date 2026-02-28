@@ -3,9 +3,16 @@
   op_ssh_sign_path,
   ...
 }: {
+  programs.difftastic = {
+    enable = true;
+  };
+
   programs.git = {
     enable = true;
     settings = {
+      diff = {
+        external = "difft";
+      };
       user = {
         name = "${full_name}";
         email = "john@threedogconsulting.com";

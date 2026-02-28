@@ -52,6 +52,7 @@ in {
       cargo-sweep
       coreutils
       curl
+      difftastic
       devbox
       docker-client
       doctl
