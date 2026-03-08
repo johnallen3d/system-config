@@ -13,6 +13,16 @@ bd.sock
 sync-state.json
 last-touched
 
+# Dolt server runtime files
+dolt-server.lock
+dolt-server.log
+dolt-server.pid
+dolt-server.port
+dolt-server.activity
+dolt-monitor.pid
+dolt-monitor.pid.lock
+dolt/
+
 # Local version tracking (prevents upgrade notification spam after git ops)
 .local_version
 
