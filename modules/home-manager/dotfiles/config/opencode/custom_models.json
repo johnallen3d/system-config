@@ -64,7 +64,13 @@
     },
     {
       "model_name": "anthropic/claude-sonnet-4",
-      "aliases": ["sonnet", "claude-sonnet", "claude4-sonnet", "claude-4-sonnet", "claude"],
+      "aliases": [
+        "sonnet",
+        "claude-sonnet",
+        "claude4-sonnet",
+        "claude-4-sonnet",
+        "claude"
+      ],
       "context_window": 200000,
       "max_output_tokens": 64000,
       "supports_extended_thinking": false,
@@ -88,7 +94,7 @@
     },
     {
       "model_name": "google/gemini-2.5-pro",
-      "aliases": ["pro","gemini-pro", "gemini", "pro-openrouter"],
+      "aliases": ["pro", "gemini-pro", "gemini", "pro-openrouter"],
       "context_window": 1048576,
       "max_output_tokens": 65536,
       "supports_extended_thinking": false,
@@ -100,7 +106,7 @@
     },
     {
       "model_name": "google/gemini-2.5-flash",
-      "aliases": ["flash","gemini-flash", "flash-openrouter", "flash-2.5"],
+      "aliases": ["flash", "gemini-flash", "flash-openrouter", "flash-2.5"],
       "context_window": 1048576,
       "max_output_tokens": 65536,
       "supports_extended_thinking": false,
@@ -124,7 +130,13 @@
     },
     {
       "model_name": "meta-llama/llama-3-70b",
-      "aliases": ["llama", "llama3", "llama3-70b", "llama-70b", "llama3-openrouter"],
+      "aliases": [
+        "llama",
+        "llama3",
+        "llama3-70b",
+        "llama-70b",
+        "llama3-openrouter"
+      ],
       "context_window": 8192,
       "max_output_tokens": 8192,
       "supports_extended_thinking": false,
@@ -253,6 +265,19 @@
       "max_image_size_mb": 0.0,
       "is_custom": true,
       "description": "DuckDB NSQL 7B model specialized for SQL queries and database operations (text-only)"
+    },
+    {
+      "model_name": "qwen2.5-coder:14b",
+      "aliases": ["qwen", "qwen-coder", "coder", "qwen2.5-coder"],
+      "context_window": 131072,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "max_image_size_mb": 0.0,
+      "is_custom": true,
+      "description": "Qwen2.5 Coder 14B - Code-specialized model via Ollama"
     }
   ]
 }
