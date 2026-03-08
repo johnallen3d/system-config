@@ -17,45 +17,27 @@
       "prompt": "{file:./prompts/beast-mode.txt}"
     }
   },
-  "plugin": [],
+  "plugin": ["./plugin/ai-intercept.js"],
   "mcp": {
     "mcp-server-motherduck": {
       "type": "local",
       "command": ["uvx", "mcp-server-motherduck", "--db-path", ":memory:"],
       "enabled": true
-    },
-    "zen": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "--from",
-        "git+https://github.com/BeehiveInnovations/zen-mcp-server.git",
-        "zen-mcp-server"
-      ],
-      "environment": {
-        "DEFAULT_MODEL": "auto",
-        "CUSTOM_API_URL": "http://localhost:11434/v1",
-        "CUSTOM_API_KEY": "",
-        "CUSTOM_MODEL_NAME": "",
-        "CUSTOM_MODELS_CONFIG_PATH": "/Users/john.allen/.config/opencode/custom_models.json"
+    }
+  },
+  "provider": {
+    "ollama": {
+      "models": {
+        "qwen2.5-coder:14b": {
+          "_launch": true,
+          "name": "qwen2.5-coder:14b"
+        }
       },
-      "enabled": false
-    },
-    "serena": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server"
-      ],
-      "enabled": false
-    },
-    "github-mcp-server": {
-      "type": "local",
-      "command": ["github-mcp-server", "stdio"],
-      "enabled": false
+      "name": "Ollama (local)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://127.0.0.1:11434/v1"
+      }
     }
   },
   "formatter": {
