@@ -9,6 +9,7 @@ fish_add_path /Users/john.allen/.opencode/bin
 
 # TODO: can we find a better/more nix way?
 fish_add_path --prepend $HOME/.npm-global/bin
+fish_add_path --append /Applications/Obsidian.app/Contents/MacOS
 
 # use 1Password to authenticate `gh`
 if test -e ~/.config/op/plugins.sh

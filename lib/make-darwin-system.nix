@@ -68,6 +68,7 @@ in
             users.${user}.imports = [
               ../modules/home-manager
               ../modules/home-manager/fish/path_fix.nix
+              ../modules/home-manager/tahoe-link-workaround.nix
               ../hosts/${host}.nix
             ];
           };
