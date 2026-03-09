@@ -54,6 +54,7 @@
       # "talosctl"
       "trash"
       "ut"
+      "worktrunk"
     ];
 
     casks = [
