@@ -129,6 +129,17 @@
         macchina $argv
       '';
     };
+    notes = {
+      body = ''
+        cd ~/notes
+        set -l today (date +%Y-%m-%d)
+        if not obsidian file file="$today" vault=Personal >/dev/null 2>&1
+          obsidian create path="journal/$today.md" template=journal vault=Personal
+        end
+        obsidian open file="$today" vault=Personal
+        nvim "journal/$today.md"
+      '';
+    };
     nix-rebuild = {
       body = ''
         argparse 'switch-only' -- $argv

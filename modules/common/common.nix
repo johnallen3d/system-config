@@ -20,7 +20,6 @@
     k = "kubecolor";
     mq = "mpv-queue";
     music = "mpv-queue";
-    notes = "cd ~/notes && nvim mindfulness/practice.md";
     pass = "passgen";
     passgen = "dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | rev | cut -b 2- | rev";
     password = "passgen";
