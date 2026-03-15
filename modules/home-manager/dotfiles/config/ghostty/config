@@ -1,5 +1,5 @@
-# switch to the prerelease channel
-auto-update-channel = tip
+# switch to the prerelease channel (or tip)
+auto-update-channel = stable
 
 # appearance
 bold-is-bright = true
