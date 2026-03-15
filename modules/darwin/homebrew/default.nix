@@ -41,6 +41,7 @@
       # using this vs nix-package due to issues with SbarLua
       "lua"
       "llm" # broken in nixpkgs jan 2025
+      "llmfit"
       "mise"
       "mole"
       # not being kept up to date with raprid releases
