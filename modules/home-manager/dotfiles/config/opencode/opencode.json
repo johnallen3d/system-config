@@ -17,8 +17,15 @@
       "prompt": "{file:./prompts/beast-mode.txt}"
     }
   },
-  "plugin": ["./plugin/ai-intercept.js"],
+  "skills": {
+    "paths": ["~/dev/src/amfaro/skills"]
+  },
+  "plugin": ["./plugin/ai-intercept.js", "context-mode"],
   "mcp": {
+    "context-mode": {
+      "type": "local",
+      "command": ["context-mode"]
+    },
     "mcp-server-motherduck": {
       "type": "local",
       "command": ["uvx", "mcp-server-motherduck", "--db-path", ":memory:"],
