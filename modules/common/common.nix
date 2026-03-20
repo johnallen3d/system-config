@@ -34,7 +34,6 @@
     uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
     vi = "nvim";
     vim = "nvim";
-    vi-sk = "nvim (sk)";
     weather = "curl wttr.in";
     whatismyip = "curl -4 ifconfig.co/";
     yt = "youtube-dl -f bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
@@ -49,7 +48,6 @@
     MANPAGER = "nvim +Man!";
     MUSIC_DIR = "$HOME/Music/Music/Media.localized/Music";
     PYENV_ROOT = "$HOME/.pyenv";
-    SKIM_DEFAULT_COMMAND = "fd --type f || git ls-tree -r --name-only HEAD || rg --files || find .";
     TIME_STYLE = "long-iso";
     # NOTE: this is meant as a macOS only workaround
     # see https://github.com/ghostty-org/ghostty/discussions/2832

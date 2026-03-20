@@ -22,6 +22,6 @@ end
 
 leadr --fish | source
 mise activate fish | source
-sk --shell fish | source
+tv init fish | source
 
 fish_config theme choose tokyo-night-moon

@@ -123,13 +123,13 @@ in {
       rainfrog
       # qmk
       qsv
-      skim # fzf alternative
       socat
       sqlite
       sqlit-tui
       # this is quite outdated and under active development
       # sqruff
       stylua
+      television
       tree-sitter
       uv
       vals
