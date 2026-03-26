@@ -17,6 +17,11 @@ For testing configurations: manually verify JSON syntax in `opencode.json`
 - Do NOT use general-purpose models (GPT/Claude/etc.) to write DuckDB queries
 - When query authoring is requested, use local specialized models via zen server
 
+## Secrets and Credentials
+- Prefer `mcp-server-doppler` for Doppler-managed secrets, projects, configs, and secret updates
+- Do not default to the Doppler CLI when the MCP server can do the job
+- Use the Doppler CLI only for MCP bootstrap/authentication or as a fallback when MCP is unavailable
+
 ## Agent Guidelines  
 - Reference existing agent definitions in `agent/` directory
 - Follow YAML frontmatter format with description field

@@ -3,10 +3,6 @@
   "theme": "tokyonight",
   "model": "github-copilot/claude-sonnet-4-5",
   "autoupdate": true,
-  "permission": {
-    "*": "allow",
-    "git push": "deny"
-  },
   "keybinds": {
     "leader": "ctrl+l"
   },
@@ -25,6 +21,15 @@
     "context-mode": {
       "type": "local",
       "command": ["context-mode"]
+    },
+    "mcp-server-doppler": {
+      "type": "local",
+      "command": [
+        "bash",
+        "-lc",
+        "export DOPPLER_TOKEN=\"$(security find-generic-password -s 'doppler-work' -a 'john.allen' -w)\" && exec npx -y @dopplerhq/mcp-server"
+      ],
+      "enabled": true
     },
     "mcp-server-motherduck": {
       "type": "local",
