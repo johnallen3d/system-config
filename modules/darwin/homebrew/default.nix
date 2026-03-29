@@ -69,6 +69,7 @@
       "bruno"
       "carbon-copy-cloner"
       "claude"
+      "copilot-cli"
       "cleanshot"
       "cloudmounter"
       "discord"
