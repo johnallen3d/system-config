@@ -44,6 +44,8 @@
     GIT_EDITOR = "nvim";
     VISUAL = "nvim";
 
+    COPILOT_HOME = "$HOME/.config/copilot";
+    COPILOT_SKILLS_DIRS = "$HOME/dev/src/amfaro/skills";
     LEADR_CONFIG_DIR = "$HOME/.config/leadr/";
     MANPAGER = "nvim +Man!";
     MUSIC_DIR = "$HOME/Music/Music/Media.localized/Music";
