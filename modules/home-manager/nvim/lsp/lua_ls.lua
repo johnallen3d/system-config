@@ -1,9 +1,6 @@
-local on_attach = require("config.lsp").on_attach
-
 return {
   cmd = { "lua-language-server" },
   filetypes = { "lua" },
-  on_attach = on_attach,
   root_markers = {
     ".luarc.json",
     ".luarc.jsonc",

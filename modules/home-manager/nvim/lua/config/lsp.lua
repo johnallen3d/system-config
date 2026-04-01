@@ -1,18 +1,5 @@
 local M = {}
 
-vim.lsp.enable({
-  "basedpyright",
-  "biome",
-  "harper-ls",
-  "jsonls",
-  "kcl_ls",
-  "lua_ls",
-  "marksman",
-  "nixd",
-  "ruff",
-  "sqruff",
-})
-
 --- Shared on_attach for all LSP servers.
 --- Disables formatting for lua_ls (prefer stylua/conform.nvim).
 ---@param client table
@@ -30,5 +17,20 @@ function M.on_attach(client, bufnr)
   vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
   vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
 end
+
+vim.lsp.config("*", { on_attach = M.on_attach })
+
+vim.lsp.enable({
+  "basedpyright",
+  "biome",
+  "harper-ls",
+  "jsonls",
+  "kcl_ls",
+  "lua_ls",
+  "marksman",
+  "nixd",
+  "ruff",
+  "sqruff",
+})
 
 return M

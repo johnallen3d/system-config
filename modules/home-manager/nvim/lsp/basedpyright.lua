@@ -23,8 +23,6 @@ local function set_python_path(path)
 end
 ---@diagnostic enable: undefined-field
 
-local on_attach = require("config.lsp").on_attach
-
 return {
   cmd = { "basedpyright-langserver", "--stdio" },
   filetypes = { "python" },
@@ -47,8 +45,11 @@ return {
     },
   },
   on_attach = function(client, bufnr)
-    -- Call shared on_attach first
-    on_attach(client, bufnr)
+    local opts = { buffer = bufnr }
+    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+    vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
+    vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+    vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
 
     -- Basedpyright-specific commands
     vim.api.nvim_buf_create_user_command(
