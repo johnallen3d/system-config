@@ -32,6 +32,10 @@ vim.api.nvim_create_autocmd({ "VimResized" }, {
   end,
 })
 
+vim.api.nvim_create_user_command("PackUpdate", function()
+  vim.pack.update()
+end, { desc = "Update built-in nvim packages" })
+
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Automatically start Tree-sitter highlighting for all filetypes",
   group = vim.api.nvim_create_augroup("start-treesitter", { clear = true }),
