@@ -17,6 +17,8 @@
       cores = 0; # max
       max-jobs = 10;
 
+      auto-optimise-store = true;
+
       trusted-users = [
         "root"
         "john.allen"
