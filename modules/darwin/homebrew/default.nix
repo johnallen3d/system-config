@@ -48,6 +48,7 @@
       # trying: curl -fsSL https://opencode.ai/install | bash
       # with autoupdate enabled
       # "opencode"
+      "sheets"
       "sqruff"
       # "switchaudio-osx"
       # TODO: prefer nix package when fixed
