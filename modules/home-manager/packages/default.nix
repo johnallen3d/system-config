@@ -70,6 +70,7 @@ in {
       flyctl
       fswatch
       gawk
+      gh-dash
       git-gone
       # preferring brew install for more up-to-date versions ATM
       # github-copilot-cli

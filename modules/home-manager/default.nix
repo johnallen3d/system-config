@@ -15,6 +15,7 @@ in {
       ".pryrc".source = ./dotfiles/pryrc;
       ".sqliterc".source = ./dotfiles/sqliterc;
 
+      ".config/gh-dash/config.yml".source = ./dotfiles/config/gh-dash/config.yml;
       ".config/stylua.toml".source = ./dotfiles/config/stylua.toml;
 
       ".config" = {
