@@ -21,6 +21,7 @@
   ];
   ai-intercept = import ./ai-intercept.nix {inherit pkgs;};
   context-mode = import ./context-mode.nix {inherit pkgs;};
+  pi = import ./pi.nix {inherit pkgs;};
   mpv-queue = import ./mpv-queue.nix {inherit pkgs;};
   nail-parquet = import ./nail-parquet.nix {inherit pkgs;};
 in {
@@ -153,7 +154,7 @@ in {
       zellij
     ]
     ++ scripts
-    ++ [ai-intercept context-mode mpv-queue nail-parquet];
+    ++ [ai-intercept context-mode mpv-queue nail-parquet pi];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
   # programs.bacon = {
