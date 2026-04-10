@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
+Nix flake for macOS (nix-darwin), NixOS, Home Manager.
 
 ## Quick Reference
 
@@ -28,18 +28,18 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 Never create git commits unless explicitly requested.
 
-After making changes to scripts, configs, or packages, run `nix-rebuild --switch-only` so the user can test immediately.
+After changes to scripts, configs, packages — run `nix-rebuild --switch-only` so user can test immediately.
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+End session: complete ALL steps. Work NOT done until `git push` succeeds.
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
+1. **File issues for remaining work** - Create issues for follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+3. **Update issue status** - Close finished, update in-progress
+4. **PUSH TO REMOTE** - MANDATORY:
 
    ```bash
    git pull --rebase
@@ -48,7 +48,7 @@ After making changes to scripts, configs, or packages, run `nix-rebuild --switch
 
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+7. **Hand off** - Context for next session
 
 **CRITICAL RULES:**
 
@@ -57,14 +57,14 @@ After making changes to scripts, configs, or packages, run `nix-rebuild --switch
 <!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:d4f96305 -->
 ## Issue Tracking with bd (beads)
 
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+**IMPORTANT**: Project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
 
 ### Why bd?
 
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Dolt-powered version control with native sync
+- Dependency-aware: Track blockers + relationships
+- Git-friendly: Dolt-powered version control, native sync
 - Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
+- Prevents duplicate tracking + confusion
 
 ### Quick Start
 
@@ -96,7 +96,7 @@ bd close bd-42 --reason "Completed" --json
 
 ### Issue Types
 
-- `bug` - Something broken
+- `bug` - Broken
 - `feature` - New functionality
 - `task` - Work item (tests, docs, refactoring)
 - `epic` - Large feature with subtasks
@@ -113,19 +113,19 @@ bd close bd-42 --reason "Completed" --json
 ### Workflow for AI Agents
 
 1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task atomically**: `bd update <id> --claim`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
+2. **Claim atomically**: `bd update <id> --claim`
+3. **Work**: Implement, test, document
+4. **New work found?** Create linked issue:
    - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
 5. **Complete**: `bd close <id> --reason "Done"`
 
 ### Auto-Sync
 
-bd automatically syncs via Dolt:
+bd auto-syncs via Dolt:
 
 - Each write auto-commits to Dolt history
 - Use `bd dolt push`/`bd dolt pull` for remote sync
-- No manual export/import needed!
+- No manual export/import needed
 
 ### Important Rules
 
@@ -137,18 +137,18 @@ bd automatically syncs via Dolt:
 - ❌ Do NOT use external issue trackers
 - ❌ Do NOT duplicate tracking systems
 
-For more details, see README.md and docs/QUICKSTART.md.
+See README.md and docs/QUICKSTART.md.
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+End session: complete ALL steps. Work NOT done until `git push` succeeds.
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
+1. **File issues for remaining work** - Create issues for follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+3. **Update issue status** - Close finished, update in-progress
+4. **PUSH TO REMOTE** - MANDATORY:
    ```bash
    git pull --rebase
    bd dolt push
@@ -157,12 +157,12 @@ For more details, see README.md and docs/QUICKSTART.md.
    ```
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+7. **Hand off** - Context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- Work NOT complete until `git push` succeeds
+- NEVER stop before pushing — leaves work stranded locally
+- NEVER say "ready to push when you are" — YOU must push
+- Push fails: resolve + retry until success
 
 <!-- END BEADS INTEGRATION -->
