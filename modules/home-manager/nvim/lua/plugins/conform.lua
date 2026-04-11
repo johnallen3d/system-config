@@ -5,7 +5,34 @@ vim.pack.add(
 
 local conform = require("conform")
 
+local jarify_repo = vim.env.JARIFY_REPO or "/Users/john.allen/dev/src/playground/jarify"
+local uv_bin = "/etc/profiles/per-user/john.allen/bin/uv"
+
+local function sql_tool_cwd(dirname)
+  local root = vim.fs.find({ "jarify.toml", ".git" }, { upward = true, path = dirname })[1]
+  return root and vim.fs.dirname(root) or dirname
+end
+
 conform.setup({
+  formatters = {
+    jarify = {
+      command = uv_bin,
+      args = {
+        "run",
+        "--project",
+        jarify_repo,
+        "jarify",
+        "fmt",
+        "--stdin-filename",
+        "$FILENAME",
+        "-",
+      },
+      cwd = function(_, ctx)
+        return sql_tool_cwd(ctx.dirname)
+      end,
+      stdin = true,
+    },
+  },
   formatters_by_ft = {
     ["*"] = { "trim_whitespace" },
     javascript = { "biome" },
@@ -21,7 +48,7 @@ conform.setup({
       "ruff_organize_imports",
     },
     rust = { "rustfmt" },
-    sql = { "sqruff" },
+    sql = { "jarify" },
     typescript = { "biome" },
     yaml = { "yamlfmt" },
   },

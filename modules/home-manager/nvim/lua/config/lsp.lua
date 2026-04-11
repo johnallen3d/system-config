@@ -30,7 +30,6 @@ vim.lsp.enable({
   "marksman",
   "nixd",
   "ruff",
-  "sqruff",
 })
 
 return M
