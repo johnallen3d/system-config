@@ -35,6 +35,7 @@
       # "dotnet@6"
       "duckdb"
       "gogcli"
+      "googleworkspace-cli"
       "granted"
       "kcl-lsp"
       # "libspatialite"
