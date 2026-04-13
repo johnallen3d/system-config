@@ -6,6 +6,7 @@ in {
 
   imports = [
     ./packages
+    ./pi-extensions.nix
   ];
 
   home = {
