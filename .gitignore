@@ -3,6 +3,9 @@
 .gemini/
 GEMINI.md
 
+# pi-lens runtime cache
+.pi-lens/
+
 # Dolt database files (added by bd init)
 .dolt/
 *.db
