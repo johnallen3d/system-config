@@ -15,9 +15,10 @@
     lockfile,
     description ? "",
     homepage ? "",
+    forceEmptyCache ? false,
   }:
     pkgs.buildNpmPackage {
-      inherit pname version npmDepsHash;
+      inherit pname version npmDepsHash forceEmptyCache;
 
       src = pkgs.fetchurl {inherit url hash;};
 
@@ -60,6 +61,37 @@
       lockfile = ./packages/pi-tasks-package-lock.json;
       description = "Task tracking and coordination for pi coding agent";
       homepage = "https://github.com/tintinweb/pi-tasks";
+    };
+
+    pi-markdown-preview = mkPiExtension {
+      pname = "pi-markdown-preview";
+      version = "0.9.6";
+      hash = "sha256-5C/EjaIzZMIpx5u1x1NO/Z4gZqmsda/TGNpnnHe5mP4=";
+      npmDepsHash = "sha256-/hHvhFRkhfW8FqTGVbD+u9s2G+E/ZHo93Bd1m5XrCJw=";
+      lockfile = ./packages/pi-markdown-preview-package-lock.json;
+      description = "Markdown preview renderer for pi coding agent";
+      homepage = "https://github.com/thesved/pi-markdown-preview";
+    };
+
+    pi-tokyo-night-storm = mkPiExtension {
+      pname = "pi-tokyo-night-storm";
+      version = "1.0.0";
+      hash = "sha256-CwRmlhMlIeEJN8D0tQ+S6TGVbPBBJEWZs5jUxfE6QPY=";
+      npmDepsHash = "sha256-Aeyt2zVmx1UpOVZ8T8dRWRPf9uu+Pau8fKkAxWf6tDQ=";
+      lockfile = ./packages/pi-tokyo-night-storm-package-lock.json;
+      description = "Tokyo Night Storm theme for pi coding agent";
+      homepage = "https://github.com/mariozechner/pi-tokyo-night-storm";
+      forceEmptyCache = true;
+    };
+
+    pi-web-access = mkPiExtension {
+      pname = "pi-web-access";
+      version = "0.10.6";
+      hash = "sha256-93u8a41wgsyK1v2XUuxkycwjbFiP4ToOjBUqPmO4wtk=";
+      npmDepsHash = "sha256-zwH9ba5M6wRtyTdpi/7To/ZzkQfNvgO8CxdpGCeB8Vo=";
+      lockfile = ./packages/pi-web-access-package-lock.json;
+      description = "Web access extension for pi coding agent";
+      homepage = "https://github.com/mariozechner/pi-web-access";
     };
   };
 in {
