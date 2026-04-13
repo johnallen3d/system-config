@@ -1,5 +1,5 @@
 ---
-description: Install a package via optimal method. Usage: /pkg-install [nix|pi|brew] <package>
+description: "Install a package via optimal method. Usage: /pkg-install [nix|pi|brew] <package>"
 model: claude-haiku-4-5
 skill: pi-nix-integration
 ---
