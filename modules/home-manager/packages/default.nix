@@ -145,6 +145,7 @@ in {
       wget
       xc
       yamlfmt
+      yamllint
       # yazi
       # youtube-dl
       yq-go
