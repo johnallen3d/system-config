@@ -164,10 +164,10 @@ in {
   home.file =
     (pkgs.lib.mapAttrs'
       (name: pkg:
-        pkgs.lib.nameValuePair ".pi/agent/extensions/${name}" {source = pkg;})
+        pkgs.lib.nameValuePair ".config/pi/extensions/${name}" {source = pkg;})
       extensions)
     // (pkgs.lib.mapAttrs'
       (name: theme:
-        pkgs.lib.nameValuePair ".pi/agent/themes/${name}.json" {source = "${theme.pkg}/themes/${theme.file}";})
+        pkgs.lib.nameValuePair ".config/pi/themes/${name}.json" {source = "${theme.pkg}/themes/${theme.file}";})
       themes);
 }

@@ -6,11 +6,7 @@
 # Strategy: on every rebuild, overlay our desired settings on top of whatever pi wrote,
 # preserving volatile fields (lastChangelogVersion, packages).
 #
-# Note on ~/.config/pi:
-#   Pi supports PI_CODING_AGENT_DIR to relocate its config dir (default: ~/.pi/agent).
-#   Setting PI_CODING_AGENT_DIR=$HOME/.config/pi would move everything there, but ALL
-#   extension/theme paths in pi-extensions.nix would need updating too.  Staying with
-#   the existing ~/.pi/agent/ path is simpler until a full XDG migration is desired.
+# Pi config lives at ~/.config/pi (XDG-style) via PI_CODING_AGENT_DIR set in pi.nix.
 {pkgs, ...}: let
   # Desired settings — volatile fields (lastChangelogVersion, packages) are intentionally
   # omitted so pi can manage them freely.
@@ -29,7 +25,7 @@ in {
   home.activation.piSettings = let
     jq = "${pkgs.jq}/bin/jq";
   in ''
-    settingsFile="$HOME/.pi/agent/settings.json"
+    settingsFile="$HOME/.config/pi/settings.json"
     nixSettings='${piSettingsJson}'
 
     # Ensure the directory exists (pi may not have run yet)

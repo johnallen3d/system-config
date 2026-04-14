@@ -14,8 +14,10 @@
   '';
 in
 pkgs.writeShellScriptBin "pi" ''
+  export PI_CODING_AGENT_DIR="$HOME/.config/pi"
+
   # Refresh pi packages once per day
-  marker="$HOME/.pi/packages-installed"
+  marker="$HOME/.config/pi/packages-installed"
   today=$(${pkgs.coreutils}/bin/date +%Y-%m-%d)
   if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker")" != "$today" ]; then
     ${installPiPackages}
