@@ -6,20 +6,21 @@
     "@tmustier/pi-skill-creator"
   ];
   
-  # Create install script for pi packages
+  # Create install script for pi packages — uses @latest so packages track pi
   installPiPackages = pkgs.writeShellScript "install-pi-packages" ''
     for package in ${toString piPackages}; do
-      ${pkgs.nodejs_24}/bin/npx --yes @mariozechner/pi-coding-agent@0.66.1 install npm:$package 2>/dev/null || true
+      ${pkgs.nodejs_24}/bin/npx --yes @mariozechner/pi-coding-agent@latest install npm:$package 2>/dev/null || true
     done
   '';
 in
 pkgs.writeShellScriptBin "pi" ''
-  # Ensure pi packages are installed on first run
-  if [ ! -f "$HOME/.pi/packages-installed" ]; then
-    echo "Installing pi packages..."
+  # Refresh pi packages once per day
+  marker="$HOME/.pi/packages-installed"
+  today=$(${pkgs.coreutils}/bin/date +%Y-%m-%d)
+  if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker")" != "$today" ]; then
     ${installPiPackages}
-    touch "$HOME/.pi/packages-installed"
+    echo "$today" > "$marker"
   fi
-  
-  exec ${pkgs.nodejs_24}/bin/npx --yes @mariozechner/pi-coding-agent@0.66.1 "$@"
+
+  exec ${pkgs.nodejs_24}/bin/npx --yes @mariozechner/pi-coding-agent@latest "$@"
 ''
