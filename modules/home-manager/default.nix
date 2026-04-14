@@ -7,6 +7,7 @@ in {
   imports = [
     ./packages
     ./pi-extensions.nix
+    ./pi-settings.nix
   ];
 
   home = {
