@@ -49,7 +49,36 @@
       };
     };
 
-  # Code extensions — loaded by pi from ~/.pi/agent/extensions/
+  # Local extensions — inline TS source, no npm packaging needed
+  localExtensions = {
+    auto-caveman = pkgs.writeTextDir "index.ts" ''
+      import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+      import { readFileSync } from "node:fs";
+      import { homedir } from "node:os";
+      import { join } from "node:path";
+
+      export default function (pi: ExtensionAPI) {
+        pi.on("session_start", async (_event, ctx) => {
+          ctx.ui.notify("🦴 caveman mode active", "info");
+        });
+
+        pi.on("before_agent_start", async (event) => {
+          const skillPath = join(homedir(), ".agents/skills/caveman/SKILL.md");
+          let caveman: string;
+          try {
+            caveman = readFileSync(skillPath, "utf8");
+          } catch {
+            return;
+          }
+          return {
+            systemPrompt: event.systemPrompt + "\n\n" + caveman,
+          };
+        });
+      }
+    '';
+  };
+
+  # npm-packaged extensions — loaded by pi from ~/.config/pi/extensions/
   extensions = {
     pi-mcp-adapter = mkPiExtension {
       pname = "pi-mcp-adapter";
@@ -165,7 +194,7 @@ in {
     (pkgs.lib.mapAttrs'
       (name: pkg:
         pkgs.lib.nameValuePair ".config/pi/extensions/${name}" {source = pkg;})
-      extensions)
+      (extensions // localExtensions))
     // (pkgs.lib.mapAttrs'
       (name: theme:
         pkgs.lib.nameValuePair ".config/pi/themes/${name}.json" {source = "${theme.pkg}/themes/${theme.file}";})
