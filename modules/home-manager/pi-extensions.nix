@@ -49,7 +49,8 @@
       };
     };
 
-  # Local extensions — inline TS source, no npm packaging needed
+  # Local extensions — inline TS source, no npm packaging needed.
+  # Shared (personal): loaded in ~/.config/pi/extensions/
   localExtensions = {
     auto-caveman = pkgs.writeTextDir "index.ts" ''
       import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
@@ -57,21 +58,72 @@
       import { homedir } from "node:os";
       import { join } from "node:path";
 
+      function loadSkill(relPath: string): string {
+        try {
+          return readFileSync(join(homedir(), relPath), "utf8");
+        } catch {
+          return "";
+        }
+      }
+
       export default function (pi: ExtensionAPI) {
         pi.on("session_start", async (_event, ctx) => {
-          ctx.ui.notify("🦴 caveman mode active", "info");
+          const isWork = process.env["PI_CODING_AGENT_DIR"]?.endsWith("pi-work");
+          if (!isWork) {
+            ctx.ui.notify("🦴 caveman ultra active", "info");
+          }
         });
 
         pi.on("before_agent_start", async (event) => {
-          const skillPath = join(homedir(), ".agents/skills/caveman/SKILL.md");
-          let caveman: string;
+          const skills = [
+            ".agents/skills/caveman/SKILL.md",
+            ".agents/skills/caveman-commit/SKILL.md",
+            ".agents/skills/caveman-review/SKILL.md",
+          ]
+            .map(loadSkill)
+            .filter(Boolean)
+            .join("\n\n");
+
+          // Patch caveman to ultra intensity
+          const patched = skills.replace(
+            /Default: \*\*full\*\*/,
+            "Default: **ultra**"
+          );
+
+          return {
+            systemPrompt: event.systemPrompt + "\n\n" + patched,
+          };
+        });
+      }
+    '';
+  };
+
+  # Work-only local extensions — loaded exclusively in ~/.config/pi-work/extensions/
+  localWorkExtensions = {
+    auto-work = pkgs.writeTextDir "index.ts" ''
+      import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+      import { readFileSync } from "node:fs";
+      import { homedir } from "node:os";
+      import { join } from "node:path";
+
+      export default function (pi: ExtensionAPI) {
+        pi.on("session_start", async (_event, ctx) => {
+          ctx.ui.notify("🦴💼 caveman ultra + work mode active", "info");
+        });
+
+        pi.on("before_agent_start", async (event) => {
+          const skillPath = join(
+            homedir(),
+            "dev/src/amfaro/skills/notify-on-completion/SKILL.md"
+          );
+          let skill: string;
           try {
-            caveman = readFileSync(skillPath, "utf8");
+            skill = readFileSync(skillPath, "utf8");
           } catch {
             return;
           }
           return {
-            systemPrompt: event.systemPrompt + "\n\n" + caveman,
+            systemPrompt: event.systemPrompt + "\n\n" + skill,
           };
         });
       }
@@ -191,10 +243,22 @@
   };
 in {
   home.file =
+    # Shared extensions — personal context
     (pkgs.lib.mapAttrs'
       (name: pkg:
         pkgs.lib.nameValuePair ".config/pi/extensions/${name}" {source = pkg;})
       (extensions // localExtensions))
+    # Shared extensions — also present in work context
+    // (pkgs.lib.mapAttrs'
+      (name: pkg:
+        pkgs.lib.nameValuePair ".config/pi-work/extensions/${name}" {source = pkg;})
+      (extensions // localExtensions))
+    # Work-only extensions
+    // (pkgs.lib.mapAttrs'
+      (name: pkg:
+        pkgs.lib.nameValuePair ".config/pi-work/extensions/${name}" {source = pkg;})
+      localWorkExtensions)
+    # Themes — personal context (pi-work symlinks to this dir, see pi-settings.nix)
     // (pkgs.lib.mapAttrs'
       (name: theme:
         pkgs.lib.nameValuePair ".config/pi/themes/${name}.json" {source = "${theme.pkg}/themes/${theme.file}";})

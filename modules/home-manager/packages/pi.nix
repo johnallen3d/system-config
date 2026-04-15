@@ -14,10 +14,14 @@
   '';
 in
 pkgs.writeShellScriptBin "pi" ''
-  export PI_CODING_AGENT_DIR="$HOME/.config/pi"
+  # Respect PI_CODING_AGENT_DIR if already set (e.g. by mise for work context);
+  # otherwise fall back to personal config dir.
+  if [ -z "$PI_CODING_AGENT_DIR" ]; then
+    export PI_CODING_AGENT_DIR="$HOME/.config/pi"
+  fi
 
-  # Refresh pi packages once per day
-  marker="$HOME/.config/pi/packages-installed"
+  # Refresh pi packages once per day (tracked per agent dir)
+  marker="$PI_CODING_AGENT_DIR/packages-installed"
   today=$(${pkgs.coreutils}/bin/date +%Y-%m-%d)
   if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker")" != "$today" ]; then
     ${installPiPackages}

@@ -1,43 +1,67 @@
 # Pi agent settings managed declaratively.
 #
-# ~/.pi/agent/settings.json is writable at runtime (pi updates lastChangelogVersion etc.)
+# ~/.config/pi/settings.json is writable at runtime (pi updates lastChangelogVersion etc.)
 # so we use home.activation with a jq merge instead of a read-only home.file symlink.
 #
 # Strategy: on every rebuild, overlay our desired settings on top of whatever pi wrote,
 # preserving volatile fields (lastChangelogVersion, packages).
 #
-# Pi config lives at ~/.config/pi (XDG-style) via PI_CODING_AGENT_DIR set in pi.nix.
-{pkgs, ...}: let
-  # Desired settings — volatile fields (lastChangelogVersion, packages) are intentionally
-  # omitted so pi can manage them freely.
+# Two agent dirs:
+#   ~/.config/pi        — personal, anthropic provider (PI_CODING_AGENT_DIR default)
+#   ~/.config/pi-work   — work (amfaro), copilot provider (set by mise in ~/dev/src/amfaro/mise.toml)
+#
+# Extensions and themes are shared — pi-work symlinks back to the personal dir so
+# we only manage them in one place (pi-extensions.nix).
+{
+  pkgs,
+  lib,
+  ...
+}: let
+  jq = "${pkgs.jq}/bin/jq";
+
+  mkPiSettingsActivation = settingsFile: settings: ''
+    nixSettings='${builtins.toJSON settings}'
+    mkdir -p "$(dirname "${settingsFile}")"
+    if [ -f "${settingsFile}" ]; then
+      merged=$(${jq} -s '.[0] * .[1]' "${settingsFile}" - <<< "$nixSettings")
+      echo "$merged" > "${settingsFile}"
+    else
+      echo "$nixSettings" > "${settingsFile}"
+    fi
+  '';
+
+  # Personal — anthropic is default via ANTHROPIC_API_KEY env var.
+  # No copilot auth here; keep it isolated to pi-work.
   piSettings = {
     defaultProvider = "anthropic";
     defaultModel = "claude-sonnet-4-6";
-    compaction = {
-      enabled = false;
-    };
+    compaction.enabled = false;
     theme = "tokyo-night-storm";
     quietStartup = true;
   };
 
-  piSettingsJson = builtins.toJSON piSettings;
+  # Work (amfaro) — copilot only, no anthropic key in this context.
+  # Skills point at the shared amfaro skills repo.
+  piWorkSettings = {
+    defaultProvider = "github-copilot";
+    defaultModel = "claude-sonnet-4";
+    skills = ["~/dev/src/amfaro/skills"];
+    compaction.enabled = false;
+    theme = "tokyo-night-storm";
+    quietStartup = true;
+  };
 in {
-  home.activation.piSettings = let
-    jq = "${pkgs.jq}/bin/jq";
-  in ''
-    settingsFile="$HOME/.config/pi/settings.json"
-    nixSettings='${piSettingsJson}'
+  home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
+    mkPiSettingsActivation "$HOME/.config/pi/settings.json" piSettings
+  );
 
-    # Ensure the directory exists (pi may not have run yet)
-    mkdir -p "$(dirname "$settingsFile")"
+  home.activation.piWorkSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
+    mkPiSettingsActivation "$HOME/.config/pi-work/settings.json" piWorkSettings
+  );
 
-    if [ -f "$settingsFile" ]; then
-      # Merge: apply our desired keys on top of existing file so pi-managed
-      # fields (lastChangelogVersion, packages, auth tokens, etc.) are preserved.
-      merged=$(${jq} -s '.[0] * .[1]' "$settingsFile" - <<< "$nixSettings")
-      echo "$merged" > "$settingsFile"
-    else
-      echo "$nixSettings" > "$settingsFile"
-    fi
+  # home.file handles all extension symlinks (nix store paths) for both contexts.
+  # Themes are identical so pi-work just symlinks to the personal themes dir.
+  home.activation.piWorkLinks = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    ln -sfn "$HOME/.config/pi/themes" "$HOME/.config/pi-work/themes"
   '';
 }
