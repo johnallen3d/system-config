@@ -112,18 +112,17 @@
         });
 
         pi.on("before_agent_start", async (event) => {
-          const skillPath = join(
-            homedir(),
-            "dev/src/amfaro/skills/notify-on-completion/SKILL.md"
-          );
-          let skill: string;
-          try {
-            skill = readFileSync(skillPath, "utf8");
-          } catch {
-            return;
-          }
+          const skillPaths = [
+            "dev/src/amfaro/skills/notify-on-completion/SKILL.md",
+            "dev/src/amfaro/skills/gh-pr-ops/SKILL.md",
+          ];
+          const skills = skillPaths
+            .map((p) => { try { return readFileSync(join(homedir(), p), "utf8"); } catch { return ""; } })
+            .filter(Boolean)
+            .join("\n\n");
+          if (!skills) return;
           return {
-            systemPrompt: event.systemPrompt + "\n\n" + skill,
+            systemPrompt: event.systemPrompt + "\n\n" + skills,
           };
         });
       }
@@ -211,6 +210,16 @@
         ${pkgs.lib.concatMapStringsSep "\n" (f: ''cp "$tmpdir/package/out/${f}" "$grammarsDest/"'') grammars}
         rm -rf "$tmpdir"
       '';
+    };
+
+    pi-answer = mkPiExtension {
+      pname = "pi-answer";
+      version = "0.1.2";
+      hash = "sha256-BEQJL+aO8W+CZcuSQsGkmESBe9M5q3+9Hnl/x5Ryts4=";
+      npmDepsHash = "sha256-kgaWStajCnd2bOiv1T5dlPtntywKMqWqdFW6gpZNACc=";
+      lockfile = ./packages/pi-answer-package-lock.json;
+      description = "Interactive Q&A extraction for pi — run /answer to extract and answer questions";
+      homepage = "https://www.npmjs.com/package/pi-answer";
     };
 
     pi-web-access = mkPiExtension {
