@@ -10,6 +10,11 @@ in {
     ./pi-settings.nix
   ];
 
+  home.sessionVariables = {
+    CLAUDE_CONFIG_DIR = "$HOME/.config/claude-personal";
+    CLAUDE_CODE_DISABLE_1M_CONTEXT = "1";
+  };
+
   home = {
     file = {
       ".ctags".source = ./dotfiles/ctags;

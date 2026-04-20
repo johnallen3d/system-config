@@ -89,6 +89,8 @@
       "tags"
       "tags.lock"
       "tags.temp"
+      ".pi"
+      ".pi-lens"
       ".pry_history"
     ];
   };
