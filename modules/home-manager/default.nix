@@ -24,6 +24,7 @@ in {
 
       ".config/gh-dash/config.yml".source = ./dotfiles/config/gh-dash/config.yml;
       ".config/stylua.toml".source = ./dotfiles/config/stylua.toml;
+      ".config/claude-gmatter/keybindings.json".source = ./dotfiles/config/claude-personal/keybindings.json;
 
       ".config" = {
         recursive = true;
