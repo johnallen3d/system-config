@@ -30,6 +30,28 @@
     fi
   '';
 
+  piModels = {
+    providers.ollama = {
+      baseUrl = "http://localhost:11434/v1";
+      api = "openai-completions";
+      apiKey = "ollama";
+      compat = {
+        supportsDeveloperRole = false;
+        supportsReasoningEffort = false;
+      };
+      models = [
+        {
+          id = "gemma4:31b";
+          name = "Gemma 4 31B (Ollama)";
+          reasoning = false;
+          input = ["text"];
+          contextWindow = 128000;
+          maxTokens = 8192;
+        }
+      ];
+    };
+  };
+
   # Personal — anthropic is default via ANTHROPIC_API_KEY env var.
   # No copilot auth here; keep it isolated to pi-work.
   piSettings = {
@@ -57,6 +79,14 @@ in {
 
   home.activation.piWorkSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
     mkPiSettingsActivation "$HOME/.config/pi-work/settings.json" piWorkSettings
+  );
+
+  home.activation.piModels = lib.hm.dag.entryAfter ["writeBoundary"] (
+    mkPiSettingsActivation "$HOME/.config/pi/models.json" piModels
+  );
+
+  home.activation.piWorkModels = lib.hm.dag.entryAfter ["writeBoundary"] (
+    mkPiSettingsActivation "$HOME/.config/pi-work/models.json" piModels
   );
 
   # home.file handles all extension symlinks (nix store paths) for both contexts.
