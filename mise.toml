@@ -1,0 +1,6 @@
+[task_config]
+includes = [".mise/tasks"]
+
+[tasks.nix-rebuild]
+description = "Apply darwin-rebuild (updates flake by default); logs to temp file"
+file = "./.mise/tasks/nix-rebuild"

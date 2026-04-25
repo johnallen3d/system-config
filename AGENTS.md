@@ -4,10 +4,21 @@ Nix flake for macOS (nix-darwin), NixOS, Home Manager.
 
 ## Quick Reference
 
-- **Apply macOS**: `sudo darwin-rebuild switch --flake ".#m4-mbp" --impure`
+- **Apply macOS**: `mise run nix-rebuild` (flake update + switch) or `mise run nix-rebuild -- --switch-only` (skip flake update)
 - **Apply NixOS**: `sudo nixos-rebuild switch --impure --flake .#drummer`
 - **Lint**: `nix flake check`
 - **Search packages**: `nix search nixpkgs <name>`
+
+### Rebuild Task (mandatory)
+
+When rebuilding the macOS system, use **only** `mise run nix-rebuild`. Do not invoke `darwin-rebuild` or `nix flake update` directly.
+
+The task writes full output to a temp log and prints `nix-rebuild log: <path>` to stderr on start and finish. It exits with the rebuild's exit code.
+
+**Log access rules**:
+- Do **not** read or stream the log on success — exit code 0 is the confirmation.
+- Read the log **only when** (a) the task exits non-zero, or (b) the user explicitly asks to confirm/inspect output.
+- Always query the log with **targeted `rg`** (e.g. `rg -i 'error|fail|warning' "$log"`, `rg -n 'building' "$log" | tail`). Never `cat`/`tail` the whole file — rebuild logs are large.
 
 ## Adding Packages
 
@@ -21,13 +32,13 @@ Nix flake for macOS (nix-darwin), NixOS, Home Manager.
 **Process**:
 1. Search nixpkgs first: `nix search nixpkgs <package-name>`
 2. Add to appropriate file in `home.packages` list (alphabetically sorted)
-3. Apply: `sudo darwin-rebuild switch --flake ".#m4-mbp" --impure`
+3. Apply: `mise run nix-rebuild` (see Rebuild Task above)
 
 ## Policy
 
 Never create git commits unless explicitly requested.
 
-After changes to scripts, configs, packages — run `sudo darwin-rebuild switch --flake ".#m4-mbp" --impure` so user can test immediately.
+After changes to scripts, configs, packages — run `mise run nix-rebuild` so user can test immediately. Use `mise run nix-rebuild -- --switch-only` if no inputs need updating.
 
 ## Landing the Plane (Session Completion)
 

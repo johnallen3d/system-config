@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#MISE description="Apply darwin-rebuild (updates flake by default); logs to temp file"
+#USAGE flag "--switch-only" help="Skip nix flake update"
+set -uo pipefail
+
+log="$(mktemp -t nix-rebuild.XXXXXX.log)"
+printf 'nix-rebuild log: %s\n' "$log" >&2
+
+{
+  if [[ "${usage_switch_only:-}" != "true" ]]; then
+    nix flake update
+  fi
+  sudo darwin-rebuild switch --impure --flake "$HOME/dev/src/system-config/"
+} 2>&1 | tee "$log"
+rc=${PIPESTATUS[0]}
+
+printf 'nix-rebuild log: %s (exit %d)\n' "$log" "$rc" >&2
+exit "$rc"
