@@ -1,7 +1,6 @@
 {...}: {
   homebrew = {
     enable = true;
-    caskArgs.no_quarantine = true;
     onActivation = {
       autoUpdate = true;
       cleanup = "zap";
@@ -73,6 +72,8 @@
       "copilot-cli"
       "cleanshot"
       "cloudmounter"
+      "codex"
+      "codex-app"
       "discord"
       "disk-inventory-x"
       # "dotnet-sdk" # this is v8
