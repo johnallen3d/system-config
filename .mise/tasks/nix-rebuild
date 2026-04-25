@@ -6,10 +6,6 @@ set -uo pipefail
 log="$(mktemp -t nix-rebuild.XXXXXX.log)"
 printf 'nix-rebuild log: %s\n' "$log" >&2
 
-# Prime sudo so the password prompt (if any) is visible before output is
-# redirected to the log file.
-sudo -v
-
 {
   if [[ "${usage_switch_only:-}" != "true" ]]; then
     nix flake update
