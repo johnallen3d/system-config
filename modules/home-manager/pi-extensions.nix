@@ -21,6 +21,7 @@
     forceEmptyCache ? false,
     npmInstallFlags ? [],
     extraInstallPhase ? "",
+    extraPostPatch ? "",
     nativeBuildInputs ? [],
   }:
     pkgs.buildNpmPackage {
@@ -33,6 +34,7 @@
 
       postPatch = ''
         cp ${lockfile} package-lock.json
+        ${extraPostPatch}
       '';
 
       installPhase = ''
@@ -303,6 +305,18 @@
       # tree-sitter-wasms tarball instead.
       npmInstallFlags = [ "--ignore-scripts" ];
       nativeBuildInputs = [ pkgs.gnutar ];
+      extraPostPatch = ''
+        substituteInPlace clients/language-policy.ts \
+          --replace-fail 'defaults: ["sqlfluff"],' 'defaults: [],' \
+          --replace-fail 'runnerIds: ["sqlfluff"],' 'runnerIds: [],'
+        substituteInPlace clients/dispatch/plan.ts \
+          --replace-fail 'writeGroups: [primary("sql")],' 'writeGroups: [],'
+        substituteInPlace clients/formatters.ts \
+          --replace-fail $'\tsqlfluffFormatter,\n' ""
+        substituteInPlace clients/dispatch/runners/index.ts \
+          --replace-fail 'import sqlfluffRunner from "./sqlfluff.js";' '// sqlfluff disabled locally' \
+          --replace-fail $'\tregistry.register(sqlfluffRunner); // SQL lint (priority 24)\n' ""
+      '';
       extraInstallPhase = let
         treeSitterWasms = pkgs.fetchurl {
           url = "https://registry.npmjs.org/tree-sitter-wasms/-/tree-sitter-wasms-0.1.13.tgz";
