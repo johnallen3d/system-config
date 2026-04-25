@@ -33,8 +33,8 @@
   # Personal — anthropic is default via ANTHROPIC_API_KEY env var.
   # No copilot auth here; keep it isolated to pi-work.
   piSettings = {
-    defaultProvider = "anthropic";
-    defaultModel = "claude-sonnet-4-6";
+    defaultProvider = "openai-codex";
+    defaultModel = "gpt-5.5";
     compaction.enabled = false;
     theme = "tokyo-night-storm";
     quietStartup = true;
@@ -44,7 +44,7 @@
   # Skills point at the shared amfaro skills repo.
   piWorkSettings = {
     defaultProvider = "github-copilot";
-    defaultModel = "claude-sonnet-4";
+    defaultModel = "claude-sonnet-4.6";
     skills = ["~/dev/src/amfaro/skills"];
     compaction.enabled = false;
     theme = "tokyo-night-storm";
