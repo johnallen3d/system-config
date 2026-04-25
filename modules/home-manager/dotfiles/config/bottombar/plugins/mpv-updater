@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 # mpv-queue bottombar updater
-# Polls `mpv-queue --backend voxio --json now` for current playback info.
+# Polls `mpv-queue --json now` for current playback info.
 
 set -u
 
 # Ensure PATH includes nix-installed binaries
 export PATH="/etc/profiles/per-user/$USER/bin:/run/current-system/sw/bin:$HOME/bin:$PATH"
 
-MPV_QUEUE=(mpv-queue --backend voxio --json now)
+MPV_QUEUE=(mpv-queue --json now)
 COVER_ART_THUMB="/tmp/mpv-cover.png"
 last_cover_src=""
 
