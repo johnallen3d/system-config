@@ -49,6 +49,7 @@
       # with autoupdate enabled
       # "opencode"
       "sheets"
+      "sem-cli"
       # "switchaudio-osx"
       # TODO: prefer nix package when fixed
       "tabiew" # 👇 tui for parquet
