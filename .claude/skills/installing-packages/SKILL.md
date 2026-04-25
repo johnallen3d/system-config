@@ -241,7 +241,7 @@ After creating the module file, add to `modules/home-manager/packages/default.ni
   new-tool = import ./new-tool.nix {inherit pkgs;};
 
 # At the bottom, in the home.packages list:
-    ++ [ai-intercept mpv-queue nail-parquet new-tool];
+    ++ [ai-intercept cue nail-parquet new-tool];
 ```
 
 ## After Installation

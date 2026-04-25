@@ -18,8 +18,8 @@
     icat = "viu";
     j = "z";
     k = "kubecolor";
-    mq = "mpv-queue";
-    music = "mpv-queue";
+    mq = "cue";
+    music = "cue";
     pass = "passgen";
     passgen = "dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | rev | cut -b 2- | rev";
     password = "passgen";

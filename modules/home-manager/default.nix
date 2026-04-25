@@ -42,8 +42,8 @@ in {
 
       "Library/Application Support/org.dystroy.bacon/prefs.toml".source = ./dotfiles/bacon-prefs.toml;
 
-      ".config/mpv-queue/config.toml".text = ''
-        # mpv-queue configuration
+      ".config/cue/config.toml".text = ''
+        # cue configuration
 
         music_directory = "${musicDir}"
 
