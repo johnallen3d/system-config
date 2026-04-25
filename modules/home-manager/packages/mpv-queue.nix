@@ -20,6 +20,10 @@ pkgs.rustPlatform.buildRustPackage {
     lockFile = /Users/john.allen/dev/src/playground/mpv-queue/Cargo.lock;
   };
 
+  nativeBuildInputs = [
+    pkgs.cmake
+  ];
+
   meta = with pkgs.lib; {
     description = "Minimal TUI for browsing and controlling the mpv playlist queue";
     license = licenses.mit;

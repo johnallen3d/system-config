@@ -1,145 +1,92 @@
 #!/usr/bin/env bash
 
-# MPV bottombar updater
-# Queries mpv IPC socket for current track info
+# mpv-queue bottombar updater
+# Polls `mpv-queue --backend voxio --json now` for current playback info.
+
+set -u
 
 # Ensure PATH includes nix-installed binaries
 export PATH="/etc/profiles/per-user/$USER/bin:/run/current-system/sw/bin:$HOME/bin:$PATH"
 
-MPV_SOCKET="/tmp/mpv-music.sock"
-COVER_ART_PATH="/tmp/mpv-cover.png"
-COVER_ART_TMP="/tmp/mpv-cover-tmp.png"
-last_path=""
+MPV_QUEUE=(mpv-queue --backend voxio --json now)
+COVER_ART_THUMB="/tmp/mpv-cover.png"
+last_cover_src=""
 
-get_mpv_property() {
-    local prop="$1"
-    echo "{ \"command\": [\"get_property\", \"$prop\"] }" \
-        | socat - "$MPV_SOCKET" 2>/dev/null \
-        | jq -r '.data'
+hide_music() {
+    bottombar -m --set music drawing=off --set music_art drawing=off --set music_repeat drawing=off --set music_shuffle drawing=off
 }
 
-extract_cover_art() {
-    # Extract embedded album art, convert to PNG with sips
-    local raw_file="/tmp/mpv-cover-raw.jpg"
-    rm -f "$raw_file"
-    if ffmpeg -y -i "$1" -an -c:v copy "$raw_file" 2>/dev/null; then
-        sips -s format png -Z 128 "$raw_file" --out "$COVER_ART_PATH" >/dev/null 2>&1
-        rm -f "$raw_file"
-        return 0
+format_time() {
+    local secs="$1"
+    if [[ -n "$secs" && "$secs" != "null" ]]; then
+        local whole=${secs%.*}
+        printf "%d:%02d" $((whole / 60)) $((whole % 60))
     fi
-    return 1
 }
 
 while true; do
-    # Check if socket exists
-    if [[ ! -S "$MPV_SOCKET" ]]; then
-        bottombar -m --set music drawing=off --set music_art drawing=off --set music_repeat drawing=off --set music_shuffle drawing=off
-        sleep 5
-        continue
-    fi
+    status_json=$("${MPV_QUEUE[@]}" 2>/dev/null || true)
 
-    # Get current file path
-    path=$(get_mpv_property "path")
-
-    if [[ -z "$path" || "$path" == "null" ]]; then
-        bottombar -m --set music drawing=off --set music_art drawing=off --set music_repeat drawing=off --set music_shuffle drawing=off
+    if [[ -z "$status_json" ]]; then
+        hide_music
         sleep 2
         continue
     fi
 
-    # Get pause state (returns "true" or "false") - Font Awesome icons
-    paused=$(get_mpv_property "pause")
+    state=$(printf '%s\n' "$status_json" | jq -r '.state // "stopped"')
+    if [[ "$state" == "stopped" ]]; then
+        hide_music
+        sleep 2
+        continue
+    fi
+
+    paused=$(printf '%s\n' "$status_json" | jq -r '.paused // false')
     if [[ "$paused" == "true" ]]; then
-        icon=$'\uf04b'  # play
+        icon=$'\uf04b' # play icon while paused
     else
-        icon=$'\uf04c'  # pause
+        icon=$'\uf04c' # pause icon while playing
     fi
 
-    # Get repeat/loop and shuffle status
-    # Check both loop-file (single track repeat, 'L' key) and loop-playlist (playlist repeat)
-    loop_file=$(get_mpv_property "loop-file")
-    loop_playlist=$(get_mpv_property "loop-playlist")
-    shuffle_status=$(get_mpv_property "shuffle")
+    label=$(printf '%s\n' "$status_json" | jq -r '[.current_track.title, .current_track.artist, .current_track.album] | map(select(. != null and . != "")) | join(" • ")')
 
-    # Get media title (from metadata) or fall back to filename
-    title=$(get_mpv_property "media-title")
-    if [[ -z "$title" || "$title" == "null" ]]; then
-        # Extract filename without path and extension
-        title=$(basename "$path" | sed 's/\.[^.]*$//')
-    fi
-
-    # Get artist from metadata
-    artist=$(echo '{ "command": ["get_property", "metadata/by-key/artist"] }' \
-        | socat - "$MPV_SOCKET" 2>/dev/null \
-        | jq -r '.data')
-
-    # Get album from metadata
-    album=$(echo '{ "command": ["get_property", "metadata/by-key/album"] }' \
-        | socat - "$MPV_SOCKET" 2>/dev/null \
-        | jq -r '.data')
-
-    # Get time position and duration
-    time_pos=$(get_mpv_property "time-pos")
-    duration=$(get_mpv_property "duration")
-
-    # Format time as mm:ss
-    format_time() {
-        local secs="${1%.*}"  # Remove decimal
-        if [[ -n "$secs" && "$secs" != "null" && "$secs" =~ ^[0-9]+$ ]]; then
-            printf "%d:%02d" $((secs / 60)) $((secs % 60))
-        fi
-    }
-
-    time_str=""
-    if [[ -n "$time_pos" && "$time_pos" != "null" && -n "$duration" && "$duration" != "null" ]]; then
-        pos_fmt=$(format_time "$time_pos")
-        dur_fmt=$(format_time "$duration")
-        if [[ -n "$pos_fmt" && -n "$dur_fmt" ]]; then
-            time_str=" [$pos_fmt/$dur_fmt]"
+    elapsed=$(printf '%s\n' "$status_json" | jq -r '.elapsed_secs // empty')
+    duration=$(printf '%s\n' "$status_json" | jq -r '.duration_secs // empty')
+    if [[ -n "$elapsed" && -n "$duration" ]]; then
+        elapsed_fmt=$(format_time "$elapsed")
+        duration_fmt=$(format_time "$duration")
+        if [[ -n "$elapsed_fmt" && -n "$duration_fmt" ]]; then
+            label="$label [$elapsed_fmt/$duration_fmt]"
         fi
     fi
 
-    # Build label with available metadata
-    label="$title"
-    if [[ -n "$artist" && "$artist" != "null" ]]; then
-        label="$label • $artist"
-    fi
-    if [[ -n "$album" && "$album" != "null" ]]; then
-        label="$label • $album"
-    fi
-    label="$label$time_str"
+    cover_art_path=$(printf '%s\n' "$status_json" | jq -r '.cover_art_path // empty')
+    repeat=$(printf '%s\n' "$status_json" | jq -r '.repeat // false')
+    shuffle=$(printf '%s\n' "$status_json" | jq -r '.shuffle // false')
 
-    # Escape quotes for bottombar
-    label=${label//\'/}
+    bottombar -m --set music icon="$icon" icon.drawing=on icon.font="Font Awesome 6 Pro:Regular:14.0" label="$label" drawing=on
 
-    # Extract album art if track changed
-    if [[ "$path" != "$last_path" ]]; then
-        if [[ -f "$path" ]]; then
-            if extract_cover_art "$path"; then
-                sleep 0.1  # Brief delay for file system sync
-                bottombar -m --set music_art background.image="$COVER_ART_PATH"
+    if [[ -n "$cover_art_path" && -f "$cover_art_path" ]]; then
+        if [[ "$cover_art_path" != "$last_cover_src" ]]; then
+            if sips -s format png -Z 128 "$cover_art_path" --out "$COVER_ART_THUMB" >/dev/null 2>&1; then
+                last_cover_src="$cover_art_path"
             fi
         fi
-        last_path="$path"
+        bottombar -m --set music_art background.image="$COVER_ART_THUMB" drawing=on
+    else
+        bottombar -m --set music_art drawing=off
     fi
 
-    # Update music item
-    bottombar -m --set music icon="$icon" icon.drawing=on icon.font="Font Awesome 6 Pro:Regular:14.0" label="$label" drawing=on
-    bottombar -m --set music_art drawing=on
-
-    # Update repeat indicator - show if either loop-file or loop-playlist is active
-    if [[ "$loop_file" == "inf" || "$loop_playlist" == "inf" ]]; then
+    if [[ "$repeat" == "true" ]]; then
         bottombar -m --set music_repeat icon.drawing=on drawing=on
     else
         bottombar -m --set music_repeat drawing=off
     fi
 
-    # Update shuffle indicator - show only if active
-    if [[ "$shuffle_status" == "true" ]]; then
+    if [[ "$shuffle" == "true" ]]; then
         bottombar -m --set music_shuffle icon.drawing=on drawing=on
     else
         bottombar -m --set music_shuffle drawing=off
     fi
 
-    sleep 1
+    sleep 0.5
 done
