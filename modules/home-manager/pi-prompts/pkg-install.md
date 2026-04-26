@@ -23,22 +23,21 @@ Skip research. Execute directly.
 #### nix
 Add `${@:2}` to `modules/home-manager/packages/default.nix` alphabetically in `home.packages`, then:
 ```bash
-sudo darwin-rebuild switch --flake ".#m4-mbp" --impure
+mise run nix-rebuild -- --switch-only
 which ${@:2} && ${@:2} --version || echo "verify manually"
 ```
 
 #### pi
 Add `"${@:2}"` to `piPackages` list in `modules/home-manager/packages/pi.nix` alphabetically, then:
 ```bash
-sudo darwin-rebuild switch --flake ".#m4-mbp" --impure
-rm -f ~/.pi/packages-installed
+mise run nix-rebuild -- --switch-only
 pi list | grep "${@:2}"
 ```
 
 #### brew
 Find homebrew config in `modules/darwin/homebrew/`. Add `${@:2}` as `brew` (CLI) or `cask` (app) alphabetically, then:
 ```bash
-sudo darwin-rebuild switch --flake ".#m4-mbp" --impure
+mise run nix-rebuild -- --switch-only
 brew list | grep "${@:2}"
 ```
 
