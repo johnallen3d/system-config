@@ -5,7 +5,7 @@ auto-update-channel = stable
 bold-is-bright = true
 macos-titlebar-style = hidden
 macos-icon = custom
-macos-custom-icon = ~/.config/ghostty/tokyo-night-moon.icns
+macos-custom-icon = /Users/john.allen/.config/ghostty/tokyo-night-moon.icns
 theme = /Users/john.allen/.local/share/nvim/lazy/tokyonight.nvim/extras/ghostty/tokyonight_moon
 window-colorspace = display-p3
 window-padding-x = 4
@@ -14,7 +14,6 @@ window-padding-x = 4
 custom-shader = ./cursor-shader.glsl
 
 # font-family = "JetBrainsMono Nerd Font Mono" # this is built-in default
-font-family = "FiraCode Nerd Font Mono"
 font-size = 15.5
 font-thicken = true
 
