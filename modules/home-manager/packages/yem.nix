@@ -1,9 +1,9 @@
 {pkgs, ...}:
 let
-  srcPath = /Users/john.allen/dev/src/playground/cue;
+  srcPath = /Users/john.allen/dev/src/playground/yem;
 in
 pkgs.rustPlatform.buildRustPackage {
-  pname = "cue";
+  pname = "yem";
   version = "0.1.0";
 
   src = pkgs.lib.cleanSourceWith {
@@ -17,7 +17,7 @@ pkgs.rustPlatform.buildRustPackage {
   };
 
   cargoLock = {
-    lockFile = /Users/john.allen/dev/src/playground/cue/Cargo.lock;
+    lockFile = /Users/john.allen/dev/src/playground/yem/Cargo.lock;
   };
 
   nativeBuildInputs = [
@@ -27,6 +27,6 @@ pkgs.rustPlatform.buildRustPackage {
   meta = with pkgs.lib; {
     description = "Minimal TUI for browsing and controlling the mpv playlist queue";
     license = licenses.mit;
-    mainProgram = "cue";
+    mainProgram = "yem";
   };
 }

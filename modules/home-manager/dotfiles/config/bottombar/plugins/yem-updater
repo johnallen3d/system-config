@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
-# cue bottombar updater
-# Polls `cue --json now` for current playback info.
+# yem bottombar updater
+# Polls `yem --json now` for current playback info.
 
 set -u
 
 # Ensure PATH includes nix-installed binaries
 export PATH="/etc/profiles/per-user/$USER/bin:/run/current-system/sw/bin:$HOME/bin:$PATH"
 
-CUE=(cue --json now)
-COVER_ART_THUMB="/tmp/cue-cover.png"
+YEM=(yem --json now)
+COVER_ART_THUMB="/tmp/yem-cover.png"
 last_cover_src=""
 
 hide_music() {
@@ -25,7 +25,7 @@ format_time() {
 }
 
 while true; do
-    status_json=$("${CUE[@]}" 2>/dev/null || true)
+    status_json=$("${YEM[@]}" 2>/dev/null || true)
 
     if [[ -z "$status_json" ]]; then
         hide_music

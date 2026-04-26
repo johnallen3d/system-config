@@ -42,8 +42,8 @@ in {
 
       "Library/Application Support/org.dystroy.bacon/prefs.toml".source = ./dotfiles/bacon-prefs.toml;
 
-      ".config/cue/config.toml".text = ''
-        # cue configuration
+      ".config/yem/config.toml".text = ''
+        # yem configuration
 
         music_directory = "${musicDir}"
 

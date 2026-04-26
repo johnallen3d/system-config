@@ -6,7 +6,7 @@ A bottom-positioned sketchybar instance for displaying music info (MPV).
 
 - `sketchybarrc` - Lua entry point that loads the bar configuration
 - `items/` - Bar item definitions (music_art, music)
-- `plugins/cue-updater` - Background script that queries MPV and updates the bar
+- `plugins/yem-updater` - Background script that queries MPV and updates the bar
 
 ## Troubleshooting
 
@@ -19,9 +19,9 @@ If the bottombar is not showing music information:
    ls -la /tmp/mpv-music.sock
    ```
 
-2. **Check if the cue-updater is running:**
+2. **Check if the yem-updater is running:**
    ```bash
-   pgrep -lf cue-updater
+   pgrep -lf yem-updater
    ```
 
 3. **Manually test MPV communication:**
@@ -45,9 +45,9 @@ pkill -f "bottombar"
 launchctl kickstart -k gui/$(id -u)/org.nixos.bottombar
 ```
 
-**Restart the cue-updater script:**
+**Restart the yem-updater script:**
 ```bash
-pkill -f cue-updater
+pkill -f yem-updater
 # It will be restarted automatically when bottombar reloads
 ```
 
@@ -55,4 +55,4 @@ pkill -f cue-updater
 
 - MPV stdout: `~/Library/Logs/org.nixos/mpv-music.out.log`
 - MPV stderr: `~/Library/Logs/org.nixos/mpv-music.err.log`
-- cue-updater: `/tmp/cue-updater.log` (if redirected)
+- yem-updater: `/tmp/yem-updater.log` (if redirected)
