@@ -57,7 +57,7 @@ in {
         hania = "Hania Rani/Ghosts"
         joseph = "JOSEPH/I'm Alone, No You're Not"
         khruangbin = "Khruangbin/A LA SALA"
-        nin = "Nine Inch Nails/2014.08.07 Charlotte, PNC Music Pavilion"
+        nin = "Nine Inch Nails/Live at PNC Music Pavilion, Charlotte, NC (2014-08-07)"
         noah = "Noah Kahan/Cape Elizabeth"
         ray = "Ray LaMontagne/Ouroboros"
         sarah = "Sarah Jarosz/Blue Heron Suite"
