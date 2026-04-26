@@ -1,7 +1,8 @@
 ---
 description: "Install a package via optimal method. Usage: /pkg-install [nix|pi|brew] <package>"
-model: claude-haiku-4-5
+model: gpt-5.4-mini
 skill: pi-nix-integration
+subagent: delegate
 ---
 
 Determine the install method and package name from the arguments:
@@ -21,21 +22,27 @@ Determine the install method and package name from the arguments:
 Skip research. Execute directly.
 
 #### nix
+
 Add `${@:2}` to `modules/home-manager/packages/default.nix` alphabetically in `home.packages`, then:
+
 ```bash
 mise run nix-rebuild -- --switch-only
 which ${@:2} && ${@:2} --version || echo "verify manually"
 ```
 
 #### pi
+
 Add `"${@:2}"` to `piPackages` list in `modules/home-manager/packages/pi.nix` alphabetically, then:
+
 ```bash
 mise run nix-rebuild -- --switch-only
 pi list | grep "${@:2}"
 ```
 
 #### brew
+
 Find homebrew config in `modules/darwin/homebrew/`. Add `${@:2}` as `brew` (CLI) or `cask` (app) alphabetically, then:
+
 ```bash
 mise run nix-rebuild -- --switch-only
 brew list | grep "${@:2}"
