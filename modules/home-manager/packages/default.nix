@@ -20,6 +20,7 @@
     (import ./bin/wav-to-mp3.nix {inherit pkgs;})
   ];
   ai-intercept = import ./ai-intercept.nix {inherit pkgs;};
+  claude-code = pkgs.callPackage ./claude-code.nix {};
   context-mode = import ./context-mode.nix {inherit pkgs;};
   pi = import ./pi.nix {inherit pkgs;};
   yem = import ./yem.nix {inherit pkgs;};
@@ -50,6 +51,7 @@ in {
       bun
       cargo-careful
       chafa
+      claude-code
       cargo-machete
       cargo-nextest
       cargo-sweep
