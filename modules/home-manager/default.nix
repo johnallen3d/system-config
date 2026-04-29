@@ -1,4 +1,8 @@
-{pkgs, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   common = import ../common/common.nix {inherit pkgs;};
   musicDir = common.commonVariables.MUSIC_DIR;
 in {
@@ -17,6 +21,13 @@ in {
   };
 
   home = {
+    activation.claudeCodeSymlink = lib.hm.dag.entryAfter ["writeBoundary"] ''
+      if [ -x /opt/homebrew/bin/claude ]; then
+        mkdir -p "$HOME/.local/bin"
+        ln -snf /opt/homebrew/bin/claude "$HOME/.local/bin/claude"
+      fi
+    '';
+
     file = {
       ".ctags".source = ./dotfiles/ctags;
       ".irbrc".source = ./dotfiles/irbrc;
