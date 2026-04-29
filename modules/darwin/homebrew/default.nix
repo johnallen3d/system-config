@@ -70,7 +70,8 @@
       "bruno"
       "carbon-copy-cloner"
       "claude"
-      "claude-code"
+      # TODO: this is quite out of date
+      # "claude-code"
       "cleanshot"
       "copilot-cli"
       "cloudmounter"

@@ -18,6 +18,7 @@ in {
   home.sessionVariables = {
     CLAUDE_CONFIG_DIR = "$HOME/.config/claude-personal";
     CLAUDE_CODE_DISABLE_1M_CONTEXT = "1";
+    CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS = "1";
   };
 
   home = {
