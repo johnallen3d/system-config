@@ -254,6 +254,7 @@
         label: string;
         usedPercent?: number;
         resetAt?: number;
+        windowSeconds?: number;
       };
       type CodexUsage = { plan?: string; windows: WindowUsage[]; credits?: string; error?: string; fetchedAt?: number };
       type CopilotUsage = { plan?: string; text?: string; error?: string; fetchedAt?: number };
@@ -279,6 +280,24 @@
         return typeof value === "number" && Number.isFinite(value) ? Math.round(value) + "%" : "?%";
       }
 
+      function normalizeEpochMs(value: number | undefined): number | undefined {
+        if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
+        return value > 1_000_000_000_000 ? value : value * 1000;
+      }
+
+      function formatResetAt(resetAt: number | undefined, windowSeconds: number | undefined): string | undefined {
+        const epochMs = normalizeEpochMs(resetAt);
+        if (!epochMs) return undefined;
+        const now = new Date();
+        const date = new Date(epochMs);
+        const sameDay = now.toDateString() === date.toDateString();
+        return new Intl.DateTimeFormat(undefined, {
+          weekday: windowSeconds && windowSeconds > 86400 && !sameDay ? "short" : undefined,
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(date);
+      }
+
       function windowLabel(seconds: number | undefined, fallback: string): string {
         if (seconds === 18000) return "5h";
         if (seconds === 604800) return "7d";
@@ -289,10 +308,12 @@
 
       function codexWindow(raw: any, fallback: string): WindowUsage | undefined {
         if (!raw || typeof raw !== "object") return undefined;
+        const limitWindowSeconds = typeof raw.limit_window_seconds === "number" ? raw.limit_window_seconds : undefined;
         return {
-          label: windowLabel(raw.limit_window_seconds, fallback),
+          label: windowLabel(limitWindowSeconds, fallback),
           usedPercent: typeof raw.used_percent === "number" ? raw.used_percent : undefined,
           resetAt: typeof raw.reset_at === "number" ? raw.reset_at : undefined,
+          windowSeconds: limitWindowSeconds,
         };
       }
 
@@ -386,7 +407,10 @@
         if (provider === "openai-codex") {
           void fetchCodexUsage();
           if (codexUsage?.error) return "usage: codex " + codexUsage.error;
-          const windows = codexUsage?.windows?.map(w => w.label + " " + fmtPercent(w.usedPercent)).join(" / ");
+          const windows = codexUsage?.windows?.map(w => {
+            const reset = formatResetAt(w.resetAt, w.windowSeconds);
+            return w.label + " " + fmtPercent(w.usedPercent) + (reset ? "→" + reset : "");
+          }).join(" / ");
           const plan = codexUsage?.plan ? codexUsage.plan + " " : "";
           const credits = codexUsage?.credits ? " • " + codexUsage.credits : "";
           return "usage: codex " + plan + (windows || "?") + credits;
