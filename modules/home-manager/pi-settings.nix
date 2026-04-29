@@ -56,7 +56,7 @@
   # No copilot auth here; keep it isolated to pi-work.
   piSettings = {
     defaultProvider = "openai-codex";
-    defaultModel = "gpt-5.5";
+    defaultModel = "gpt-5.4";
     compaction.enabled = false;
     theme = "tokyo-night-storm";
     quietStartup = true;
@@ -65,8 +65,8 @@
   # Work (amfaro) — copilot only, no anthropic key in this context.
   # Skills point at the shared amfaro skills repo.
   piWorkSettings = {
-    defaultProvider = "github-copilot";
-    defaultModel = "claude-sonnet-4.6";
+    defaultProvider = "openai-codex";
+    defaultModel = "gpt-5.4";
     skills = ["~/dev/src/amfaro/skills"];
     compaction.enabled = false;
     theme = "tokyo-night-storm";
