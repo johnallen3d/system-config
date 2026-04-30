@@ -2,7 +2,8 @@
   # Pi packages to install globally
   piPackages = [
     "pi-prompt-template-model"
-    "pi-subagents" 
+    "pi-subagents"
+    "@samfp/pi-memory"
     "@tmustier/pi-skill-creator"
   ];
   

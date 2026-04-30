@@ -533,17 +533,6 @@
       homepage = "https://github.com/thesved/pi-markdown-preview";
     };
 
-    memex = mkPiExtension {
-      pname = "@touchskyer/memex";
-      version = "0.1.28";
-      hash = "sha256-NdIeDfqjiJvANZrYWICaEvGv6fOOdHHwTItNg2RjT/I=";
-      npmDepsHash = "sha256-RhoLTqp2cCO6u6UZ36H7mjRMkq8necuzI2+Rc/nvR6s=";
-      lockfile = ./packages/memex-package-lock.json;
-      description = "Zettelkasten-based agent memory system with bidirectional links";
-      homepage = "https://github.com/iamtouchskyer/memex";
-      npmInstallFlags = [ "--ignore-scripts" ];
-    };
-
     pi-lens = mkPiExtension {
       pname = "pi-lens";
       version = "3.8.25";
