@@ -24,6 +24,7 @@
   pi = import ./pi.nix {inherit pkgs;};
   yem = import ./yem.nix {inherit pkgs;};
   nail-parquet = import ./nail-parquet.nix {inherit pkgs;};
+  pinned_yt_dlp = import ./yt-dlp.nix {inherit pkgs;};
 in {
   imports = [
     ../alacritty
@@ -149,7 +150,7 @@ in {
       # yazi
       # youtube-dl
       yq-go
-      yt-dlp
+      pinned_yt_dlp
       # slightly outdated
       # zed-editor
       zellij
