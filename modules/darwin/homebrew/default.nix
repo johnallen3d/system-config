@@ -12,9 +12,11 @@
       "FelixKratz/homebrew-formulae"
       "common-fate/granted"
       "dmno-dev/tap"
+      "elio-fm/elio"
       "kcl-lang/tap"
       "ksdme/tap"
       "nikitabobko/homebrew-tap"
+      "notwadegrimridge/brew"
       "plutov/tap"
       "siderolabs/tap"
       "steipete/tap"
@@ -33,6 +35,7 @@
       "dbmate"
       # "dotnet@6"
       "duckdb"
+      "elio-fm/elio/elio"
       "gogcli"
       "googleworkspace-cli"
       "granted"
@@ -95,6 +98,7 @@
       "opera"
       "oq" # TUI for reading openapi specs
       "orbstack"
+      "notwadegrimridge/brew/pingplace"
       "raycast"
       "rocket"
       # this is blowing up 🤷‍♂️

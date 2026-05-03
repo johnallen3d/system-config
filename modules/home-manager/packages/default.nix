@@ -147,7 +147,6 @@ in {
       xc
       yamlfmt
       yamllint
-      # yazi
       # youtube-dl
       yq-go
       pinned_yt_dlp

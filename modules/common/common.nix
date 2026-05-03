@@ -6,7 +6,7 @@
     dadbod = "nvim +DBUI";
     db = "delete-branch";
     downloads = "cd ~/Downloads";
-    files = "yazi";
+    files = "elio";
     gb = "git bv";
     gc = "git commit -v";
     gco = "git checkout";
