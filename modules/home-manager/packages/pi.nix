@@ -1,6 +1,8 @@
 {pkgs, ...}: let
   # Pi packages to install globally
   piPackages = [
+    "context-mode"
+    "pi-intercom"
     "pi-prompt-template-model"
     "pi-subagents"
     "@samfp/pi-memory"
