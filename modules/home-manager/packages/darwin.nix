@@ -3,6 +3,7 @@
   brew_bin,
   ...
 }: let
+  agent-desktop = import ./agent-desktop.nix {inherit pkgs;};
   scripts = [
     (import ./bin/connect-air-pods.nix {
       inherit pkgs;
@@ -16,6 +17,7 @@
 in {
   home.packages = with pkgs;
     [
+      agent-desktop
       macchina
       mas
       sketchybar
