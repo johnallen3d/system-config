@@ -48,9 +48,36 @@
           contextWindow = 128000;
           maxTokens = 8192;
         }
+        {
+          id = "qwen3-coder:30b";
+          name = "Qwen 3 Coder 30B (Ollama)";
+          reasoning = false;
+          input = ["text"];
+          contextWindow = 262144;
+          maxTokens = 8192;
+        }
       ];
     };
   };
+
+  piSystemMd = ''
+    - My name is John
+    - My birthday is 1976-05-31
+    - `@ollama/pi-web-search` currently registers `web_search` and `web_fetch`.
+    - Prefer `web_search` for ordinary web search.
+    - Prefer `web_fetch` for fetching a single web page.
+    - If `pi-web-access` is re-enabled later, revisit these tool-preference instructions because tool names will conflict again.
+  '';
+
+  piWorkSystemMd = ''
+    - My name is John Allen
+    - I work for gmatter
+    - I'm a software architect with additional devops responsibilities
+    - `@ollama/pi-web-search` currently registers `web_search` and `web_fetch`.
+    - Prefer `web_search` for ordinary web search.
+    - Prefer `web_fetch` for fetching a single web page.
+    - If `pi-web-access` is re-enabled later, revisit these tool-preference instructions because tool names will conflict again.
+  '';
 
   # Personal — anthropic is default via ANTHROPIC_API_KEY env var.
   # No copilot auth here; keep it isolated to pi-work.
@@ -73,6 +100,16 @@
     quietStartup = true;
   };
 in {
+  home.activation.piSystemMd = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    mkdir -p "$HOME/.config/pi" "$HOME/.config/pi-work"
+    cat > "$HOME/.config/pi/SYSTEM.md" <<'EOF'
+${piSystemMd}
+EOF
+    cat > "$HOME/.config/pi-work/SYSTEM.md" <<'EOF'
+${piWorkSystemMd}
+EOF
+  '';
+
   home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
     mkPiSettingsActivation "$HOME/.config/pi/settings.json" piSettings
   );

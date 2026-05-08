@@ -1,12 +1,13 @@
 {pkgs, ...}: let
   # Pi packages to install globally
   piPackages = [
+    "@ollama/pi-web-search"
+    "@samfp/pi-memory"
+    "@tmustier/pi-skill-creator"
     "context-mode"
     "pi-intercom"
     "pi-prompt-template-model"
     "pi-subagents"
-    "@samfp/pi-memory"
-    "@tmustier/pi-skill-creator"
   ];
 
   piVersion = "0.74.0";

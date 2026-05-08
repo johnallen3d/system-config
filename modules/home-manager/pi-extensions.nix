@@ -673,15 +673,20 @@
       homepage = "https://www.npmjs.com/package/pi-answer";
     };
 
-    pi-web-access = mkPiExtension {
-      pname = "pi-web-access";
-      version = "0.10.6";
-      hash = "sha256-93u8a41wgsyK1v2XUuxkycwjbFiP4ToOjBUqPmO4wtk=";
-      npmDepsHash = "sha256-zwH9ba5M6wRtyTdpi/7To/ZzkQfNvgO8CxdpGCeB8Vo=";
-      lockfile = ./packages/pi-web-access-package-lock.json;
-      description = "Web access extension for pi coding agent";
-      homepage = "https://github.com/mariozechner/pi-web-access";
-    };
+    # Temporarily disabled while testing @ollama/pi-web-search.
+    # Re-enable by uncommenting this block once we stop using the conflicting
+    # upstream tool names (`web_search` / `web_fetch`) from the Ollama package,
+    # or after we patch/fork one side to use unique names.
+    # pi-web-access = mkPiExtension {
+    #   pname = "pi-web-access";
+    #   version = "0.10.6";
+    #   hash = "sha256-93u8a41wgsyK1v2XUuxkycwjbFiP4ToOjBUqPmO4wtk=";
+    #   npmDepsHash = "sha256-zwH9ba5M6wRtyTdpi/7To/ZzkQfNvgO8CxdpGCeB8Vo=";
+    #   lockfile = ./packages/pi-web-access-package-lock.json;
+    #   description = "Web access extension for pi coding agent";
+    #   homepage = "https://github.com/mariozechner/pi-web-access";
+    # };
+
   };
   # Theme-only packages — theme JSON linked directly to ~/.pi/agent/themes/
   # so pi auto-discovers them without needing a settings.json entry.
