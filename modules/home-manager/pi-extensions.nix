@@ -663,58 +663,6 @@
       homepage = "https://github.com/thesved/pi-markdown-preview";
     };
 
-    pi-lens = mkPiExtension {
-      pname = "pi-lens";
-      version = "3.8.25";
-      hash = "sha256-sSb74h5HJ5+KSUVs11NzgVYqi/fDPagIMsviBCziEt0=";
-      npmDepsHash = "sha256-Yw9YwSR9flIKGceV9fs9N5HFRoDHPll35YmxXL0PakE=";
-      lockfile = ./packages/pi-lens-package-lock.json;
-      description = "Real-time code feedback for pi — LSP, linters, formatters, type-checking";
-      homepage = "https://github.com/apmantza/pi-lens";
-      # postinstall downloads tree-sitter WASM grammars from the network, which
-      # fails in the Nix sandbox. Skip it and copy the grammars from a prefetched
-      # tree-sitter-wasms tarball instead.
-      npmInstallFlags = [ "--ignore-scripts" ];
-      nativeBuildInputs = [ pkgs.gnutar ];
-      extraPostPatch = ''
-        substituteInPlace clients/language-policy.ts \
-          --replace-fail 'defaults: ["sqlfluff"],' 'defaults: [],' \
-          --replace-fail 'runnerIds: ["sqlfluff"],' 'runnerIds: [],'
-        substituteInPlace clients/dispatch/plan.ts \
-          --replace-fail 'writeGroups: [primary("sql")],' 'writeGroups: [],'
-        substituteInPlace clients/formatters.ts \
-          --replace-fail $'\tsqlfluffFormatter,\n' ""
-        substituteInPlace clients/dispatch/runners/index.ts \
-          --replace-fail 'import sqlfluffRunner from "./sqlfluff.js";' '// sqlfluff disabled locally' \
-          --replace-fail $'\tregistry.register(sqlfluffRunner); // SQL lint (priority 24)\n' ""
-      '';
-      extraInstallPhase = let
-        treeSitterWasms = pkgs.fetchurl {
-          url = "https://registry.npmjs.org/tree-sitter-wasms/-/tree-sitter-wasms-0.1.13.tgz";
-          hash = "sha256-ZqVKm7smhej2G0WM7xR021TnKXnuLeFo6LYCtWI1DdA=";
-        };
-        grammars = [
-          "tree-sitter-typescript.wasm"
-          "tree-sitter-tsx.wasm"
-          "tree-sitter-javascript.wasm"
-          "tree-sitter-python.wasm"
-          "tree-sitter-rust.wasm"
-          "tree-sitter-go.wasm"
-          "tree-sitter-java.wasm"
-          "tree-sitter-c.wasm"
-          "tree-sitter-cpp.wasm"
-          "tree-sitter-ruby.wasm"
-        ];
-      in ''
-        grammarsDest=$out/node_modules/web-tree-sitter/grammars
-        mkdir -p "$grammarsDest"
-        tmpdir=$(mktemp -d)
-        tar -xzf ${treeSitterWasms} -C "$tmpdir"
-        ${pkgs.lib.concatMapStringsSep "\n" (f: ''cp "$tmpdir/package/out/${f}" "$grammarsDest/"'') grammars}
-        rm -rf "$tmpdir"
-      '';
-    };
-
     pi-answer = mkPiExtension {
       pname = "pi-answer";
       version = "0.1.2";
