@@ -1,6 +1,15 @@
 # no need for a greeting
 set fish_greeting
 
+# Strip transient npx shims so managed wrappers win consistently.
+set clean_path
+for path_entry in $PATH
+    if not string match -qr -- '/\.npm/_npx/[^/]+/node_modules/\.bin$' "$path_entry"
+        set clean_path $clean_path $path_entry
+    end
+end
+set -gx PATH $clean_path
+
 fish_add_path --move --prepend --path $HOME/.nix-profile/bin
 fish_add_path --move --prepend --path /nix/var/nix/profiles/default/bin
 fish_add_path --move --path $HOME/.cargo/bin

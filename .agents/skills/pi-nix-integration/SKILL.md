@@ -32,7 +32,7 @@ This skill manages pi packages, extensions, skills, and themes within the nix-da
   
   installPiPackages = pkgs.writeShellScript "install-pi-packages" ''
     for package in ${toString piPackages}; do
-      ${pkgs.nodejs_24}/bin/npx --yes @mariozechner/pi-coding-agent@0.66.1 install npm:$package 2>/dev/null || true
+      ${pkgs.nodejs_24}/bin/npx --yes @earendil-works/pi-coding-agent@latest install npm:$package 2>/dev/null || true
     done
   '';
 in
@@ -44,7 +44,7 @@ pkgs.writeShellScriptBin "pi" ''
     touch "$HOME/.pi/packages-installed"
   fi
   
-  exec ${pkgs.nodejs_24}/bin/npx --yes @mariozechner/pi-coding-agent@0.66.1 "$@"
+  exec ${pkgs.nodejs_24}/bin/npx --yes @earendil-works/pi-coding-agent@latest "$@"
 ''
 ```
 

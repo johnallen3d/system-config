@@ -57,8 +57,8 @@
     # Unified skill injection + tracking for personal and work sessions.
     # Replaces auto-caveman + auto-work + pi-loaded-skills.
     skills-manager = pkgs.writeTextDir "index.ts" ''
-      import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-      import { parseSkillBlock } from "@mariozechner/pi-coding-agent";
+      import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+      import { parseSkillBlock } from "@earendil-works/pi-coding-agent";
       import { readFileSync } from "node:fs";
       import { homedir } from "node:os";
       import { join } from "node:path";
@@ -245,7 +245,7 @@
     '';
 
     runtime-model-info = pkgs.writeTextDir "index.ts" ''
-      import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+      import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
       import { Type } from "@sinclair/typebox";
 
       type RuntimeInfo = {
@@ -376,8 +376,8 @@
 
     # Custom footer with provider-specific usage, model, and context usage.
     usage-footer = pkgs.writeTextDir "index.ts" ''
-      import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-      import { AuthStorage } from "@mariozechner/pi-coding-agent";
+      import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+      import { AuthStorage } from "@earendil-works/pi-coding-agent";
       import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 
       type WindowUsage = {
