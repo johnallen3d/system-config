@@ -31,6 +31,51 @@
       ${piPackage}/bin/pi install npm:$package 2>/dev/null || true
     done
   '';
+
+  repairPiPackages = pkgs.writeShellScript "repair-pi-packages" ''
+    node_modules_dir="$HOME/.local/lib/node_modules"
+
+    skill_creator_dir="$node_modules_dir/@tmustier/pi-skill-creator"
+    if [ -d "$skill_creator_dir" ] && [ -f "$skill_creator_dir/SKILL.md" ]; then
+      mkdir -p "$skill_creator_dir/skill-creator"
+      cp "$skill_creator_dir/SKILL.md" "$skill_creator_dir/skill-creator/SKILL.md"
+      ${pkgs.python3}/bin/python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+package_json = Path(os.path.expanduser("~/.local/lib/node_modules/@tmustier/pi-skill-creator/package.json"))
+if package_json.exists():
+    data = json.loads(package_json.read_text())
+    pi = data.setdefault("pi", {})
+    if pi.get("skills") != ["./skill-creator"]:
+        pi["skills"] = ["./skill-creator"]
+        package_json.write_text(json.dumps(data, indent=2) + "\n")
+PY
+    fi
+
+    context_mode_dir="$node_modules_dir/context-mode"
+    if [ -d "$context_mode_dir/skills" ]; then
+      ${pkgs.python3}/bin/python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+package_json = Path(os.path.expanduser("~/.local/lib/node_modules/context-mode/package.json"))
+skills_dir = Path(os.path.expanduser("~/.local/lib/node_modules/context-mode/skills"))
+if package_json.exists() and skills_dir.exists():
+    data = json.loads(package_json.read_text())
+    pi = data.setdefault("pi", {})
+    skill_paths = sorted(
+        f"./skills/{path.parent.name}"
+        for path in skills_dir.glob("*/SKILL.md")
+    )
+    if skill_paths and pi.get("skills") != skill_paths:
+        pi["skills"] = skill_paths
+        package_json.write_text(json.dumps(data, indent=2) + "\n")
+PY
+    fi
+  '';
 in
 pkgs.writeShellScriptBin "pi" ''
   # Strip transient npx shims inherited from older installs so managed pi wins.
@@ -61,6 +106,8 @@ pkgs.writeShellScriptBin "pi" ''
     ${installPiPackages}
     echo "$today" > "$marker"
   fi
+
+  ${repairPiPackages}
 
   exec ${piPackage}/bin/pi "$@"
 ''
