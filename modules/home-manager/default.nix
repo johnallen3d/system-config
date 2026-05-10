@@ -10,6 +10,7 @@ in {
 
   imports = [
     ./packages
+    ./claude-prompts.nix
     ./pi-extensions.nix
     ./pi-prompts.nix
     ./pi-settings.nix
