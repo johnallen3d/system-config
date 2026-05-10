@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#MISE description="Force nix-managed pi package refresh for personal + work profiles"
+set -euo pipefail
+
+pi_bin="$(command -v pi)"
+if [ -z "$pi_bin" ]; then
+  echo "pi not found in PATH" >&2
+  exit 1
+fi
+
+refresh_profile() {
+  local profile_dir="$1"
+  local label="$2"
+  local marker="$profile_dir/packages-installed"
+
+  echo "Refreshing $label profile: $profile_dir"
+  rm -f "$marker"
+  PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" list >/dev/null
+  echo "Refreshed $label profile"
+}
+
+refresh_profile "$HOME/.config/pi" "personal"
+refresh_profile "$HOME/.config/pi-work" "work"
+
+echo "Done"

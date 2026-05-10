@@ -4,3 +4,7 @@ includes = [".mise/tasks"]
 [tasks.nix-rebuild]
 description = "Apply darwin-rebuild (updates flake by default); logs to temp file"
 file = "./.mise/tasks/nix-rebuild"
+
+[tasks.pi-refresh]
+description = "Force nix-managed pi package refresh for personal + work profiles"
+file = "./.mise/tasks/pi-refresh"
