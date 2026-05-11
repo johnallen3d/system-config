@@ -295,6 +295,28 @@ function sessionCost(ctx: any): number {
   return total;
 }
 
+function wrapPlainText(text: string, width: number): string[] {
+  if (width <= 0) return [text];
+  if (visibleWidth(text) <= width) return [text];
+
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? current + " " + word : word;
+    if (!current || visibleWidth(candidate) <= width) {
+      current = candidate;
+      continue;
+    }
+    lines.push(current);
+    current = visibleWidth(word) <= width ? word : truncateToWidth(word, width, "...");
+  }
+
+  if (current) lines.push(current);
+  return lines.length ? lines : [truncateToWidth(text, width, "...")];
+}
+
 function formatWindowUsage(windows: WindowUsage[] | undefined): string {
   return windows?.map(w => {
     const reset = formatResetAt(w.resetAt, w.windowSeconds);
@@ -367,22 +389,45 @@ function installFooter(ctx: any) {
           : ctxInfo.percent !== undefined && ctxInfo.percent > 70
             ? theme.fg("warning", ctxInfo.text)
             : ctxInfo.text;
-        const left = theme.fg("dim", usageText(ctx)) + " " + theme.fg("dim", "|") + " " + context;
-        const right = theme.fg("dim", modelText(ctx));
-        const pad = " ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)));
-        const line = truncateToWidth(left + pad + right, width, theme.fg("dim", "..."));
+        const usage = usageText(ctx);
+        const model = modelText(ctx);
 
-        const extraLines: string[] = [];
+        const lines: string[] = [];
+        const wideLeft = theme.fg("dim", usage) + " " + theme.fg("dim", "|") + " " + context;
+        const wideRight = theme.fg("dim", model);
+        const widePad = " ".repeat(Math.max(1, width - visibleWidth(wideLeft) - visibleWidth(wideRight)));
+        const wideLine = wideLeft + widePad + wideRight;
+
+        if (visibleWidth(wideLine) <= width) {
+          lines.push(wideLine);
+        } else {
+          for (const line of wrapPlainText(usage, width)) {
+            lines.push(theme.fg("dim", line));
+          }
+          if (visibleWidth(context) + 3 + visibleWidth(model) <= width) {
+            lines.push(context + " " + theme.fg("dim", "|") + " " + theme.fg("dim", model));
+          } else {
+            lines.push(truncateToWidth(context, width, theme.fg("dim", "...")));
+            lines.push(truncateToWidth(theme.fg("dim", model), width, theme.fg("dim", "...")));
+          }
+        }
+
         if (!claudeProvider(ctx)) {
-          extraLines.push(truncateToWidth(theme.fg("dim", claudeUsageText("claude: ")), width, theme.fg("dim", "...")));
+          for (const line of wrapPlainText(claudeUsageText("claude: "), width)) {
+            lines.push(theme.fg("dim", line));
+          }
         }
         const statuses = Array.from(footerData.getExtensionStatuses().entries())
           .sort(([a], [b]) => String(a).localeCompare(String(b)))
           .map(([, text]) => String(text).replace(/[\r\n\t]/g, " ").replace(/ +/g, " ").trim())
           .filter(Boolean)
           .join(" ");
-        if (statuses) extraLines.push(truncateToWidth(statuses, width, theme.fg("dim", "...")));
-        return [line, ...extraLines];
+        if (statuses) {
+          for (const line of wrapPlainText(statuses, width)) {
+            lines.push(line);
+          }
+        }
+        return lines;
       },
     };
   });
