@@ -631,63 +631,9 @@
   # Work-only extensions slot kept for future use; skills-manager handles work injection.
   localWorkExtensions = {};
 
-  # npm-packaged extensions — loaded by pi from ~/.config/pi/extensions/
-  extensions = {
-    pi-mcp-adapter = mkPiExtension {
-      pname = "pi-mcp-adapter";
-      version = "2.2.2";
-      hash = "sha512-aT7eKpjYP558ZiYrlmCABNTuzUiw8eRY10rpgrygsZWfdfo5eC51Jc+NuB0V+lZ+5uGHwPJcZLPadmeO1zXQSA==";
-      npmDepsHash = "sha256-qMI9QnIYXvq8JMVrR8zcGNhO2caSSvo1Pq71PR9IjGM=";
-      lockfile = ./packages/pi-mcp-adapter-package-lock.json;
-      description = "MCP adapter extension for pi coding agent";
-      homepage = "https://github.com/nicobailon/pi-mcp-adapter";
-    };
-
-    pi-tasks = mkPiExtension {
-      pname = "@tintinweb/pi-tasks";
-      version = "0.4.2";
-      hash = "sha256-XXZCs/7yJfSz0aY5DeW87n8beJwg9tEmm+cJa0y4YVQ=";
-      npmDepsHash = "sha256-1tmviUr/xYFebp5kV+59HiGlZIdfLqpkqqHSYUiZq8A=";
-      lockfile = ./packages/pi-tasks-package-lock.json;
-      description = "Task tracking and coordination for pi coding agent";
-      homepage = "https://github.com/tintinweb/pi-tasks";
-    };
-
-    pi-markdown-preview = mkPiExtension {
-      pname = "pi-markdown-preview";
-      version = "0.9.6";
-      hash = "sha256-5C/EjaIzZMIpx5u1x1NO/Z4gZqmsda/TGNpnnHe5mP4=";
-      npmDepsHash = "sha256-/hHvhFRkhfW8FqTGVbD+u9s2G+E/ZHo93Bd1m5XrCJw=";
-      lockfile = ./packages/pi-markdown-preview-package-lock.json;
-      description = "Markdown preview renderer for pi coding agent";
-      homepage = "https://github.com/thesved/pi-markdown-preview";
-    };
-
-    pi-answer = mkPiExtension {
-      pname = "pi-answer";
-      version = "0.1.2";
-      hash = "sha256-BEQJL+aO8W+CZcuSQsGkmESBe9M5q3+9Hnl/x5Ryts4=";
-      npmDepsHash = "sha256-kgaWStajCnd2bOiv1T5dlPtntywKMqWqdFW6gpZNACc=";
-      lockfile = ./packages/pi-answer-package-lock.json;
-      description = "Interactive Q&A extraction for pi — run /answer to extract and answer questions";
-      homepage = "https://www.npmjs.com/package/pi-answer";
-    };
-
-    # Temporarily disabled while testing @ollama/pi-web-search.
-    # Re-enable by uncommenting this block once we stop using the conflicting
-    # upstream tool names (`web_search` / `web_fetch`) from the Ollama package,
-    # or after we patch/fork one side to use unique names.
-    # pi-web-access = mkPiExtension {
-    #   pname = "pi-web-access";
-    #   version = "0.10.6";
-    #   hash = "sha256-93u8a41wgsyK1v2XUuxkycwjbFiP4ToOjBUqPmO4wtk=";
-    #   npmDepsHash = "sha256-zwH9ba5M6wRtyTdpi/7To/ZzkQfNvgO8CxdpGCeB8Vo=";
-    #   lockfile = ./packages/pi-web-access-package-lock.json;
-    #   description = "Web access extension for pi coding agent";
-    #   homepage = "https://github.com/mariozechner/pi-web-access";
-    # };
-
-  };
+  # Third-party extensions now install via `piPackages` in packages/pi.nix.
+  # Keep this slot only for local extensions and direct-file themes.
+  extensions = {};
   # Theme-only packages — theme JSON linked directly to ~/.pi/agent/themes/
   # so pi auto-discovers them without needing a settings.json entry.
   # Each entry maps "theme-name" -> { pkg, file } where file is the JSON filename.
