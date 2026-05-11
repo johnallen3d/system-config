@@ -352,12 +352,21 @@ function usageText(ctx: any): string {
   return "usage: $" + sessionCost(ctx).toFixed(3) + " session";
 }
 
+const DISABLE_1M_CONTEXT = process.env["CLAUDE_CODE_DISABLE_1M_CONTEXT"] === "1";
+const MAX_CONTEXT_TOKENS = DISABLE_1M_CONTEXT ? 200_000 : undefined;
+
 function contextText(ctx: any): { text: string; percent: number | undefined } {
   const usage = ctx.getContextUsage?.();
   const tokens = usage?.tokens;
-  const limit = usage?.contextWindow ?? ctx.model?.contextWindow;
-  const percent = typeof usage?.percent === "number" ? usage.percent :
-    (typeof tokens === "number" && typeof limit === "number" && limit > 0 ? (tokens / limit) * 100 : undefined);
+  const rawLimit = usage?.contextWindow ?? ctx.model?.contextWindow;
+  const limit = typeof rawLimit === "number" && MAX_CONTEXT_TOKENS !== undefined
+    ? Math.min(rawLimit, MAX_CONTEXT_TOKENS)
+    : rawLimit;
+  const percent = typeof usage?.percent === "number"
+    ? (MAX_CONTEXT_TOKENS !== undefined && typeof tokens === "number" && MAX_CONTEXT_TOKENS > 0
+        ? (tokens / MAX_CONTEXT_TOKENS) * 100
+        : usage.percent)
+    : (typeof tokens === "number" && typeof limit === "number" && limit > 0 ? (tokens / limit) * 100 : undefined);
   return {
     text: "ctx " + formatTokens(tokens ?? 0) + "/" + formatTokens(limit ?? 0) + " " + fmtPercent(percent),
     percent,
