@@ -93,8 +93,6 @@
     - If `pi-web-access` is re-enabled later, revisit these tool-preference instructions because tool names will conflict again.
   '';
 
-  # Personal — anthropic is default via ANTHROPIC_API_KEY env var.
-  # No copilot auth here; keep it isolated to pi-work.
   piSettings = {
     defaultProvider = "openai-codex";
     defaultModel = "gpt-5.4";
@@ -103,25 +101,22 @@
     quietStartup = true;
   };
 
-  # Work (amfaro) — copilot only, no anthropic key in this context.
-  # Skills point at the shared amfaro skills repo.
   piWorkSettings = {
     defaultProvider = "openai-codex";
     defaultModel = "gpt-5.4";
-    skills = ["~/dev/src/amfaro/skills"];
     compaction.enabled = false;
     theme = "tokyo-night-storm";
     quietStartup = true;
   };
 in {
   home.activation.piSystemMd = lib.hm.dag.entryAfter ["writeBoundary"] ''
-    mkdir -p "$HOME/.config/pi" "$HOME/.config/pi-work"
-    cat > "$HOME/.config/pi/SYSTEM.md" <<'EOF'
-${piSystemMd}
-EOF
-    cat > "$HOME/.config/pi-work/SYSTEM.md" <<'EOF'
-${piWorkSystemMd}
-EOF
+        mkdir -p "$HOME/.config/pi" "$HOME/.config/pi-work"
+        cat > "$HOME/.config/pi/SYSTEM.md" <<'EOF'
+    ${piSystemMd}
+    EOF
+        cat > "$HOME/.config/pi-work/SYSTEM.md" <<'EOF'
+    ${piWorkSystemMd}
+    EOF
   '';
 
   home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
