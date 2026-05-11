@@ -5,6 +5,7 @@
     "@samfp/pi-memory"
     "@tmustier/pi-skill-creator"
     "context-mode"
+    "pi-claude-bridge"
     "pi-intercom"
     "pi-prompt-template-model"
     "pi-subagents"

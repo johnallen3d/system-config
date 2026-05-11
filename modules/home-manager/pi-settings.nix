@@ -13,6 +13,7 @@
 # Extensions and themes are shared — pi-work symlinks back to the personal dir so
 # we only manage them in one place (pi-extensions.nix).
 {
+  config,
   pkgs,
   lib,
   ...
@@ -57,6 +58,19 @@
           maxTokens = 8192;
         }
       ];
+    };
+  };
+
+  claudeBridgeSettings = {
+    askClaude = {
+      enabled = true;
+      allowFullMode = true;
+      defaultIsolated = false;
+      appendSkills = true;
+    };
+    provider = {
+      strictMcpConfig = true;
+      pathToClaudeCodeExecutable = "${config.home.homeDirectory}/.local/bin/claude";
     };
   };
 
@@ -124,6 +138,14 @@ EOF
 
   home.activation.piWorkModels = lib.hm.dag.entryAfter ["writeBoundary"] (
     mkPiSettingsActivation "$HOME/.config/pi-work/models.json" piModels
+  );
+
+  home.activation.piClaudeBridgeSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
+    mkPiSettingsActivation "$HOME/.config/pi/claude-bridge.json" claudeBridgeSettings
+  );
+
+  home.activation.piWorkClaudeBridgeSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
+    mkPiSettingsActivation "$HOME/.config/pi-work/claude-bridge.json" claudeBridgeSettings
   );
 
   # home.file handles all extension symlinks (nix store paths) for both contexts.
