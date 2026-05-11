@@ -13,6 +13,7 @@
   lib = pkgs.lib;
   helpers = import ./pi/helpers.nix {inherit pkgs;};
   localExtensions = import ./pi/local-extensions.nix {inherit lib;};
+  localPersonalExtensions = import ./pi/local-personal-extensions.nix {inherit lib;};
   localWorkExtensions = import ./pi/local-work-extensions.nix {};
   extensions = import ./pi/packaged-extensions.nix {};
   themes = import ./pi/themes.nix {inherit (helpers) mkPiExtension;};
@@ -22,7 +23,7 @@ in {
     (lib.mapAttrs'
       (name: pkg:
         lib.nameValuePair ".config/pi/extensions/${name}" {source = pkg;})
-      (extensions // localExtensions))
+      (extensions // localExtensions // localPersonalExtensions))
     # Shared extensions — also present in work context
     // (lib.mapAttrs'
       (name: pkg:
