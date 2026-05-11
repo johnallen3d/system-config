@@ -7,8 +7,11 @@
 # preserving volatile fields (lastChangelogVersion, packages).
 #
 # Two agent dirs:
-#   ~/.config/pi        — personal, anthropic provider (PI_CODING_AGENT_DIR default)
-#   ~/.config/pi-work   — work (amfaro), copilot provider (set by mise in ~/dev/src/amfaro/mise.toml)
+#   ~/.config/pi        — personal Pi profile ↔ ~/.config/claude-personal
+#   ~/.config/pi-work   — work Pi profile ↔ ~/.config/claude-gmatter
+#
+# Personal is the default PI_CODING_AGENT_DIR. Work is selected by per-project mise/env wiring.
+# Claude usage/account data shown through claude-bridge should come from the matching Claude profile.
 #
 # Extensions and themes are shared — pi-work symlinks back to the personal dir so
 # we only manage them in one place (pi-extensions.nix).
