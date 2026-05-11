@@ -21,7 +21,7 @@ pkgs.rustPlatform.buildRustPackage {
   };
 
   meta = with pkgs.lib; {
-    description = "Shared policy guard for AI coding tools (Claude Code, OpenCode, etc.)";
+    description = "Shared policy guard for AI coding tools";
     license = licenses.mit;
     mainProgram = "ai-intercept";
   };

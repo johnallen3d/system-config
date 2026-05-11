@@ -21,8 +21,6 @@
       "siderolabs/tap"
       "steipete/tap"
       "steveyegge/beads"
-      # opencode, see note below
-      # "sst/tap"
     ];
 
     brews = [
@@ -47,10 +45,6 @@
       "llmfit"
       "mise"
       "mole"
-      # not being kept up to date with raprid releases
-      # trying: curl -fsSL https://opencode.ai/install | bash
-      # with autoupdate enabled
-      # "opencode"
       "sheets"
       "sem-cli"
       # "switchaudio-osx"
