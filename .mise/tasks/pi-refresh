@@ -12,8 +12,28 @@ refresh_profile() {
   local profile_dir="$1"
   local label="$2"
   local marker="$profile_dir/packages-installed"
+  local settings_file="$profile_dir/settings.json"
 
   echo "Refreshing $label profile: $profile_dir"
+
+  if [ -f "$settings_file" ]; then
+    while IFS= read -r package_source; do
+      [ -n "$package_source" ] || continue
+      rm -rf "$profile_dir/git/${package_source#git:}"
+    done < <(
+      python3 - "$settings_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+settings = Path(sys.argv[1])
+for package in json.loads(settings.read_text()).get("packages", []):
+    if isinstance(package, str) and package.startswith("git:"):
+        print(package)
+PY
+    )
+  fi
+
   rm -f "$marker"
   PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" list >/dev/null
   echo "Refreshed $label profile"

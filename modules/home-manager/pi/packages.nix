@@ -7,7 +7,6 @@ in rec {
     (npm "pi-answer")
     (npm "pi-intercom")
     (npm "pi-markdown-preview")
-    (npm "pi-web-access")
   ];
 
   personalPackageSpecs = sharedPackageSpecs ++ [
