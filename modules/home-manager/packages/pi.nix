@@ -1,21 +1,16 @@
 {pkgs, ...}: let
-  # Pi packages to install globally
-  piPackages = [
-    "@ollama/pi-web-search"
-    "@samfp/pi-memory"
-    "@tintinweb/pi-tasks"
-    "@tmustier/pi-skill-creator"
-    "context-mode"
-    "pi-answer"
-    "pi-claude-bridge"
-    "pi-intercom"
-    "pi-markdown-preview"
-    "pi-mcp-adapter"
-    "pi-prompt-template-model"
-    "pi-subagents"
-  ];
+  lib = pkgs.lib;
+  piPackages = import ../pi/packages.nix {inherit lib;};
 
   piVersion = "0.74.0";
+  personalPackageStamp = builtins.hashString "sha256" (builtins.toJSON {
+    version = piVersion;
+    packages = piPackages.personalPackageSpecs;
+  });
+  workPackageStamp = builtins.hashString "sha256" (builtins.toJSON {
+    version = piVersion;
+    packages = piPackages.workPackageSpecs;
+  });
   piPackage = pkgs.buildNpmPackage {
     pname = "pi-coding-agent";
     version = piVersion;
@@ -31,10 +26,10 @@
     '';
   };
 
-  # Create install script for pi packages using managed pi binary, not transient npx cache
+  # Install declared Pi packages with managed pi binary, not transient npx cache.
   installPiPackages = pkgs.writeShellScript "install-pi-packages" ''
-    for package in ${toString piPackages}; do
-      ${piPackage}/bin/pi install npm:$package 2>/dev/null || true
+    for package in "$@"; do
+      ${piPackage}/bin/pi install "$package" 2>/dev/null || true
     done
   '';
 
@@ -105,12 +100,19 @@ in
       export PI_CODING_AGENT_DIR="$HOME/.config/pi"
     fi
 
-    # Refresh pi packages once per day (tracked per agent dir)
+    if [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-work" ]; then
+      expected_stamp='${workPackageStamp}'
+      package_args=(${lib.escapeShellArgs piPackages.workPackageSpecs})
+    else
+      expected_stamp='${personalPackageStamp}'
+      package_args=(${lib.escapeShellArgs piPackages.personalPackageSpecs})
+    fi
+
+    # Refresh pi packages whenever declared package set changes (tracked per agent dir)
     marker="$PI_CODING_AGENT_DIR/packages-installed"
-    today=$(${pkgs.coreutils}/bin/date +%Y-%m-%d)
-    if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker")" != "$today" ]; then
-      ${installPiPackages}
-      echo "$today" > "$marker"
+    if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker")" != "$expected_stamp" ]; then
+      ${installPiPackages} "''${package_args[@]}"
+      echo "$expected_stamp" > "$marker"
     fi
 
     ${repairPiPackages}

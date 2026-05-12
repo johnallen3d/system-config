@@ -4,7 +4,8 @@
 # so we use home.activation with a jq merge instead of a read-only home.file symlink.
 #
 # Strategy: on every rebuild, overlay our desired settings on top of whatever pi wrote,
-# preserving volatile fields (lastChangelogVersion, packages).
+# preserving volatile fields such as lastChangelogVersion while keeping selected keys
+# declarative from nix.
 #
 # Two agent dirs:
 #   ~/.config/pi        — personal Pi profile ↔ ~/.config/claude-personal
@@ -21,6 +22,7 @@
   lib,
   ...
 }: let
+  piPackages = import ./pi/packages.nix {inherit lib;};
   jq = "${pkgs.jq}/bin/jq";
 
   mkPiSettingsActivation = settingsFile: settings: ''
@@ -100,6 +102,7 @@
     defaultProvider = "openai-codex";
     defaultModel = "gpt-5.4";
     compaction.enabled = false;
+    packages = piPackages.personalPackageSpecs;
     theme = "tokyo-night-storm";
     quietStartup = true;
   };
@@ -108,6 +111,7 @@
     defaultProvider = "openai-codex";
     defaultModel = "gpt-5.4";
     compaction.enabled = false;
+    packages = piPackages.workPackageSpecs;
     theme = "tokyo-night-storm";
     quietStartup = true;
   };
