@@ -8,27 +8,47 @@ tokio = { version = "1.33", features = ["macros"] }
 use std::thread;
 use std::time::Duration;
 
+const SUCCESS_POLL_SECS: u64 = 3600;
+const FAILURE_RETRY_SECS: u64 = 30;
+const MAX_FAILURE_RETRY_SECS: u64 = 300;
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let config = conditions::Config::load().unwrap();
     let cache_path = conditions::Config::cache_path().unwrap();
     let mut cache = conditions::Cache::new(Some(cache_path)).await.unwrap();
     let mut conditions = conditions::Conditions::new(config, None);
+    let mut consecutive_failures = 0u32;
 
     loop {
-        let current = conditions
-            .fetch(&mut cache)
-            .await
-            .unwrap();
+        match conditions.fetch(&mut cache).await {
+            Ok(current) => {
+                consecutive_failures = 0;
 
-        let message = format!(
-            "--set weather_logo icon=\"{}\" --set weather label=\"{}°F\"",
-            current.icon, current.temp
-        );
+                let message = format!(
+                    "--set weather_logo icon=\"{}\" --set weather label=\"{}°F\"",
+                    current.icon, current.temp
+                );
 
-        sketchybar_rs::message(&message, Some("sketchybar")).unwrap();
+                if let Err(error) = sketchybar_rs::message(&message, Some("sketchybar")) {
+                    eprintln!("weather-updater: failed to send update to sketchybar: {error:?}");
+                }
 
-        thread::sleep(Duration::from_secs(3600));
+                thread::sleep(Duration::from_secs(SUCCESS_POLL_SECS));
+            }
+            Err(error) => {
+                consecutive_failures = consecutive_failures.saturating_add(1);
+
+                let retry_secs = (FAILURE_RETRY_SECS.saturating_mul(1u64 << consecutive_failures.min(4)))
+                    .min(MAX_FAILURE_RETRY_SECS);
+
+                eprintln!(
+                    "weather-updater: fetch failed ({error:#}); retrying in {retry_secs}s"
+                );
+
+                thread::sleep(Duration::from_secs(retry_secs));
+            }
+        }
     }
 }
 
