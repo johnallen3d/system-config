@@ -15,7 +15,6 @@ const SHARED_SKILL_PATHS = [
 ];
 const WORK_SKILL_PATHS = [
   "dev/src/amfaro/skills/notify-on-completion/SKILL.md",
-  "dev/src/amfaro/skills/gh-pr-ops/SKILL.md",
 ];
 
 function activeSkillPaths(): string[] {
