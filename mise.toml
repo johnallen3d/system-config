@@ -6,5 +6,5 @@ description = "Apply darwin-rebuild (updates flake by default); logs to temp fil
 file = "./.mise/tasks/nix-rebuild"
 
 [tasks.pi-refresh]
-description = "Force nix-managed pi package refresh for personal + work profiles"
+description = "Refresh nix-managed pi packages for personal + work profiles"
 file = "./.mise/tasks/pi-refresh"

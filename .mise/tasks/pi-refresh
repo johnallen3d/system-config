@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Force nix-managed pi package refresh for personal + work profiles"
+#MISE description="Refresh nix-managed pi packages for personal + work profiles"
 set -euo pipefail
 
 pi_bin="$(command -v pi)"
@@ -7,6 +7,9 @@ if [ -z "$pi_bin" ]; then
   echo "pi not found in PATH" >&2
   exit 1
 fi
+
+declare -A updated_npm_packages=()
+declare -a failures=()
 
 refresh_profile() {
   local profile_dir="$1"
@@ -16,10 +19,15 @@ refresh_profile() {
 
   echo "Refreshing $label profile: $profile_dir"
 
+  local -a git_packages=()
+  local -a npm_packages=()
   if [ -f "$settings_file" ]; then
     while IFS= read -r package_source; do
       [ -n "$package_source" ] || continue
-      rm -rf "$profile_dir/git/${package_source#git:}"
+      case "$package_source" in
+        git:*) git_packages+=("$package_source") ;;
+        npm:*) npm_packages+=("$package_source") ;;
+      esac
     done < <(
       python3 - "$settings_file" <<'PY'
 import json
@@ -28,18 +36,43 @@ from pathlib import Path
 
 settings = Path(sys.argv[1])
 for package in json.loads(settings.read_text()).get("packages", []):
-    if isinstance(package, str) and package.startswith("git:"):
+    if isinstance(package, str):
         print(package)
 PY
     )
   fi
 
+  for package_source in "${git_packages[@]}"; do
+    rm -rf "$profile_dir/git/${package_source#git:}"
+  done
+
   rm -f "$marker"
   PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" list >/dev/null
+
+  for package_source in "${npm_packages[@]}"; do
+    if [ -n "${updated_npm_packages[$package_source]:-}" ]; then
+      continue
+    fi
+
+    echo "Updating declared package: $package_source"
+    if PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" update "$package_source"; then
+      updated_npm_packages["$package_source"]=1
+    else
+      failures+=("$label:$package_source")
+    fi
+  done
+
   echo "Refreshed $label profile"
 }
 
+echo "Note: pi command is nix-managed here; wrapper resolves latest pi runtime automatically."
 refresh_profile "$HOME/.config/pi" "personal"
 refresh_profile "$HOME/.config/pi-work" "work"
+
+if [ "${#failures[@]}" -gt 0 ]; then
+  printf 'Failed package updates:\n' >&2
+  printf '  - %s\n' "${failures[@]}" >&2
+  exit 1
+fi
 
 echo "Done"

@@ -2,34 +2,27 @@
   lib = pkgs.lib;
   piPackages = import ../pi/packages.nix {inherit lib;};
 
-  piVersion = "0.74.0";
+  # Keep pi nix-managed as a wrapper, but let runtime resolve latest upstream
+  # automatically so John does not have to bump piVersion manually.
+  piPackageSpec = "@earendil-works/pi-coding-agent@latest";
   personalPackageStamp = builtins.hashString "sha256" (builtins.toJSON {
-    version = piVersion;
+    runtime = piPackageSpec;
     packages = piPackages.personalPackageSpecs;
   });
   workPackageStamp = builtins.hashString "sha256" (builtins.toJSON {
-    version = piVersion;
+    runtime = piPackageSpec;
     packages = piPackages.workPackageSpecs;
   });
-  piPackage = pkgs.buildNpmPackage {
-    pname = "pi-coding-agent";
-    version = piVersion;
-    src = pkgs.fetchurl {
-      url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-${piVersion}.tgz";
-      hash = "sha256-l0pzuWGVvX1jDhFYaey14N16XDo47kkm3JlEhmPUo0Q=";
-    };
-    sourceRoot = "package";
-    npmDepsHash = "sha256-StlM0oonufxSMbkbLTg4Clh5tHCTOMCSh0GE4BVLJIQ=";
-    dontNpmBuild = true;
-    postPatch = ''
-      cp ${./pi-package-lock.json} package-lock.json
-    '';
-  };
 
-  # Install declared Pi packages with managed pi binary, not transient npx cache.
+  runPi = pkgs.writeShellScript "run-pi-latest" ''
+    exec ${pkgs.nodejs_24}/bin/npx --yes ${piPackageSpec} "$@"
+  '';
+
+  # Install declared Pi packages with the same managed/latest pi runtime the
+  # wrapper executes, not a separately pinned core binary.
   installPiPackages = pkgs.writeShellScript "install-pi-packages" ''
     for package in "$@"; do
-      ${piPackage}/bin/pi install "$package" 2>/dev/null || true
+      ${runPi} install "$package" 2>/dev/null || true
     done
   '';
 
@@ -117,5 +110,5 @@ in
 
     ${repairPiPackages}
 
-    exec ${piPackage}/bin/pi "$@"
+    exec ${runPi} "$@"
   ''
