@@ -1,63 +1,61 @@
 ---
 description: "Install a package via optimal method. Usage: /pkg-install [nix|pi|brew] <package>"
+argument-hint: "[nix|pi|brew] <package|url>"
 model: gpt-5.4-mini
 skill: pi-nix-integration
 subagent: delegate
 ---
 
-Determine the install method and package name from the arguments:
+Interpret `$ARGUMENTS` before acting:
 
-- If `$1` is one of `nix`, `pi`, or `brew` → method is `$1`, package is `${@:2}`
-- Otherwise → method is unknown, package is `$@`, research required
+- Split arguments on whitespace.
+- If first token is exactly `nix`, `pi`, or `brew`, that token is the install method and the remaining text is the package query.
+- Otherwise, method is unknown and the full `$ARGUMENTS` string is the package query.
+- If the package query is empty, ask the user what package to install.
+- If the package query is a URL, extract the likely package/app name from the URL path or install page, but keep the URL as evidence during research.
 
----
+Goal: install declaratively in this nix-managed repo. When method is unknown, prefer **nixpkgs → brew → pi → other**.
 
-<if-model is="anthropic/*,google/*,openai/*">
-## Dispatch
+## Known method
 
-**Method**: `$1` | **Args**: `$@`
+### nix
 
-### Known method (nix | pi | brew)
-
-Skip research. Execute directly.
-
-#### nix
-
-Add `${@:2}` to `modules/home-manager/packages/default.nix` alphabetically in `home.packages`, then:
+- Add the package to `modules/home-manager/packages/default.nix` alphabetically in `home.packages`.
+- Then run:
 
 ```bash
 mise run nix-rebuild -- --switch-only
-which ${@:2} && ${@:2} --version || echo "verify manually"
+which <pkg> && <pkg> --version || echo "verify manually"
 ```
 
-#### pi
+### pi
 
-Add `"${@:2}"` to `piPackages` list in `modules/home-manager/packages/pi.nix` alphabetically, then:
+- Add the package spec to `personalPackageSpecs` in `modules/home-manager/pi/packages.nix` alphabetically.
+- Use `npm:<pkg>` for npm packages unless the source clearly requires another spec such as `git:...`.
+- Then run:
 
 ```bash
 mise run nix-rebuild -- --switch-only
-pi list | grep "${@:2}"
+pi list | grep "<pkg>"
 ```
 
-#### brew
+### brew
 
-Find homebrew config in `modules/darwin/homebrew/`. Add `${@:2}` as `brew` (CLI) or `cask` (app) alphabetically, then:
+- Update `modules/darwin/homebrew/default.nix`.
+- Add any required tap plus the brew formula or cask alphabetically.
+- Then run:
 
 ```bash
 mise run nix-rebuild -- --switch-only
-brew list | grep "${@:2}"
+brew list | grep "<pkg>"
 ```
 
----
+## Unknown method — research required
 
-### Unknown method — research required
+1. Normalize the package query first. Example: `https://github.com/getagentseal/codeburn#install` → package `codeburn`.
+2. Search nixpkgs for the normalized name first.
+3. If not in nixpkgs, decide whether it is a Homebrew formula/cask, a Pi extension/skill/theme, or another install type.
+4. Use upstream install docs to confirm the canonical package name, required taps, or required package spec.
+5. Once method is determined, follow the matching flow above.
 
-Research `$@` to determine best install method. Priority: **nixpkgs → brew → pi → other**.
-
-1. `nix search nixpkgs $@` — prefer if found and not stale
-2. Check if it's a GUI app → brew cask
-3. Check if it's a pi extension/skill/theme → pi
-4. Fall back to brew formula
-
-Once method determined, follow the appropriate steps above.
-</if-model>
+Do not stop at the raw URL. Extract the installable package/app name and use the URL only to verify install instructions.
