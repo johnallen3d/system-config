@@ -145,6 +145,10 @@
         argparse 'switch-only' -- $argv
         or return
 
+        # macOS launchd can leave GUI shells at maxfiles soft=256.
+        # Raise to hard limit so flake input fetches do not hit tarball-cache EMFILE.
+        ulimit -Sn (ulimit -Hn)
+
         if not set -q _flag_switch_only
           nix flake update
         end

@@ -3,10 +3,20 @@
 #USAGE flag "--switch-only" help="Skip nix flake update"
 set -uo pipefail
 
+raise_nofile_limit() {
+  local hard_limit
+  hard_limit="$(ulimit -Hn)"
+  ulimit -Sn "$hard_limit"
+}
+
 log="$(mktemp -t nix-rebuild.XXXXXX.log)"
 printf 'nix-rebuild log: %s\n' "$log" >&2
 
 {
+  # macOS launchd can leave GUI shells at maxfiles soft=256.
+  # Raise to hard limit so flake input fetches do not hit tarball-cache EMFILE.
+  raise_nofile_limit
+
   if [[ "${usage_switch_only:-}" != "true" ]]; then
     nix flake update
   fi
