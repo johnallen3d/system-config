@@ -39,7 +39,6 @@ in {
   home.packages = with pkgs;
     [
       actionlint
-      aichat
       alejandra
       awscli2
       # azure-cli
@@ -50,16 +49,13 @@ in {
       # brave
       bun
       cargo-careful
-      chafa
       cargo-machete
       cargo-nextest
       cargo-sweep
       coreutils
       curl
       difftastic
-      devbox
       docker-client
-      doctl
       doppler
       # dotnet-runtime -> this is included in the dotnet-sdk
       # dotnet-sdk -> trying to install this via homebrew for better tools support

@@ -25,35 +25,26 @@
 
     brews = [
       "bd"
-      "blueutil"
       "borders"
       "cloudflared"
       # "dagger"
       "datafusion"
-      "dbmate"
       # "dotnet@6"
       "duckdb"
       "elio-fm/elio/elio"
       "gogcli"
-      "googleworkspace-cli"
-      "granted"
       "kcl-lsp"
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"
-      "llm" # broken in nixpkgs jan 2025
-      "llmfit"
       "mise"
-      "mole"
       "sheets"
-      "sem-cli"
       # "switchaudio-osx"
       # TODO: prefer nix package when fixed
       "tabiew" # 👇 tui for parquet
       # "talosctl"
       "trash"
       "ut"
-      "worktrunk"
     ];
 
     casks = [
@@ -64,7 +55,6 @@
       "arc"
       "betterdisplay"
       "brave-browser"
-      "bruno"
       "carbon-copy-cloner"
       "claude"
       # TODO: this is quite out of date
@@ -89,7 +79,6 @@
       "notunes"
       "obsidian"
       "ollama-app"
-      "opera"
       "oq" # TUI for reading openapi specs
       "orbstack"
       "notwadegrimridge/brew/pingplace"
