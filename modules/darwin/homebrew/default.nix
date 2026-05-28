@@ -84,6 +84,7 @@
       "notwadegrimridge/brew/pingplace"
       "raycast"
       "rocket"
+      "signal"
       # this is blowing up 🤷‍♂️
       "stolendata-mpv"
       "syncthing-app"
