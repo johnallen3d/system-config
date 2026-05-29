@@ -221,8 +221,8 @@ sources = [
     },
     {
         "label": "bat theme",
-        "variant": "tokyonight_night",
-        "path": ROOT / "modules/home-manager/dotfiles/config/bat/themes/tokyonight_night.tmTheme",
+        "variant": "tokyonight_moon",
+        "path": ROOT / "modules/home-manager/dotfiles/config/bat/themes/tokyonight_moon.tmTheme",
         "parser": parse_tmtheme,
     },
 ]

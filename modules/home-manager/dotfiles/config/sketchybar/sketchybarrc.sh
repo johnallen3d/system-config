@@ -39,18 +39,7 @@ transparent_color="0x00000000"
 # time_highlight="0xff34bfd0"
 
 # tokyonight-moon
-bracket_background_color="0xff222436"       # bg1
-default_label_color="0xffc8d3f5"            # white
-default_icon_color="0xffc8d3f5"             # white
-highlight_icon_color="0xffc3e88d"           # green
-bracket_border_color="${transparent_color}" # transparent
-current_app_background_color="0xff82aaff"   # blue
-current_app_color="0xff1b1d2b"              # black
-music_highlight="0xffc3e88d"                # green
-cpu_highlight="0xff82aaff"                  # blue
-weather_highlight="0xffffc777"              # yellow
-date_highlight="0xffc099ff"                 # magenta
-time_highlight="0xff86e1fc"                 # cyan
+source "$HOME/.local/share/theme/tokyo-night-sketchybar.sh"
 
 #
 # fonts

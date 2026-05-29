@@ -103,7 +103,7 @@
     defaultModel = "gpt-5.4";
     compaction.enabled = false;
     packages = piPackages.personalPackageSpecs;
-    theme = "tokyo-night-storm";
+    theme = "tokyonight-moon";
     quietStartup = true;
   };
 
@@ -112,7 +112,7 @@
     defaultModel = "gpt-5.4";
     compaction.enabled = false;
     packages = piPackages.workPackageSpecs;
-    theme = "tokyo-night-storm";
+    theme = "tokyonight-moon";
     quietStartup = true;
   };
 in {

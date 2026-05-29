@@ -3,4 +3,8 @@ vim.pack.add(
   { confirm = false }
 )
 
-vim.cmd.colorscheme("tokyonight")
+require("tokyonight").setup({
+  style = "moon",
+})
+
+vim.cmd.colorscheme("tokyonight-moon")

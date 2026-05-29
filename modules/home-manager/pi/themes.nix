@@ -1,15 +1,16 @@
 {mkPiExtension, ...}: {
-  tokyo-night-storm = {
+  tokyonight-moon = {
     pkg = mkPiExtension {
-      pname = "pi-tokyo-night-storm";
-      version = "1.0.0";
-      hash = "sha256-CwRmlhMlIeEJN8D0tQ+S6TGVbPBBJEWZs5jUxfE6QPY=";
-      npmDepsHash = "sha256-Aeyt2zVmx1UpOVZ8T8dRWRPf9uu+Pau8fKkAxWf6tDQ=";
-      lockfile = ../packages/pi-tokyo-night-storm-package-lock.json;
-      description = "Tokyo Night Storm theme for pi coding agent";
-      homepage = "https://github.com/sanathks/pi-tokyo-night-storm";
+      pname = "@juanibiapina/pi-tokyonight";
+      version = "1.0.1";
+      url = "https://registry.npmjs.org/@juanibiapina/pi-tokyonight/-/pi-tokyonight-1.0.1.tgz";
+      hash = "sha256-14x1y8s748j+sdPkXc+0ehnBuKAIufA4OWm4pcGCaI0=";
+      npmDepsHash = "sha256-5wJzqL6oSfNLteXIj4VwJYP5a2IzeDTlDDvpQxhqNYI=";
+      lockfile = ../packages/pi-tokyonight-package-lock.json;
+      description = "Tokyo Night Moon theme for pi coding agent";
+      homepage = "https://github.com/juanibiapina/pi-tokyonight";
       forceEmptyCache = true;
     };
-    file = "tokyo-night-storm.json";
+    file = "tokyonight-moon.json";
   };
 }
