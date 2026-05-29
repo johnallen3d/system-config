@@ -5,7 +5,30 @@
 }: let
   common = import ../common/common.nix {inherit pkgs;};
   musicDir = common.commonVariables.MUSIC_DIR;
-  tokyoNight = import ./tokyo-night.nix {inherit lib;};
+  managedTheme = import ./managed-theme.nix {inherit lib;};
+  solidWallpaper = pkgs.runCommand "solid-wallpaper.png" {
+    nativeBuildInputs = [pkgs.imagemagick];
+  } ''
+    magick -size 1x1 "xc:${managedTheme.activeTheme.palette.bg}" PNG32:"$out"
+  '';
+  configDir = pkgs.runCommand "home-config-dir" {} ''
+    cp -R ${./dotfiles/config} "$out"
+    chmod -R u+w "$out"
+    mkdir -p "$out/bat/themes" "$out/ghostty/themes"
+${lib.concatMapStringsSep "\n" (variant: ''    cat > "$out/bat/themes/${managedTheme.batThemeName variant}.tmTheme" <<'EOF'
+${managedTheme.batThemes.${variant}}
+EOF'') managedTheme.variantNames}
+${lib.concatMapStringsSep "\n" (variant: ''    cat > "$out/ghostty/themes/${managedTheme.hyphenThemeName variant}" <<'EOF'
+${managedTheme.ghosttyThemes.${variant}}
+EOF'') managedTheme.variantNames}
+    substituteInPlace "$out/ghostty/config" \
+      --replace-fail "theme = tokyo-night-moon" "theme = ${managedTheme.activeTheme.hyphenName}"
+    substituteInPlace "$out/sketchybar/sketchybarrc.sh" \
+      --replace-fail 'source "$HOME/.local/share/theme/tokyo-night-sketchybar.sh"' 'source "$HOME/.local/share/theme/${managedTheme.activeTheme.hyphenName}-sketchybar.sh"'
+    cat > "$out/sketchybar/colors.lua" <<'EOF'
+${managedTheme.sketchybarColorsLua}
+EOF
+  '';
 in {
   home.stateVersion = "24.05";
 
@@ -21,6 +44,15 @@ in {
     CLAUDE_CONFIG_DIR = "$HOME/.config/claude-personal";
     CLAUDE_CODE_DISABLE_1M_CONTEXT = "1";
     CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS = "1";
+  };
+
+  programs.desktoppr = lib.mkIf pkgs.stdenv.isDarwin {
+    enable = true;
+    settings = {
+      picture = "${solidWallpaper}";
+      color = lib.removePrefix "#" managedTheme.activeTheme.palette.bg;
+      scale = "fill";
+    };
   };
 
   home = {
@@ -45,13 +77,13 @@ in {
         show_top_bar = false
       '';
 
-      "Library/Application Support/elio/theme.toml".source = (pkgs.formats.toml {}).generate "elio-theme.toml" tokyoNight.elioTheme;
+      "Library/Application Support/elio/theme.toml".source = (pkgs.formats.toml {}).generate "elio-theme.toml" managedTheme.elioTheme;
 
-      ".local/share/theme/tokyo-night-sketchybar.sh".text = tokyoNight.sketchybarMoonSh;
+      ".local/share/theme/${managedTheme.activeTheme.hyphenName}-sketchybar.sh".text = managedTheme.sketchybarThemeSh;
 
       ".config" = {
         recursive = true;
-        source = ./dotfiles/config;
+        source = configDir;
       };
 
       "bin" = {

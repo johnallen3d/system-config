@@ -3,13 +3,15 @@
   pkgs,
   ...
 }: let
-  tokyoNight = import ../tokyo-night.nix {inherit lib;};
-  generatedTheme = pkgs.writeText "tokyo_night_moon.lua" tokyoNight.nvimLua;
+  managedTheme = import ../managed-theme.nix {inherit lib;};
+  generatedThemes = lib.mapAttrs (variant: lua:
+    pkgs.writeText "${managedTheme.nvimModuleName variant}.lua" lua) managedTheme.nvimLuaModules;
   luaConfig = pkgs.runCommand "nvim-lua-config" {} ''
     cp -R ${./lua} "$out"
     chmod -R u+w "$out"
     mkdir -p "$out/theme/generated"
-    cp ${generatedTheme} "$out/theme/generated/tokyo_night_moon.lua"
+${lib.concatMapStringsSep "\n" (variant: "    cp ${generatedThemes.${variant}} \"$out/theme/generated/${managedTheme.nvimModuleName variant}.lua\"") managedTheme.variantNames}
+    cp ${generatedThemes.${managedTheme.activeVariant}} "$out/theme/generated/active.lua"
   '';
 in {
   programs.neovim = {

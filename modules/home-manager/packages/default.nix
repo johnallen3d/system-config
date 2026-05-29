@@ -1,8 +1,10 @@
 {
+  lib,
   pkgs,
   op_path,
   ...
 }: let
+  managedTheme = import ../managed-theme.nix {inherit lib;};
   scripts = [
     (import ./bin/bv.nix {inherit pkgs;})
     (import ./bin/chat-gpt-key.nix {
@@ -175,7 +177,7 @@ in {
   programs.bat = {
     enable = true;
     config = {
-      theme = "tokyonight_moon";
+      theme = managedTheme.activeTheme.batName;
     };
   };
   # programs.cava = {

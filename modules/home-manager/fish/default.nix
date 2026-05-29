@@ -1,8 +1,14 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  lib,
+  ...
+}: let
+  managedTheme = import ../managed-theme.nix {inherit lib;};
+in {
   programs.fish = {
     enable = true;
 
-    interactiveShellInit = builtins.readFile ./config.fish;
+    interactiveShellInit = builtins.replaceStrings ["tokyo-night-moon"] [managedTheme.activeTheme.hyphenName] (builtins.readFile ./config.fish);
 
     plugins = [
       {
@@ -18,7 +24,8 @@
 
   # https://github.com/vitallium/tokyonight-fish
   # https://github.com/nix-community/home-manager/issues/3724#issue-1604681266
-  home.file.".config/fish/themes/tokyo-night-moon.theme".source = ./tokyo-night-moon.theme;
+  home.file = lib.mapAttrs' (variant: theme:
+    lib.nameValuePair ".config/fish/themes/${managedTheme.hyphenThemeName variant}.theme" {text = theme;}) managedTheme.fishThemes;
 
   imports = [
     ./functions.nix

@@ -23,6 +23,7 @@
   ...
 }: let
   piPackages = import ./pi/packages.nix {inherit lib;};
+  managedTheme = import ./managed-theme.nix {inherit lib;};
   jq = "${pkgs.jq}/bin/jq";
 
   mkPiSettingsActivation = settingsFile: settings: ''
@@ -103,7 +104,7 @@
     defaultModel = "gpt-5.4";
     compaction.enabled = false;
     packages = piPackages.personalPackageSpecs;
-    theme = "tokyonight-moon";
+    theme = managedTheme.activeTheme.name;
     quietStartup = true;
   };
 
@@ -112,7 +113,7 @@
     defaultModel = "gpt-5.4";
     compaction.enabled = false;
     packages = piPackages.workPackageSpecs;
-    theme = "tokyonight-moon";
+    theme = managedTheme.activeTheme.name;
     quietStartup = true;
   };
 in {
