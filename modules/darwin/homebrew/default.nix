@@ -50,7 +50,6 @@
     casks = [
       "1password"
       "1password-cli"
-      "aerial"
       "aerospace"
       "arc"
       "betterdisplay"
