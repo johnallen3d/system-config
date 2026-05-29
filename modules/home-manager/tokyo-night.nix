@@ -1,6 +1,28 @@
 {lib, ...}: let
   sketchybarHex = hex: "0xff${lib.removePrefix "#" hex}";
 
+  renderLua = value:
+    if builtins.isAttrs value
+    then
+      let
+        fields = builtins.attrNames value;
+      in
+        "{ ${lib.concatMapStringsSep ", " (name: "[${builtins.toJSON name}] = ${renderLua value.${name}}") fields} }"
+    else if builtins.isList value
+    then "{ ${lib.concatMapStringsSep ", " renderLua value} }"
+    else if builtins.isString value
+    then builtins.toJSON value
+    else if builtins.isBool value
+    then
+      if value
+      then "true"
+      else "false"
+    else if builtins.isInt value || builtins.isFloat value
+    then builtins.toString value
+    else throw "Unsupported Lua value type";
+
+  toLuaModule = value: "return ${renderLua value}\n";
+
   palettes = {
     moon = {
       bg = "#222436";
@@ -31,6 +53,63 @@
       selectionBar = "#4b3b24";
       yankBar = "#2a4556";
       cutBar = "#4b2a3d";
+    };
+  };
+
+  themeRoles = let
+    c = palettes.moon;
+  in {
+    ui = {
+      bg = c.bg;
+      bg_alt = c.bgDark;
+      bg_dark = c.bgDark1;
+      fg = c.fg;
+      muted = c.muted;
+      border = c.border;
+      selection = c.bgVisual;
+      cursorline = c.bgHighlight;
+      float = c.bgDark;
+      pmenu = c.bgDark;
+      pmenu_sel = c.bgHighlight;
+      search = c.selectionBar;
+      inc_search = c.orange;
+    };
+
+    syntax = {
+      comment = c.comment;
+      string = c.green;
+      number = c.orange;
+      keyword = c.magenta;
+      function = c.cyan;
+      type = c.yellow;
+      constant = c.purple;
+      operator = c.cyanBright;
+      parameter = c.text;
+      property = c.teal;
+      variable = c.text;
+      builtin = c.blue;
+      preproc = c.red;
+    };
+
+    diagnostics = {
+      error = c.red;
+      warn = c.yellow;
+      info = c.blue;
+      hint = c.teal;
+      ok = c.green;
+    };
+
+    vcs = {
+      added = c.green;
+      changed = c.blue;
+      removed = c.red;
+    };
+
+    diff = {
+      add_bg = "#273849";
+      change_bg = "#253b4d";
+      delete_bg = "#3a273a";
+      text_bg = "#394b70";
     };
   };
 
@@ -134,10 +213,17 @@
       "LICENSE" = {icon = "󰿃"; color = c.yellow;};
     };
   };
+  nvimTheme = {
+    palette = palettes.moon;
+    roles = themeRoles;
+  };
 in {
   inherit palettes;
 
   inherit elioTheme;
+  inherit nvimTheme;
+
+  nvimLua = toLuaModule nvimTheme;
 
   sketchybarMoonSh = let
     c = palettes.moon;

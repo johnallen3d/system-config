@@ -1,7 +1,7 @@
 # Consolidated pi agent extensions and themes.
 #
 # Code extensions (JS/TS) → ~/.pi/agent/extensions/<name>/
-# Theme-only packages    → ~/.pi/agent/themes/<theme-name>.json
+# Theme-only packages or local JSON files → ~/.pi/agent/themes/<theme-name>.json
 #
 # Local extension code lives under ./pi/extensions/<name>/index.ts.
 # To add a new extension or theme:
@@ -11,12 +11,15 @@
 #
 {pkgs, ...}: let
   lib = pkgs.lib;
-  helpers = import ./pi/helpers.nix {inherit pkgs;};
   localExtensions = import ./pi/local-extensions.nix {inherit lib;};
   localPersonalExtensions = import ./pi/local-personal-extensions.nix {inherit lib;};
   localWorkExtensions = import ./pi/local-work-extensions.nix {};
   extensions = import ./pi/packaged-extensions.nix {};
-  themes = import ./pi/themes.nix {inherit (helpers) mkPiExtension;};
+  themes = import ./pi/themes.nix {};
+  themeSource = theme:
+    if theme ? source
+    then theme.source
+    else "${theme.pkg}/themes/${theme.file}";
 in {
   home.file =
     # Shared extensions — personal context
@@ -37,6 +40,6 @@ in {
     # Themes — personal context (pi-work symlinks to this dir, see pi-settings.nix)
     // (lib.mapAttrs'
       (name: theme:
-        lib.nameValuePair ".config/pi/themes/${name}.json" {source = "${theme.pkg}/themes/${theme.file}";})
+        lib.nameValuePair ".config/pi/themes/${name}.json" {source = themeSource theme;})
       themes);
 }

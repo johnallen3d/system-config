@@ -6,7 +6,7 @@ bold-is-bright = true
 macos-titlebar-style = hidden
 macos-icon = custom
 macos-custom-icon = /Users/john.allen/.config/ghostty/tokyo-night-moon.icns
-theme = /Users/john.allen/.local/share/nvim/lazy/tokyonight.nvim/extras/ghostty/tokyonight_moon
+theme = tokyo-night-moon
 window-colorspace = display-p3
 window-padding-x = 4
 
