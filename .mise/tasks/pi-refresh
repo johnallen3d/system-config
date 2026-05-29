@@ -2,14 +2,24 @@
 #MISE description="Refresh nix-managed pi packages for personal + work profiles"
 set -euo pipefail
 
-pi_bin="$(command -v pi)"
+pi_bin="$(which -a pi 2>/dev/null | grep -v '/.npm/_npx/' | head -n1)"
 if [ -z "$pi_bin" ]; then
-  echo "pi not found in PATH" >&2
+  echo "nix-managed pi not found in PATH" >&2
   exit 1
 fi
 
 declare -A updated_npm_packages=()
 declare -a failures=()
+
+cleanup_legacy_global_packages() {
+  local profile_context_mode="$HOME/.config/pi/npm/node_modules/context-mode"
+  local legacy_context_mode="$HOME/.local/lib/node_modules/context-mode"
+
+  if [ -d "$profile_context_mode" ] && [ -d "$legacy_context_mode" ]; then
+    echo "Removing legacy global context-mode install: $legacy_context_mode"
+    rm -rf "$legacy_context_mode"
+  fi
+}
 
 refresh_profile() {
   local profile_dir="$1"
@@ -74,5 +84,7 @@ if [ "${#failures[@]}" -gt 0 ]; then
   printf '  - %s\n' "${failures[@]}" >&2
   exit 1
 fi
+
+cleanup_legacy_global_packages
 
 echo "Done"
