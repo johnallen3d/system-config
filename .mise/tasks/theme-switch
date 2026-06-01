@@ -47,6 +47,21 @@ select_theme() {
   done
 }
 
+normalize_theme() {
+  local requested="$1"
+  case "$requested" in
+    moon)
+      echo "tokyo-night-moon"
+      ;;
+    storm)
+      echo "tokyo-night-storm"
+      ;;
+    *)
+      echo "$requested"
+      ;;
+  esac
+}
+
 validate_theme() {
   local requested="$1"
   local variant
@@ -108,6 +123,12 @@ fi
 if [[ -z "$requested_theme" ]]; then
   print_list
   requested_theme="$(select_theme)"
+fi
+
+normalized_theme="$(normalize_theme "$requested_theme")"
+if [[ "$normalized_theme" != "$requested_theme" ]]; then
+  echo "Theme alias '$requested_theme' is deprecated; use '$normalized_theme'" >&2
+  requested_theme="$normalized_theme"
 fi
 
 if ! validate_theme "$requested_theme"; then

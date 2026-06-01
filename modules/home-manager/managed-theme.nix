@@ -23,9 +23,9 @@
   toPrettyJson = value: builtins.toJSON value;
 
   # Change this single value to switch managed theme consumers.
-  # Current theme: nord-polar-night.
-  # Available: catppuccin-mocha, moon, nord-polar-night, rose-pine, rose-pine-moon, storm.
-  activeVariant = "nord-polar-night";
+  # Current theme: rose-pine.
+  # Available: catppuccin-mocha, nord-polar-night, rose-pine, rose-pine-moon, tokyo-night-moon, tokyo-night-storm.
+  activeVariant = "rose-pine";
 
   themeFamily = variant:
     if lib.hasPrefix "catppuccin-" variant
@@ -34,22 +34,30 @@
     then "nord"
     else if lib.hasPrefix "rose-pine" variant
     then "rose-pine"
-    else "tokyo-night";
+    else if lib.hasPrefix "tokyo-night-" variant
+    then "tokyo-night"
+    else throw "Unsupported theme variant family: ${variant}";
   isCatppuccin = variant: themeFamily variant == "catppuccin";
   isNord = variant: themeFamily variant == "nord";
   isRosePine = variant: themeFamily variant == "rose-pine";
+  isTokyoNight = variant: themeFamily variant == "tokyo-night";
+  tokyoNightStyle = variant: lib.removePrefix "tokyo-night-" variant;
   themeName = variant:
     if isCatppuccin variant || isRosePine variant
     then variant
     else if isNord variant
     then "nord"
-    else "tokyonight-${variant}";
+    else if isTokyoNight variant
+    then "tokyonight-${tokyoNightStyle variant}"
+    else throw "Unsupported theme name variant: ${variant}";
   hyphenThemeName = variant:
     if isCatppuccin variant || isRosePine variant
     then variant
     else if isNord variant
     then "nord"
-    else "tokyo-night-${variant}";
+    else if isTokyoNight variant
+    then "tokyo-night-${tokyoNightStyle variant}"
+    else throw "Unsupported hyphen theme variant: ${variant}";
   batThemeName = variant:
     if isCatppuccin variant
     then "Catppuccin Mocha"
@@ -59,11 +67,13 @@
     then "Rose Pine Moon"
     else if isRosePine variant
     then "Rose Pine"
-    else "tokyonight_${variant}";
+    else if isTokyoNight variant
+    then "tokyonight_${tokyoNightStyle variant}"
+    else throw "Unsupported bat theme variant: ${variant}";
   stripHex = hex: lib.removePrefix "#" hex;
 
   palettes = {
-    moon = {
+    tokyo-night-moon = {
       bg = "#222436";
       bgDark = "#1e2030";
       bgDark1 = "#191b29";
@@ -105,7 +115,7 @@
       terminalBrightWhite = "#c8d3f5";
     };
 
-    storm = {
+    tokyo-night-storm = {
       bg = "#24283b";
       bgDark = "#1f2335";
       bgDark1 = "#1b1e2d";
@@ -666,16 +676,16 @@
   };
 
   mkNeovimTheme = variant:
-    if builtins.elem variant ["moon" "storm"]
+    if builtins.elem variant ["tokyo-night-moon" "tokyo-night-storm"]
     then {
       plugin = {
         src = "https://github.com/folke/tokyonight.nvim";
         module = "tokyonight";
         setup = {
-          style = variant;
+          style = tokyoNightStyle variant;
         };
       };
-      colorscheme = "tokyonight-${variant}";
+      colorscheme = "tokyonight-${tokyoNightStyle variant}";
     }
     else if variant == "catppuccin-mocha"
     then {
