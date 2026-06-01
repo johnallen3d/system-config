@@ -4,6 +4,9 @@
     onActivation = {
       autoUpdate = true;
       cleanup = "zap";
+      # Homebrew now requires explicit confirmation for bundle cleanup.
+      # Preserve existing managed cleanup behavior during nix-darwin activation.
+      extraFlags = ["--force-cleanup"];
       upgrade = true;
     };
     global.brewfile = true;
