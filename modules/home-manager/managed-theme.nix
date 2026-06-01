@@ -329,6 +329,118 @@
     };
   };
 
+  mkTelegramTheme = c: ''
+    // Generated from modules/home-manager/managed-theme.nix.
+    // Telegram bootstrap: choose this file once in Telegram via
+    // Settings -> Chat Settings -> Chat Wallpaper -> Choose from file.
+    // Telegram will reload this file on launch, but initial selection remains manual.
+
+    accentColor: ${c.accent};
+    accentColorText: ${c.accentText};
+    bgColor: ${c.bg};
+    bgAltColor: ${c.bgDark};
+    bgHoverColor: ${c.bgHighlight};
+    bgActiveColor: ${c.bgVisual};
+    textColor: ${c.text};
+    mutedColor: ${c.muted};
+    blueColor: ${c.blue};
+    greenColor: ${c.green};
+    redColor: ${c.red};
+    yellowColor: ${c.yellow};
+    purpleColor: ${c.purple};
+    tealColor: ${c.teal};
+    borderColor: ${c.border};
+
+    windowBg: bgColor;
+    windowFg: textColor;
+    windowBgOver: bgHoverColor;
+    windowBgActive: accentColor;
+    windowFgActive: accentColorText;
+    windowSubTextFg: mutedColor;
+    windowSubTextFgOver: textColor;
+    windowBoldFg: textColor;
+    windowBoldFgOver: textColor;
+    windowActiveTextFg: blueColor;
+    windowBorderFg: borderColor;
+    windowBorderWhiteFg: bgAltColor;
+    windowBgRipple: bgActiveColor;
+    windowBgSplash: bgAltColor;
+    windowShadowFg: borderColor;
+
+    dialogsBg: bgAltColor;
+    dialogsBgOver: bgHoverColor;
+    dialogsBgActive: accentColor;
+    dialogsBgPinned: bgHoverColor;
+    dialogsBgPinnedActive: accentColor;
+    dialogsNameFg: textColor;
+    dialogsNameFgOver: textColor;
+    dialogsNameFgActive: accentColorText;
+    dialogsTextFg: mutedColor;
+    dialogsTextFgOver: textColor;
+    dialogsTextFgActive: accentColorText;
+    dialogsDateFg: mutedColor;
+    dialogsDateFgOver: textColor;
+    dialogsDateFgActive: accentColorText;
+    dialogsUnreadBadgeBg: accentColor;
+    dialogsUnreadBadgeFg: accentColorText;
+    dialogsUnreadBadgeMutedBg: bgHoverColor;
+    dialogsUnreadBadgeMutedFg: mutedColor;
+    dialogsSentIconFg: blueColor;
+    dialogsVerifiedIconBg: blueColor;
+    dialogsVerifiedIconFg: bgColor;
+
+    historyTextInFg: textColor;
+    historyTextOutFg: textColor;
+    historyLinkInFg: blueColor;
+    historyLinkOutFg: blueColor;
+    historyFileNameInFg: blueColor;
+    historyFileNameOutFg: blueColor;
+    historyOutIconFg: blueColor;
+    historyOutIconFgSelected: blueColor;
+    historyOutSentFg: blueColor;
+    historyOutSentFgSelected: blueColor;
+    historyOutViewsFg: mutedColor;
+    historyOutViewsFgSelected: textColor;
+    historyInDateFg: mutedColor;
+    historyOutDateFg: mutedColor;
+    historyInDateFgSelected: textColor;
+    historyOutDateFgSelected: textColor;
+    historyReplyLineFg: purpleColor;
+    historyReplyNameFg: purpleColor;
+    historyReplyTextFg: mutedColor;
+    historyReplyInvertedLineFg: accentColorText;
+    historyReplyInvertedNameFg: accentColorText;
+    historyReplyInvertedTextFg: accentColorText;
+
+    msgInBg: bgHoverColor;
+    msgInBgSelected: bgActiveColor;
+    msgOutBg: bgAltColor;
+    msgOutBgSelected: bgActiveColor;
+    msgSelectOverlay: borderColor;
+    msgStickerOverlay: borderColor;
+
+    historyComposeAreaBg: bgHoverColor;
+    historyComposeAreaFg: textColor;
+    historyComposeAreaFgService: mutedColor;
+    historyComposeAreaBgActive: bgAltColor;
+    historyComposeAreaBorderFg: borderColor;
+    historyScrollBarBg: bgHoverColor;
+    historyScrollBarBgOver: bgActiveColor;
+    historyScrollBg: bgColor;
+    historyUnreadBarBg: accentColor;
+    historyUnreadBarFg: accentColorText;
+    historyToDownBg: accentColor;
+    historyToDownBgOver: purpleColor;
+    historyToDownFg: accentColorText;
+
+    emojiPanBg: bgAltColor;
+    emojiPanCategories: bgHoverColor;
+    emojiPanHeaderFg: mutedColor;
+
+    overviewBg: bgColor;
+    overviewPhotoSelectOverlay: borderColor;
+  '';
+
   mkElioTheme = c: {
     palette = {
       bg = c.bg;
@@ -761,6 +873,7 @@
   bordersActiveAccents = lib.mapAttrs (_: palette: sketchybarHex palette.purple) palettes;
   bordersActiveColors = lib.mapAttrs (_: palette: "glow(${sketchybarHex palette.purple})") palettes;
   elioThemes = lib.mapAttrs (_: palette: mkElioTheme palette) palettes;
+  telegramThemes = lib.mapAttrs (_: palette: mkTelegramTheme palette) palettes;
   piThemes = lib.mapAttrs (variant: palette: mkPiTheme variant palette) palettes;
   ghosttyThemes = lib.mapAttrs (_: palette: mkGhosttyTheme palette) palettes;
   fishThemes = lib.mapAttrs (_: palette: mkFishTheme palette) palettes;
@@ -797,6 +910,7 @@ in {
   inherit elioThemes;
   inherit fishThemes;
   inherit ghosttyThemes;
+  inherit telegramThemes;
   inherit piThemes;
   inherit sketchybarThemes;
   inherit sketchybarLuaThemes;
@@ -805,6 +919,7 @@ in {
   elioTheme = elioThemes.${activeVariant};
   fishTheme = fishThemes.${activeVariant};
   ghosttyTheme = ghosttyThemes.${activeVariant};
+  telegramTheme = telegramThemes.${activeVariant};
   neovimTheme = mkNeovimTheme activeVariant;
   neovimThemeLua = toLuaModule (mkNeovimTheme activeVariant);
   piTheme = piThemes.${activeVariant};

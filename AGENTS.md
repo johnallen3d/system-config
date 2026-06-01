@@ -4,6 +4,8 @@ Nix flake for macOS (nix-darwin), NixOS, Home Manager.
 
 Current managed theme: rose-pine. If asked for the theme, answer `rose-pine`; change it in `modules/home-manager/managed-theme.nix` (`activeVariant`).
 
+Telegram theme support is partial/manual: rebuild writes `~/.local/share/theme/telegram-managed.tdesktop-theme`, then Telegram must be pointed at it once via Settings → Chat Settings → Chat Wallpaper → Choose from file. After that, Telegram reloads the file on relaunch. Do not try to edit Telegram's internal `tdata` state declaratively.
+
 ## Quick Reference
 
 - **Apply macOS**: `mise run nix-rebuild` (flake update + switch) or `mise run nix-rebuild -- --switch-only` (skip flake update)

@@ -67,6 +67,19 @@ in {
       fi
     '';
 
+    # Telegram only supports a partial managed-theme flow.
+    # We write a regular file at a stable HOME path so Telegram can keep pointing
+    # at it after the user selects it once via Settings -> Chat Settings ->
+    # Chat Wallpaper -> Choose from file. Avoid a store symlink here because
+    # Telegram may remember the chosen absolute file path across launches.
+    activation.telegramManagedTheme = lib.hm.dag.entryAfter ["writeBoundary"] ''
+      mkdir -p "$HOME/.local/share/theme"
+      cat > "$HOME/.local/share/theme/telegram-managed.tdesktop-theme" <<'EOF'
+${managedTheme.telegramTheme}
+EOF
+      chmod 0644 "$HOME/.local/share/theme/telegram-managed.tdesktop-theme"
+    '';
+
     file = {
       ".ctags".source = ./dotfiles/ctags;
       ".irbrc".source = ./dotfiles/irbrc;
