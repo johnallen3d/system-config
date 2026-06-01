@@ -9,6 +9,11 @@ raise_nofile_limit() {
   ulimit -Sn "$hard_limit"
 }
 
+restart_service() {
+  local service="$1"
+  launchctl kickstart -k "gui/$(id -u)/org.nixos.${service}"
+}
+
 log="$(mktemp -t nix-rebuild.XXXXXX.log)"
 printf 'nix-rebuild log: %s\n' "$log" >&2
 
@@ -23,6 +28,10 @@ printf 'nix-rebuild log: %s\n' "$log" >&2
   sudo darwin-rebuild switch --impure --flake "$HOME/dev/src/system-config/"
 } >"$log" 2>&1
 rc=$?
+
+if [[ "$rc" -eq 0 ]]; then
+  restart_service borders
+fi
 
 printf 'nix-rebuild log: %s (exit %d)\n' "$log" "$rc" >&2
 exit "$rc"
