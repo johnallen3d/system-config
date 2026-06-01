@@ -24,7 +24,7 @@
 
   # Change this single value to switch managed theme consumers.
   # Current theme: rose-pine.
-  # Available: moon, storm, catppuccin-mocha, nord-polar-night, rose-pine.
+  # Available: moon, storm, catppuccin-mocha, nord-polar-night, rose-pine, rose-pine-moon.
   activeVariant = "rose-pine";
 
   themeFamily = variant:
@@ -55,6 +55,8 @@
     then "Catppuccin Mocha"
     else if isNord variant
     then "Nord"
+    else if variant == "rose-pine-moon"
+    then "Rose Pine Moon"
     else if isRosePine variant
     then "Rose Pine"
     else "tokyonight_${variant}";
@@ -263,6 +265,48 @@
       terminalBrightBlack = "#6E6A86";
       terminalBrightRed = "#EB6F92";
       terminalBrightGreen = "#31748F";
+      terminalBrightYellow = "#F6C177";
+      terminalBrightBlue = "#9CCFD8";
+      terminalBrightMagenta = "#C4A7E7";
+      terminalBrightCyan = "#9CCFD8";
+      terminalWhite = "#908CAA";
+      terminalBrightWhite = "#E0DEF4";
+    };
+
+    rose-pine-moon = {
+      bg = "#232136";
+      bgDark = "#2A273F";
+      bgDark1 = "#1F1D2E";
+      bgHighlight = "#393552";
+      bgVisual = "#44415A";
+      border = "#393552";
+      black = "#1F1D2E";
+      text = "#E0DEF4";
+      fg = "#E0DEF4";
+      muted = "#908CAA";
+      accent = "#C4A7E7";
+      blue = "#9CCFD8";
+      accentText = "#232136";
+      green = "#3E8FB0";
+      red = "#EB6F92";
+      orange = "#EA9A97";
+      yellow = "#F6C177";
+      magenta = "#C4A7E7";
+      purple = "#C4A7E7";
+      cyan = "#9CCFD8";
+      teal = "#3E8FB0";
+      gutter = "#56526E";
+      comment = "#6E6A86";
+      cyanBright = "#9CCFD8";
+      redDark = "#B4637A";
+      selectionBar = "#44415A";
+      yankBar = "#305B70";
+      cutBar = "#4E2638";
+      borderBright = "#56526E";
+      bgPurple = "#2A273F";
+      terminalBrightBlack = "#6E6A86";
+      terminalBrightRed = "#EB6F92";
+      terminalBrightGreen = "#3E8FB0";
       terminalBrightYellow = "#F6C177";
       terminalBrightBlue = "#9CCFD8";
       terminalBrightMagenta = "#C4A7E7";
@@ -655,14 +699,14 @@
       };
       colorscheme = "nord-night";
     }
-    else if variant == "rose-pine"
+    else if builtins.elem variant ["rose-pine" "rose-pine-moon"]
     then {
       plugin = {
         src = "https://github.com/rose-pine/neovim";
         module = "rose-pine";
         setup = {
-          variant = "main";
-          dark_variant = "main";
+          variant = if variant == "rose-pine-moon" then "moon" else "main";
+          dark_variant = if variant == "rose-pine-moon" then "moon" else "main";
         };
       };
       colorscheme = "rose-pine";
