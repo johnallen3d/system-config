@@ -46,27 +46,21 @@ After changes to scripts, configs, packages — run `mise run nix-rebuild` so us
 
 ## Landing the Plane (Session Completion)
 
-End session: complete ALL steps. Work NOT done until `git push` succeeds.
+End session: finish issue tracking, quality checks, and hand-off. Do not treat wrap-up as a rebuild trigger, and do not push unless the user explicitly asks.
 
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished, update in-progress
-4. **PUSH TO REMOTE** - MANDATORY:
-
-   ```bash
-   git pull --rebase
-   bd sync
-   ```
-
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Context for next session
+4. **Review git state** - Check `git status` and summarize staged/unstaged changes
+5. **Hand off** - Share what changed, what was validated, and any next steps
 
 **CRITICAL RULES:**
 
-- ALWAYS say "ready to push when you are" - YOU must NOT push
+- Do **not** run `mise run nix-rebuild` or `mise run nix-rebuild -- --switch-only` as part of wrap-up unless the task itself changed executable config/scripts/packages and a rebuild is otherwise required.
+- Do **not** run `git push`, `bd sync`, or `bd dolt push` during wrap-up unless the user explicitly asks for that remote-sync step.
+- If push is not requested, say `ready to push when you are`.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:d4f96305 -->
 ## Issue Tracking with bd (beads)
@@ -155,28 +149,19 @@ See README.md and docs/QUICKSTART.md.
 
 ## Landing the Plane (Session Completion)
 
-End session: complete ALL steps. Work NOT done until `git push` succeeds.
+End session: finish issue tracking, quality checks, and hand-off. Wrap-up does not require a rebuild or remote push by default.
 
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished, update in-progress
-4. **PUSH TO REMOTE** - MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Context for next session
+4. **Review git state** - Check `git status` and summarize staged/unstaged changes
+5. **Hand off** - Share what changed, what was validated, and any next steps
 
 **CRITICAL RULES:**
-- Work NOT complete until `git push` succeeds
-- NEVER stop before pushing — leaves work stranded locally
-- NEVER say "ready to push when you are" — YOU must push
-- Push fails: resolve + retry until success
+- Do **not** treat wrap-up as authority to run `mise run nix-rebuild` or `mise run nix-rebuild -- --switch-only`; only rebuild when the task itself requires it.
+- Do **not** run `bd dolt push` or `git push` unless the user explicitly asks for remote sync/push.
+- If push is not requested, say `ready to push when you are`.
 
 <!-- END BEADS INTEGRATION -->
