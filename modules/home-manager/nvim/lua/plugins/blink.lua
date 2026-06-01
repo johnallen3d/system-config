@@ -5,21 +5,12 @@ vim.pack.add({
     load = true,
   },
 
-  { src = "https://github.com/zbirenbaum/copilot.lua" },
-
   { src = "https://github.com/kristijanhusak/vim-dadbod-completion" },
   { src = "https://github.com/Kaiser-Yang/blink-cmp-git" },
   { src = "https://github.com/mikavilpas/blink-ripgrep.nvim" },
   { src = "https://github.com/ribru17/blink-cmp-spell" },
   { src = "https://github.com/moyiz/blink-emoji.nvim" },
-  { src = "https://github.com/giuxtaposition/blink-cmp-copilot" },
 }, { confirm = false })
-
--- recommended copilot setup for best support with blink
-require("copilot").setup({
-  suggestion = { enabled = false },
-  panel = { enabled = false },
-})
 
 require("blink.cmp").setup({
   keymap = {
@@ -35,7 +26,6 @@ require("blink.cmp").setup({
   sources = {
     default = {
       "buffer",
-      "copilot",
       "dadbod",
       "emoji",
       "git",
@@ -46,12 +36,6 @@ require("blink.cmp").setup({
     },
 
     providers = {
-      copilot = {
-        name = "copilot",
-        module = "blink-cmp-copilot",
-        score_offset = -100,
-        async = true,
-      },
       dadbod = {
         name = "Dadbod",
         module = "vim_dadbod_completion.blink",

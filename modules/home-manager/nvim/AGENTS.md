@@ -107,12 +107,12 @@ See also: `:h news`, `:h lsp-quickstart`, and the [Neovim 0.11 release notes](ht
 - Add comments to explain non-obvious logic or customizations.
 - Prefer snake_case for variable and function names.
 - Avoid Vimscript unless absolutely necessary.
-- If you add Cursor or Copilot rules, document them here.
+- If you add Cursor rules, document them here.
 
 ## Updating This File
 
 - Update this file whenever you add build scripts, tests, or code style rules.
-- If you add Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (in .github/copilot-instructions.md), summarize them here for agentic tools.
+- If you add Cursor rules (in .cursor/rules/ or .cursorrules), summarize them here for agentic tools.
 
 ## JSON LSP / Formatting
 

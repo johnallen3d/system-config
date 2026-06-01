@@ -13,16 +13,13 @@ type WindowUsage = {
   windowSeconds?: number;
 };
 type CodexUsage = { plan?: string; windows: WindowUsage[]; credits?: string; error?: string; fetchedAt?: number };
-type CopilotUsage = { plan?: string; text?: string; error?: string; fetchedAt?: number };
 type ClaudeUsage = { plan?: string; windows: WindowUsage[]; error?: string; fetchedAt?: number };
 
 const authStorage = AuthStorage.create();
 const POLL_MS = 60_000;
 let codexUsage: CodexUsage | undefined;
-let copilotUsage: CopilotUsage | undefined;
 let claudeUsage: ClaudeUsage | undefined;
 let lastCodexFetch = 0;
-let lastCopilotFetch = 0;
 let lastClaudeFetch = 0;
 let requestRender: (() => void) | undefined;
 
@@ -211,48 +208,6 @@ async function fetchCodexUsage(force = false): Promise<void> {
   }
 }
 
-async function fetchCopilotUsage(force = false): Promise<void> {
-  const now = Date.now();
-  if (!force && now - lastCopilotFetch < POLL_MS) return;
-  lastCopilotFetch = now;
-  try {
-    authStorage.reload();
-    const credential = authStorage.getAll()["github-copilot"] as any;
-    const token = credential?.refresh ?? process.env["GH_TOKEN"] ?? process.env["GITHUB_TOKEN"];
-    if (!token) throw new Error("not logged in");
-    const res = await fetch("https://api.github.com/copilot_internal/user", {
-      headers: {
-        "Authorization": "token " + token,
-        "Accept": "application/json",
-        "Editor-Version": "vscode/1.96.2",
-        "Editor-Plugin-Version": "copilot-chat/0.26.7",
-        "User-Agent": "GitHubCopilotChat/0.26.7",
-        "X-GitHub-Api-Version": "2025-04-01",
-      },
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json() as any;
-    const premium = data?.quota_snapshots?.premium_interactions;
-    let text: string | undefined;
-    if (premium && typeof premium.entitlement === "number" && typeof premium.remaining === "number") {
-      const used = Math.max(0, premium.entitlement - premium.remaining);
-      const percent = premium.entitlement > 0 ? Math.round((used / premium.entitlement) * 100) : 0;
-      text = "credits " + used + "/" + premium.entitlement + " (" + percent + "%)";
-    } else if (data?.limited_user_quotas && data?.monthly_quotas) {
-      const chat = data.limited_user_quotas.chat;
-      const total = data.monthly_quotas.chat;
-      if (typeof chat === "number" && typeof total === "number") {
-        text = "chat " + (total - chat) + "/" + total;
-      }
-    }
-    copilotUsage = { plan: data?.copilot_plan ?? data?.access_type_sku, text: text ?? "credits ?", fetchedAt: now };
-  } catch (err) {
-    copilotUsage = { error: err instanceof Error ? err.message : String(err), fetchedAt: now };
-  } finally {
-    requestRender?.();
-  }
-}
-
 async function fetchClaudeUsage(force = false): Promise<void> {
   const now = Date.now();
   if (!force && now - lastClaudeFetch < POLL_MS) return;
@@ -339,12 +294,6 @@ function usageText(ctx: any): string {
     const plan = codexUsage?.plan ? codexUsage.plan + " " : "";
     const credits = codexUsage?.credits ? " • " + codexUsage.credits : "";
     return "usage: codex " + plan + formatWindowUsage(codexUsage?.windows) + credits;
-  }
-  if (provider === "github-copilot") {
-    void fetchCopilotUsage();
-    if (copilotUsage?.error) return "usage: copilot " + copilotUsage.error;
-    const plan = copilotUsage?.plan ? copilotUsage.plan + " " : "";
-    return "usage: copilot " + plan + (copilotUsage?.text ?? "credits ?");
   }
   if (claudeProvider(ctx)) {
     return claudeUsageText();
@@ -447,18 +396,15 @@ export default function (pi: ExtensionAPI) {
     installFooter(ctx);
     void fetchClaudeUsage(true);
     if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(true);
-    if (ctx.model?.provider === "github-copilot") void fetchCopilotUsage(true);
   });
   pi.on("model_select", (event, _ctx) => {
     void fetchClaudeUsage(true);
     if (event.model?.provider === "openai-codex") void fetchCodexUsage(true);
-    if (event.model?.provider === "github-copilot") void fetchCopilotUsage(true);
     requestRender?.();
   });
   pi.on("agent_end", (_event, ctx) => {
     void fetchClaudeUsage(true);
     if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(true);
-    if (ctx.model?.provider === "github-copilot") void fetchCopilotUsage(true);
     requestRender?.();
   });
 }

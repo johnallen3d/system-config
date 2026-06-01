@@ -72,8 +72,6 @@ in {
       gawk
       gh-dash
       git-gone
-      # preferring brew install for more up-to-date versions ATM
-      # github-copilot-cli
       github-mcp-server
       google-cloud-sdk
       go

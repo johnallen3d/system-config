@@ -62,7 +62,6 @@
       # TODO: this is quite out of date
       # "claude-code"
       "cleanshot"
-      "copilot-cli"
       "cloudmounter"
       "codex"
       "codex-app"
