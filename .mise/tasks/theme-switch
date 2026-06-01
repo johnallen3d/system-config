@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Switch managed theme and apply via nix-rebuild"
+#MISE description="Switch managed theme, apply via nix-rebuild, reload Ghostty if running"
 #USAGE arg "[theme]" help="Managed theme variant to activate"
 #USAGE flag "--list" help="Print available managed themes and exit"
 set -euo pipefail
@@ -58,6 +58,47 @@ validate_theme() {
   return 1
 }
 
+reload_ghostty_if_running() {
+  case "$(uname -s)" in
+    Darwin)
+      if ! command -v osascript >/dev/null 2>&1; then
+        echo "Skipping Ghostty reload: osascript not available"
+        return 0
+      fi
+      if [[ "$(osascript -e 'application "Ghostty" is running' 2>/dev/null || echo false)" != "true" ]]; then
+        echo "Skipping Ghostty reload: app not running"
+        return 0
+      fi
+      echo "Reloading Ghostty config via AppleScript"
+      osascript >/dev/null <<'APPLESCRIPT'
+try
+  tell application "Ghostty"
+    if (count of terminals) = 0 then return
+    perform action "reload_config" on item 1 of terminals
+  end tell
+on error errMsg number errNum
+  error "Ghostty reload failed (" & errNum & "): " & errMsg
+end try
+APPLESCRIPT
+      ;;
+    Linux)
+      if ! command -v pgrep >/dev/null 2>&1; then
+        echo "Skipping Ghostty reload: pgrep not available"
+        return 0
+      fi
+      if ! pgrep -x ghostty >/dev/null 2>&1 && ! pgrep -x Ghostty >/dev/null 2>&1 && ! pgrep -f '(^|/)ghostty([[:space:]]|$)' >/dev/null 2>&1; then
+        echo "Skipping Ghostty reload: app not running"
+        return 0
+      fi
+      echo "Reloading Ghostty config via SIGUSR2"
+      pkill -USR2 -x ghostty 2>/dev/null || pkill -USR2 -x Ghostty 2>/dev/null || pkill -USR2 -f '(^|/)ghostty([[:space:]]|$)' 2>/dev/null
+      ;;
+    *)
+      echo "Skipping Ghostty reload: unsupported platform $(uname -s)"
+      ;;
+  esac
+}
+
 requested_theme="${usage_theme:-}"
 if [[ "${usage_list:-false}" == "true" ]]; then
   print_list
@@ -112,3 +153,5 @@ echo "Applying config with mise run nix-rebuild -- --switch-only"
   cd "$repo_root"
   mise run nix-rebuild -- --switch-only
 )
+
+reload_ghostty_if_running
