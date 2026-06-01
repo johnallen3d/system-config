@@ -4,14 +4,13 @@
   ...
 }: let
   managedTheme = import ../managed-theme.nix {inherit lib;};
-  generatedThemes = lib.mapAttrs (variant: lua:
-    pkgs.writeText "${managedTheme.nvimModuleName variant}.lua" lua) managedTheme.nvimLuaModules;
+  generatedTheme = pkgs.writeText "managed.lua" managedTheme.neovimThemeLua;
   luaConfig = pkgs.runCommand "nvim-lua-config" {} ''
     cp -R ${./lua} "$out"
     chmod -R u+w "$out"
-    mkdir -p "$out/theme/generated"
-${lib.concatMapStringsSep "\n" (variant: "    cp ${generatedThemes.${variant}} \"$out/theme/generated/${managedTheme.nvimModuleName variant}.lua\"") managedTheme.variantNames}
-    cp ${generatedThemes.${managedTheme.activeVariant}} "$out/theme/generated/active.lua"
+    rm -rf "$out/theme"
+    mkdir -p "$out/theme"
+    cp ${generatedTheme} "$out/theme/managed.lua"
   '';
 in {
   programs.neovim = {
@@ -25,7 +24,6 @@ in {
 
   xdg.configFile."nvim/after".source = ./after;
   xdg.configFile."nvim/AGENTS.md".source = ./AGENTS.md;
-  xdg.configFile."nvim/colors".source = ./colors;
   xdg.configFile."nvim/init.lua".source = ./init.lua;
   xdg.configFile."nvim/lsp".source = ./lsp;
   xdg.configFile."nvim/lua".source = luaConfig;

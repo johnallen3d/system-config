@@ -50,7 +50,6 @@
     else if isNord variant
     then "nord"
     else "tokyo-night-${variant}";
-  nvimModuleName = variant: builtins.replaceStrings ["-"] ["_"] (themeName variant);
   batThemeName = variant:
     if isCatppuccin variant
     then "Catppuccin Mocha"
@@ -510,11 +509,53 @@
     };
   };
 
-  mkNvimTheme = variant: c: {
-    name = themeName variant;
-    palette = c;
-    roles = mkThemeRoles c;
-  };
+  mkNeovimTheme = variant:
+    if builtins.elem variant ["moon" "storm"]
+    then {
+      plugin = {
+        src = "https://github.com/folke/tokyonight.nvim";
+        module = "tokyonight";
+        setup = {
+          style = variant;
+        };
+      };
+      colorscheme = "tokyonight-${variant}";
+    }
+    else if variant == "catppuccin-mocha"
+    then {
+      plugin = {
+        src = "https://github.com/catppuccin/nvim";
+        module = "catppuccin";
+        setup = {
+          flavour = "mocha";
+        };
+      };
+      colorscheme = "catppuccin";
+    }
+    else if variant == "nord-polar-night"
+    then {
+      plugin = {
+        src = "https://github.com/dupeiran001/nord.nvim";
+        module = "nord";
+        setup = {
+          style = "dark";
+        };
+      };
+      colorscheme = "nord-night";
+    }
+    else if variant == "rose-pine"
+    then {
+      plugin = {
+        src = "https://github.com/rose-pine/neovim";
+        module = "rose-pine";
+        setup = {
+          variant = "main";
+          dark_variant = "main";
+        };
+      };
+      colorscheme = "rose-pine";
+    }
+    else throw "Unsupported Neovim theme variant: ${variant}";
 
   mkPiTheme = variant: c: {
     "$schema" = "https://raw.githubusercontent.com/badlogic/pi-mono/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json";
@@ -720,7 +761,6 @@
   bordersActiveAccents = lib.mapAttrs (_: palette: sketchybarHex palette.purple) palettes;
   bordersActiveColors = lib.mapAttrs (_: palette: "glow(${sketchybarHex palette.purple})") palettes;
   elioThemes = lib.mapAttrs (_: palette: mkElioTheme palette) palettes;
-  nvimThemes = lib.mapAttrs (variant: palette: mkNvimTheme variant palette) palettes;
   piThemes = lib.mapAttrs (variant: palette: mkPiTheme variant palette) palettes;
   ghosttyThemes = lib.mapAttrs (_: palette: mkGhosttyTheme palette) palettes;
   fishThemes = lib.mapAttrs (_: palette: mkFishTheme palette) palettes;
@@ -733,7 +773,6 @@ in {
   inherit themeFamily;
   inherit themeName;
   inherit hyphenThemeName;
-  inherit nvimModuleName;
   inherit batThemeName;
 
   activePalette = palettes.${activeVariant};
@@ -743,13 +782,11 @@ in {
     palette = palettes.${activeVariant};
     name = themeName activeVariant;
     hyphenName = hyphenThemeName activeVariant;
-    nvimModule = nvimModuleName activeVariant;
     batName = batThemeName activeVariant;
   };
 
   activeThemeName = themeName activeVariant;
   activeHyphenThemeName = hyphenThemeName activeVariant;
-  activeNvimModuleName = nvimModuleName activeVariant;
   activeBatThemeName = batThemeName activeVariant;
   activeBordersActiveAccent = bordersActiveAccents.${activeVariant};
   activeBordersActiveColor = bordersActiveColors.${activeVariant};
@@ -760,7 +797,6 @@ in {
   inherit elioThemes;
   inherit fishThemes;
   inherit ghosttyThemes;
-  inherit nvimThemes;
   inherit piThemes;
   inherit sketchybarThemes;
   inherit sketchybarLuaThemes;
@@ -769,11 +805,11 @@ in {
   elioTheme = elioThemes.${activeVariant};
   fishTheme = fishThemes.${activeVariant};
   ghosttyTheme = ghosttyThemes.${activeVariant};
-  nvimTheme = nvimThemes.${activeVariant};
+  neovimTheme = mkNeovimTheme activeVariant;
+  neovimThemeLua = toLuaModule (mkNeovimTheme activeVariant);
   piTheme = piThemes.${activeVariant};
   sketchybarThemeSh = sketchybarThemes.${activeVariant};
   sketchybarColorsLua = sketchybarLuaThemes.${activeVariant};
 
-  nvimLuaModules = lib.mapAttrs (_: theme: toLuaModule theme) nvimThemes;
   piThemeJsons = lib.mapAttrs (_: theme: toPrettyJson theme + "\n") piThemes;
 }
