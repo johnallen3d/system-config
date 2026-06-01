@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Preview Tokyo Night palette swatches from repo theme files"
+#MISE description="Preview managed theme palette swatches from repo theme files"
 #USAGE flag "--detailed" help="Show grouped metadata and token names"
 #USAGE flag "--all" help="Show every token instead of grouped unique colors"
 set -euo pipefail
@@ -203,31 +203,25 @@ def parse_tmtheme(path: Path) -> list[dict[str, str]]:
 sources = [
     {
         "label": "Sketchybar palette",
-        "variant": "tokyo-night-moon",
+        "variant": "managed",
         "path": ROOT / "modules/home-manager/dotfiles/config/sketchybar/colors.lua",
         "parser": parse_lua_aarrggbb,
     },
     {
         "label": "Sketchybar runtime colors",
-        "variant": "tokyo-night-moon",
+        "variant": "managed",
         "path": ROOT / "modules/home-manager/dotfiles/config/sketchybar/sketchybarrc.sh",
         "parser": parse_shell_aarrggbb,
     },
     {
-        "label": "Fish theme",
-        "variant": "tokyo-night-moon",
-        "path": ROOT / "modules/home-manager/fish/tokyo-night-moon.theme",
-        "parser": parse_fish,
-    },
-    {
         "label": "bat theme",
-        "variant": "tokyonight_moon",
+        "variant": "managed",
         "path": ROOT / "modules/home-manager/dotfiles/config/bat/themes/tokyonight_moon.tmTheme",
         "parser": parse_tmtheme,
     },
 ]
 
-print("Tokyo Night palette preview")
+print("Managed theme palette preview")
 if SHOW_ALL:
     print("mode: all tokens")
 elif SHOW_DETAILED:

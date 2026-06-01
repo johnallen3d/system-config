@@ -31,7 +31,7 @@ function M.apply()
     vim.cmd("syntax reset")
   end
 
-  vim.g.colors_name = "tokyonight-moon"
+  vim.g.colors_name = data.name
   set_terminal_colors(data.palette)
 
   for group, spec in pairs(highlights) do

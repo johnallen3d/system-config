@@ -15,7 +15,7 @@
   localPersonalExtensions = import ./pi/local-personal-extensions.nix {inherit lib;};
   localWorkExtensions = import ./pi/local-work-extensions.nix {};
   extensions = import ./pi/packaged-extensions.nix {};
-  themes = import ./pi/themes.nix {};
+  themes = import ./pi/themes.nix {inherit lib pkgs;};
   themeSource = theme:
     if theme ? source
     then theme.source
