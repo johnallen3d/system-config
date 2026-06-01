@@ -23,26 +23,35 @@
   toPrettyJson = value: builtins.toJSON value;
 
   # Change this single value to switch managed theme consumers.
-  # Available: moon, storm, catppuccin-mocha.
+  # Available: moon, storm, catppuccin-mocha, nord-polar-night.
   activeVariant = "catppuccin-mocha";
 
   themeFamily = variant:
     if lib.hasPrefix "catppuccin-" variant
     then "catppuccin"
+    else if lib.hasPrefix "nord-" variant
+    then "nord"
     else "tokyo-night";
   isCatppuccin = variant: themeFamily variant == "catppuccin";
+  isNord = variant: themeFamily variant == "nord";
   themeName = variant:
     if isCatppuccin variant
     then variant
+    else if isNord variant
+    then "nord"
     else "tokyonight-${variant}";
   hyphenThemeName = variant:
     if isCatppuccin variant
     then variant
+    else if isNord variant
+    then "nord"
     else "tokyo-night-${variant}";
   nvimModuleName = variant: builtins.replaceStrings ["-"] ["_"] (themeName variant);
   batThemeName = variant:
     if isCatppuccin variant
     then "Catppuccin Mocha"
+    else if isNord variant
+    then "Nord"
     else "tokyonight_${variant}";
   stripHex = hex: lib.removePrefix "#" hex;
 
@@ -171,6 +180,48 @@
       terminalBrightCyan = "#89dceb";
       terminalWhite = "#bac2de";
       terminalBrightWhite = "#cdd6f4";
+    };
+
+    nord-polar-night = {
+      bg = "#2E3440";
+      bgDark = "#3B4252";
+      bgDark1 = "#2E3440";
+      bgHighlight = "#434C5E";
+      bgVisual = "#4C566A";
+      border = "#3B4252";
+      black = "#2E3440";
+      text = "#ECEFF4";
+      fg = "#ECEFF4";
+      muted = "#D8DEE9";
+      accent = "#88C0D0";
+      blue = "#81A1C1";
+      accentText = "#ECEFF4";
+      green = "#A3BE8C";
+      red = "#BF616A";
+      orange = "#D08770";
+      yellow = "#EBCB8B";
+      magenta = "#B48EAD";
+      purple = "#B48EAD";
+      cyan = "#88C0D0";
+      teal = "#8FBCBB";
+      gutter = "#4C566A";
+      comment = "#4C566A";
+      cyanBright = "#8FBCBB";
+      redDark = "#D08770";
+      selectionBar = "#434C5E";
+      yankBar = "#A3BE8C";
+      cutBar = "#BF616A";
+      borderBright = "#4C566A";
+      bgPurple = "#3B4252";
+      terminalBrightBlack = "#4C566A";
+      terminalBrightRed = "#BF616A";
+      terminalBrightGreen = "#A3BE8C";
+      terminalBrightYellow = "#EBCB8B";
+      terminalBrightBlue = "#81A1C1";
+      terminalBrightMagenta = "#B48EAD";
+      terminalBrightCyan = "#88C0D0";
+      terminalWhite = "#D8DEE9";
+      terminalBrightWhite = "#ECEFF4";
     };
   };
 
