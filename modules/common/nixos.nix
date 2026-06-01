@@ -1,7 +1,8 @@
 {
-  config,
   lib,
   pkgs,
+  user ? null,
+  home ? null,
   ...
 }: let
   common = import ./common.nix {inherit pkgs;};
@@ -12,8 +13,10 @@ in {
 
   programs.fish.enable = true;
 
-  users.users.${config.user} = lib.mkIf (config ? user) {
-    home = lib.mkIf (config ? home) config.home;
-    shell = pkgs.fish;
+  users.users = lib.mkIf (user != null) {
+    ${user} = {
+      home = lib.mkIf (home != null) home;
+      shell = pkgs.fish;
+    };
   };
 }

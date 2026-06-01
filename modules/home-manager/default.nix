@@ -108,8 +108,6 @@ EOF
         source = ./dotfiles/bin;
       };
 
-      "bin/bottombar".source = "${pkgs.sketchybar}/bin/sketchybar";
-
       ".tabby-client/agent/config.toml".source = ./dotfiles/tabby.toml;
 
       "Library/Application Support/org.dystroy.bacon/prefs.toml".source = ./dotfiles/bacon-prefs.toml;
@@ -137,6 +135,8 @@ EOF
         trey = "Trey Anastasio/Lonely Trip"
         violent = "Violent Femmes/Violent Femmes"
       '';
+    } // lib.optionalAttrs pkgs.stdenv.isDarwin {
+      "bin/bottombar".source = "${pkgs.sketchybar}/bin/sketchybar";
     };
   };
 }

@@ -20,7 +20,7 @@
   };
 
   imports = [
-    /etc/nixos/hardware-configuration.nix
+    ../../hosts/drummer/hardware-configuration.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -98,11 +98,12 @@
     packages = with pkgs; [
       cascadia-code
       monaspace
-      (nerdfonts.override {fonts = ["CascadiaCode" "Hack"];})
+      nerd-fonts.caskaydia-cove
+      nerd-fonts.hack
     ];
   };
 
-  programs._1password-cli.enable = true;
+  programs._1password.enable = true;
   programs._1password-gui = {
     enable = true;
     # Certain features, including CLI integration and system authentication support,
