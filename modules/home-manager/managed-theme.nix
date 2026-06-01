@@ -669,6 +669,8 @@
   '';
 
   batThemes = lib.mapAttrs (variant: palette: mkBatTheme variant palette) palettes;
+  bordersActiveAccents = lib.mapAttrs (_: palette: sketchybarHex palette.accent) palettes;
+  bordersActiveColors = lib.mapAttrs (_: palette: "glow(${sketchybarHex palette.accent})") palettes;
   elioThemes = lib.mapAttrs (_: palette: mkElioTheme palette) palettes;
   nvimThemes = lib.mapAttrs (variant: palette: mkNvimTheme variant palette) palettes;
   piThemes = lib.mapAttrs (variant: palette: mkPiTheme variant palette) palettes;
@@ -701,8 +703,12 @@ in {
   activeHyphenThemeName = hyphenThemeName activeVariant;
   activeNvimModuleName = nvimModuleName activeVariant;
   activeBatThemeName = batThemeName activeVariant;
+  activeBordersActiveAccent = bordersActiveAccents.${activeVariant};
+  activeBordersActiveColor = bordersActiveColors.${activeVariant};
 
   inherit batThemes;
+  inherit bordersActiveAccents;
+  inherit bordersActiveColors;
   inherit elioThemes;
   inherit fishThemes;
   inherit ghosttyThemes;

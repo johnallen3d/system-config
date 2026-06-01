@@ -23,6 +23,9 @@ ${managedTheme.ghosttyThemes.${variant}}
 EOF'') managedTheme.variantNames}
     substituteInPlace "$out/ghostty/config" \
       --replace-fail "theme = tokyo-night-moon" "theme = ${managedTheme.activeTheme.hyphenName}"
+    substituteInPlace "$out/borders/bordersrc" \
+      --replace-fail "__BORDERS_ACTIVE_COLOR__" "${managedTheme.activeBordersActiveColor}" \
+      --replace-fail "__BORDERS_ACTIVE_ACCENT__" "${managedTheme.activeBordersActiveAccent}"
     substituteInPlace "$out/sketchybar/sketchybarrc.sh" \
       --replace-fail 'source "$HOME/.local/share/theme/tokyo-night-sketchybar.sh"' 'source "$HOME/.local/share/theme/${managedTheme.activeTheme.hyphenName}-sketchybar.sh"'
     cat > "$out/sketchybar/colors.lua" <<'EOF'
