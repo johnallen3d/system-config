@@ -23,25 +23,29 @@
   toPrettyJson = value: builtins.toJSON value;
 
   # Change this single value to switch managed theme consumers.
-  # Available: moon, storm, catppuccin-mocha, nord-polar-night.
-  activeVariant = "catppuccin-mocha";
+  # Current theme: rose-pine.
+  # Available: moon, storm, catppuccin-mocha, nord-polar-night, rose-pine.
+  activeVariant = "rose-pine";
 
   themeFamily = variant:
     if lib.hasPrefix "catppuccin-" variant
     then "catppuccin"
     else if lib.hasPrefix "nord-" variant
     then "nord"
+    else if lib.hasPrefix "rose-pine" variant
+    then "rose-pine"
     else "tokyo-night";
   isCatppuccin = variant: themeFamily variant == "catppuccin";
   isNord = variant: themeFamily variant == "nord";
+  isRosePine = variant: themeFamily variant == "rose-pine";
   themeName = variant:
-    if isCatppuccin variant
+    if isCatppuccin variant || isRosePine variant
     then variant
     else if isNord variant
     then "nord"
     else "tokyonight-${variant}";
   hyphenThemeName = variant:
-    if isCatppuccin variant
+    if isCatppuccin variant || isRosePine variant
     then variant
     else if isNord variant
     then "nord"
@@ -52,6 +56,8 @@
     then "Catppuccin Mocha"
     else if isNord variant
     then "Nord"
+    else if isRosePine variant
+    then "Rose Pine"
     else "tokyonight_${variant}";
   stripHex = hex: lib.removePrefix "#" hex;
 
@@ -222,6 +228,48 @@
       terminalBrightCyan = "#88C0D0";
       terminalWhite = "#D8DEE9";
       terminalBrightWhite = "#ECEFF4";
+    };
+
+    rose-pine = {
+      bg = "#191724";
+      bgDark = "#1F1D2E";
+      bgDark1 = "#16141F";
+      bgHighlight = "#26233A";
+      bgVisual = "#403D52";
+      border = "#26233A";
+      black = "#16141F";
+      text = "#E0DEF4";
+      fg = "#E0DEF4";
+      muted = "#908CAA";
+      accent = "#C4A7E7";
+      blue = "#9CCFD8";
+      accentText = "#191724";
+      green = "#31748F";
+      red = "#EB6F92";
+      orange = "#EBBCBA";
+      yellow = "#F6C177";
+      magenta = "#C4A7E7";
+      purple = "#C4A7E7";
+      cyan = "#9CCFD8";
+      teal = "#31748F";
+      gutter = "#524F67";
+      comment = "#6E6A86";
+      cyanBright = "#9CCFD8";
+      redDark = "#B4637A";
+      selectionBar = "#403D52";
+      yankBar = "#2A4A5E";
+      cutBar = "#4E2638";
+      borderBright = "#524F67";
+      bgPurple = "#1F1D2E";
+      terminalBrightBlack = "#6E6A86";
+      terminalBrightRed = "#EB6F92";
+      terminalBrightGreen = "#31748F";
+      terminalBrightYellow = "#F6C177";
+      terminalBrightBlue = "#9CCFD8";
+      terminalBrightMagenta = "#C4A7E7";
+      terminalBrightCyan = "#9CCFD8";
+      terminalWhite = "#908CAA";
+      terminalBrightWhite = "#E0DEF4";
     };
   };
 

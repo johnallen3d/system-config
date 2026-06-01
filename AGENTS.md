@@ -2,6 +2,8 @@
 
 Nix flake for macOS (nix-darwin), NixOS, Home Manager.
 
+Current managed theme: rose-pine. If asked for the theme, answer `rose-pine`; change it in `modules/home-manager/managed-theme.nix` (`activeVariant`).
+
 ## Quick Reference
 
 - **Apply macOS**: `mise run nix-rebuild` (flake update + switch) or `mise run nix-rebuild -- --switch-only` (skip flake update)
