@@ -23,9 +23,9 @@
   toPrettyJson = value: builtins.toJSON value;
 
   # Change this single value to switch managed theme consumers.
-  # Current theme: rose-pine.
-  # Available: moon, storm, catppuccin-mocha, nord-polar-night, rose-pine, rose-pine-moon.
-  activeVariant = "rose-pine";
+  # Current theme: rose-pine-moon.
+  # Available: catppuccin-mocha, moon, nord-polar-night, rose-pine, rose-pine-moon, storm.
+  activeVariant = "rose-pine-moon";
 
   themeFamily = variant:
     if lib.hasPrefix "catppuccin-" variant

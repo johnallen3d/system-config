@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#MISE description="Switch managed theme and apply via nix-rebuild"
+#USAGE arg "[theme]" help="Managed theme variant to activate"
+#USAGE flag "--list" help="Print available managed themes and exit"
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+managed_theme_file="$repo_root/modules/home-manager/managed-theme.nix"
+
+get_variants_json() {
+  (
+    cd "$repo_root"
+    nix eval --impure --json --expr 'let flake = builtins.getFlake (toString ./.); managedTheme = import ./modules/home-manager/managed-theme.nix { lib = flake.inputs.nixpkgs.lib; }; in managedTheme.variantNames'
+  )
+}
+
+mapfile -t variants < <(python3 -c 'import json,sys; [print(item) for item in json.load(sys.stdin)]' <<<"$(get_variants_json)")
+current_theme="$(python3 - "$managed_theme_file" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+text = Path(sys.argv[1]).read_text()
+match = re.search(r'^\s*activeVariant = "([^"]+)";', text, re.M)
+if not match:
+    raise SystemExit("Could not determine activeVariant from managed-theme.nix")
+print(match.group(1))
+PY
+)"
+
+print_list() {
+  printf 'Current theme: %s\n' "$current_theme"
+  printf 'Available themes:\n'
+  printf '  - %s\n' "${variants[@]}"
+}
+
+select_theme() {
+  local choice
+  PS3="theme> "
+  echo "Select managed theme:" >&2
+  select choice in "${variants[@]}"; do
+    if [[ -n "${choice:-}" ]]; then
+      printf '%s\n' "$choice"
+      return 0
+    fi
+    echo "Invalid selection" >&2
+  done
+}
+
+validate_theme() {
+  local requested="$1"
+  local variant
+  for variant in "${variants[@]}"; do
+    if [[ "$variant" == "$requested" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+requested_theme="${usage_theme:-}"
+if [[ "${usage_list:-false}" == "true" ]]; then
+  print_list
+  exit 0
+fi
+
+if [[ -z "$requested_theme" ]]; then
+  print_list
+  requested_theme="$(select_theme)"
+fi
+
+if ! validate_theme "$requested_theme"; then
+  echo "Unknown theme: $requested_theme" >&2
+  print_list >&2
+  exit 1
+fi
+
+available_csv="$(python3 -c 'import sys; print(", ".join(line.strip() for line in sys.stdin if line.strip()))' <<<"$(printf '%s\n' "${variants[@]}")")"
+python3 - "$managed_theme_file" "$requested_theme" "$available_csv" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+selected = sys.argv[2]
+available = sys.argv[3]
+text = path.read_text()
+
+text, count = re.subn(r'(^\s*# Current theme: ).*$', rf'\1{selected}.', text, count=1, flags=re.M)
+if count != 1:
+    raise SystemExit('Failed to update current theme comment')
+
+text, count = re.subn(r'(^\s*# Available: ).*$', rf'\1{available}.', text, count=1, flags=re.M)
+if count != 1:
+    raise SystemExit('Failed to update available themes comment')
+
+text, count = re.subn(r'(^\s*activeVariant = ").*(";\s*$)', rf'\1{selected}\2', text, count=1, flags=re.M)
+if count != 1:
+    raise SystemExit('Failed to update activeVariant')
+
+path.write_text(text)
+PY
+
+if [[ "$requested_theme" == "$current_theme" ]]; then
+  echo "Theme already active: $requested_theme"
+else
+  echo "Switched managed theme: $current_theme -> $requested_theme"
+fi
+
+echo "Applying config with mise run nix-rebuild -- --switch-only"
+(
+  cd "$repo_root"
+  mise run nix-rebuild -- --switch-only
+)
