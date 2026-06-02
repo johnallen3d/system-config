@@ -23,7 +23,7 @@ Sbar.add("item", "time_logo", {
 		align = "center",
 	},
 	background = {
-		color = colors.cyan,
+		color = colors.orange,
 		height = settings.logo.size,
 	},
 	label = {

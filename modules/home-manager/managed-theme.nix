@@ -243,6 +243,7 @@
 
     rose-pine = {
       bg = "#191724";
+      wallpaper = "#393552";
       bgDark = "#1F1D2E";
       bgDark1 = "#16141F";
       bgHighlight = "#26233A";
@@ -285,6 +286,7 @@
 
     rose-pine-moon = {
       bg = "#232136";
+      wallpaper = "#2A273F";
       bgDark = "#2A273F";
       bgDark1 = "#1F1D2E";
       bgHighlight = "#393552";
@@ -896,13 +898,13 @@
     default_icon_color="${sketchybarHex c.fg}"
     highlight_icon_color="${sketchybarHex c.green}"
     bracket_border_color="0x00000000"
-    current_app_background_color="${sketchybarHex c.blue}"
+    current_app_background_color="${sketchybarHex c.red}"
     current_app_color="${sketchybarHex c.black}"
     music_highlight="${sketchybarHex c.green}"
     cpu_highlight="${sketchybarHex c.blue}"
     weather_highlight="${sketchybarHex c.yellow}"
     date_highlight="${sketchybarHex c.magenta}"
-    time_highlight="${sketchybarHex c.cyan}"
+    time_highlight="${sketchybarHex c.orange}"
   '';
 
   mkSketchybarLua = c: ''

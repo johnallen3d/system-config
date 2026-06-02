@@ -9,7 +9,7 @@
   solidWallpaper = pkgs.runCommand "solid-wallpaper.png" {
     nativeBuildInputs = [pkgs.imagemagick];
   } ''
-    magick -size 1x1 "xc:${managedTheme.activeTheme.palette.bg}" PNG32:"$out"
+    magick -size 1x1 "xc:${managedTheme.activeTheme.palette.wallpaper or managedTheme.activeTheme.palette.bg}" PNG32:"$out"
   '';
   configDir = pkgs.runCommand "home-config-dir" {} ''
     cp -R ${./dotfiles/config} "$out"
@@ -54,7 +54,7 @@ in {
     enable = true;
     settings = {
       picture = "${solidWallpaper}";
-      color = lib.removePrefix "#" managedTheme.activeTheme.palette.bg;
+      color = lib.removePrefix "#" (managedTheme.activeTheme.palette.wallpaper or managedTheme.activeTheme.palette.bg);
       scale = "fill";
     };
   };
