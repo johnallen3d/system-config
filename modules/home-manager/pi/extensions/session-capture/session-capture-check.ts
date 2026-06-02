@@ -4,16 +4,15 @@ import { fileURLToPath } from "node:url";
 
 import {
   buildBullet,
-  buildSessionRecap,
-  parseGeneratedRecap,
-  shouldSkipCapture,
-  snapshotKey,
-  upsertSessionSummary,
+  isChildSessionFile,
+  parseEntry,
+  parseIssueEntry,
+  upsertLogEntries,
 } from "./index.ts";
 
 type Fixture = {
   name: string;
-  kind: "recap" | "skip" | "upsert" | "key" | "bullet" | "parse";
+  kind: "parse" | "issue" | "upsert" | "bullet" | "child";
   [key: string]: any;
 };
 
@@ -25,25 +24,28 @@ function fail(name: string, details: string): never {
   throw new Error(`${name}: ${details}`);
 }
 
-function checkRecap(fixture: Fixture) {
-  const actual = buildSessionRecap(fixture.branch ?? []);
-  const expected = fixture.expected ?? {};
-  for (const [key, value] of Object.entries(expected)) {
-    if (actual[key as keyof typeof actual] !== value) {
-      fail(fixture.name, `expected recap ${key}=${JSON.stringify(value)} got ${JSON.stringify(actual[key as keyof typeof actual])}`);
+function checkObject(name: string, actual: any, expected: any) {
+  if (expected === null) {
+    if (actual !== undefined) fail(name, `expected undefined, got ${JSON.stringify(actual)}`);
+    return;
+  }
+  for (const [key, value] of Object.entries(expected ?? {})) {
+    if (JSON.stringify(actual?.[key]) !== JSON.stringify(value)) {
+      fail(name, `expected ${key}=${JSON.stringify(value)} got ${JSON.stringify(actual?.[key])}`);
     }
   }
 }
 
-function checkSkip(fixture: Fixture) {
-  const actual = shouldSkipCapture(fixture.snapshot, fixture.sessionStartedAtMs ?? 0, fixture.source);
-  if (actual !== fixture.expected) {
-    fail(fixture.name, `expected skip=${fixture.expected} got ${actual}`);
-  }
+function checkParse(fixture: Fixture) {
+  checkObject(fixture.name, parseEntry(fixture.value), fixture.expected);
+}
+
+function checkIssue(fixture: Fixture) {
+  checkObject(fixture.name, parseIssueEntry(fixture.value), fixture.expected);
 }
 
 function checkUpsert(fixture: Fixture) {
-  const actual = upsertSessionSummary(fixture.existingText, fixture.sessionHeading, fixture.blockLines);
+  const actual = upsertLogEntries(fixture.existingText, fixture.blockLines);
   if (actual.changed !== fixture.expected?.changed) {
     fail(fixture.name, `expected changed=${fixture.expected?.changed} got ${actual.changed}`);
   }
@@ -60,15 +62,8 @@ function checkUpsert(fixture: Fixture) {
   }
 }
 
-function checkKey(fixture: Fixture) {
-  const actual = snapshotKey(fixture.snapshotA) === snapshotKey(fixture.snapshotB);
-  if (actual !== fixture.expected) {
-    fail(fixture.name, `expected key equality=${fixture.expected} got ${actual}`);
-  }
-}
-
 function checkBullet(fixture: Fixture) {
-  const actual = buildBullet(fixture.sessionStartedAtMs ?? 0, fixture.snapshot);
+  const actual = buildBullet(fixture.entry);
   for (const needle of fixture.expected?.contains ?? []) {
     if (!actual.includes(needle)) {
       fail(fixture.name, `missing expected content ${JSON.stringify(needle)} in ${JSON.stringify(actual)}`);
@@ -81,16 +76,10 @@ function checkBullet(fixture: Fixture) {
   }
 }
 
-function checkParse(fixture: Fixture) {
-  const actual = parseGeneratedRecap(fixture.value);
-  if (fixture.expected === null) {
-    if (actual !== undefined) fail(fixture.name, `expected generated recap rejection, got ${JSON.stringify(actual)}`);
-    return;
-  }
-  for (const [key, value] of Object.entries(fixture.expected ?? {})) {
-    if (actual?.[key as keyof typeof actual] !== value) {
-      fail(fixture.name, `expected parse ${key}=${JSON.stringify(value)} got ${JSON.stringify(actual?.[key as keyof typeof actual])}`);
-    }
+function checkChild(fixture: Fixture) {
+  const actual = isChildSessionFile(fixture.value);
+  if (actual !== fixture.expected) {
+    fail(fixture.name, `expected child=${fixture.expected} got ${actual}`);
   }
 }
 
@@ -101,23 +90,20 @@ async function main() {
 
   for (const fixture of fixtures) {
     switch (fixture.kind) {
-      case "recap":
-        checkRecap(fixture);
+      case "parse":
+        checkParse(fixture);
         break;
-      case "skip":
-        checkSkip(fixture);
+      case "issue":
+        checkIssue(fixture);
         break;
       case "upsert":
         checkUpsert(fixture);
         break;
-      case "key":
-        checkKey(fixture);
-        break;
       case "bullet":
         checkBullet(fixture);
         break;
-      case "parse":
-        checkParse(fixture);
+      case "child":
+        checkChild(fixture);
         break;
       default:
         fail(fixture.name, `unknown fixture kind ${(fixture as any).kind}`);

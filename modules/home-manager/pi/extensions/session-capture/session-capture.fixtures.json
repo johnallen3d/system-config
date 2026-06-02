@@ -1,136 +1,47 @@
 [
   {
-    "name": "checklist-heavy top-level prompt becomes recap",
-    "kind": "recap",
-    "branch": [
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "- use agents aggressively and appropriately\n- review current changes\n- review corresponding beads issue\n- i don't think they are working\n- look at todays note: /Users/john.allen/notes/journal/2026-06-01.md\n- there are multiple \"personal\" headers\n- the captured notes are basically just my prompts\n- use oracle to interrogate the implementation\n- use planner to work out a better approach\n- use worker to capture plan as comment on beads issue\n- use worker to implement the changes\n- use reviewer to consider changes\n- try again"
-        }
-      }
-    ],
+    "name": "summary with detail lines becomes journal entry",
+    "kind": "parse",
+    "value": "Worked on session-capture simplification\n- Replaced transcript inference with explicit summary state\n- Kept daily-note profile handling",
     "expected": {
-      "summary": "Fix Pi Log daily-note session summaries",
-      "delegatedOnly": false,
-      "usedFallback": false
+      "summary": "Worked on session-capture simplification",
+      "details": []
     }
   },
   {
-    "name": "delegated child prompt falls back and marks delegated",
-    "kind": "recap",
-    "branch": [
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "Task: [Read from: /tmp/context.md]\nYou are a child subagent, not the parent orchestrator.\nTreat the inherited conversation as reference-only context.\nYour sole job is to execute the task below."
-        }
-      }
-    ],
+    "name": "blank summary is rejected",
+    "kind": "parse",
+    "value": "   \n  ",
+    "expected": null
+  },
+  {
+    "name": "issue command formats captured issue summary",
+    "kind": "issue",
+    "value": "system-config-npsz Refactor Pi session capture around agent-authored summaries",
     "expected": {
-      "summary": "session activity",
-      "delegatedOnly": true,
-      "usedFallback": true
+      "summary": "captured issue system-config-npsz: Refactor Pi session capture around agent-authored summaries",
+      "details": []
     }
   },
   {
-    "name": "mixed top-level intent survives delegated boilerplate lines",
-    "kind": "recap",
-    "branch": [
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "Goal: fix raw prompt captures in Pi Log\nTask: [Read from: /tmp/context.md]\nOutput: write findings to file"
-        }
-      }
-    ],
-    "expected": {
-      "summary": "Fix Pi Log daily-note session summaries",
-      "delegatedOnly": false,
-      "usedFallback": false
-    }
+    "name": "issue command without summary is rejected",
+    "kind": "issue",
+    "value": "system-config-npsz",
+    "expected": null
   },
   {
-    "name": "content-focused session capture gets useful details",
-    "kind": "recap",
-    "branch": [
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "what's important to me is the content of the capture!\n\nlook at todays daily note: ~/notes/journal/2026-06-02.md\n\n- 09:01 AM — update bead issue, add comment with plan (13h 37m, 8 agent runs)\n\nthink about this, does that seem like useful information for my log of activities?"
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "what would that look like if you used the caveman skill and more bullets?"
-        }
-      }
-    ],
-    "expected": {
-      "summary": "Improve session-capture daily-note content",
-      "delegatedOnly": false,
-      "usedFallback": false
-    }
-  },
-  {
-    "name": "child session auto logging is suppressed",
-    "kind": "skip",
-    "snapshot": {
-      "activitySeq": 2,
-      "summary": "Fix Pi Log daily-note session summaries",
-      "endedAtMs": 120000,
-      "runtime": {
-        "sessionId": "abc12345"
-      },
-      "agentRuns": 2,
-      "delegatedOnly": false,
-      "isChildSession": true,
-      "usedFallback": false
-    },
-    "sessionStartedAtMs": 0,
-    "source": "auto",
-    "expected": true
-  },
-  {
-    "name": "zero-work auto logging is suppressed",
-    "kind": "skip",
-    "snapshot": {
-      "activitySeq": 0,
-      "summary": "session activity",
-      "endedAtMs": 30000,
-      "runtime": {
-        "sessionId": "abc12345"
-      },
-      "agentRuns": 0,
-      "delegatedOnly": false,
-      "isChildSession": false,
-      "usedFallback": true
-    },
-    "sessionStartedAtMs": 0,
-    "source": "auto",
-    "expected": true
-  },
-  {
-    "name": "heading reuse keeps one profile heading and appends second session",
+    "name": "new daily note gets Pi Log and profile headings",
     "kind": "upsert",
-    "existingText": "# 2026-06-01\n\n## Pi Log\n\n### personal\n\n#### session 11111111 — system-config @ main\n\n- 07:23 PM — First summary (5m)\n",
-    "sessionHeading": "#### session 22222222 — system-config @ main",
+    "existingText": "# 2026-06-02\n\nExisting note\n",
     "blockLines": [
-      "#### session 22222222 — system-config @ main",
-      "",
-      "- 07:24 PM — Second summary (8m)"
+      "- 09:01 AM \u2014 Worked on session-capture simplification"
     ],
     "expected": {
       "changed": true,
       "contains": [
-        "### personal\n\n#### session 11111111 — system-config @ main",
-        "#### session 22222222 — system-config @ main"
+        "## Pi Log",
+        "### personal",
+        "- 09:01 AM \u2014 Worked on session-capture simplification"
       ],
       "counts": {
         "### personal": 1
@@ -138,308 +49,68 @@
     }
   },
   {
-    "name": "same-session upsert is unchanged when block matches",
+    "name": "existing profile appends one bullet",
     "kind": "upsert",
-    "existingText": "# 2026-06-01\n\n## Pi Log\n\n### personal\n\n#### session 11111111 — system-config @ main\n\n- 07:23 PM — First summary (5m)\n",
-    "sessionHeading": "#### session 11111111 — system-config @ main",
+    "existingText": "# 2026-06-02\n\n## Pi Log\n\n### personal\n\n- 08:00 AM \u2014 Earlier work\n",
     "blockLines": [
-      "#### session 11111111 — system-config @ main",
-      "",
-      "- 07:23 PM — First summary (5m)"
+      "- 09:00 AM \u2014 Worked on session-capture simplification"
+    ],
+    "expected": {
+      "changed": true,
+      "contains": [
+        "- 08:00 AM \u2014 Earlier work",
+        "- 09:00 AM \u2014 Worked on session-capture simplification"
+      ],
+      "counts": {
+        "### personal": 1
+      }
+    }
+  },
+  {
+    "name": "duplicate bullet is unchanged",
+    "kind": "upsert",
+    "existingText": "# 2026-06-02\n\n## Pi Log\n\n### personal\n\n- 09:00 AM \u2014 Worked on session-capture simplification\n",
+    "blockLines": [
+      "- 09:00 AM \u2014 Worked on session-capture simplification"
     ],
     "expected": {
       "changed": false,
       "counts": {
-        "#### session 11111111 — system-config @ main": 1
+        "Worked on session-capture simplification": 1,
+        "### personal": 1
       }
     }
   },
   {
-    "name": "same-session snapshot key is stable for manual and shutdown",
-    "kind": "key",
-    "snapshotA": {
-      "activitySeq": 3,
-      "summary": "Fix Pi Log daily-note session summaries",
-      "endedAtMs": 120000,
-      "runtime": {
-        "sessionId": "abc12345"
-      },
-      "agentRuns": 3,
-      "delegatedOnly": false,
-      "isChildSession": false,
-      "usedFallback": false
+    "name": "bullet keeps only summary",
+    "kind": "bullet",
+    "entry": {
+      "summary": "Worked on session-capture simplification",
+      "details": [
+        "Removed transcript heuristics"
+      ],
+      "endedAtMs": 0
     },
-    "snapshotB": {
-      "activitySeq": 3,
-      "summary": "Fix Pi Log daily-note session summaries",
-      "endedAtMs": 150000,
-      "runtime": {
-        "sessionId": "abc12345"
-      },
-      "agentRuns": 3,
-      "delegatedOnly": false,
-      "isChildSession": false,
-      "usedFallback": false
-    },
+    "expected": {
+      "contains": [
+        "Worked on session-capture simplification"
+      ],
+      "notContains": [
+        "Removed transcript heuristics",
+        "undefined"
+      ]
+    }
+  },
+  {
+    "name": "subagent run session file is child",
+    "kind": "child",
+    "value": "/tmp/pi-subagents/run-abc/session.jsonl",
     "expected": true
   },
   {
-    "name": "activity bullet uses multi-line useful content",
-    "kind": "bullet",
-    "sessionStartedAtMs": 0,
-    "snapshot": {
-      "activitySeq": 2,
-      "summary": "Session-capture direction changed.",
-      "details": [
-        "Old focus: config/filtering mechanics.",
-        "New focus: daily-note content quality.",
-        "Problem: capture says 'update bead issue' → not useful later.",
-        "Better: capture outcome, decision, next step.",
-        "Next: make summaries say what changed + why + follow-up."
-      ],
-      "endedAtMs": 120000,
-      "runtime": {
-        "sessionId": "abc12345"
-      },
-      "agentRuns": 8,
-      "delegatedOnly": false,
-      "isChildSession": false,
-      "usedFallback": false
-    },
-    "expected": {
-      "contains": [
-        "— Session-capture direction changed.",
-        "  - Old focus: config/filtering mechanics.",
-        "  - New focus: daily-note content quality.",
-        "  - Problem: capture says 'update bead issue' → not useful later.",
-        "  - Next: make summaries say what changed + why + follow-up."
-      ],
-      "notContains": [
-        "agent runs",
-        "13h",
-        "(2m)"
-      ]
-    }
-  },
-  {
-    "name": "generated schema placeholder is rejected",
-    "kind": "parse",
-    "value": "{\"summary\":\"short outcome title without time\",\"details\":[\"Context/problem/decision/next-step bullet\",\"...\"]}",
-    "expected": null
-  },
-  {
-    "name": "generated recap requires real details",
-    "kind": "parse",
-    "value": "{\"summary\":\"Improve session-capture content\",\"details\":[\"...\"]}",
-    "expected": null
-  },
-  {
-    "name": "angle-bracket schema placeholder is rejected",
-    "kind": "parse",
-    "value": "{\"summary\":\"<real outcome title, no time>\",\"details\":[\"<real context/problem/decision/next-step bullet>\"]}",
-    "expected": null
-  },
-  {
-    "name": "generated prompt echo is rejected",
-    "kind": "parse",
-    "value": "{\"summary\":\"I want you to carve up this work into multiple issues\",\"details\":[\"would an alternative like including subagent guidance be better?\"]}",
-    "expected": null
-  },
-  {
-    "name": "assistant outcomes beat user prompt wording",
-    "kind": "recap",
-    "branch": [
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "i want you to carve up this work into multiple issues"
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "assistant",
-          "content": [
-            {
-              "type": "text",
-              "text": "Created a plan to split pi-workflows work into focused beads issues. Decision: use separate issues for implementation, tests, and prompt guidance instead of one broad task. Next: create and claim the first issue."
-            }
-          ]
-        }
-      }
-    ],
-    "expected": {
-      "summary": "Decision: use separate issues for implementation, tests, and prompt guidance instead of one broad task.",
-      "delegatedOnly": false,
-      "usedFallback": false
-    }
-  },
-  {
-    "name": "generated agent status log is rejected",
-    "kind": "parse",
-    "value": "{\"summary\":\"`prompts/issue-implement.md`\",\"details\":[\"Status: reading issue, repo state, likely impact surface first. Then I’ll branch/implement directly if scope is clear.\",\"Scope looks low/medium: likely add targeted validation test/task/docs, maybe CI hook.\",\"Plan: 1) inspect current tests/prompt/package surfaces tied to issue, 2) add one lightweight smoke validator plus task/…\",\"Routing note: `runtime_usage_info` available; `model_lineup_plan` tool not exposed in this session, so I’m treating thi…\"]}",
-    "expected": null
-  },
-  {
-    "name": "activity bullet drops long ellipsis details",
-    "kind": "bullet",
-    "sessionStartedAtMs": 0,
-    "snapshot": {
-      "activitySeq": 1,
-      "summary": "Implemented hybrid orchestration smoke check.",
-      "details": [
-        "Plan: 1) inspect current tests/prompt/package surfaces tied to issue, 2) add one lightweight smoke validator plus task/…",
-        "Added validation to catch regressions.",
-        "Routing note: `runtime_usage_info` available; `model_lineup_plan` tool not exposed in this session, so I’m treating thi…"
-      ],
-      "endedAtMs": 120000,
-      "runtime": {
-        "sessionId": "abc12345"
-      },
-      "agentRuns": 1,
-      "delegatedOnly": false,
-      "isChildSession": false,
-      "usedFallback": false
-    },
-    "expected": {
-      "contains": [
-        "— Implemented hybrid orchestration smoke check.",
-        "  - Added validation to catch regressions."
-      ],
-      "notContains": [
-        "Plan:",
-        "Routing note:",
-        "…"
-      ]
-    }
-  },
-  {
-    "name": "generated stale review checklist is rejected",
-    "kind": "parse",
-    "value": "{\"summary\":\"Service spam filter\",\"details\":[\"Plan for review:\",\"Need spam posture: honeypot/CAPTCHA/rate-limit.\",\"Implement form wiring\",\"Remove `onsubmit=\\\"return false;\\\"`.\"]}",
-    "expected": null
-  },
-  {
-    "name": "generated final decision summary is accepted",
-    "kind": "parse",
-    "value": "{\"summary\":\"Service spam filter\",\"details\":[\"Technical fit: Cloudflare Pages Function + Resend, not hosted form SaaS.\",\"Why: fits static Cloudflare deploy and keeps control.\",\"Plan: add POST endpoint, server validation, Reply-To handling, and honeypot.\"]}",
-    "expected": {
-      "summary": "Service spam filter"
-    }
-  },
-  {
-    "name": "gmatter session promotes final technical fit",
-    "kind": "recap",
-    "branch": [
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "Service spam filter"
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "assistant",
-          "content": [
-            {
-              "type": "text",
-              "text": "Plan for review:\n- Need spam posture: honeypot/CAPTCHA/rate-limit.\n- Implement form wiring\n- Remove `onsubmit=\"return false;\"`."
-            }
-          ]
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "toolResult",
-          "content": [
-            {
-              "type": "text",
-              "text": "# Research: Contact-form email options for a static Cloudflare Pages site\n\n## Summary\nBest fit for `gmatter.co`: use a small Cloudflare Pages Function/Worker endpoint plus either Cloudflare Email Service or a simple provider like Resend for delivery. This keeps site mostly static, avoids adding a full app backend, hides `info@gmatter.co`, and gives room for basic spam controls and validation."
-            }
-          ]
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "assistant",
-          "content": [
-            {
-              "type": "text",
-              "text": "Best technical fit:\n- **Cloudflare Pages Function/Worker + email API**\n- Why: keeps site static-ish, hides `info@gmatter.co`, gives validation/spam control.\n- Better long-term control → Pages Function/Worker + Resend or Cloudflare Email Service\n- Turnstile/CAPTCHA optional now, add if abuse risk high"
-            }
-          ]
-        }
-      }
-    ],
-    "expected": {
-      "summary": "Service spam filter",
-      "delegatedOnly": false,
-      "usedFallback": false
-    }
-  },
-  {
-    "name": "dataops session avoids same-fix garbage",
-    "kind": "recap",
-    "branch": [
-      {
-        "type": "message",
-        "message": {
-          "role": "user",
-          "content": "same fix"
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "assistant",
-          "content": [
-            {
-              "type": "text",
-              "text": "Same fix**\n- same fix\n- Proposed fix in issue:\n- log clean ignored base_key message\n- capture an issue with proposed solution"
-            }
-          ]
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "assistant",
-          "content": [
-            {
-              "type": "text",
-              "text": "Clear version:\n- Yesterday’s fix introduced this new failure mode.\n- Before PR #3441, the workflow did not filter by incoming base_key.\n- After PR #3441, it does filter by base_key.\n- When dispatch payload does not map to a local refresh target, workflow now produces no matrix entries and GitHub marks run failed.\n- Better wording: Regression in dataops workflow introduced by PR #3441; filtering matrix by base_key can yield zero targets; unhandled zero-target case becomes false failure + noisy alert."
-            }
-          ]
-        }
-      },
-      {
-        "type": "message",
-        "message": {
-          "role": "assistant",
-          "content": [
-            {
-              "type": "text",
-              "text": "Issue rewritten. Now framed as:\n- regression introduced by PR #3441\n- zero-target matrix path unhandled\n- false workflow failures + false Slack noise\n- avoids claiming 76 invalid base keys"
-            }
-          ]
-        }
-      }
-    ],
-    "expected": {
-      "summary": "Reframed dataops workflow regression",
-      "delegatedOnly": false,
-      "usedFallback": false
-    }
-  },
-  {
-    "name": "generated same-fix issue-log is rejected",
-    "kind": "parse",
-    "value": "{\"summary\":\"Same fix**\",\"details\":[\"same fix\",\"Proposed fix in issue:\",\"log clean ignored base_key message\",\"capture an issue with proposed solution\"]}",
-    "expected": null
+    "name": "top-level session file is not child",
+    "kind": "child",
+    "value": "/Users/john/.config/pi/sessions/session.jsonl",
+    "expected": false
   }
 ]
