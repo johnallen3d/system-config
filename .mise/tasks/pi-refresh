@@ -8,7 +8,6 @@ if [ -z "$pi_bin" ]; then
   exit 1
 fi
 
-declare -A updated_npm_packages=()
 declare -a failures=()
 
 cleanup_legacy_global_packages() {
@@ -52,21 +51,27 @@ PY
     )
   fi
 
+  local bootstrap_needed=0
   for package_source in "${git_packages[@]}"; do
     rm -rf "$profile_dir/git/${package_source#git:}"
+    bootstrap_needed=1
   done
 
-  rm -f "$marker"
-  PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" list >/dev/null
+  if [ ! -f "$marker" ]; then
+    bootstrap_needed=1
+  fi
+
+  if [ "$bootstrap_needed" -eq 1 ]; then
+    rm -f "$marker"
+    PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" list >/dev/null
+  else
+    echo "Skipping bootstrap reinstall; no git package refresh needed"
+  fi
 
   for package_source in "${npm_packages[@]}"; do
-    if [ -n "${updated_npm_packages[$package_source]:-}" ]; then
-      continue
-    fi
-
     echo "Updating declared package: $package_source"
     if PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" update "$package_source"; then
-      updated_npm_packages["$package_source"]=1
+      :
     else
       failures+=("$label:$package_source")
     fi
