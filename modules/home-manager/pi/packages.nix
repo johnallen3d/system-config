@@ -25,8 +25,8 @@ in rec {
   workPackageSpecs =
     sharedPackageSpecs
     ++ [
-      # "git:github.com/amfaro/skills"
-      "git:github.com/amfaro/skills@feature/model-router-extension"
+      "git:github.com/amfaro/skills"
+      # "git:github.com/amfaro/skills@"
     ];
 
   allPackageSpecs = lib.unique (personalPackageSpecs ++ workPackageSpecs);
