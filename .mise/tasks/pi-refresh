@@ -8,8 +8,6 @@ if [ -z "$pi_bin" ]; then
   exit 1
 fi
 
-declare -a failures=()
-
 cleanup_legacy_global_packages() {
   local profile_context_mode="$HOME/.config/pi/npm/node_modules/context-mode"
   local legacy_context_mode="$HOME/.local/lib/node_modules/context-mode"
@@ -23,10 +21,13 @@ cleanup_legacy_global_packages() {
 refresh_profile() {
   local profile_dir="$1"
   local label="$2"
+  local failure_file="$3"
   local marker="$profile_dir/packages-installed"
   local settings_file="$profile_dir/settings.json"
 
-  echo "Refreshing $label profile: $profile_dir"
+  local -a failures=()
+
+  echo "[$label] Refreshing profile: $profile_dir"
 
   local -a git_packages=()
   local -a npm_packages=()
@@ -51,25 +52,23 @@ PY
     )
   fi
 
-  local bootstrap_needed=0
+  if [ ! -f "$marker" ]; then
+    echo "[$label] Bootstrapping declared packages"
+    PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" list >/dev/null
+  fi
+
   for package_source in "${git_packages[@]}"; do
+    echo "[$label] Refreshing declared git package: $package_source"
     rm -rf "$profile_dir/git/${package_source#git:}"
-    bootstrap_needed=1
+    if PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" install "$package_source"; then
+      :
+    else
+      failures+=("$label:$package_source")
+    fi
   done
 
-  if [ ! -f "$marker" ]; then
-    bootstrap_needed=1
-  fi
-
-  if [ "$bootstrap_needed" -eq 1 ]; then
-    rm -f "$marker"
-    PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" list >/dev/null
-  else
-    echo "Skipping bootstrap reinstall; no git package refresh needed"
-  fi
-
   for package_source in "${npm_packages[@]}"; do
-    echo "Updating declared package: $package_source"
+    echo "[$label] Updating declared package: $package_source"
     if PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" update "$package_source"; then
       :
     else
@@ -77,16 +76,37 @@ PY
     fi
   done
 
-  echo "Refreshed $label profile"
+  if [ "${#failures[@]}" -gt 0 ]; then
+    printf '%s\n' "${failures[@]}" > "$failure_file"
+    return 1
+  fi
+
+  echo "[$label] Refreshed profile"
 }
 
 echo "Note: pi command is nix-managed here; wrapper resolves latest pi runtime automatically."
-refresh_profile "$HOME/.config/pi" "personal"
-refresh_profile "$HOME/.config/pi-work" "work"
 
-if [ "${#failures[@]}" -gt 0 ]; then
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+refresh_profile "$HOME/.config/pi" "personal" "$tmp_dir/personal.failures" &
+personal_pid=$!
+refresh_profile "$HOME/.config/pi-work" "work" "$tmp_dir/work.failures" &
+work_pid=$!
+
+refresh_failed=0
+wait "$personal_pid" || refresh_failed=1
+wait "$work_pid" || refresh_failed=1
+
+if [ "$refresh_failed" -ne 0 ]; then
   printf 'Failed package updates:\n' >&2
-  printf '  - %s\n' "${failures[@]}" >&2
+  for failure_file in "$tmp_dir"/*.failures; do
+    [ -s "$failure_file" ] || continue
+    while IFS= read -r failure; do
+      [ -n "$failure" ] || continue
+      printf '  - %s\n' "$failure" >&2
+    done < "$failure_file"
+  done
   exit 1
 fi
 
