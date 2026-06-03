@@ -60,7 +60,8 @@ End session: finish issue tracking, quality checks, and hand-off. Do not treat w
 
 - Do **not** run `mise run nix-rebuild` or `mise run nix-rebuild -- --switch-only` as part of wrap-up unless the task itself changed executable config/scripts/packages and a rebuild is otherwise required.
 - Do **not** run `git push`, `bd sync`, or `bd dolt push` during wrap-up unless the user explicitly asks for that remote-sync step.
-- If push is not requested, say `ready to push when you are`.
+- Say `ready to push when you are` **only if** a local commit already exists and push is the only remaining remote-sync step.
+- If changes are uncommitted, summarize git state and use wording like `ready to commit when you are` or just hand off without push wording.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:d4f96305 -->
 ## Issue Tracking with bd (beads)
@@ -162,6 +163,7 @@ End session: finish issue tracking, quality checks, and hand-off. Wrap-up does n
 **CRITICAL RULES:**
 - Do **not** treat wrap-up as authority to run `mise run nix-rebuild` or `mise run nix-rebuild -- --switch-only`; only rebuild when the task itself requires it.
 - Do **not** run `bd dolt push` or `git push` unless the user explicitly asks for remote sync/push.
-- If push is not requested, say `ready to push when you are`.
+- Say `ready to push when you are` **only if** a local commit already exists and push is the only remaining remote-sync step.
+- If changes are uncommitted, summarize git state and use wording like `ready to commit when you are` or just hand off without push wording.
 
 <!-- END BEADS INTEGRATION -->
