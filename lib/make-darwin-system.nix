@@ -62,6 +62,7 @@ in
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
+            backupFileExtension = "hm-backup";
             extraSpecialArgs = {
               inherit brew_bin full_name home op_path op_ssh_sign_path;
             };
