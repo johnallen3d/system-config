@@ -11,6 +11,19 @@ use std::time::Duration;
 const SUCCESS_POLL_SECS: u64 = 3600;
 const FAILURE_RETRY_SECS: u64 = 30;
 const MAX_FAILURE_RETRY_SECS: u64 = 300;
+const OUTAGE_ICON: &str = "";
+const OUTAGE_LABEL: &str = "wx down";
+
+fn update_widget(icon: &str, label: &str) {
+    let message = format!(
+        "--set weather_logo icon=\"{}\" --set weather label=\"{}\"",
+        icon, label
+    );
+
+    if let Err(error) = sketchybar_rs::message(&message, Some("sketchybar")) {
+        eprintln!("weather-updater: failed to send update to sketchybar: {error:?}");
+    }
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -24,20 +37,13 @@ async fn main() {
         match conditions.fetch(&mut cache).await {
             Ok(current) => {
                 consecutive_failures = 0;
-
-                let message = format!(
-                    "--set weather_logo icon=\"{}\" --set weather label=\"{}°F\"",
-                    current.icon, current.temp
-                );
-
-                if let Err(error) = sketchybar_rs::message(&message, Some("sketchybar")) {
-                    eprintln!("weather-updater: failed to send update to sketchybar: {error:?}");
-                }
+                update_widget(&current.icon, &format!("{}°F", current.temp));
 
                 thread::sleep(Duration::from_secs(SUCCESS_POLL_SECS));
             }
             Err(error) => {
                 consecutive_failures = consecutive_failures.saturating_add(1);
+                update_widget(OUTAGE_ICON, OUTAGE_LABEL);
 
                 let retry_secs = (FAILURE_RETRY_SECS.saturating_mul(1u64 << consecutive_failures.min(4)))
                     .min(MAX_FAILURE_RETRY_SECS);
