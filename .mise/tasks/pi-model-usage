@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Summarize Pi parent/subagent model usage from session logs"
+#USAGE arg "[target]" help="latest | current | recent[:N] | <session-id> | <session-path>"
+#USAGE arg "[count]" help="Recent count when target is 'recent'"
+set -euo pipefail
+
+exec pi-model-usage "$@"

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Alias for pi-model-usage"
+set -euo pipefail
+
+exec pi-model-usage "$@"
