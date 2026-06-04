@@ -1,6 +1,7 @@
 {pkgs, ...}:
 pkgs.writeShellScriptBin "pi-model-usage" ''
   exec ${pkgs.python3}/bin/python3 - "$@" <<'PY'
+import csv
 import json
 import os
 import subprocess
@@ -215,6 +216,157 @@ def summarize_models(buckets: list[ModelBucket]) -> str:
     return ", ".join(f"{bucket.provider}/{bucket.model}({bucket.responses})" for bucket in buckets)
 
 
+def format_int(value: int) -> str:
+    return f"{value:,}"
+
+
+def format_cost(value: float) -> str:
+    return ("$" + format(value, ".6f")) if value else "-"
+
+
+def print_bucket_table(buckets: list[ModelBucket], indent: str = "") -> None:
+    if not buckets:
+        print(f"{indent}none")
+        return
+
+    rows = [
+        [
+            f"{bucket.provider}/{bucket.model}",
+            bucket.api,
+            format_int(bucket.responses),
+            format_int(bucket.input_tokens),
+            format_int(bucket.output_tokens),
+            format_int(bucket.cache_read_tokens),
+            format_int(bucket.total_tokens),
+            format_cost(bucket.total_cost),
+        ]
+        for bucket in buckets
+    ]
+    headers = ["model", "api", "resp", "input", "output", "cache", "total", "cost"]
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for index, cell in enumerate(row):
+            widths[index] = max(widths[index], len(cell))
+
+    right_align = {2, 3, 4, 5, 6, 7}
+
+    def render(row: list[str]) -> str:
+        cells = []
+        for index, cell in enumerate(row):
+            if index in right_align:
+                cells.append(cell.rjust(widths[index]))
+            else:
+                cells.append(cell.ljust(widths[index]))
+        return indent + "  ".join(cells)
+
+    print(render(headers))
+    print(indent + "  ".join("-" * width for width in widths))
+    for row in rows:
+        print(render(row))
+
+
+def bucket_to_dict(bucket: ModelBucket) -> dict:
+    return {
+        "provider": bucket.provider,
+        "model": bucket.model,
+        "api": bucket.api,
+        "responses": bucket.responses,
+        "input_tokens": bucket.input_tokens,
+        "output_tokens": bucket.output_tokens,
+        "cache_read_tokens": bucket.cache_read_tokens,
+        "cache_write_tokens": bucket.cache_write_tokens,
+        "total_tokens": bucket.total_tokens,
+        "total_cost": bucket.total_cost,
+    }
+
+
+def log_to_dict(log: LogSummary, relative_to: Optional[Path] = None) -> dict:
+    path_value = log.path
+    if relative_to and path_within(log.path, relative_to):
+        path_value = log.path.relative_to(relative_to)
+    return {
+        "role": log.role,
+        "profile": profile_label(log.profile_dir),
+        "path": str(path_value),
+        "session_id": log.session_id,
+        "started": log.started_at,
+        "cwd": log.cwd,
+        "name": log.name,
+        "responses": log.response_count,
+        "model_changes": log.model_changes,
+        "buckets": [bucket_to_dict(bucket) for bucket in log.buckets],
+    }
+
+
+def emit_json(payload: dict) -> None:
+    print(json.dumps(payload, indent=2))
+
+
+def emit_csv(rows: list[dict]) -> None:
+    fieldnames = [
+        "mode",
+        "scope",
+        "profile",
+        "repo",
+        "target",
+        "session_id",
+        "started",
+        "cwd",
+        "path",
+        "provider",
+        "model",
+        "api",
+        "responses",
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+        "total_tokens",
+        "total_cost",
+    ]
+    writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: row.get(key, "") for key in fieldnames})
+
+
+def build_csv_rows(mode: str, repo: Optional[str], target: str, scope: str, log: Optional[LogSummary], buckets: list[ModelBucket]) -> list[dict]:
+    if not buckets:
+        return []
+    base = {
+        "mode": mode,
+        "scope": scope,
+        "repo": repo or "",
+        "target": target,
+    }
+    if log is not None:
+        relative_path = log.path
+        if log.profile_dir and path_within(log.path, log.profile_dir):
+            relative_path = log.path.relative_to(log.profile_dir)
+        base.update(
+            {
+                "profile": profile_label(log.profile_dir),
+                "session_id": log.session_id,
+                "started": log.started_at or "",
+                "cwd": log.cwd or "",
+                "path": str(relative_path),
+            }
+        )
+    rows = []
+    for bucket in buckets:
+        row = dict(base)
+        row.update(bucket_to_dict(bucket))
+        rows.append(row)
+    return rows
+
+
+def aggregate_summary(logs: list[LogSummary]) -> dict:
+    return {
+        "responses": sum(log.response_count for log in logs),
+        "models": summarize_models(aggregate_logs(logs)),
+    }
+
+
 def aggregate_logs(logs: list[LogSummary]) -> list[ModelBucket]:
     merged: dict[tuple[str, str, str], ModelBucket] = {}
     for log in logs:
@@ -295,10 +447,12 @@ def profile_label(profile_dir: Optional[Path]) -> str:
     return str(resolved)
 
 
-def parse_cli(argv: list[str]) -> tuple[str, Optional[str], bool, str, str]:
+def parse_cli(argv: list[str]) -> tuple[str, Optional[str], bool, bool, str, str, str]:
     profile = "auto"
     repo = None
     all_repos = False
+    aggregate_recent = False
+    output_format = "text"
     positionals: list[str] = []
 
     i = 0
@@ -320,8 +474,18 @@ def parse_cli(argv: list[str]) -> tuple[str, Optional[str], bool, str, str]:
             repo = arg.split("=", 1)[1]
         elif arg == "--all-repos":
             all_repos = True
+        elif arg in {"--aggregate", "--sum", "--totals-only"}:
+            aggregate_recent = True
+        elif arg == "--json":
+            if output_format != "text":
+                usage_error("Choose only one of --json or --csv")
+            output_format = "json"
+        elif arg == "--csv":
+            if output_format != "text":
+                usage_error("Choose only one of --json or --csv")
+            output_format = "csv"
         elif arg in {"-h", "--help"}:
-            print("usage: pi-model-usage [--profile auto|personal|work|PATH] [--repo PATH | --all-repos] [latest|current|recent[:N]|<session-id>|<session-path>] [count]", file=sys.stderr)
+            print("usage: pi-model-usage [--profile auto|personal|work|PATH] [--repo PATH | --all-repos] [--aggregate] [--json|--csv] [latest|current|recent[:N]|<session-id>|<session-path>] [count]", file=sys.stderr)
             sys.exit(0)
         else:
             positionals.append(arg)
@@ -334,7 +498,7 @@ def parse_cli(argv: list[str]) -> tuple[str, Optional[str], bool, str, str]:
     count = positionals[1] if len(positionals) > 1 else ""
     if len(positionals) > 2:
         usage_error("Too many positional arguments")
-    return profile, repo, all_repos, target, count
+    return profile, repo, all_repos, aggregate_recent, target, count, output_format
 
 
 def resolve_profiles(selector: str, direct_target: Optional[Path]) -> list[Path]:
@@ -391,7 +555,7 @@ def find_parent(selector: str, parents: list[ParentSession]) -> ParentSession:
     return matches[0]
 
 
-profile_selector, repo_selector, all_repos, target, count_arg = parse_cli(sys.argv[1:])
+profile_selector, repo_selector, all_repos, aggregate_recent, target, count_arg, output_format = parse_cli(sys.argv[1:])
 selector_path = Path(target).expanduser()
 direct_target = selector_path if selector_path.exists() else None
 profiles = resolve_profiles(profile_selector, direct_target)
@@ -426,6 +590,26 @@ if direct_target is not None:
     parent, direct_log, child_logs = collect_from_direct_path(selector_path)
     logs = [direct_log, *child_logs]
     aggregate = aggregate_logs(logs)
+    if output_format == "json":
+        emit_json(
+            {
+                "mode": "direct",
+                "target": target,
+                "profiles_searched": [{"label": profile_label(profile), "path": str(profile)} for profile in profiles],
+                "parent_session": str(parent.path) if parent is not None else None,
+                "child_sessions": len(child_logs),
+                "aggregate_models": [bucket_to_dict(bucket) for bucket in aggregate],
+                "logs": [log_to_dict(log) for log in logs],
+            }
+        )
+        sys.exit(0)
+    if output_format == "csv":
+        rows: list[dict] = []
+        for log in logs:
+            rows.extend(build_csv_rows("direct", log.cwd, target, log.role, log, log.buckets))
+        emit_csv(rows)
+        sys.exit(0)
+
     print(f"Profiles searched: {', '.join(f'{profile_label(profile)}={profile}' for profile in profiles)}")
     print(f"Target: {target}")
     if parent is not None:
@@ -452,15 +636,7 @@ if direct_target is not None:
             print("")
             continue
         print("  models:")
-        for bucket in log.buckets:
-            cost_suffix = (" cost=$" + f"{bucket.total_cost:.6f}") if bucket.total_cost else ""
-            print(
-                "    - "
-                f"{bucket.provider}/{bucket.model} "
-                f"api={bucket.api} responses={bucket.responses} "
-                f"tokens(in={bucket.input_tokens} out={bucket.output_tokens} cache_read={bucket.cache_read_tokens} total={bucket.total_tokens})"
-                f"{cost_suffix}"
-            )
+        print_bucket_table(log.buckets, indent="    ")
         print("")
     sys.exit(0)
 
@@ -472,6 +648,95 @@ else:
     selected_parents = [find_parent(target, parents)]
 
 if selector_lower == "recent":
+    if aggregate_recent:
+        parent_logs: list[LogSummary] = []
+        child_logs: list[LogSummary] = []
+        for parent in selected_parents:
+            parent_log, subagent_logs = collect_logs(parent)
+            parent_logs.append(parent_log)
+            child_logs.extend(subagent_logs)
+        aggregate_parent = aggregate_logs(parent_logs)
+        aggregate_child = aggregate_logs(child_logs)
+        aggregate_all = aggregate_logs([*parent_logs, *child_logs])
+        if output_format == "json":
+            emit_json(
+                {
+                    "mode": "recent_aggregate",
+                    "target": target,
+                    "repo": str(repo_root) if repo_root is not None else None,
+                    "profiles_searched": [{"label": profile_label(profile), "path": str(profile)} for profile in profiles],
+                    "recent_sessions": len(selected_parents),
+                    "totals": {
+                        "parent_responses": sum(log.response_count for log in parent_logs),
+                        "child_sessions": len(child_logs),
+                        "child_responses": sum(log.response_count for log in child_logs),
+                    },
+                    "parent_models": [bucket_to_dict(bucket) for bucket in aggregate_parent],
+                    "child_models": [bucket_to_dict(bucket) for bucket in aggregate_child],
+                    "aggregate_models": [bucket_to_dict(bucket) for bucket in aggregate_all],
+                }
+            )
+            sys.exit(0)
+        if output_format == "csv":
+            emit_csv(build_csv_rows("recent_aggregate", str(repo_root) if repo_root is not None else None, target, "aggregate", None, aggregate_all))
+            sys.exit(0)
+
+        print(f"Profiles searched: {', '.join(f'{profile_label(profile)}={profile}' for profile in profiles)}")
+        print(f"Repo: {repo_root if repo_root is not None else 'all repos'}")
+        print(f"Recent sessions: {len(selected_parents)}")
+        print(f"Aggregate models: {summarize_models(aggregate_all)}")
+        print("")
+        print(
+            f"Totals: parent responses={sum(log.response_count for log in parent_logs)} "
+            f"child sessions={len(child_logs)} child responses={sum(log.response_count for log in child_logs)}"
+        )
+        print(f"Parent models: {summarize_models(aggregate_parent)}")
+        print(f"Child models: {summarize_models(aggregate_child)}")
+        print("")
+        if aggregate_all:
+            print("Models:")
+            print_bucket_table(aggregate_all, indent="  ")
+        else:
+            print("Models: none")
+        sys.exit(0)
+
+    if output_format == "json":
+        sessions = []
+        for parent in selected_parents:
+            parent_log, child_logs = collect_logs(parent)
+            sessions.append(
+                {
+                    "profile": profile_label(parent.profile_dir),
+                    "path": str(parent.path),
+                    "started": parent.started_at or parent_log.started_at,
+                    "cwd": parent.cwd,
+                    "parent": log_to_dict(parent_log, parent.profile_dir),
+                    "children": [log_to_dict(log) for log in child_logs],
+                    "parent_models": [bucket_to_dict(bucket) for bucket in aggregate_logs([parent_log])],
+                    "child_models": [bucket_to_dict(bucket) for bucket in aggregate_logs(child_logs)],
+                }
+            )
+        emit_json(
+            {
+                "mode": "recent",
+                "target": target,
+                "repo": str(repo_root) if repo_root is not None else None,
+                "profiles_searched": [{"label": profile_label(profile), "path": str(profile)} for profile in profiles],
+                "recent_sessions": len(selected_parents),
+                "sessions": sessions,
+            }
+        )
+        sys.exit(0)
+    if output_format == "csv":
+        rows: list[dict] = []
+        for parent in selected_parents:
+            parent_log, child_logs = collect_logs(parent)
+            rows.extend(build_csv_rows("recent", str(repo_root) if repo_root is not None else None, target, "parent", parent_log, parent_log.buckets))
+            for child_log in child_logs:
+                rows.extend(build_csv_rows("recent", str(repo_root) if repo_root is not None else None, target, "subagent", child_log, child_log.buckets))
+        emit_csv(rows)
+        sys.exit(0)
+
     print(f"Profiles searched: {', '.join(f'{profile_label(profile)}={profile}' for profile in profiles)}")
     print(f"Repo: {repo_root if repo_root is not None else 'all repos'}")
     print(f"Recent sessions: {len(selected_parents)}")
@@ -495,6 +760,31 @@ parent = selected_parents[0]
 parent_log, child_logs = collect_logs(parent)
 all_logs = [parent_log, *child_logs]
 aggregate = aggregate_logs(all_logs)
+
+if output_format == "json":
+    emit_json(
+        {
+            "mode": selector_lower,
+            "target": target,
+            "repo": str(repo_root) if repo_root is not None else (parent.cwd or None),
+            "profiles_searched": [{"label": profile_label(profile), "path": str(profile)} for profile in profiles],
+            "resolution": "current aliases latest repo session when no live session id is available" if selector_lower == "current" else None,
+            "parent_session": str(parent.path),
+            "started": parent.started_at or parent_log.started_at,
+            "profile": profile_label(parent.profile_dir),
+            "parent_session_id": parent_log.session_id,
+            "child_sessions": len(child_logs),
+            "aggregate_models": [bucket_to_dict(bucket) for bucket in aggregate],
+            "logs": [log_to_dict(log, log.profile_dir) for log in all_logs],
+        }
+    )
+    sys.exit(0)
+if output_format == "csv":
+    rows = build_csv_rows(selector_lower, str(repo_root) if repo_root is not None else (parent.cwd or None), target, "parent", parent_log, parent_log.buckets)
+    for child_log in child_logs:
+        rows.extend(build_csv_rows(selector_lower, str(repo_root) if repo_root is not None else (parent.cwd or None), target, "subagent", child_log, child_log.buckets))
+    emit_csv(rows)
+    sys.exit(0)
 
 print(f"Profiles searched: {', '.join(f'{profile_label(profile)}={profile}' for profile in profiles)}")
 print(f"Repo: {repo_root if repo_root is not None else (parent.cwd or 'all repos')}")
@@ -528,15 +818,7 @@ for log in all_logs:
         print("")
         continue
     print("  models:")
-    for bucket in log.buckets:
-        cost_suffix = (" cost=$" + f"{bucket.total_cost:.6f}") if bucket.total_cost else ""
-        print(
-            "    - "
-            f"{bucket.provider}/{bucket.model} "
-            f"api={bucket.api} responses={bucket.responses} "
-            f"tokens(in={bucket.input_tokens} out={bucket.output_tokens} cache_read={bucket.cache_read_tokens} total={bucket.total_tokens})"
-            f"{cost_suffix}"
-        )
+    print_bucket_table(log.buckets, indent="    ")
     print("")
 PY
 ''

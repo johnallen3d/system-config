@@ -8,3 +8,13 @@ file = "./.mise/tasks/nix-rebuild"
 [tasks.pi-refresh]
 description = "Refresh nix-managed pi packages for personal + work profiles"
 file = "./.mise/tasks/pi-refresh"
+
+[tasks.pi-model-usage]
+description = "Summarize Pi parent/subagent model usage from session logs"
+file = "./.mise/tasks/pi-model-usage"
+quiet = true
+
+[tasks.pi-m]
+description = "Alias for pi-model-usage"
+file = "./.mise/tasks/pi-m"
+quiet = true
