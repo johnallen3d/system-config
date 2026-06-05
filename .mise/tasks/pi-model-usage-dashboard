@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Build local HTML dashboard for Pi model usage"
+#USAGE flag "--profile <profile>" help="Profile scope: both | personal | work | auto"
+#USAGE flag "--repo <path>" help="Optional repo filter"
+#USAGE flag "--limit <count>" help="Recent sessions per profile"
+#USAGE flag "--output <path>" help="Write HTML to fixed path"
+#USAGE flag "--open" help="Open browser after writing HTML (default)"
+#USAGE flag "--no-open" help="Only write HTML"
+set -euo pipefail
+
+exec pi-model-usage-dashboard "$@"

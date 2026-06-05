@@ -17,6 +17,7 @@
     (import ./bin/fixup.nix {inherit pkgs;})
     (import ./bin/flac-to-mp3.nix {inherit pkgs;})
     (import ./bin/md-to-doc.nix {inherit pkgs;})
+    (import ./bin/pi-model-usage-dashboard.nix {inherit pkgs;})
     (import ./bin/pi-model-usage.nix {inherit pkgs;})
     (import ./bin/scratch.nix {inherit pkgs;})
     (import ./bin/set-wallpaper.nix {inherit pkgs;})

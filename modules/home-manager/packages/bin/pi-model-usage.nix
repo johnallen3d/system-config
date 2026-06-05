@@ -486,6 +486,7 @@ def parse_cli(argv: list[str]) -> tuple[str, Optional[str], bool, bool, str, str
             output_format = "csv"
         elif arg in {"-h", "--help"}:
             print("usage: pi-model-usage [--profile auto|personal|work|PATH] [--repo PATH | --all-repos] [--aggregate] [--json|--csv] [latest|current|recent[:N]|<session-id>|<session-path>] [count]", file=sys.stderr)
+            print("default scope for latest/current/recent is selected profile(s); use --repo PATH to filter", file=sys.stderr)
             sys.exit(0)
         else:
             positionals.append(arg)
@@ -571,12 +572,10 @@ elif selector_lower == "recent" and count_arg:
 
 repo_root = None
 if direct_target is None and selector_lower in {"latest", "current", "recent"}:
-    if all_repos:
-        repo_root = None
-    elif repo_selector:
+    if repo_selector:
         repo_root = resolve_git_root(Path(repo_selector))
-    else:
-        repo_root = resolve_git_root(Path.cwd())
+    elif all_repos:
+        repo_root = None
 
 selected_by_repo = parents
 if repo_root is not None:
@@ -663,6 +662,7 @@ if selector_lower == "recent":
                 {
                     "mode": "recent_aggregate",
                     "target": target,
+                    "scope": "repo" if repo_root is not None else "profile",
                     "repo": str(repo_root) if repo_root is not None else None,
                     "profiles_searched": [{"label": profile_label(profile), "path": str(profile)} for profile in profiles],
                     "recent_sessions": len(selected_parents),
@@ -720,6 +720,7 @@ if selector_lower == "recent":
             {
                 "mode": "recent",
                 "target": target,
+                "scope": "repo" if repo_root is not None else "profile",
                 "repo": str(repo_root) if repo_root is not None else None,
                 "profiles_searched": [{"label": profile_label(profile), "path": str(profile)} for profile in profiles],
                 "recent_sessions": len(selected_parents),
@@ -766,9 +767,10 @@ if output_format == "json":
         {
             "mode": selector_lower,
             "target": target,
-            "repo": str(repo_root) if repo_root is not None else (parent.cwd or None),
+            "scope": "repo" if repo_root is not None else "profile",
+            "repo": str(repo_root) if repo_root is not None else None,
             "profiles_searched": [{"label": profile_label(profile), "path": str(profile)} for profile in profiles],
-            "resolution": "current aliases latest repo session when no live session id is available" if selector_lower == "current" else None,
+            "resolution": "current aliases latest profile session when no live session id is available" if selector_lower == "current" else None,
             "parent_session": str(parent.path),
             "started": parent.started_at or parent_log.started_at,
             "profile": profile_label(parent.profile_dir),
@@ -780,17 +782,18 @@ if output_format == "json":
     )
     sys.exit(0)
 if output_format == "csv":
-    rows = build_csv_rows(selector_lower, str(repo_root) if repo_root is not None else (parent.cwd or None), target, "parent", parent_log, parent_log.buckets)
+    rows = build_csv_rows(selector_lower, str(repo_root) if repo_root is not None else None, target, "parent", parent_log, parent_log.buckets)
     for child_log in child_logs:
-        rows.extend(build_csv_rows(selector_lower, str(repo_root) if repo_root is not None else (parent.cwd or None), target, "subagent", child_log, child_log.buckets))
+        rows.extend(build_csv_rows(selector_lower, str(repo_root) if repo_root is not None else None, target, "subagent", child_log, child_log.buckets))
     emit_csv(rows)
     sys.exit(0)
 
 print(f"Profiles searched: {', '.join(f'{profile_label(profile)}={profile}' for profile in profiles)}")
-print(f"Repo: {repo_root if repo_root is not None else (parent.cwd or 'all repos')}")
+print(f"Scope: {'repo' if repo_root is not None else 'profile'}")
+print(f"Repo filter: {repo_root if repo_root is not None else 'none'}")
 print(f"Target: {target}")
 if selector_lower == "current":
-    print("Resolution: current aliases latest repo session when no live session id is available")
+    print("Resolution: current aliases latest profile session when no live session id is available")
 print(f"Parent session: {parent.path}")
 print(f"Started: {parent.started_at or parent_log.started_at or 'unknown'}")
 print(f"Profile: {profile_label(parent.profile_dir)}")

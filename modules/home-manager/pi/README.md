@@ -44,7 +44,7 @@ The nix-managed `pi-model-usage` command summarizes model/provider usage for Pi 
 
 Examples:
 
-- `pi-model-usage` — latest session for current repo
+- `pi-model-usage` — latest session for selected profile
 - `pi-model-usage current` — alias for latest
 - `pi-model-usage recent`
 - `pi-model-usage recent 10`
@@ -55,6 +55,7 @@ Examples:
 - `pi-model-usage --csv recent 10`
 - `pi-model-usage --profile work`
 - `pi-model-usage --repo ~/dev/src/other-repo`
+- `pi-model-usage --repo . recent 20`
 - `pi-model-usage --all-repos recent 20`
 - `pi-model-usage <session-id>`
 - `pi-model-usage <session-path>`
@@ -62,9 +63,38 @@ Examples:
 Profile selection:
 
 - `--profile auto` (default) uses `PI_CODING_AGENT_DIR` when set, otherwise searches both `~/.config/pi` and `~/.config/pi-work`
+- `latest`, `current`, and `recent` are profile-scoped by default
+- `--repo PATH` narrows those selectors to one repo
+- `--all-repos` is an explicit no-filter alias for profile scope
 - `--profile personal` forces `~/.config/pi`
 - `--profile work` forces `~/.config/pi-work`
 - `mise run pi-model-usage -- ...` and `mise run pi-m -- ...` are repo-local wrappers around the global command
+
+## Model usage dashboard
+
+The nix-managed `pi-model-usage-dashboard` command builds a local HTML dashboard from `pi-model-usage --json` output.
+
+Why this shape:
+
+- reuses the existing nix-managed session parser and JSON schema instead of duplicating raw JSONL parsing again
+- stays local-first and lightweight (single HTML file, no web service or external SaaS)
+- remains easy to launch from either shell or `mise`
+
+Examples:
+
+- `pi-model-usage-dashboard`
+- `pi-model-usage-dashboard --limit 100`
+- `pi-model-usage-dashboard --profile work`
+- `pi-model-usage-dashboard --repo ~/dev/src/system-config`
+- `pi-model-usage-dashboard --no-open --output ~/tmp/pi-usage.html`
+- `mise run pi-model-usage-dashboard -- --limit 100 --repo .`
+
+Current views:
+
+- filter by profile, repo, provider, model, and session-path text
+- aggregate cards for responses, tokens, cache read/write, and cost
+- day/provider/model/repo breakdowns
+- session list with drill-down into per-log model buckets
 
 ## Rule of thumb
 
