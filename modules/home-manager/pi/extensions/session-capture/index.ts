@@ -95,15 +95,65 @@ function nextHeadingIndex(lines: string[], start: number, end: number, pattern: 
   return end;
 }
 
+function isHeadingLine(value: string | undefined): boolean {
+  return /^##+\s+/.test(value ?? "");
+}
+
+function trimTrailingBlankLines(lines: string[]): string[] {
+  const result = [...lines];
+  while (result.length > 0 && result[result.length - 1] === "") result.pop();
+  return result;
+}
+
+function trimLeadingBlankLines(lines: string[]): string[] {
+  const result = [...lines];
+  while (result.length > 0 && result[0] === "") result.shift();
+  return result;
+}
+
 function spliceWithSpacing(lines: string[], insertAt: number, block: string[]): string[] {
   const prefix = lines.slice(0, insertAt);
   const suffix = lines.slice(insertAt);
   const normalizedBlock = [...block];
+  const firstBlockLine = normalizedBlock[0];
+  const lastBlockLine = normalizedBlock[normalizedBlock.length - 1];
 
-  if (prefix.length > 0 && prefix[prefix.length - 1] !== "") prefix.push("");
-  if (suffix.length > 0 && normalizedBlock[normalizedBlock.length - 1] !== "") normalizedBlock.push("");
+  const normalizedPrefix = isHeadingLine(firstBlockLine)
+    ? [...prefix]
+    : trimTrailingBlankLines(prefix);
+  const previousLine = normalizedPrefix[normalizedPrefix.length - 1];
 
-  return [...prefix, ...normalizedBlock, ...suffix];
+  if (
+    normalizedPrefix.length > 0
+    && previousLine !== ""
+    && isHeadingLine(firstBlockLine)
+  ) {
+    normalizedPrefix.push("");
+  }
+
+  if (
+    normalizedPrefix.length > 0
+    && isHeadingLine(previousLine)
+    && !isHeadingLine(firstBlockLine)
+  ) {
+    normalizedPrefix.push("");
+  }
+
+  const normalizedSuffix = isHeadingLine(lastBlockLine)
+    ? [...suffix]
+    : trimLeadingBlankLines(suffix);
+  const nextLine = normalizedSuffix[0];
+
+  if (
+    normalizedSuffix.length > 0
+    && nextLine !== ""
+    && lastBlockLine !== ""
+    && isHeadingLine(nextLine)
+  ) {
+    normalizedBlock.push("");
+  }
+
+  return [...normalizedPrefix, ...normalizedBlock, ...normalizedSuffix];
 }
 
 function ensureTrailingNewline(value: string): string {

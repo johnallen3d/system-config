@@ -58,11 +58,28 @@
     "expected": {
       "changed": true,
       "contains": [
-        "- 08:00 AM \u2014 Earlier work",
-        "- 09:00 AM \u2014 Worked on session-capture simplification"
+        "- 08:00 AM \u2014 Earlier work\n- 09:00 AM \u2014 Worked on session-capture simplification"
       ],
       "counts": {
         "### personal": 1
+      }
+    }
+  },
+  {
+    "name": "new profile stays separated from next heading",
+    "kind": "upsert",
+    "existingText": "# 2026-06-02\n\n## Pi Log\n\n### work\n\n- 08:00 AM \u2014 Earlier work\n\n## Misc\n",
+    "blockLines": [
+      "- 09:00 AM \u2014 Worked on session-capture simplification"
+    ],
+    "expected": {
+      "changed": true,
+      "contains": [
+        "### personal\n\n- 09:00 AM \u2014 Worked on session-capture simplification\n\n## Misc"
+      ],
+      "counts": {
+        "### personal": 1,
+        "### work": 1
       }
     }
   },
