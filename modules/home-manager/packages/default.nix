@@ -44,6 +44,7 @@ in {
     [
       actionlint
       alejandra
+      antigravity-cli
       awscli2
       # azure-cli
       bashInteractive
