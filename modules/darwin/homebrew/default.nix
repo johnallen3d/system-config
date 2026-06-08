@@ -1,4 +1,32 @@
-{...}: {
+{config, ...}: let
+  homebrewTrustJson = builtins.toJSON {
+    trustedtaps = [
+      "common-fate/granted"
+      "dmno-dev/tap"
+      "elio-fm/elio"
+      "felixkratz/formulae"
+      "kcl-lang/tap"
+      "ksdme/tap"
+      "nikitabobko/tap"
+      "notwadegrimridge/brew"
+      "siderolabs/tap"
+      "steipete/tap"
+      "steveyegge/beads"
+    ];
+    trustedcasks = [
+      "nikitabobko/tap/aerospace"
+    ];
+  };
+in {
+  system.activationScripts.preActivation.text = ''
+    install -d -m 700 -o ${config.system.primaryUser} -g staff /Users/${config.system.primaryUser}/.homebrew
+    cat > /Users/${config.system.primaryUser}/.homebrew/trust.json <<'EOF'
+${homebrewTrustJson}
+EOF
+    chown ${config.system.primaryUser}:staff /Users/${config.system.primaryUser}/.homebrew/trust.json
+    chmod 600 /Users/${config.system.primaryUser}/.homebrew/trust.json
+  '';
+
   homebrew = {
     enable = true;
     onActivation = {
@@ -20,7 +48,6 @@
       "ksdme/tap"
       "nikitabobko/homebrew-tap"
       "notwadegrimridge/brew"
-      "plutov/tap"
       "siderolabs/tap"
       "steipete/tap"
       "steveyegge/beads"
@@ -80,7 +107,6 @@
       "notunes"
       "obsidian"
       "ollama-app"
-      "oq" # TUI for reading openapi specs
       "orbstack"
       "notwadegrimridge/brew/pingplace"
       "raycast"
