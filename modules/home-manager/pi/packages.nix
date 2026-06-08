@@ -25,8 +25,7 @@ in rec {
   workPackageSpecs =
     sharedPackageSpecs
     ++ [
-      "git:github.com/amfaro/skills"
-      # "git:github.com/amfaro/skills@"
+      "git:github.com/amfaro/pi-workflows"
     ];
 
   allPackageSpecs = lib.unique (personalPackageSpecs ++ workPackageSpecs);
