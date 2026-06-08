@@ -1,3 +1,6 @@
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export type JournalEntry = {
@@ -13,6 +16,21 @@ const PROFILE = process.env["PI_CODING_AGENT_DIR"]?.endsWith("pi-work") ? "work"
 const SUMMARY_LIMIT = 100;
 const PI_LOG_HEADING = "## Pi Log";
 const PROFILE_HEADING = `### ${PROFILE}`;
+const PENDING_DIR = join(process.env["HOME"] ?? process.cwd(), ".local", "state", "pi-session-capture", "pending");
+
+export type SessionIdentity = {
+  sessionId?: string | null;
+  sessionFile?: string | null;
+  pendingKey?: string;
+};
+
+type PersistedEntry = JournalEntry & {
+  profile: string;
+  sessionId?: string | null;
+  sessionFile?: string | null;
+};
+
+type AppendResult = "logged" | "unchanged" | "failed";
 
 export function collapseWhitespace(value: string | undefined | null): string {
   return (value ?? "").replace(/\s+/g, " ").trim();
@@ -79,6 +97,65 @@ export function isChildSessionFile(sessionFile: string | null | undefined): bool
   const value = collapseWhitespace(sessionFile);
   if (!value) return false;
   return /\/run-[^/]+\/session\.jsonl$/i.test(value);
+}
+
+export function buildPendingKey(sessionId: string | null | undefined, sessionFile: string | null | undefined): string | undefined {
+  const value = collapseWhitespace(sessionId) || collapseWhitespace(sessionFile);
+  if (!value) return undefined;
+  return Buffer.from(value).toString("base64url");
+}
+
+export function getSessionIdentity(ctx: any): SessionIdentity {
+  const sessionFile = ctx.sessionManager.getSessionFile?.() ?? null;
+  const sessionId = ctx.sessionManager.getSessionId?.() ?? ctx.sessionManager.getHeader?.()?.id ?? null;
+  return {
+    sessionId,
+    sessionFile,
+    pendingKey: buildPendingKey(sessionId, sessionFile),
+  };
+}
+
+function pendingPathFor(key: string): string {
+  return join(PENDING_DIR, `${key}.json`);
+}
+
+async function persistPendingEntry(identity: SessionIdentity | undefined, entry: JournalEntry): Promise<void> {
+  if (!identity?.pendingKey) return;
+  const payload: PersistedEntry = {
+    ...entry,
+    profile: PROFILE,
+    sessionId: identity.sessionId ?? null,
+    sessionFile: identity.sessionFile ?? null,
+  };
+  await mkdir(PENDING_DIR, { recursive: true });
+  await writeFile(pendingPathFor(identity.pendingKey), `${JSON.stringify(payload)}\n`, "utf8");
+}
+
+async function clearPendingEntry(identity: SessionIdentity | undefined): Promise<void> {
+  if (!identity?.pendingKey) return;
+  await rm(pendingPathFor(identity.pendingKey), { force: true });
+}
+
+async function readPersistedEntries(): Promise<Array<PersistedEntry & { pendingKey: string }>> {
+  try {
+    const names = await readdir(PENDING_DIR);
+    const results: Array<PersistedEntry & { pendingKey: string }> = [];
+    for (const name of names) {
+      if (!name.endsWith(".json")) continue;
+      const pendingKey = name.slice(0, -5);
+      try {
+        const raw = await readFile(pendingPathFor(pendingKey), "utf8");
+        const parsed = JSON.parse(raw) as PersistedEntry;
+        if (parsed?.profile !== PROFILE || !parsed?.summary) continue;
+        results.push({ ...parsed, pendingKey });
+      } catch {
+        continue;
+      }
+    }
+    return results;
+  } catch {
+    return [];
+  }
 }
 
 function findHeadingIndex(lines: string[], heading: string, start: number, end: number): number {
@@ -239,34 +316,56 @@ async function overwriteDailyNote(pi: ExtensionAPI, path: string, content: strin
 export default function (pi: ExtensionAPI) {
   let pendingEntry: JournalEntry | undefined;
   let lastLoggedBullet: string | undefined;
+  let currentSession: SessionIdentity | undefined;
 
-  async function appendEntry(ctx: any, entry: JournalEntry, source: "auto" | "manual"): Promise<boolean> {
+  async function appendEntry(ctx: any, entry: JournalEntry, source: "auto" | "manual"): Promise<AppendResult> {
     const bullet = buildBullet(entry);
-    if (lastLoggedBullet === bullet) return false;
+    if (lastLoggedBullet === bullet) return "unchanged";
 
     const dailyNote = await readDailyNote(pi);
     if (!dailyNote) {
       if (ctx.hasUI) ctx.ui.notify(`session-capture ${source} failed`, "warning");
-      return false;
+      return "failed";
     }
 
     const { content, changed } = upsertLogEntries(dailyNote.text, [bullet]);
     if (!changed) {
       lastLoggedBullet = bullet;
-      return false;
+      return "unchanged";
     }
 
     const result = await overwriteDailyNote(pi, dailyNote.path, content, ctx, source);
-    if (!result) return false;
+    if (!result) return "failed";
 
     lastLoggedBullet = bullet;
     if (ctx.hasUI && source === "manual") ctx.ui.notify("Session summary logged to daily note", "info");
-    return true;
+    return "logged";
   }
 
-  pi.on("session_start", () => {
+  async function replayPendingEntries(ctx: any): Promise<void> {
+    const entries = await readPersistedEntries();
+    for (const entry of entries) {
+      const restoredEntry = {
+        summary: entry.summary,
+        details: entry.details ?? [],
+        endedAtMs: entry.endedAtMs ?? Date.now(),
+      };
+      if (entry.pendingKey === currentSession?.pendingKey) {
+        pendingEntry = restoredEntry;
+        continue;
+      }
+      const result = await appendEntry(ctx, restoredEntry, "auto");
+      if (result !== "failed") {
+        await clearPendingEntry({ pendingKey: entry.pendingKey });
+      }
+    }
+  }
+
+  pi.on("session_start", async (_event, ctx) => {
     pendingEntry = undefined;
     lastLoggedBullet = undefined;
+    currentSession = getSessionIdentity(ctx);
+    await replayPendingEntries(ctx);
   });
 
   pi.on("before_agent_start", (event) => ({
@@ -296,6 +395,7 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text" as const, text: "No session summary queued; summary was empty." }], isError: true };
       }
       pendingEntry = entry;
+      await persistPendingEntry(currentSession, entry);
       return { content: [{ type: "text" as const, text: "Session summary queued for daily-note capture." }], details: entry };
     },
   });
@@ -305,7 +405,10 @@ export default function (pi: ExtensionAPI) {
     if (isChildSessionFile(ctx.sessionManager.getSessionFile?.() ?? null)) return;
 
     if (!pendingEntry) return;
-    await appendEntry(ctx, pendingEntry, "auto");
+    const result = await appendEntry(ctx, pendingEntry, "auto");
+    if (result !== "failed") {
+      await clearPendingEntry(currentSession ?? getSessionIdentity(ctx));
+    }
   });
 
   pi.registerCommand("set-session-summary", {
@@ -317,6 +420,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
       pendingEntry = entry;
+      await persistPendingEntry(currentSession ?? getSessionIdentity(ctx), entry);
       if (ctx.hasUI) ctx.ui.notify("Session summary queued for daily note", "info");
     },
   });
@@ -329,8 +433,11 @@ export default function (pi: ExtensionAPI) {
         if (ctx.hasUI) ctx.ui.notify("Usage: log-session <summary>", "warning");
         return;
       }
-      await appendEntry(ctx, entry, "manual");
-      pendingEntry = undefined;
+      const result = await appendEntry(ctx, entry, "manual");
+      if (result !== "failed") {
+        pendingEntry = undefined;
+        await clearPendingEntry(currentSession ?? getSessionIdentity(ctx));
+      }
     },
   });
 
@@ -342,8 +449,11 @@ export default function (pi: ExtensionAPI) {
         if (ctx.hasUI) ctx.ui.notify("Usage: log-issue <issue-id> <summary>", "warning");
         return;
       }
-      await appendEntry(ctx, entry, "manual");
-      pendingEntry = undefined;
+      const result = await appendEntry(ctx, entry, "manual");
+      if (result !== "failed") {
+        pendingEntry = undefined;
+        await clearPendingEntry(currentSession ?? getSessionIdentity(ctx));
+      }
     },
   });
 }

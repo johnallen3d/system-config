@@ -129,5 +129,19 @@
     "kind": "child",
     "value": "/Users/john/.config/pi/sessions/session.jsonl",
     "expected": false
+  },
+  {
+    "name": "pending key prefers session id",
+    "kind": "pending-key",
+    "sessionId": "abc-123",
+    "sessionFile": "/tmp/ignored/session.jsonl",
+    "expected": "YWJjLTEyMw"
+  },
+  {
+    "name": "pending key falls back to session file",
+    "kind": "pending-key",
+    "sessionId": "",
+    "sessionFile": "/tmp/pi/session.jsonl",
+    "expected": "L3RtcC9waS9zZXNzaW9uLmpzb25s"
   }
 ]

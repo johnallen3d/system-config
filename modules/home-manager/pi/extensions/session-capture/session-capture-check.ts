@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   buildBullet,
+  buildPendingKey,
   isChildSessionFile,
   parseEntry,
   parseIssueEntry,
@@ -12,7 +13,7 @@ import {
 
 type Fixture = {
   name: string;
-  kind: "parse" | "issue" | "upsert" | "bullet" | "child";
+  kind: "parse" | "issue" | "upsert" | "bullet" | "child" | "pending-key";
   [key: string]: any;
 };
 
@@ -83,6 +84,13 @@ function checkChild(fixture: Fixture) {
   }
 }
 
+function checkPendingKey(fixture: Fixture) {
+  const actual = buildPendingKey(fixture.sessionId, fixture.sessionFile);
+  if (actual !== fixture.expected) {
+    fail(fixture.name, `expected pendingKey=${fixture.expected} got ${actual}`);
+  }
+}
+
 async function main() {
   const here = dirname(fileURLToPath(import.meta.url));
   const fixturePath = join(here, "session-capture.fixtures.json");
@@ -104,6 +112,9 @@ async function main() {
         break;
       case "child":
         checkChild(fixture);
+        break;
+      case "pending-key":
+        checkPendingKey(fixture);
         break;
       default:
         fail(fixture.name, `unknown fixture kind ${(fixture as any).kind}`);
