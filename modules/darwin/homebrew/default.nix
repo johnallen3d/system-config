@@ -8,7 +8,6 @@
       "kcl-lang/tap"
       "ksdme/tap"
       "nikitabobko/tap"
-      "notwadegrimridge/brew"
       "siderolabs/tap"
       "steipete/tap"
       "steveyegge/beads"
@@ -19,12 +18,12 @@
   };
 in {
   system.activationScripts.preActivation.text = ''
-    install -d -m 700 -o ${config.system.primaryUser} -g staff /Users/${config.system.primaryUser}/.homebrew
-    cat > /Users/${config.system.primaryUser}/.homebrew/trust.json <<'EOF'
-${homebrewTrustJson}
-EOF
-    chown ${config.system.primaryUser}:staff /Users/${config.system.primaryUser}/.homebrew/trust.json
-    chmod 600 /Users/${config.system.primaryUser}/.homebrew/trust.json
+        install -d -m 700 -o ${config.system.primaryUser} -g staff /Users/${config.system.primaryUser}/.homebrew
+        cat > /Users/${config.system.primaryUser}/.homebrew/trust.json <<'EOF'
+    ${homebrewTrustJson}
+    EOF
+        chown ${config.system.primaryUser}:staff /Users/${config.system.primaryUser}/.homebrew/trust.json
+        chmod 600 /Users/${config.system.primaryUser}/.homebrew/trust.json
   '';
 
   homebrew = {
@@ -47,7 +46,6 @@ EOF
       "kcl-lang/tap"
       "ksdme/tap"
       "nikitabobko/homebrew-tap"
-      "notwadegrimridge/brew"
       "siderolabs/tap"
       "steipete/tap"
       "steveyegge/beads"
@@ -68,6 +66,7 @@ EOF
       # using this vs nix-package due to issues with SbarLua
       "lua"
       "mise"
+      "rtk"
       "sheets"
       # "switchaudio-osx"
       # TODO: prefer nix package when fixed
@@ -108,7 +107,6 @@ EOF
       "obsidian"
       "ollama-app"
       "orbstack"
-      "notwadegrimridge/brew/pingplace"
       "raycast"
       "rocket"
       "signal"
