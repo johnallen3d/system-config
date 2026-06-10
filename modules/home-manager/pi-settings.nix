@@ -88,6 +88,54 @@
     };
   };
 
+  piMcpSettings = {
+    mcpServers = {
+      "mcp-server-doppler" = {
+        command = "bash";
+        args = [
+          "-lc"
+          "export DOPPLER_TOKEN=\"$(security find-generic-password -s 'doppler-work' -a 'john.allen' -w)\" && exec npx -y @dopplerhq/mcp-server"
+        ];
+      };
+      "mcp-server-motherduck" = {
+        command = "uvx";
+        args = [
+          "mcp-server-motherduck"
+          "--db-path"
+          ":memory:"
+          "--read-write"
+        ];
+      };
+      "cloudflare-api" = {
+        url = "https://mcp.cloudflare.com/mcp";
+      };
+    };
+  };
+
+  piWorkMcpSettings = {
+    mcpServers = {
+      doppler = {
+        command = "npx";
+        args = [
+          "-y"
+          "@dopplerhq/mcp-server"
+        ];
+      };
+      "mcp-server-motherduck" = {
+        command = "uvx";
+        args = [
+          "mcp-server-motherduck"
+          "--db-path"
+          ":memory:"
+          "--read-write"
+        ];
+      };
+      "cloudflare-api" = {
+        url = "https://mcp.cloudflare.com/mcp";
+      };
+    };
+  };
+
   piSystemMd = ''
     - My name is John
     - My birthday is 1976-05-31
@@ -124,6 +172,7 @@
     theme = managedTheme.activeTheme.name;
     quietStartup = true;
   };
+  jsonFormat = pkgs.formats.json {};
 in {
   home.activation.piSystemMd = lib.hm.dag.entryAfter ["writeBoundary"] ''
         mkdir -p "$HOME/.config/pi" "$HOME/.config/pi-work"
@@ -158,6 +207,9 @@ in {
   home.activation.piWorkClaudeBridgeSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
     mkPiSettingsActivation "$HOME/.config/pi-work/claude-bridge.json" claudeBridgeSettings
   );
+
+  home.file.".config/pi/mcp.json".source = jsonFormat.generate "pi-mcp.json" piMcpSettings;
+  home.file.".config/pi-work/mcp.json".source = jsonFormat.generate "pi-work-mcp.json" piWorkMcpSettings;
 
   # home.file handles all extension symlinks (nix store paths) for both contexts.
   # Themes are identical so pi-work just symlinks to the personal themes dir.
