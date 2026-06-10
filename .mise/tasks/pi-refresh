@@ -32,24 +32,38 @@ refresh_profile() {
   local -a git_packages=()
   local -a npm_packages=()
   if [ -f "$settings_file" ]; then
+    local package_list
+    if ! package_list="$(python3 - "$settings_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+settings = Path(sys.argv[1])
+try:
+    data = json.loads(settings.read_text())
+except json.JSONDecodeError as exc:
+    print(
+        f"Invalid JSON in {settings}: {exc}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+for package in data.get("packages", []):
+    if isinstance(package, str):
+        print(package)
+PY
+    )"; then
+      echo "[$label] Cannot read declared packages from $settings_file" >&2
+      return 1
+    fi
+
     while IFS= read -r package_source; do
       [ -n "$package_source" ] || continue
       case "$package_source" in
         git:*) git_packages+=("$package_source") ;;
         npm:*) npm_packages+=("$package_source") ;;
       esac
-    done < <(
-      python3 - "$settings_file" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-settings = Path(sys.argv[1])
-for package in json.loads(settings.read_text()).get("packages", []):
-    if isinstance(package, str):
-        print(package)
-PY
-    )
+    done <<< "$package_list"
   fi
 
   if [ ! -f "$marker" ]; then

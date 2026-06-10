@@ -29,12 +29,20 @@
   mkPiSettingsActivation = settingsFile: settings: ''
     nixSettings='${builtins.toJSON settings}'
     mkdir -p "$(dirname "${settingsFile}")"
-    if [ -f "${settingsFile}" ]; then
-      merged=$(${jq} -s '.[0] * .[1]' "${settingsFile}" - <<< "$nixSettings")
-      echo "$merged" > "${settingsFile}"
+
+    if [ -f "${settingsFile}" ] && ${jq} empty "${settingsFile}" >/dev/null 2>&1; then
+      merged=$(${jq} -s '.[0] * .[1] | del(.mcpServers)' "${settingsFile}" - <<< "$nixSettings")
     else
-      echo "$nixSettings" > "${settingsFile}"
+      if [ -f "${settingsFile}" ]; then
+        cp "${settingsFile}" "${settingsFile}.invalid.bak"
+        echo "Warning: ${settingsFile} contained invalid JSON; backed it up to ${settingsFile}.invalid.bak and restored managed defaults." >&2
+      fi
+      merged="$nixSettings"
     fi
+
+    tmp_file="${settingsFile}.tmp.$$"
+    printf '%s\n' "$merged" > "$tmp_file"
+    mv "$tmp_file" "${settingsFile}"
   '';
 
   piModels = {
