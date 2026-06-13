@@ -10,7 +10,6 @@
       "nikitabobko/tap"
       "siderolabs/tap"
       "steipete/tap"
-      "steveyegge/beads"
     ];
     trustedcasks = [
       "nikitabobko/tap/aerospace"
@@ -48,11 +47,10 @@ in {
       "nikitabobko/homebrew-tap"
       "siderolabs/tap"
       "steipete/tap"
-      "steveyegge/beads"
     ];
 
     brews = [
-      "bd"
+      "beads"
       "borders"
       "cloudflared"
       # "dagger"
