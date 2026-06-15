@@ -109,6 +109,15 @@
       "cloudflare-api" = {
         url = "https://mcp.cloudflare.com/mcp";
       };
+      "headroom" = {
+        "command" = "/Users/john.allen/.pi/headroom-venv/bin/headroom";
+        "args" = [
+          "mcp"
+          "serve"
+          "--proxy-url"
+          "http://127.0.0.1:8787"
+        ];
+      };
     };
   };
 
@@ -132,6 +141,15 @@
       };
       "cloudflare-api" = {
         url = "https://mcp.cloudflare.com/mcp";
+      };
+      "headroom" = {
+        "command" = "/Users/john.allen/.pi/headroom-venv/bin/headroom";
+        "args" = [
+          "mcp"
+          "serve"
+          "--proxy-url"
+          "http://127.0.0.1:8787"
+        ];
       };
     };
   };
