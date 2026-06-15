@@ -87,15 +87,8 @@ in {
       imagemagick
       just
       k3d
-      kitty
       k9s
       kcl
-      kind
-      kubecolor
-      kubectl
-      kubernetes-helm
-      kubeseal
-      kubie
       # TODO: for some reason using this version of Lua causes issues with SbarLua
       # lua
       # luajit
