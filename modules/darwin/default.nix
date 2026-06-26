@@ -41,17 +41,4 @@
   ];
 
   system.activationScripts.extraActivation.text = builtins.readFile ./activation.sh;
-
-  fonts = {
-    packages = with pkgs; [
-      cascadia-code
-      fira-code
-      jetbrains-mono
-      monaspace
-      nerd-fonts.caskaydia-cove
-      nerd-fonts.fira-code
-      nerd-fonts.hack
-      nerd-fonts.jetbrains-mono
-    ];
-  };
 }
