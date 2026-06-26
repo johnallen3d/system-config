@@ -92,7 +92,7 @@ in {
       "discord"
       "disk-inventory-x"
       # "dotnet-sdk" # this is v8
-      "font-cascadia-code"
+      "font-cascadia-code-pl"
       "font-caskaydia-cove-nerd-font"
       "font-fira-code"
       "font-fira-code-nerd-font"
