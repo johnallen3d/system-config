@@ -35,8 +35,23 @@ Override remains available with `PI_USAGE_FOOTER_CLAUDE_CONFIG_DIR` if needed.
 ## Related files in this repo
 
 - `modules/home-manager/pi-settings.nix` — Pi settings + Claude bridge settings
+- `modules/home-manager/pi-extensions.nix` — managed Pi extensions, skills, themes, legacy harness bridges
 - `modules/home-manager/pi/local-extensions.nix` — local Pi extensions
 - `modules/home-manager/pi/extensions/usage-footer/index.ts` — footer showing provider/subscription usage
+
+## Legacy harness integrations
+
+Some harness installers still hardcode `~/.pi/agent/extensions` and `~/.pi/agent/skills`.
+
+This repo bridges declared legacy entries from that location into both managed Pi profiles with Home Manager symlinks, so one install can show up in:
+
+- `~/.config/pi`
+- `~/.config/pi-work`
+
+Current bridge set:
+
+- extension: `supacode`
+- skill: `supacode-cli`
 
 ## Model usage summaries
 
