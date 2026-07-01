@@ -256,5 +256,9 @@ if.app-id = 'org.alacritty'
 run = 'move-node-to-workspace 0'
 
 [[on-window-detected]]
+if.app-id = 'app.supabit.supacode'
+run = 'move-node-to-workspace 0'
+
+[[on-window-detected]]
 if.app-id = 'com.mitchellh.ghostty'
 run = 'move-node-to-workspace 0'

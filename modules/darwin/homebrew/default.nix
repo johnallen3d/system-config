@@ -118,6 +118,7 @@ in {
       "signal"
       # this is blowing up 🤷‍♂️
       "stolendata-mpv"
+      "supacode"
       "syncthing-app"
       "tailscale-app"
       "tableplus"
