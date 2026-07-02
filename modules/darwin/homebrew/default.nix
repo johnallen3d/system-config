@@ -59,6 +59,7 @@ in {
       "duckdb"
       "elio-fm/elio/elio"
       "gogcli"
+      "hunk"
       "kcl-lsp"
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
