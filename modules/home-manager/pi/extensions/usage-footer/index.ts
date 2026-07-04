@@ -15,6 +15,27 @@ type WindowUsage = {
 type CodexUsage = { plan?: string; windows: WindowUsage[]; credits?: string; error?: string; fetchedAt?: number };
 type ClaudeUsage = { plan?: string; windows: WindowUsage[]; error?: string; fetchedAt?: number };
 
+const GROK_COST_PER_M = { input: 1.00, output: 2.00, cacheRead: 0.20, cacheWrite: 0 }; // grok-build-0.1 api rates; est only (sub rate limits)
+
+function grokCost(u: any): number {
+  if (!u) return 0;
+  if (u.cost?.total) return u.cost.total;
+  const i = ((u.input || 0) * GROK_COST_PER_M.input) / 1_000_000;
+  const c = ((u.cacheRead || 0) * GROK_COST_PER_M.cacheRead) / 1_000_000;
+  const o = ((u.output || 0) * GROK_COST_PER_M.output) / 1_000_000;
+  return i + c + o;
+}
+
+function grokSessionCost(ctx: any): number {
+  let total = 0;
+  for (const entry of ctx.sessionManager.getEntries()) {
+    if (entry.type === "message" && entry.message?.role === "assistant") {
+      total += grokCost(entry.message.usage);
+    }
+  }
+  return total;
+}
+
 const authStorage = AuthStorage.create();
 const POLL_MS = 60_000;
 let codexUsage: CodexUsage | undefined;
@@ -87,6 +108,11 @@ function claudeWindow(raw: any, seconds: number, fallback: string): WindowUsage 
 
 function claudeProvider(ctx: any): boolean {
   return ctx.model?.provider === "claude-bridge" || ctx.model?.baseUrl === "claude-bridge";
+}
+
+function grokProvider(ctx: any): boolean {
+  const p = ctx.model?.provider;
+  return p === "pi-grok-build" || p === "grok-build" || ctx.model?.baseUrl === "pi-grok-build";
 }
 
 function claudeConfigDir(): string {
@@ -297,6 +323,10 @@ function usageText(ctx: any): string {
   }
   if (claudeProvider(ctx)) {
     return claudeUsageText();
+  }
+  if (grokProvider(ctx)) {
+    const cost = grokSessionCost(ctx);
+    return "usage: grok $" + cost.toFixed(3) + " est";
   }
   return "usage: $" + sessionCost(ctx).toFixed(3) + " session";
 }
