@@ -2,6 +2,7 @@
   npm = name: "npm:${name}";
 in rec {
   sharedPackageSpecs = [
+    "git:github.com/DietrichGebert/ponytail"
     # (npm "@tintinweb/pi-tasks")
     # (npm "@tmustier/pi-skill-creator")
     (npm "pi-headroom")
