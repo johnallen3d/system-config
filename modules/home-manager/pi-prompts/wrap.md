@@ -2,7 +2,7 @@
 description: "Wrap up the session: close issues, commit. Optional commit message: /wrap <message>"
 model: gpt-5.4-mini
 skill: wrapping-up
-subagent: delegate
+# subagent: delegate
 ---
 
 Follow the wrapping-up skill workflow.
