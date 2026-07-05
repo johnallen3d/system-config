@@ -88,8 +88,8 @@
           name = "Gemma 4 31B it qat MXFP4 (Osaurus)";
           reasoning = false;
           input = ["text"];
-          contextWindow = 128000;
-          maxTokens = 8192;
+          contextWindow = 64000;
+          maxTokens = 32768;
         }
       ];
     };
