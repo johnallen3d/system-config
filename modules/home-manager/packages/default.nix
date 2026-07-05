@@ -62,6 +62,7 @@ in {
       difftastic
       docker-client
       doppler
+      dos2unix
       # dotnet-runtime -> this is included in the dotnet-sdk
       # dotnet-sdk -> trying to install this via homebrew for better tools support
       # duckdb
@@ -118,7 +119,7 @@ in {
       postgresql
       prettier
       rainfrog
-      # qmk
+      qmk
       qsv
       socat
       sqlite
