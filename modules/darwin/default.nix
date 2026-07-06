@@ -2,6 +2,10 @@
   system.stateVersion = 4;
   ids.gids.nixbld = 350;
 
+  # nix-darwin docs can lag nixpkgs' nixos-render-docs CLI on unstable.
+  documentation.enable = false;
+  system.tools.darwin-uninstaller.enable = false;
+
   nix = {
     gc = {
       automatic = true;
