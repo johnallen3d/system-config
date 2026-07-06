@@ -31,6 +31,7 @@ keybind = super+f=start_search
 # don't use escape for `end_search` as it conflicts with nvim 🤦‍♂️
 keybind = super+shift+f=end_search
 # keybind = super+shift+f=write_scrollback_file:paste
+keybind = super+t=new_tab
 keybind = super+n=new_window
 keybind = super+q=close_surface
 keybind = super+v=paste_from_clipboard
