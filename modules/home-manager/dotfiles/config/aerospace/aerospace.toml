@@ -214,6 +214,11 @@ run = 'move-node-to-workspace 5'
 if.app-id = 'com.tdesktop.Telegram'
 run = 'move-node-to-workspace 5'
 
+# Force Osaurus windows to be tiled (main chat windows, etc.)
+[[on-window-detected]]
+if.app-id = 'com.dinoki.osaurus'
+run = ['layout tiling', 'move-node-to-workspace 5']
+
 [[on-window-detected]]
 if.app-id = 'com.microsoft.VSCode'
 run = 'move-node-to-workspace 6'
