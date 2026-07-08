@@ -91,6 +91,14 @@
           contextWindow = 64000;
           maxTokens = 32768;
         }
+        {
+          id = "minicpm5-1b";
+          name = "openbmb/MiniCPM5-1B (Osaurus)";
+          reasoning = false;
+          input = ["text"];
+          contextWindow = 32000;
+          maxTokens = 8192;
+        }
       ];
     };
   };
