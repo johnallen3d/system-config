@@ -132,12 +132,27 @@
     notes = {
       body = ''
         cd ~/notes
-        set -l today (date +%Y-%m-%d)
-        if not obsidian file file="$today" vault=Personal >/dev/null 2>&1
-          obsidian create path="journal/$today.md" template=journal vault=Personal
+
+        set -l telegram_profile "$HOME/.config/pi-notes"
+        set -l telegram_package "git:github.com/badlogic/pi-telegram"
+        set -l telegram_extension "$telegram_profile/git/github.com/badlogic/pi-telegram/index.ts"
+
+        if not test -e "$telegram_extension"
+          mkdir -p "$telegram_profile"
+          set -l install_log (mktemp)
+          begin
+            set -lx PI_CODING_AGENT_DIR "$telegram_profile"
+            command pi install "$telegram_package" >"$install_log" 2>&1
+          end
+          or begin
+            cat "$install_log" >&2
+            rm -f "$install_log"
+            return 1
+          end
+          rm -f "$install_log"
         end
-        obsidian open file="$today" vault=Personal
-        nvim "journal/$today.md"
+
+        command pi --extension "$telegram_extension" $argv
       '';
     };
     nix-rebuild = {

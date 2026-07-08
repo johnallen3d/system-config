@@ -13,7 +13,6 @@ in rec {
   personalPackageSpecs =
     sharedPackageSpecs
     ++ [
-      "git:github.com/badlogic/pi-telegram"
       (npm "@ramarivera/pi-grok-build")
       # (npm "@samfp/pi-memory")
       # (npm "context-mode")

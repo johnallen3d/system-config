@@ -13,6 +13,10 @@
     runtime = piPackageSpec;
     packages = piPackages.workPackageSpecs;
   });
+  notesPackageStamp = builtins.hashString "sha256" (builtins.toJSON {
+    runtime = piPackageSpec;
+    packages = [];
+  });
 
   runPi = pkgs.writeShellScript "run-pi-latest" ''
     exec ${pkgs.nodejs_24}/bin/npx --yes ${piPackageSpec} "$@"
@@ -99,6 +103,9 @@ in
     if [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-work" ]; then
       expected_stamp='${workPackageStamp}'
       package_args=(${lib.escapeShellArgs piPackages.workPackageSpecs})
+    elif [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-notes" ]; then
+      expected_stamp='${notesPackageStamp}'
+      package_args=()
     else
       expected_stamp='${personalPackageStamp}'
       package_args=(${lib.escapeShellArgs piPackages.personalPackageSpecs})
