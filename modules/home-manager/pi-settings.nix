@@ -99,6 +99,14 @@
           contextWindow = 32000;
           maxTokens = 8192;
         }
+        {
+          id = "ornith-1.0-9b-mxfp8";
+          name = "OsaurusAI/Ornith-1.0-9B-MXFP8 (Osaurus)";
+          reasoning = false;
+          input = ["text"];
+          contextWindow = 262144;
+          maxTokens = 8192;
+        }
       ];
     };
   };
