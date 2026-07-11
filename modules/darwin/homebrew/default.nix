@@ -1,30 +1,4 @@
-{config, ...}: let
-  homebrewTrustJson = builtins.toJSON {
-    trustedtaps = [
-      "common-fate/granted"
-      "dmno-dev/tap"
-      "elio-fm/elio"
-      "felixkratz/formulae"
-      "kcl-lang/tap"
-      "ksdme/tap"
-      "nikitabobko/tap"
-      "siderolabs/tap"
-      "steipete/tap"
-    ];
-    trustedcasks = [
-      "nikitabobko/tap/aerospace"
-    ];
-  };
-in {
-  system.activationScripts.preActivation.text = ''
-        install -d -m 700 -o ${config.system.primaryUser} -g staff /Users/${config.system.primaryUser}/.homebrew
-        cat > /Users/${config.system.primaryUser}/.homebrew/trust.json <<'EOF'
-    ${homebrewTrustJson}
-    EOF
-        chown ${config.system.primaryUser}:staff /Users/${config.system.primaryUser}/.homebrew/trust.json
-        chmod 600 /Users/${config.system.primaryUser}/.homebrew/trust.json
-  '';
-
+{...}: {
   homebrew = {
     enable = true;
     onActivation = {
@@ -38,15 +12,42 @@ in {
     global.brewfile = true;
 
     taps = [
-      "FelixKratz/homebrew-formulae"
-      "common-fate/granted"
-      "dmno-dev/tap"
-      "elio-fm/elio"
-      "kcl-lang/tap"
-      "ksdme/tap"
-      "nikitabobko/homebrew-tap"
-      "siderolabs/tap"
-      "steipete/tap"
+      {
+        name = "FelixKratz/homebrew-formulae";
+        trusted = true;
+      }
+      {
+        name = "common-fate/granted";
+        trusted = true;
+      }
+      {
+        name = "dmno-dev/tap";
+        trusted = true;
+      }
+      {
+        name = "elio-fm/elio";
+        trusted = true;
+      }
+      {
+        name = "kcl-lang/tap";
+        trusted = true;
+      }
+      {
+        name = "ksdme/tap";
+        trusted = true;
+      }
+      {
+        name = "nikitabobko/homebrew-tap";
+        trusted = true;
+      }
+      {
+        name = "siderolabs/tap";
+        trusted = true;
+      }
+      {
+        name = "steipete/tap";
+        trusted = true;
+      }
     ];
 
     brews = [
