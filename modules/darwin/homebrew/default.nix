@@ -101,6 +101,7 @@ in {
       "font-jetbrains-mono"
       "font-jetbrains-mono-nerd-font"
       "font-monaspace"
+      "fluidvoice"
       "ghostty"
       "istat-menus"
       "karabiner-elements"
