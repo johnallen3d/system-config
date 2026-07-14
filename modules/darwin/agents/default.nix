@@ -14,7 +14,6 @@
       gawk
       gnused
       procps
-      sketchybar
     ])
     + ":${home}/.cargo/bin:"
     + lib.concatStringsSep ":" [
@@ -65,7 +64,7 @@ in {
       };
       serviceConfig = {
         ProgramArguments = [
-          "${pkgs.sketchybar}/bin/sketchybar"
+          "${brew_bin}/sketchybar"
         ];
         KeepAlive = true;
         RunAtLoad = true;

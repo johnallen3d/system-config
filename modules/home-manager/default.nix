@@ -135,8 +135,6 @@ EOF
         trey = "Trey Anastasio/Lonely Trip"
         violent = "Violent Femmes/Violent Femmes"
       '';
-    } // lib.optionalAttrs pkgs.stdenv.isDarwin {
-      "bin/bottombar".source = "${pkgs.sketchybar}/bin/sketchybar";
-    };
+    } // lib.optionalAttrs pkgs.stdenv.isDarwin {};
   };
 }

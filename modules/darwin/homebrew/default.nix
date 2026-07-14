@@ -68,6 +68,7 @@
       "mise"
       "rtk"
       "sheets"
+      "sketchybar"
       # "switchaudio-osx"
       # TODO: prefer nix package when fixed
       "tabiew" # 👇 tui for parquet
@@ -90,7 +91,6 @@
       "cleanshot"
       "cloudmounter"
       "codex"
-      "codex-app"
       "discord"
       "disk-inventory-x"
       # "dotnet-sdk" # this is v8
@@ -114,7 +114,7 @@
       # "multipass"
       "notunes"
       "obsidian"
-      "ollama-app"
+      # "ollama-app"
       "orbstack"
       "raycast"
       "rocket"
