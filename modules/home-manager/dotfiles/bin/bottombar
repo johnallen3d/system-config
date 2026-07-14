@@ -1,2 +1,2 @@
-#!/bin/sh
-exec sketchybar "$@"
+#!/usr/bin/env bash
+exec -a bottombar sketchybar "$@"

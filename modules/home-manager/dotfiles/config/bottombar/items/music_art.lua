@@ -10,9 +10,10 @@ Sbar.add("item", "music_art", {
 	},
 	background = {
 		color = colors.transparent,
+		height = 12,
 		image = {
 			drawing = true,
-			scale = 0.33,
+			scale = 0.03,
 		},
 	},
 	padding_left = 16,

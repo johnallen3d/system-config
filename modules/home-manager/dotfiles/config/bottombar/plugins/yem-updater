@@ -16,6 +16,38 @@ hide_music() {
     bottombar -m --set music drawing=off --set music_art drawing=off --set music_repeat drawing=off --set music_shuffle drawing=off
 }
 
+update_cover_art() {
+    local cover_art_path="$1"
+    local track_file="$2"
+    local cover_src=""
+
+    if [[ -n "$cover_art_path" && -f "$cover_art_path" ]]; then
+        cover_src="$cover_art_path"
+        if [[ "$cover_src" != "$last_cover_src" ]]; then
+            if sips -s format png -Z 128 "$cover_art_path" --out "$COVER_ART_THUMB" >/dev/null 2>&1; then
+                last_cover_src="$cover_src"
+            else
+                return 1
+            fi
+        fi
+        return 0
+    fi
+
+    if [[ -n "$track_file" && -f "$track_file" ]]; then
+        cover_src="$track_file"
+        if [[ "$cover_src" != "$last_cover_src" ]]; then
+            if ffmpeg -loglevel error -y -i "$track_file" -an -frames:v 1 "$COVER_ART_THUMB" >/dev/null 2>&1; then
+                last_cover_src="$cover_src"
+            else
+                return 1
+            fi
+        fi
+        return 0
+    fi
+
+    return 1
+}
+
 format_time() {
     local secs="$1"
     if [[ -n "$secs" && "$secs" != "null" ]]; then
@@ -60,17 +92,13 @@ while true; do
     fi
 
     cover_art_path=$(printf '%s\n' "$status_json" | jq -r '.cover_art_path // empty')
+    track_file=$(printf '%s\n' "$status_json" | jq -r '.current_track.file_path // empty')
     repeat=$(printf '%s\n' "$status_json" | jq -r '.repeat // false')
     shuffle=$(printf '%s\n' "$status_json" | jq -r '.shuffle // false')
 
     bottombar -m --set music icon="$icon" icon.drawing=on icon.font="Font Awesome 6 Pro:Regular:14.0" label="$label" drawing=on
 
-    if [[ -n "$cover_art_path" && -f "$cover_art_path" ]]; then
-        if [[ "$cover_art_path" != "$last_cover_src" ]]; then
-            if sips -s format png -Z 128 "$cover_art_path" --out "$COVER_ART_THUMB" >/dev/null 2>&1; then
-                last_cover_src="$cover_art_path"
-            fi
-        fi
+    if update_cover_art "$cover_art_path" "$track_file"; then
         bottombar -m --set music_art background.image="$COVER_ART_THUMB" drawing=on
     else
         bottombar -m --set music_art drawing=off
