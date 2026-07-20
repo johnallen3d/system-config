@@ -23,14 +23,7 @@ This repo manages two Pi profiles and their matching Claude Code profiles.
 
 ## Why this matters
 
-When Pi uses `claude-bridge`, Claude usage/account details come from the Claude Code profile behind that Pi profile. If the Pi profile and Claude profile do not match, footer usage/account info can look wrong.
-
-The `usage-footer` extension now auto-maps by `PI_CODING_AGENT_DIR`:
-
-- `~/.config/pi` → `~/.config/claude-personal`
-- `~/.config/pi-work` → `~/.config/claude-gmatter`
-
-Override remains available with `PI_USAGE_FOOTER_CLAUDE_CONFIG_DIR` if needed.
+The personal `usage-footer` reads Codex OAuth credentials from the active Pi profile's `auth.json`, falling back across `~/.config/pi-work` and `~/.config/pi`. This keeps Codex usage working even when Pi's runtime auth storage does not expose the right token.
 
 ## Related files in this repo
 

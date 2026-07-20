@@ -1,10 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { AuthStorage } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
-import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { homedir, userInfo } from "node:os";
-import { join, normalize, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 type WindowUsage = {
   label: string;
@@ -12,8 +10,8 @@ type WindowUsage = {
   resetAt?: number;
   windowSeconds?: number;
 };
+type CodexCredential = { type?: string; access?: string; accountId?: string };
 type CodexUsage = { plan?: string; windows: WindowUsage[]; credits?: string; error?: string; fetchedAt?: number };
-type ClaudeUsage = { plan?: string; windows: WindowUsage[]; error?: string; fetchedAt?: number };
 
 const GROK_COST_PER_M = { input: 1.00, output: 2.00, cacheRead: 0.20, cacheWrite: 0 }; // grok-build-0.1 api rates; est only (sub rate limits)
 
@@ -36,12 +34,9 @@ function grokSessionCost(ctx: any): number {
   return total;
 }
 
-const authStorage = AuthStorage.create();
 const POLL_MS = 60_000;
 let codexUsage: CodexUsage | undefined;
-let claudeUsage: ClaudeUsage | undefined;
 let lastCodexFetch = 0;
-let lastClaudeFetch = 0;
 let requestRender: (() => void) | undefined;
 
 function formatTokens(count: number): string {
@@ -94,122 +89,41 @@ function codexWindow(raw: any, fallback: string): WindowUsage | undefined {
   };
 }
 
-function claudeWindow(raw: any, seconds: number, fallback: string): WindowUsage | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  return {
-    label: windowLabel(seconds, fallback),
-    usedPercent: typeof raw.utilization === "number" ? raw.utilization : undefined,
-    resetAt: typeof raw.resets_at === "string" || typeof raw.resets_at === "number"
-      ? new Date(raw.resets_at).getTime()
-      : undefined,
-    windowSeconds: seconds,
-  };
-}
-
-function claudeProvider(ctx: any): boolean {
-  return ctx.model?.provider === "claude-bridge" || ctx.model?.baseUrl === "claude-bridge";
-}
-
 function grokProvider(ctx: any): boolean {
   const p = ctx.model?.provider;
   return p === "pi-grok-build" || p === "grok-build" || ctx.model?.baseUrl === "pi-grok-build";
 }
 
-function claudeConfigDir(): string {
-  const override = process.env["PI_USAGE_FOOTER_CLAUDE_CONFIG_DIR"]?.trim();
-  if (override) return override;
-
-  const piConfigDir = process.env["PI_CODING_AGENT_DIR"]?.trim();
-  if (piConfigDir?.endsWith("pi-work")) return join(homedir(), ".config", "claude-gmatter");
-  if (piConfigDir?.endsWith("pi")) return join(homedir(), ".config", "claude-personal");
-
-  return process.env["CLAUDE_CONFIG_DIR"]?.trim() || join(homedir(), ".config", "claude-personal");
+function authStorageCandidatePaths(homeDir = homedir()): Array<string | undefined> {
+  const activePiDir = process.env["PI_CODING_AGENT_DIR"]?.trim();
+  return [...new Set([
+    activePiDir ? join(activePiDir, "auth.json") : undefined,
+    join(homeDir, ".config", "pi-work", "auth.json"),
+    join(homeDir, ".config", "pi", "auth.json"),
+  ])];
 }
 
-function claudeKeychainServiceName(configDir: string): string {
-  const normalizedConfigDir = normalize(resolve(configDir));
-  const normalizedDefaultDir = normalize(resolve(join(homedir(), ".claude")));
-  if (normalizedConfigDir === normalizedDefaultDir) return "Claude Code-credentials";
-  const hash = createHash("sha256").update(normalizedConfigDir).digest("hex").slice(0, 8);
-  return `Claude Code-credentials-${hash}`;
-}
-
-function claudeKeychainServiceNames(): string[] {
-  const names = [claudeKeychainServiceName(claudeConfigDir())];
-  const envConfigDir = process.env["CLAUDE_CONFIG_DIR"]?.trim();
-  if (envConfigDir) {
-    const normalizedDefaultDir = normalize(resolve(join(homedir(), ".claude")));
-    const normalizedEnvDir = normalize(resolve(envConfigDir));
-    if (normalizedEnvDir === normalizedDefaultDir) {
-      names.push("Claude Code-credentials");
-    } else {
-      names.push(`Claude Code-credentials-${createHash("sha256").update(envConfigDir).digest("hex").slice(0, 8)}`);
-      names.push(`Claude Code-credentials-${createHash("sha256").update(normalizedEnvDir).digest("hex").slice(0, 8)}`);
-    }
-  }
-  names.push("Claude Code-credentials");
-  return [...new Set(names)];
-}
-
-function readClaudeCredentialPayload(serviceName: string, accountName?: string): any | undefined {
-  try {
-    const args = accountName
-      ? ["find-generic-password", "-s", serviceName, "-a", accountName, "-w"]
-      : ["find-generic-password", "-s", serviceName, "-w"];
-    const raw = execFileSync("/usr/bin/security", args, {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-      timeout: 3000,
-    }).trim();
-    if (!raw) return undefined;
-    return JSON.parse(raw);
-  } catch {
-    return undefined;
-  }
-}
-
-function readClaudeCredentials(): { accessToken: string; subscriptionType?: string } | undefined {
-  const serviceNames = claudeKeychainServiceNames();
-  const accountName = (() => {
+function readCodexCredential(paths = authStorageCandidatePaths()): CodexCredential | undefined {
+  for (const authPath of paths) {
+    if (!authPath || !existsSync(authPath)) continue;
     try {
-      return userInfo().username.trim() || undefined;
+      const credential = JSON.parse(readFileSync(authPath, "utf8"))?.["openai-codex"];
+      if (credential && typeof credential === "object") return credential;
     } catch {
-      return undefined;
+      // Try next profile.
     }
-  })();
-  let payload: any | undefined;
-  for (const serviceName of serviceNames) {
-    payload = readClaudeCredentialPayload(serviceName, accountName) ?? readClaudeCredentialPayload(serviceName);
-    if (payload) break;
   }
-  const oauth = payload?.claudeAiOauth;
-  if (!oauth?.accessToken) return undefined;
-  if (typeof oauth.expiresAt === "number" && oauth.expiresAt <= Date.now()) return undefined;
-  return {
-    accessToken: String(oauth.accessToken),
-    subscriptionType: typeof oauth.subscriptionType === "string" ? oauth.subscriptionType : undefined,
-  };
+  return undefined;
 }
 
-function claudePlanName(subscriptionType: string | undefined): string | undefined {
-  const lower = subscriptionType?.toLowerCase().trim();
-  if (!lower) return undefined;
-  if (lower.includes("max")) return "Max";
-  if (lower.includes("pro")) return "Pro";
-  if (lower.includes("team")) return "Team";
-  if (lower.includes("api")) return undefined;
-  return subscriptionType;
-}
-
-async function fetchCodexUsage(force = false): Promise<void> {
+async function fetchCodexUsage(_ctx: any, force = false): Promise<void> {
   const now = Date.now();
   if (!force && now - lastCodexFetch < POLL_MS) return;
   lastCodexFetch = now;
   try {
-    authStorage.reload();
-    const access = await authStorage.getApiKey("openai-codex");
-    const credential = authStorage.getAll()["openai-codex"] as any;
-    if (!access) throw new Error("not logged in");
+    const credential = readCodexCredential();
+    const access = credential?.type === "oauth" ? credential.access : undefined;
+    if (!access) throw new Error("credential not found");
     const headers: Record<string, string> = {
       "Authorization": "Bearer " + access,
       "Accept": "application/json",
@@ -229,38 +143,6 @@ async function fetchCodexUsage(force = false): Promise<void> {
     codexUsage = { plan: data?.plan_type, windows, credits, fetchedAt: now };
   } catch (err) {
     codexUsage = { windows: [], error: err instanceof Error ? err.message : String(err), fetchedAt: now };
-  } finally {
-    requestRender?.();
-  }
-}
-
-async function fetchClaudeUsage(force = false): Promise<void> {
-  const now = Date.now();
-  if (!force && now - lastClaudeFetch < POLL_MS) return;
-  lastClaudeFetch = now;
-  try {
-    const credentials = readClaudeCredentials();
-    if (!credentials?.accessToken) throw new Error("not logged in");
-    const res = await fetch("https://api.anthropic.com/api/oauth/usage", {
-      headers: {
-        "Authorization": "Bearer " + credentials.accessToken,
-        "anthropic-beta": "oauth-2025-04-20",
-        "User-Agent": "claude-code/2.1",
-      },
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json() as any;
-    const windows = [
-      claudeWindow(data?.five_hour, 18000, "5h"),
-      claudeWindow(data?.seven_day, 604800, "7d"),
-    ].filter(Boolean) as WindowUsage[];
-    claudeUsage = {
-      plan: claudePlanName(credentials.subscriptionType),
-      windows,
-      fetchedAt: now,
-    };
-  } catch (err) {
-    claudeUsage = { windows: [], error: err instanceof Error ? err.message : String(err), fetchedAt: now };
   } finally {
     requestRender?.();
   }
@@ -305,24 +187,14 @@ function formatWindowUsage(windows: WindowUsage[] | undefined): string {
   }).join(" / ") || "?";
 }
 
-function claudeUsageText(prefix = "usage: claude "): string {
-  void fetchClaudeUsage();
-  if (claudeUsage?.error) return prefix + claudeUsage.error;
-  const plan = claudeUsage?.plan ? claudeUsage.plan + " " : "";
-  return prefix + plan + formatWindowUsage(claudeUsage?.windows);
-}
-
 function usageText(ctx: any): string {
   const provider = ctx.model?.provider;
   if (provider === "openai-codex") {
-    void fetchCodexUsage();
+    void fetchCodexUsage(ctx);
     if (codexUsage?.error) return "usage: codex " + codexUsage.error;
     const plan = codexUsage?.plan ? codexUsage.plan + " " : "";
     const credits = codexUsage?.credits ? " • " + codexUsage.credits : "";
     return "usage: codex " + plan + formatWindowUsage(codexUsage?.windows) + credits;
-  }
-  if (claudeProvider(ctx)) {
-    return claudeUsageText();
   }
   if (grokProvider(ctx)) {
     const cost = grokSessionCost(ctx);
@@ -400,11 +272,6 @@ function installFooter(ctx: any) {
           }
         }
 
-        if (!claudeProvider(ctx)) {
-          for (const line of wrapPlainText(claudeUsageText("claude: "), width)) {
-            lines.push(theme.fg("dim", line));
-          }
-        }
         const statuses = Array.from(footerData.getExtensionStatuses().entries())
           .sort(([a], [b]) => String(a).localeCompare(String(b)))
           .map(([, text]) => String(text).replace(/[\r\n\t]/g, " ").replace(/ +/g, " ").trim())
@@ -424,17 +291,14 @@ function installFooter(ctx: any) {
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", (_event, ctx) => {
     installFooter(ctx);
-    void fetchClaudeUsage(true);
-    if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(true);
+    if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(ctx, true);
   });
-  pi.on("model_select", (event, _ctx) => {
-    void fetchClaudeUsage(true);
-    if (event.model?.provider === "openai-codex") void fetchCodexUsage(true);
+  pi.on("model_select", (event, ctx) => {
+    if (event.model?.provider === "openai-codex") void fetchCodexUsage(ctx, true);
     requestRender?.();
   });
   pi.on("agent_end", (_event, ctx) => {
-    void fetchClaudeUsage(true);
-    if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(true);
+    if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(ctx, true);
     requestRender?.();
   });
 }
