@@ -29,6 +29,10 @@
         trusted = true;
       }
       {
+        name = "immanuwell/droast";
+        trusted = true;
+      }
+      {
         name = "kcl-lang/tap";
         trusted = true;
       }
@@ -60,6 +64,7 @@
       "duckdb"
       "elio-fm/elio/elio"
       "gogcli"
+      "immanuwell/droast/droast"
       "hunk"
       "kcl-lsp"
       # "libspatialite"
