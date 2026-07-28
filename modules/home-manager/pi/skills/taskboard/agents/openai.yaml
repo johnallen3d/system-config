@@ -1,0 +1,4 @@
+interface:
+  display_name: "Taskboard"
+  short_description: "Keep a live task board beside any session"
+  default_prompt: "Use $taskboard to create and maintain a live task board for this session."
