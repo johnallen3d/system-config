@@ -129,6 +129,7 @@ in {
       stylua
       television
       tree-sitter
+      tuicr
       uv
       vals
       viddy
