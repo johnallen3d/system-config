@@ -262,13 +262,27 @@ function openPane(files, direction) {
       process.stdout.write(`no Supacode surface available; board: ${files.board}\n`);
       return;
     }
-    const command = [
+    const fallbackWatchCommand = [
       shellQuote(process.execPath),
       shellQuote(SCRIPT_PATH),
       "watch",
       "--state-dir",
       shellQuote(files.stateDir),
     ].join(" ");
+    const fish = resolveCommand("fish");
+    const command = fish
+      ? [
+          shellQuote(fish),
+          "-lc",
+          shellQuote(
+            `if functions -q glow-watch
+               glow-watch ${shellQuote(files.board)}
+             else
+               ${fallbackWatchCommand}
+             end`
+          ),
+        ].join(" ")
+      : fallbackWatchCommand;
     const args = ["surface", "split"];
     if (process.env.SUPACODE_WORKTREE_ID) args.push("-w", process.env.SUPACODE_WORKTREE_ID);
     args.push("-t", process.env.SUPACODE_TAB_ID, "-s", process.env.SUPACODE_SURFACE_ID, "-d", direction, "-i", command);

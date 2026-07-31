@@ -129,6 +129,29 @@
         macchina $argv
       '';
     };
+    "glow-watch" = {
+      body = ''
+        set -l file $argv[1]
+
+        if test -z "$file"
+            echo "usage: glow-watch FILE"
+            return 1
+        end
+
+        if not test -f "$file"
+            echo "no such file: $file"
+            return 1
+        end
+
+        command clear
+        glow "$file"
+
+        while fswatch -1 "$file" >/dev/null
+            command clear
+            glow "$file"
+        end
+      '';
+    };
     notes = {
       body = ''
         cd ~/notes

@@ -18,7 +18,7 @@ node <skill-dir>/scripts/taskboard.mjs start --title "<short session title>" --o
 
 Use `--bottom` for a bottom pane or `--no-pane` for file-only mode. The default is a side pane when Supacode is available. Outside Supacode, creation still succeeds and prints the board path.
 
-After starting, tell the user where the board lives and whether a live pane opened.
+After starting, tell the user where the board lives and whether a live pane opened. On this setup, live panes should prefer the `glow-watch` fish function when available; otherwise the bundled plain-text watcher is fine.
 
 ## Maintain
 
@@ -51,7 +51,7 @@ task between owner lanes by editing only its whole task line; do not change its 
 
 ## Display lifecycle
 
-- `taskboard open --side` or `taskboard open --bottom`: open the live Supacode view.
+- `taskboard open --side` or `taskboard open --bottom`: open the live Supacode view. Prefer the `glow-watch` preview path when the local fish function exists.
 - `taskboard close`: close only the tracked pane and retain the board.
 - `taskboard close --remove`: close the pane and delete this session's board/state.
 - `taskboard path`: print the Markdown path for handoff or manual viewing.
