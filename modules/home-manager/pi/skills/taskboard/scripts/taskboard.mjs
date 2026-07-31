@@ -230,11 +230,26 @@ function removeStaleLock(lockFile) {
   }
 }
 
+function preferredCommandPath(command, candidate) {
+  if (command !== "supacode") return candidate;
+  const appWrapper = `${path.sep}Applications${path.sep}supacode.app${path.sep}Contents${path.sep}MacOS${path.sep}supacode`;
+  if (!candidate.endsWith(appWrapper)) return candidate;
+  const cli = path.join(path.dirname(path.dirname(candidate)), "Resources", "bin", "supacode");
+  try {
+    fs.accessSync(cli, fs.constants.X_OK);
+    if (fs.statSync(cli).isFile()) return cli;
+  } catch (error) {
+    if (!["ENOENT", "EACCES"].includes(error.code)) throw error;
+  }
+  return candidate;
+}
+
 function resolveCommand(command) {
   const candidates = command.includes(path.sep)
     ? [path.resolve(command)]
     : String(process.env.PATH || "").split(path.delimiter).filter(Boolean).map((dir) => path.join(dir, command));
-  for (const candidate of candidates) {
+  for (const rawCandidate of candidates) {
+    const candidate = preferredCommandPath(command, rawCandidate);
     try {
       fs.accessSync(candidate, fs.constants.X_OK);
       if (fs.statSync(candidate).isFile()) return candidate;

@@ -12,13 +12,13 @@ Keep session work visible in one plain `TASKS.md`. Use the bundled CLI for deter
 Run:
 
 ```sh
-node <skill-dir>/scripts/taskboard.mjs start --title "<short session title>" --owner "<harness or person>" \
+node <skill-dir>/scripts/taskboard.mjs start --side --title "<short session title>" --owner "<harness or person>" \
   "<first task>" "<second task>"
 ```
 
-Use `--bottom` for a bottom pane or `--no-pane` for file-only mode. The default is a side pane when Supacode is available. Outside Supacode, creation still succeeds and prints the board path.
+When the user says `start taskboard`, always pass `--side`. Use `--bottom` only when the user asks for it, or `--no-pane` for file-only mode. Outside Supacode, creation still succeeds and prints the board path.
 
-After starting, tell the user where the board lives and whether a live pane opened. On this setup, live panes should prefer the `glow-watch` fish function when available; otherwise the bundled plain-text watcher is fine.
+After starting, verify the exact result and tell the user where the board lives and whether the live pane opened. Never guess or say `likely`. On this setup, live panes should prefer the `glow-watch` fish function when available; otherwise the bundled plain-text watcher is fine.
 
 ## Maintain
 
