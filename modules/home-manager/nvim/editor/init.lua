@@ -6,6 +6,7 @@ vim.opt.expandtab = true
 vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 vim.opt.termguicolors = true
+vim.opt.fillchars:append({ eob = " " })
 
 local theme = require("theme.managed")
 
