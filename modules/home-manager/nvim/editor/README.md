@@ -16,6 +16,7 @@ Plugins install through Neovim's built-in `vim.pack` on first launch.
 
 ## Plugins
 
+- `blink.cmp` + `blink-cmp-dictionary` + `blink-cmp-spell` — light completion for buffer/path plus `/usr/share/dict/words` and spell suggestions
 - `markdown-plus.nvim` — Markdown editing
 - `snacks.nvim` — picker backend
 - `pibuf.nvim` — Pi external-editor prompt helpers

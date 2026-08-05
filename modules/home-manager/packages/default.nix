@@ -68,6 +68,7 @@ in {
       # duckdb
       entr
       fd
+      fzf
       ffmpeg
       findutils # find / xargs
       flac

@@ -35,9 +35,60 @@ local theme = require("theme.managed")
 vim.pack.add({
   { src = "https://github.com/folke/snacks.nvim" },
   { src = "https://github.com/S1M0N38/pibuf.nvim", version = "v1.1.0" },
+  { src = "https://github.com/Saghen/blink.cmp", version = "v1.10.2", load = true },
+  { src = "https://github.com/Kaiser-Yang/blink-cmp-dictionary" },
+  { src = "https://github.com/ribru17/blink-cmp-spell" },
   { src = "https://github.com/yousefhadder/markdown-plus.nvim" },
   { src = theme.plugin.src },
 }, { confirm = false })
+
+require("blink.cmp").setup({
+  keymap = {
+    preset = "default",
+    ["<C-f>"] = { "select_and_accept" },
+  },
+  appearance = {
+    use_nvim_cmp_as_default = false,
+    nerd_font_variant = "mono",
+  },
+  sources = {
+    default = { "dictionary", "spell", "buffer", "path" },
+    providers = {
+      dictionary = {
+        module = "blink-cmp-dictionary",
+        name = "dictionary",
+        min_keyword_length = 2,
+        opts = {
+          dictionary_files = { "/usr/share/dict/words" },
+          force_fallback = false,
+        },
+      },
+      spell = {
+        module = "blink-cmp-spell",
+        name = "spell",
+      },
+    },
+  },
+  completion = {
+    trigger = {
+      show_on_trigger_character = true,
+      show_on_keyword = true,
+      prefetch_on_insert = true,
+    },
+    menu = {
+      border = "rounded",
+    },
+    documentation = {
+      auto_show = true,
+      window = {
+        border = "rounded",
+      },
+    },
+    ghost_text = {
+      enabled = true,
+    },
+  },
+})
 
 require("markdown-plus").setup()
 require("pibuf").setup({ picker = "snacks" })
