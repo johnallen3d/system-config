@@ -40,9 +40,9 @@
   };
 
   commonVariables = {
-    EDITOR = "nvim";
+    EDITOR = "nvim-editor";
     GIT_EDITOR = "nvim";
-    VISUAL = "nvim";
+    VISUAL = "nvim-editor";
 
     LEADR_CONFIG_DIR = "$HOME/.config/leadr/";
     MANPAGER = "nvim +Man!";
