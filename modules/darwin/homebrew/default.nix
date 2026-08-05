@@ -119,7 +119,6 @@
       # "multipass"
       "notunes"
       "obsidian"
-      # "ollama-app"
       "orbstack"
       "raycast"
       "rocket"

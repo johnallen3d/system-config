@@ -45,37 +45,6 @@
     mv "$tmp_file" "${settingsFile}"
   '';
 
-  piModels = {
-    providers.ollama = {
-      baseUrl = "http://localhost:11434/v1";
-      api = "openai-completions";
-      apiKey = "ollama";
-      compat = {
-        supportsDeveloperRole = false;
-        supportsReasoningEffort = false;
-      };
-      models = [
-        {
-          id = "gemma4:31b";
-          name = "Gemma 4 31B (Ollama)";
-          reasoning = false;
-          input = ["text"];
-          contextWindow = 128000;
-          maxTokens = 8192;
-        }
-        {
-          id = "qwen3-coder:30b";
-          name = "Qwen 3 Coder 30B (Ollama)";
-          reasoning = false;
-          input = ["text"];
-          contextWindow = 262144;
-          maxTokens = 8192;
-        }
-      ];
-    };
-
-  };
-
   claudeBridgeSettings = {
     askClaude = {
       enabled = true;
@@ -159,10 +128,6 @@
     - ALWAYS RESPOND IN ENGLISH
     - My name is John
     - My birthday is 1976-05-31
-    - `@ollama/pi-web-search` currently registers `web_search` and `web_fetch`.
-    - Prefer `web_search` for ordinary web search.
-    - Prefer `web_fetch` for fetching a single web page.
-    - If `pi-web-access` is re-enabled later, revisit these tool-preference instructions because tool names will conflict again.
   '';
 
   piWorkSystemMd = ''
@@ -170,10 +135,6 @@
     - My name is John Allen
     - I work for gmatter
     - I'm a software architect with additional devops responsibilities
-    - `@ollama/pi-web-search` currently registers `web_search` and `web_fetch`.
-    - Prefer `web_search` for ordinary web search.
-    - Prefer `web_fetch` for fetching a single web page.
-    - If `pi-web-access` is re-enabled later, revisit these tool-preference instructions because tool names will conflict again.
   '';
 
   piSettings = {
@@ -211,14 +172,6 @@ in {
 
   home.activation.piWorkSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
     mkPiSettingsActivation "$HOME/.config/pi-work/settings.json" piWorkSettings
-  );
-
-  home.activation.piModels = lib.hm.dag.entryAfter ["writeBoundary"] (
-    mkPiSettingsActivation "$HOME/.config/pi/models.json" piModels
-  );
-
-  home.activation.piWorkModels = lib.hm.dag.entryAfter ["writeBoundary"] (
-    mkPiSettingsActivation "$HOME/.config/pi-work/models.json" piModels
   );
 
   home.activation.piClaudeBridgeSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
