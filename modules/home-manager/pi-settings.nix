@@ -74,41 +74,6 @@
       ];
     };
 
-    providers.osaurus = {
-      baseUrl = "http://127.0.0.1:1337/v1";
-      api = "openai-completions";
-      apiKey = "osaurus";
-      compat = {
-        supportsDeveloperRole = false;
-        supportsReasoningEffort = false;
-      };
-      models = [
-        {
-          id = "gemma-4-31b-it-qat-mxfp4";
-          name = "Gemma 4 31B it qat MXFP4 (Osaurus)";
-          reasoning = false;
-          input = ["text"];
-          contextWindow = 64000;
-          maxTokens = 32768;
-        }
-        {
-          id = "minicpm5-1b";
-          name = "openbmb/MiniCPM5-1B (Osaurus)";
-          reasoning = false;
-          input = ["text"];
-          contextWindow = 32000;
-          maxTokens = 8192;
-        }
-        {
-          id = "ornith-1.0-9b-mxfp8";
-          name = "OsaurusAI/Ornith-1.0-9B-MXFP8 (Osaurus)";
-          reasoning = false;
-          input = ["text"];
-          contextWindow = 262144;
-          maxTokens = 8192;
-        }
-      ];
-    };
   };
 
   claudeBridgeSettings = {
