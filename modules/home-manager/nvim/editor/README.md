@@ -16,7 +16,7 @@ Plugins install through Neovim's built-in `vim.pack` on first launch.
 
 ## Plugins
 
-- `blink.cmp` + `blink-cmp-dictionary` + `blink-cmp-spell` — light completion for buffer/path plus `/usr/share/dict/words` and spell suggestions
+- `blink.cmp` + `blink-cmp-dictionary` + `blink-cmp-spell` + `blink-emoji` — light completion for buffer/path plus `/usr/share/dict/words`, spell, and `:` emoji suggestions
 - `markdown-plus.nvim` — Markdown editing
 - `snacks.nvim` — picker backend
 - `pibuf.nvim` — Pi external-editor prompt helpers
@@ -26,9 +26,11 @@ Plugins install through Neovim's built-in `vim.pack` on first launch.
 
 In Pi, press `Ctrl-G` to edit a prompt. `pibuf.nvim` recognizes the buffer and provides these buffer-local keybindings:
 
-| Key | Action |
-| --- | --- |
-| `Ctrl-F` | Pick a project file; insert an `@path` mention |
-| `Ctrl-S` | Pick an installed Pi skill; insert `/skill:name` |
+| Mode | Key | Action |
+| --- | --- | --- |
+| normal | `Ctrl-F` | Pick a project file; insert an `@path` mention |
+| normal | `Ctrl-S` | Pick an installed Pi skill; insert `/skill:name` |
+| insert | `Ctrl-F` | Accept current completion item |
+| insert | `:` | Trigger emoji completion suggestions |
 
 Use `:wq` or `ZZ` to send the edited prompt. Use `:cq` to cancel and keep the original prompt. Run `:checkhealth pibuf` to diagnose plugin setup.

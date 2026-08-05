@@ -37,6 +37,7 @@ vim.pack.add({
   { src = "https://github.com/S1M0N38/pibuf.nvim", version = "v1.1.0" },
   { src = "https://github.com/Saghen/blink.cmp", version = "v1.10.2", load = true },
   { src = "https://github.com/Kaiser-Yang/blink-cmp-dictionary" },
+  { src = "https://github.com/moyiz/blink-emoji.nvim" },
   { src = "https://github.com/ribru17/blink-cmp-spell" },
   { src = "https://github.com/yousefhadder/markdown-plus.nvim" },
   { src = theme.plugin.src },
@@ -52,7 +53,7 @@ require("blink.cmp").setup({
     nerd_font_variant = "mono",
   },
   sources = {
-    default = { "dictionary", "spell", "buffer", "path" },
+    default = { "dictionary", "emoji", "spell", "buffer", "path" },
     providers = {
       dictionary = {
         module = "blink-cmp-dictionary",
@@ -62,6 +63,10 @@ require("blink.cmp").setup({
           dictionary_files = { "/usr/share/dict/words" },
           force_fallback = false,
         },
+      },
+      emoji = {
+        module = "blink-emoji",
+        name = "emoji",
       },
       spell = {
         module = "blink-cmp-spell",
@@ -90,8 +95,22 @@ require("blink.cmp").setup({
   },
 })
 
-require("markdown-plus").setup()
+require("markdown-plus").setup({ filetypes = { "markdown", "pi" } })
 require("pibuf").setup({ picker = "snacks" })
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "pi",
+  callback = function(args)
+    vim.opt_local.conceallevel = 1
+    vim.opt_local.spell = true
+    vim.opt_local.spellfile = vim.fn.expand("~/.config/nvim/spell/en.utf-8.add")
+    vim.opt_local.wrap = true
+
+    pcall(vim.keymap.del, "i", "<C-f>", { buffer = args.buf })
+    pcall(vim.keymap.del, "i", "<C-s>", { buffer = args.buf })
+  end,
+})
+
 require("snacks").setup({ picker = {} })
 require(theme.plugin.module).setup(theme.plugin.setup)
 vim.cmd.colorscheme(theme.colorscheme)
