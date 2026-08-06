@@ -77,6 +77,7 @@ require("blink.cmp").setup({
   completion = {
     trigger = {
       show_on_trigger_character = true,
+      show_on_insert_on_trigger_character = true,
       show_on_keyword = true,
       prefetch_on_insert = true,
     },
