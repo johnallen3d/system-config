@@ -21,6 +21,7 @@ in rec {
       (npm "pi-prompt-template-model")
       # (npm "pi-subagents")
       (npm "pi-web-access")
+      "git:github.com/badlogic/pi-telegram"
     ];
 
   workPackageSpecs =

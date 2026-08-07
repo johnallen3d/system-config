@@ -155,7 +155,7 @@
     notes = {
       body = ''
         cd ~/notes
-        command pi --extension git:github.com/badlogic/pi-telegram $argv
+        command pi $argv
       '';
     };
     nix-rebuild = {

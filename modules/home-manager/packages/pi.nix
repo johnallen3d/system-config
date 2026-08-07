@@ -34,42 +34,68 @@
           mkdir -p "$skill_creator_dir/skill-creator"
           cp "$skill_creator_dir/SKILL.md" "$skill_creator_dir/skill-creator/SKILL.md"
           PROFILE_DIR="$profile_dir" ${pkgs.python3}/bin/python - <<'PY'
-    import json
-    import os
-    from pathlib import Path
+import json
+import os
+from pathlib import Path
 
-    profile_dir = Path(os.environ["PROFILE_DIR"])
-    package_json = profile_dir / "npm" / "node_modules" / "@tmustier" / "pi-skill-creator" / "package.json"
-    if package_json.exists():
-        data = json.loads(package_json.read_text())
-        pi = data.setdefault("pi", {})
-        if pi.get("skills") != ["./skill-creator"]:
-            pi["skills"] = ["./skill-creator"]
-            package_json.write_text(json.dumps(data, indent=2) + "\n")
-    PY
+profile_dir = Path(os.environ["PROFILE_DIR"])
+package_json = profile_dir / "npm" / "node_modules" / "@tmustier" / "pi-skill-creator" / "package.json"
+if package_json.exists():
+    data = json.loads(package_json.read_text())
+    pi = data.setdefault("pi", {})
+    if pi.get("skills") != ["./skill-creator"]:
+        pi["skills"] = ["./skill-creator"]
+        package_json.write_text(json.dumps(data, indent=2) + "\n")
+PY
         fi
 
         context_mode_dir="$node_modules_dir/context-mode"
         if [ -d "$context_mode_dir/skills" ]; then
           PROFILE_DIR="$profile_dir" ${pkgs.python3}/bin/python - <<'PY'
-    import json
-    import os
-    from pathlib import Path
+import json
+import os
+from pathlib import Path
 
-    profile_dir = Path(os.environ["PROFILE_DIR"])
-    package_json = profile_dir / "npm" / "node_modules" / "context-mode" / "package.json"
-    skills_dir = profile_dir / "npm" / "node_modules" / "context-mode" / "skills"
-    if package_json.exists() and skills_dir.exists():
-        data = json.loads(package_json.read_text())
-        pi = data.setdefault("pi", {})
-        skill_paths = sorted(
-            f"./skills/{path.parent.name}"
-            for path in skills_dir.glob("*/SKILL.md")
-        )
-        if skill_paths and pi.get("skills") != skill_paths:
-            pi["skills"] = skill_paths
-            package_json.write_text(json.dumps(data, indent=2) + "\n")
-    PY
+profile_dir = Path(os.environ["PROFILE_DIR"])
+package_json = profile_dir / "npm" / "node_modules" / "context-mode" / "package.json"
+skills_dir = profile_dir / "npm" / "node_modules" / "context-mode" / "skills"
+if package_json.exists() and skills_dir.exists():
+    data = json.loads(package_json.read_text())
+    pi = data.setdefault("pi", {})
+    skill_paths = sorted(
+        f"./skills/{path.parent.name}"
+        for path in skills_dir.glob("*/SKILL.md")
+    )
+    if skill_paths and pi.get("skills") != skill_paths:
+        pi["skills"] = skill_paths
+        package_json.write_text(json.dumps(data, indent=2) + "\n")
+PY
+        fi
+
+        telegram_extension="$profile_dir/git/github.com/badlogic/pi-telegram/index.ts"
+        if [ -f "$telegram_extension" ]; then
+          TELEGRAM_EXTENSION="$telegram_extension" ${pkgs.python3}/bin/python - <<'PY'
+import os
+from pathlib import Path
+
+path = Path(os.environ["TELEGRAM_EXTENSION"])
+source = path.read_text()
+old = """\tpi.on(\"session_start\", async (_event, ctx) => {
+\t\tconfig = await readConfig();
+\t\tawait mkdir(TEMP_DIR, { recursive: true });
+\t\tupdateStatus(ctx);
+\t});"""
+new = """\tpi.on(\"session_start\", async (_event, ctx) => {
+\t\tconfig = await readConfig();
+\t\tawait mkdir(TEMP_DIR, { recursive: true });
+\t\tawait startPolling(ctx);
+\t\tupdateStatus(ctx);
+\t});"""
+if new not in source:
+    if old not in source:
+        raise SystemExit(f"Telegram auto-connect patch target changed: {path}")
+    path.write_text(source.replace(old, new, 1))
+PY
         fi
   '';
 in
