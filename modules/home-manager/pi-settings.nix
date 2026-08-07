@@ -128,6 +128,7 @@
     - ALWAYS RESPOND IN ENGLISH
     - My name is John
     - My birthday is 1976-05-31
+    - NEVER FORGET ABOUT $PI_CODING_AGENT_DIR
   '';
 
   piWorkSystemMd = ''
@@ -135,6 +136,7 @@
     - My name is John Allen
     - I work for gmatter
     - I'm a software architect with additional devops responsibilities
+    - NEVER FORGET ABOUT $PI_CODING_AGENT_DIR
   '';
 
   piSettings = {
