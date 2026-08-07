@@ -8,6 +8,12 @@ vim.opt.tabstop = 2
 vim.opt.termguicolors = true
 vim.opt.fillchars:append({ eob = " " })
 
+vim.keymap.set("n", "<C-A>", "ggVG", {
+  noremap = true,
+  silent = true,
+  desc = "Select all in buffer",
+})
+
 -- Pi 0.83 writes prompt.md inside pi-editor-* directories; pibuf 1.1.0 only
 -- matches its older filename. Match both forms after macOS resolves /var to /private/var.
 vim.api.nvim_create_autocmd({ "BufNewFile", "BufReadPost" }, {
