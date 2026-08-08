@@ -155,7 +155,8 @@
     notes = {
       body = ''
         cd ~/notes
-        command pi $argv
+        set -lx PATH (string match -v -- '*/.npm/_npx/*' $PATH)
+        command pi --extension "$HOME/.config/pi-notes/git/github.com/badlogic/pi-telegram/index.ts" $argv
       '';
     };
     nix-rebuild = {

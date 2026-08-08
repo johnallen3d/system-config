@@ -156,10 +156,16 @@
     theme = managedTheme.activeTheme.name;
     quietStartup = true;
   };
+
+  piNotesSettings = {
+    packages = piPackages.notesPackageSpecs;
+    theme = managedTheme.activeTheme.name;
+    quietStartup = true;
+  };
   jsonFormat = pkgs.formats.json {};
 in {
   home.activation.piSystemMd = lib.hm.dag.entryAfter ["writeBoundary"] ''
-        mkdir -p "$HOME/.config/pi" "$HOME/.config/pi-work"
+        mkdir -p "$HOME/.config/pi" "$HOME/.config/pi-work" "$HOME/.config/pi-notes"
         cat > "$HOME/.config/pi/SYSTEM.md" <<'EOF'
     ${piSystemMd}
     EOF
@@ -174,6 +180,10 @@ in {
 
   home.activation.piWorkSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
     mkPiSettingsActivation "$HOME/.config/pi-work/settings.json" piWorkSettings
+  );
+
+  home.activation.piNotesSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
+    mkPiSettingsActivation "$HOME/.config/pi-notes/settings.json" piNotesSettings
   );
 
   home.activation.piClaudeBridgeSettings = lib.hm.dag.entryAfter ["writeBoundary"] (

@@ -34,7 +34,7 @@ The personal `usage-footer` reads Codex OAuth credentials from the active Pi pro
 
 ## Telegram bridge
 
-Personal Pi declares `git:github.com/badlogic/pi-telegram`; its saved pairing remains in the package's existing `~/.pi/agent/telegram.json` location. The Pi wrapper patches the package's existing `session_start` handler to call its own polling startup, so it reconnects on startup, `/new`, `/resume`, and `/reload` without another polling loop. `/telegram-disconnect` stops it for current session; next session reconnects. The patch is reapplied after each package install and uses `PI_CODING_AGENT_DIR`; remove the package spec and patch block, then rebuild, to roll back.
+`notes` runs the personal Pi profile, including its defaults and custom extensions, plus an explicit `pi-telegram` extension from `~/.config/pi-notes`; normal personal Pi stays bridge-free. The notes profile only maintains that package for `pi-refresh`. Its saved pairing remains in the package's existing `~/.pi/agent/telegram.json` location. The Pi wrapper patches the package's existing `session_start` handler to call its own polling startup, so it reconnects on startup, `/new`, `/resume`, and `/reload` without another polling loop. `/telegram-disconnect` stops it for current session; next session reconnects. The patch is reapplied after each package install; remove the notes package spec and patch block, then rebuild, to roll back.
 
 ## Legacy harness integrations
 

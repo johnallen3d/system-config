@@ -13,8 +13,12 @@
     runtime = piPackageSpec;
     packages = piPackages.workPackageSpecs;
   });
+  notesPackageStamp = builtins.hashString "sha256" (builtins.toJSON {
+    runtime = piPackageSpec;
+    packages = piPackages.notesPackageSpecs;
+  });
   runPi = pkgs.writeShellScript "run-pi-latest" ''
-    exec ${pkgs.nodejs_24}/bin/npx --yes ${piPackageSpec} "$@"
+    ${pkgs.nodejs_24}/bin/npx --yes ${piPackageSpec} "$@"
   '';
 
   # Install declared Pi packages with the same managed/latest pi runtime the
@@ -72,8 +76,10 @@ if package_json.exists() and skills_dir.exists():
 PY
         fi
 
-        telegram_extension="$profile_dir/git/github.com/badlogic/pi-telegram/index.ts"
-        if [ -f "$telegram_extension" ]; then
+        for telegram_extension in \
+          "$profile_dir/git/github.com/badlogic/pi-telegram/index.ts" \
+          "$HOME/.config/pi-notes/git/github.com/badlogic/pi-telegram/index.ts"; do
+          [ -f "$telegram_extension" ] || continue
           TELEGRAM_EXTENSION="$telegram_extension" ${pkgs.python3}/bin/python - <<'PY'
 import os
 from pathlib import Path
@@ -96,7 +102,7 @@ if new not in source:
         raise SystemExit(f"Telegram auto-connect patch target changed: {path}")
     path.write_text(source.replace(old, new, 1))
 PY
-        fi
+        done
   '';
 in
   pkgs.writeShellScriptBin "pi" ''
@@ -124,14 +130,44 @@ in
     if [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-work" ]; then
       expected_stamp='${workPackageStamp}'
       package_args=(${lib.escapeShellArgs piPackages.workPackageSpecs})
+    elif [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-notes" ]; then
+      expected_stamp='${notesPackageStamp}'
+      package_args=(${lib.escapeShellArgs piPackages.notesPackageSpecs})
     else
       expected_stamp='${personalPackageStamp}'
       package_args=(${lib.escapeShellArgs piPackages.personalPackageSpecs})
+      # `pi install` currently also registers git packages in this profile.
+      # Keep notes-only Telegram from being auto-discovered by normal Pi.
+      PROFILE_DIR="$PI_CODING_AGENT_DIR" ${pkgs.python3}/bin/python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ["PROFILE_DIR"]) / "settings.json"
+if path.exists():
+    data = json.loads(path.read_text())
+    packages = data.get("packages", [])
+    filtered = [package for package in packages if package != "git:github.com/badlogic/pi-telegram"]
+    if filtered != packages:
+        data["packages"] = filtered
+        path.write_text(json.dumps(data, indent=2) + "\n")
+PY
     fi
 
-    # Refresh pi packages whenever declared package set changes (tracked per agent dir)
+    # Refresh packages when declarations change or a prior install did not register one.
     marker="$PI_CODING_AGENT_DIR/packages-installed"
+    refresh_packages=false
     if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker")" != "$expected_stamp" ]; then
+      refresh_packages=true
+    else
+      for package in "''${package_args[@]}"; do
+        ${pkgs.gnugrep}/bin/grep -Fq "\"$package\"" "$PI_CODING_AGENT_DIR/settings.json" 2>/dev/null || {
+          refresh_packages=true
+          break
+        }
+      done
+    fi
+    if [ "$refresh_packages" = true ]; then
       ${installPiPackages} "''${package_args[@]}"
       echo "$expected_stamp" > "$marker"
     fi

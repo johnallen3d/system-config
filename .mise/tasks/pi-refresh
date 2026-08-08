@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Refresh nix-managed pi packages for personal + work profiles"
+#MISE description="Refresh nix-managed pi packages for personal, work + notes profiles"
 set -euo pipefail
 
 pi_bin="$(which -a pi 2>/dev/null | grep -v '/.npm/_npx/' | head -n1)"
@@ -107,10 +107,17 @@ refresh_profile "$HOME/.config/pi" "personal" "$tmp_dir/personal.failures" &
 personal_pid=$!
 refresh_profile "$HOME/.config/pi-work" "work" "$tmp_dir/work.failures" &
 work_pid=$!
+refresh_profile "$HOME/.config/pi-notes" "notes" "$tmp_dir/notes.failures" &
+notes_pid=$!
 
 refresh_failed=0
 wait "$personal_pid" || refresh_failed=1
 wait "$work_pid" || refresh_failed=1
+wait "$notes_pid" || refresh_failed=1
+
+# pi install may register the notes git package in personal settings. Let the
+# managed wrapper remove that stale registration after all refreshes finish.
+PI_CODING_AGENT_DIR="$HOME/.config/pi" "$pi_bin" --help >/dev/null || refresh_failed=1
 
 if [ "$refresh_failed" -ne 0 ]; then
   printf 'Failed package updates:\n' >&2
