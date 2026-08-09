@@ -16,7 +16,7 @@ in rec {
       (npm "@ramarivera/pi-grok-build")
       # (npm "@samfp/pi-memory")
       # (npm "context-mode")
-      (npm "pi-claude-bridge")
+      # (npm "pi-claude-bridge")
       (npm "pi-mcp-adapter")
       (npm "pi-prompt-template-model")
       # (npm "pi-subagents")
