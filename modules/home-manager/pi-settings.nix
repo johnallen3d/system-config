@@ -121,6 +121,12 @@
           "http://127.0.0.1:8787"
         ];
       };
+      calc = {
+        url = "https://calc-mcp.fly.dev/mcp";
+        headers = {
+          "x-api-key" = "\${CALC_MCP_API_KEY}";
+        };
+      };
     };
   };
 
