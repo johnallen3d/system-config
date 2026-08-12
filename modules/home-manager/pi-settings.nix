@@ -127,6 +127,12 @@
           "x-api-key" = "\${CALC_MCP_API_KEY}";
         };
       };
+      "calc-local" = {
+        url = "http://127.0.0.1:8080/mcp";
+        headers = {
+          "x-api-key" = "hello-world";
+        };
+      };
     };
   };
 
