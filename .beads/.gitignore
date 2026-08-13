@@ -44,6 +44,7 @@ dolt-server.pid
 dolt-server.log
 dolt-server.lock
 dolt-server.port
+dolt-server-config.yaml
 
 # Corrupt backup directories (created by bd doctor --fix recovery)
 *.corrupt.backup/
@@ -63,3 +64,14 @@ bd.db
 # They would override fork protection in .git/info/exclude.
 # Config files (metadata.json, config.yaml) are tracked by git by default
 # since no pattern above ignores them.
+
+# Added by bd (missing required patterns)
+.env
+*.gate.lock*
+export-state.json
+last_pull
+embeddeddolt/
+proxieddb/
+dolt-server.activity
+.beads-credential-key
+proxied_server_client_info.json
