@@ -32,6 +32,7 @@
     supacode-cli = mkOutOfStoreSymlink "${homeDir}/.pi/agent/skills/supacode-cli";
   };
   managedSkills = {
+    imark-comments = ./pi/skills/imark-comments;
     taskboard = ./pi/skills/taskboard;
   };
   themes = import ./pi/themes.nix {inherit lib pkgs;};
