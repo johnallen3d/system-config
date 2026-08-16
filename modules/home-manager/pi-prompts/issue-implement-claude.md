@@ -1,14 +1,14 @@
 ---
 description: "Implement a GitHub issue with planning + Claude subagents for heavy lifting. Usage: /issue-implement-claude <issue-url|#123|issue text> [extra context]"
 argument-hint: "<issue-url|#123|issue text> [extra context]"
-model: gpt-5.4
+model: gpt-5.6-terra
 skill: issue-driven-implementation
 ---
 
 Issue/ref: $1
 Extra: ${@:2}
 
-Use the loaded `issue-driven-implementation` skill fully. You are the orchestrator running on gpt-5.4.
+Use the loaded `issue-driven-implementation` skill fully. You are the orchestrator running on gpt-5.6-terra.
 Delegate heavy tasks to Claude via the AskClaude tool as specified below.
 Carry the workflow through PR creation unless repo policy or explicit user instruction says otherwise.
 
@@ -26,7 +26,7 @@ Flow:
    - Task: fetch and synthesize relevant external documentation or API references.
    - Bring the summary back into this conversation.
 
-4. **planner** — you (gpt-5.4) produce an explicit implementation plan using the scout and researcher output. No AskClaude needed; you have full context.
+4. **planner** — you (gpt-5.6-terra) produce an explicit implementation plan using the scout and researcher output. No AskClaude needed; you have full context.
 
 5. Summarize the plan to the user before any code changes.
 

@@ -1,7 +1,7 @@
 ---
 description: "Review current issue work with parallel reviewers. Usage: /issue-review <issue-url|#123|issue text> [review focus]"
 argument-hint: "<issue-url|#123|issue text> [review focus]"
-model: gpt-5.4
+model: gpt-5.6-terra
 ---
 
 Issue/ref: $1

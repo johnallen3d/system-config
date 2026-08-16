@@ -1,7 +1,7 @@
 ---
 description: "Install a package via optimal method. Usage: /pkg-install [nix|pi|brew] <package>"
 argument-hint: "[nix|pi|brew] <package|url>"
-model: gpt-5.4-mini
+model: gpt-5.6-luna
 skill: pi-nix-integration
 # subagent: delegate
 ---

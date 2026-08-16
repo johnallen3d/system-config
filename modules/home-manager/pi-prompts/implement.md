@@ -1,6 +1,6 @@
 ---
 description: "Implement from issue. Usage: /implement <issue-id|#123|bd-id> [extra bullet instructions]"
-model: gpt-5.4
+model: gpt-5.6-terra
 subagent: delegate
 ---
 

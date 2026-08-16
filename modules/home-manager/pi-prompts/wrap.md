@@ -1,6 +1,6 @@
 ---
 description: "Wrap up the session: close issues, commit. Optional commit message: /wrap <message>"
-model: gpt-5.4-mini
+model: gpt-5.6-luna
 skill: wrapping-up
 # subagent: delegate
 ---

@@ -1,7 +1,7 @@
 ---
 description: "Implement a GitHub issue with planning + review. Usage: /issue-implement <issue-url|#123|issue text> [extra context]"
 argument-hint: "<issue-url|#123|issue text> [extra context]"
-model: gpt-5.4
+model: gpt-5.6-terra
 skill: issue-driven-implementation
 ---
 

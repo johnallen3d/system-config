@@ -6,8 +6,8 @@
 # pi-settings.nix). Split the symlink later if a profile needs to diverge.
 #
 # Model mapping (pi.dev → Claude Code), used when porting prompt frontmatter:
-#   gpt-5.4       → opus    (Claude Opus 4.x family alias)
-#   gpt-5.4-mini  → haiku   (Claude Haiku 4.x family alias)
+#   gpt-5.6-terra       → opus    (Claude Opus 4.x family alias)
+#   gpt-5.6-luna  → haiku   (Claude Haiku 4.x family alias)
 {lib, ...}: {
   # Personal prompts → ~/.config/claude-personal/commands/
   home.file.".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
