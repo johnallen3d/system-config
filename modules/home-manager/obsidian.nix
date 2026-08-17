@@ -147,7 +147,7 @@
       "${obsidianConfigDir}/themes/${managedTheme.themeName variant}/theme.css".text = mkObsidianThemeCss variant;
     }) managedTheme.variantNames);
 in {
-  home.file = lib.mkIf pkgs.stdenv.isDarwin (
+  home.file = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
     {
       "${obsidianConfigDir}/appearance.json" = {
         force = true;

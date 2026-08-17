@@ -50,7 +50,7 @@ in {
     CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS = "1";
   };
 
-  programs.desktoppr = lib.mkIf pkgs.stdenv.isDarwin {
+  programs.desktoppr = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
     enable = true;
     settings = {
       picture = "${solidWallpaper}";
@@ -135,6 +135,6 @@ EOF
         trey = "Trey Anastasio/Lonely Trip"
         violent = "Violent Femmes/Violent Femmes"
       '';
-    } // lib.optionalAttrs pkgs.stdenv.isDarwin {};
+    } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {};
   };
 }

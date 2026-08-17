@@ -150,7 +150,7 @@ in {
     ]
     ++ scripts
     ++ [context-mode nail-parquet pi]
-    ++ lib.optionals pkgs.stdenv.isDarwin [ai-intercept yem];
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ai-intercept yem];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
   # programs.bacon = {
