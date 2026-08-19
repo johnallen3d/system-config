@@ -18,6 +18,7 @@
   home.file.".config/claude-gmatter/commands/issue-implement.md".source = ./claude-prompts/issue-implement.md;
   home.file.".config/claude-gmatter/commands/issue-plan.md".source = ./claude-prompts/issue-plan.md;
   home.file.".config/claude-gmatter/commands/issue-review.md".source = ./claude-prompts/issue-review.md;
+home.file.".config/claude-gmatter/output-styles/ELI5.md".source = ./claude-output-styles/ELI5.md;
 
   # Shared subagent role definitions — canonical copy under claude-personal.
   home.file.".config/claude-personal/agents/scout.md".source = ./claude-agents/scout.md;
