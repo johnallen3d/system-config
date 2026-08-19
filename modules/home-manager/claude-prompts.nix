@@ -8,7 +8,7 @@
 # Model mapping (pi.dev → Claude Code), used when porting prompt frontmatter:
 #   gpt-5.6-terra       → opus    (Claude Opus 4.x family alias)
 #   gpt-5.6-luna  → haiku   (Claude Haiku 4.x family alias)
-{lib, ...}: {
+{lib, pkgs, ...}: {
   # Personal prompts → ~/.config/claude-personal/commands/
   home.file.".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
   home.file.".config/claude-personal/commands/wrap.md".source = ./claude-prompts/wrap.md;
@@ -45,5 +45,17 @@ home.file.".config/claude-gmatter/output-styles/ELI5.md".source = ./claude-outpu
   # Mirrors pi-settings.nix:131-132 (pi-work/themes → pi/themes).
   home.activation.claudeGmatterAgentsLink = lib.hm.dag.entryAfter ["writeBoundary"] ''
     ln -sfn "$HOME/.config/claude-personal/agents" "$HOME/.config/claude-gmatter/agents"
+  '';
+
+  # Claude owns the rest of this runtime settings file; set only this profile default.
+  home.activation.claudeGmatterOutputStyle = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    settings="$HOME/.config/claude-gmatter/settings.json"
+    mkdir -p "$(dirname "$settings")"
+    if [ -e "$settings" ]; then
+      ${pkgs.jq}/bin/jq '.outputStyle = "ELI5"' "$settings" > "$settings.tmp"
+    else
+      printf '%s\n' '{"outputStyle":"ELI5"}' > "$settings.tmp"
+    fi
+    mv "$settings.tmp" "$settings"
   '';
 }
