@@ -30,7 +30,10 @@ EOF'') managedTheme.variantNames}
     substituteInPlace "$out/sketchybar/sketchybarrc.sh" \
       --replace-fail 'source "$HOME/.local/share/theme/tokyo-night-sketchybar.sh"' 'source "$HOME/.local/share/theme/${managedTheme.activeTheme.hyphenName}-sketchybar.sh"'
     substituteInPlace "$out/sketchybar/plugins/llm-usage.sh" \
-      --replace-fail '@llmUsageBin@' '${llmUsage}/bin/llm-usage'
+      --replace-fail '@llmUsageBin@' '${llmUsage}/bin/llm-usage' \
+      --replace-fail '@timeoutBin@' '${pkgs.coreutils}/bin/timeout' \
+      --replace-fail '@statBin@' '${pkgs.coreutils}/bin/stat' \
+      --replace-fail '@fishBin@' '${pkgs.fish}/bin/fish'
     cat > "$out/sketchybar/colors.lua" <<'EOF'
 ${managedTheme.sketchybarColorsLua}
 EOF
