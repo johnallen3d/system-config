@@ -61,6 +61,7 @@ in {
       environment = {
         LANG = "${AGENT_LANG}";
         PATH = "${AGENT_PATH}";
+        PI_CODING_AGENT_DIR = "${home}/.config/pi";
       };
       serviceConfig = {
         ProgramArguments = [

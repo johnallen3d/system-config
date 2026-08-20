@@ -6,6 +6,7 @@
   common = import ../common/common.nix {inherit pkgs;};
   musicDir = common.commonVariables.MUSIC_DIR;
   managedTheme = import ./managed-theme.nix {inherit lib;};
+  llmUsage = import ./packages/llm-usage.nix {inherit pkgs;};
   solidWallpaper = pkgs.runCommand "solid-wallpaper.png" {
     nativeBuildInputs = [pkgs.imagemagick];
   } ''
@@ -28,6 +29,8 @@ EOF'') managedTheme.variantNames}
       --replace-fail "__BORDERS_ACTIVE_ACCENT__" "${managedTheme.activeBordersActiveAccent}"
     substituteInPlace "$out/sketchybar/sketchybarrc.sh" \
       --replace-fail 'source "$HOME/.local/share/theme/tokyo-night-sketchybar.sh"' 'source "$HOME/.local/share/theme/${managedTheme.activeTheme.hyphenName}-sketchybar.sh"'
+    substituteInPlace "$out/sketchybar/plugins/llm-usage.sh" \
+      --replace-fail '@llmUsageBin@' '${llmUsage}/bin/llm-usage'
     cat > "$out/sketchybar/colors.lua" <<'EOF'
 ${managedTheme.sketchybarColorsLua}
 EOF

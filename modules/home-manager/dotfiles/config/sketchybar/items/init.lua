@@ -1,6 +1,7 @@
 -- require("items.apple")
 -- require("items.spaces")
--- require("items.front_app")
+require("items.front_app")
+require("items.llm_usage")
 require("items.left_bracket")
 require("items.right_bracket")
 
