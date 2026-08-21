@@ -37,7 +37,7 @@ summary=$(jq -r '
       end
     end;
   .providers | map(
-    select(.status != "unavailable") |
+    select(.status == "ok") |
     . as $p |
     [$p.windows[] | select(.used_percent != null) | "\(.used_percent | round)% \(.label)↻\(remaining)"] as $windows |
     "\($p.provider | name) \($windows | join(" "))"
@@ -45,11 +45,10 @@ summary=$(jq -r '
 ' "$cache")
 
 color=$(jq -r '
-  [.providers[] | .status, (.windows[]?.status)] as $states |
-  if ($states | index("rate_limited")) then "0xffeb6f92"
-  elif ($states | index("unavailable")) then "0xfff6c177"
-  elif ([.providers[].windows[]?.used_percent // 0] | max // 0) >= 80 then "0xffeb6f92"
-  elif ([.providers[].windows[]?.used_percent // 0] | max // 0) >= 50 then "0xfff6c177"
+  [.providers[] | select(.status == "ok") | .status, (.windows[]?.status)] as $states |
+  if ($states | index("unavailable")) then "0xfff6c177"
+  elif ([.providers[] | select(.status == "ok") | .windows[]?.used_percent // 0] | max // 0) >= 80 then "0xffeb6f92"
+  elif ([.providers[] | select(.status == "ok") | .windows[]?.used_percent // 0] | max // 0) >= 50 then "0xfff6c177"
   else "0xff9ccfd8" end
 ' "$cache")
 
@@ -69,7 +68,7 @@ if [ "${1:-}" = popup ]; then
         end
       end;
     .providers[] |
-    select(.status != "unavailable") |
+    select(.status == "ok") |
     . as $p |
     "\($p.provider | name | pad(12))  \([$p.windows[] | select(.used_percent != null) | ((.used_percent | round | tostring) + "%" | pad(4)) + " " + (.label | pad(3)) + " ↻" + remaining] | join("  "))"
   ' "$cache" | while IFS= read -r line; do
