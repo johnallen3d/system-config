@@ -94,6 +94,6 @@ if [ "${1:-}" = popup ]; then
   sketchybar --set llm_usage.freshness label="$freshness"
   sketchybar --set llm_usage popup.drawing=toggle
   exit 0
+else
+  sketchybar --set llm_usage label="$summary" --set llm_usage_logo background.color="$color"
 fi
-
-sketchybar --set "$NAME" label="$summary" --set llm_usage_logo background.color="$color"
