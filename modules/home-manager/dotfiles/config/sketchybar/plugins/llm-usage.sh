@@ -17,7 +17,7 @@ refresh() {
   mkdir "$lock" 2>/dev/null || return
   trap 'rmdir "$lock"' EXIT
   local tmp="$cache.$$"
-  "$timeout_bin" 30 "$fish_bin" -c 'exec "$argv[1]" json' -- "$bin" >"$tmp" && mv "$tmp" "$cache"
+  PI_CODING_AGENT_DIR="$HOME/.config/pi-work" "$timeout_bin" 30 "$fish_bin" -c 'exec "$argv[1]" json' -- "$bin" >"$tmp" && mv "$tmp" "$cache"
   rm -f "$tmp"
 }
 
