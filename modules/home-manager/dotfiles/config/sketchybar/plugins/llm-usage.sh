@@ -32,8 +32,8 @@ summary=$(jq -r '
     else ($reset - now | floor) as $seconds |
       if $seconds <= 0 then "now"
       elif $seconds < 3600 then "\($seconds / 60 | floor)m"
-      elif $seconds < 86400 then "\($seconds / 3600 | floor)h\(($seconds % 3600) / 60 | floor)m"
-      else "\($seconds / 86400 | floor)d\(($seconds % 86400) / 3600 | floor)h"
+      elif $seconds < 86400 then "\($seconds / 3600 | floor)h"
+      else "\($seconds / 86400 | floor)d"
       end
     end;
   .providers | map(
@@ -64,8 +64,8 @@ if [ "${1:-}" = popup ]; then
       else ($reset - now | floor) as $seconds |
         if $seconds <= 0 then " now"
         elif $seconds < 3600 then " \($seconds / 60 | floor)m"
-        elif $seconds < 86400 then " \($seconds / 3600 | floor)h \(($seconds % 3600) / 60 | floor)m"
-        else " \($seconds / 86400 | floor)d \(($seconds % 86400) / 3600 | floor)h"
+        elif $seconds < 86400 then " \($seconds / 3600 | floor)h"
+        else " \($seconds / 86400 | floor)d"
         end
       end;
     .providers[] |
