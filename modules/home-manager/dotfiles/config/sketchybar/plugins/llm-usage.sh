@@ -36,17 +36,23 @@ summary=$(jq -r '
       else "\($seconds / 86400 | floor)d"
       end
     end;
+  def exhausted: .status == "rate_limited";
+  def exhausted_remaining: [.windows[] | select(.limit_reached and .reset_at != null)] | max_by(.reset_at) | remaining;
   .providers | map(
-    select(.status == "ok") |
+    select(.status != "unavailable") |
     . as $p |
-    [$p.windows[] | select(.used_percent != null) | "\(.used_percent | round)% \(.label)↻\(remaining)"] as $windows |
-    "\($p.provider | name) \($windows | join(" "))"
+    if ($p | exhausted) then "\($p.provider | name) -\($p | exhausted_remaining)"
+    else
+      [$p.windows[] | select(.used_percent != null) | "\(.used_percent | round)% \(.label)↻\(remaining)"] as $windows |
+      "\($p.provider | name) \($windows | join(" "))"
+    end
   ) | join(" · ")
 ' "$cache")
 
 color=$(jq -r '
-  [.providers[] | select(.status == "ok") | .status, (.windows[]?.status)] as $states |
-  if ($states | index("unavailable")) then "0xfff6c177"
+  [.providers[] | select(.status != "unavailable") | .status, (.windows[]?.status)] as $states |
+  if ($states | index("rate_limited")) then "0xffeb6f92"
+  elif ($states | index("unavailable")) then "0xfff6c177"
   elif ([.providers[] | select(.status == "ok") | .windows[]?.used_percent // 0] | max // 0) >= 80 then "0xffeb6f92"
   elif ([.providers[] | select(.status == "ok") | .windows[]?.used_percent // 0] | max // 0) >= 50 then "0xfff6c177"
   else "0xff9ccfd8" end
@@ -67,10 +73,14 @@ if [ "${1:-}" = popup ]; then
         else " \($seconds / 86400 | floor)d"
         end
       end;
+    def exhausted: .status == "rate_limited";
+    def exhausted_remaining: [.windows[] | select(.limit_reached and .reset_at != null)] | max_by(.reset_at) | remaining | ltrimstr(" ");
     .providers[] |
-    select(.status == "ok") |
+    select(.status != "unavailable") |
     . as $p |
-    "\($p.provider | name | pad(12))  \([$p.windows[] | select(.used_percent != null) | ((.used_percent | round | tostring) + "%" | pad(4)) + " " + (.label | pad(3)) + " ↻" + remaining] | join("  "))"
+    if ($p | exhausted) then "\($p.provider | name | pad(12))  -\($p | exhausted_remaining)"
+    else "\($p.provider | name | pad(12))  \([$p.windows[] | select(.used_percent != null) | ((.used_percent | round | tostring) + "%" | pad(4)) + " " + (.label | pad(3)) + " ↻" + remaining] | join("  "))"
+    end
   ' "$cache" | while IFS= read -r line; do
     case "$line" in
       Codex*) item=llm_usage.codex ;;
