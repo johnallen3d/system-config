@@ -37,7 +37,7 @@ summary=$(jq -r '
       end
     end;
   def exhausted: .status == "rate_limited";
-  def exhausted_remaining: [.windows[] | select(.limit_reached and .reset_at != null)] | max_by(.reset_at) | remaining;
+  def exhausted_remaining: [.windows[] | select((.limit_reached or ((.used_percent // 0) >= 100)) and .reset_at != null)] | max_by(.reset_at) | remaining;
   .providers | map(
     select(.status != "unavailable") |
     . as $p |
@@ -74,7 +74,7 @@ if [ "${1:-}" = popup ]; then
         end
       end;
     def exhausted: .status == "rate_limited";
-    def exhausted_remaining: [.windows[] | select(.limit_reached and .reset_at != null)] | max_by(.reset_at) | remaining | ltrimstr(" ");
+    def exhausted_remaining: [.windows[] | select((.limit_reached or ((.used_percent // 0) >= 100)) and .reset_at != null)] | max_by(.reset_at) | remaining | ltrimstr(" ");
     .providers[] |
     select(.status != "unavailable") |
     . as $p |
