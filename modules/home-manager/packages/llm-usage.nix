@@ -1,16 +1,16 @@
 {pkgs}:
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "llm-usage";
-  version = "2026-08-21";
+  version = "2026-08-24";
 
   src = pkgs.fetchFromGitHub {
     owner = "amfaro";
     repo = "llm-usage";
-    rev = "eaaf4d0bf412eedadc8d2142a72c8ed60cbecafb";
-    hash = "sha256-aEKaxx0HxewWhjovIXcmGFRG4stCDjK98qC3KxqwcFI=";
+    rev = "e690ec09bbe2fc7ce3d1c3d5918d3acb6e04acaa";
+    hash = "sha256-zyanjh5cQwBQQAFkyYPHHNpy93lYbWQ+T0RbZ5uGZiw=";
   };
 
-  cargoHash = "sha256-Wbr7mZfL0EtEYXTQdcNBbYEFnlqKWAmK+s3D2Z71NSw=";
+  cargoHash = "sha256-jUO7lmWF/WZCL+zwT2cYiWSBqFv9zvMQJGZcvPfhojg=";
 
   postPatch = ''
     substituteInPlace src/main.rs \
