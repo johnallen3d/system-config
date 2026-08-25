@@ -272,16 +272,6 @@ function installFooter(ctx: any) {
           }
         }
 
-        const statuses = Array.from(footerData.getExtensionStatuses().entries())
-          .sort(([a], [b]) => String(a).localeCompare(String(b)))
-          .map(([, text]) => String(text).replace(/[\r\n\t]/g, " ").replace(/ +/g, " ").trim())
-          .filter(Boolean)
-          .join(" ");
-        if (statuses) {
-          for (const line of wrapPlainText(statuses, width)) {
-            lines.push(line);
-          }
-        }
         return lines;
       },
     };
