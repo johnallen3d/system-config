@@ -6,12 +6,18 @@ vim.opt.expandtab = true
 vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 vim.opt.termguicolors = true
+vim.opt.spellfile = vim.fn.expand("$HOME/.config/nvim/spell/en.utf-8.add")
 vim.opt.fillchars:append({ eob = " " })
 
 vim.keymap.set("n", "<C-A>", "ggVG", {
   noremap = true,
   silent = true,
   desc = "Select all in buffer",
+})
+vim.keymap.set("n", "<leader>z", "mz[s1z=e`z", {
+  noremap = true,
+  silent = true,
+  desc = "correct last typo",
 })
 
 -- Pi 0.83 writes prompt.md inside pi-editor-* directories; pibuf 1.1.0 only
@@ -30,7 +36,6 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufReadPost" }, {
         vim.api.nvim_win_call(win, function()
           vim.cmd("keepjumps normal! G")
         end)
-        vim.cmd("startinsert!")
       end
     end)
   end,

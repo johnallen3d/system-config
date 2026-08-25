@@ -36,6 +36,7 @@ in {
     vimdiffAlias = true;
   };
 
+  xdg.configFile."nvim-editor/after/ftplugin/gitcommit.lua".source = ./after/ftplugin/gitcommit.lua;
   xdg.configFile."nvim-editor/after/ftplugin/markdown.lua".source = ./editor/after/ftplugin/markdown.lua;
   xdg.configFile."nvim-editor/init.lua".source = ./editor/init.lua;
   xdg.configFile."nvim-editor/lua/theme/managed.lua".source = generatedTheme;
