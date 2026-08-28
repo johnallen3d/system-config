@@ -28,7 +28,12 @@ Sbar.add("item", "llm_usage", {
 for _, provider in ipairs({ "codex", "opencode_go", "claude_code", "freshness" }) do
 	Sbar.add("item", "llm_usage." .. provider, {
 		position = "popup.llm_usage",
-		label = { string = "Loading…", font = { size = 12.0 }, padding_left = 10, padding_right = 10 },
+		label = {
+			string = "Loading…",
+			font = { family = "Cascadia Code PL", size = 12.0 },
+			padding_left = 10,
+			padding_right = 10,
+		},
 		background = { drawing = false },
 	})
 end
