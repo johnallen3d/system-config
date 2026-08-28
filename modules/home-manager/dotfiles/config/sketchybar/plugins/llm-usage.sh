@@ -18,11 +18,51 @@ color_for_severity() {
   esac
 }
 
-compact_summary() {
-  local value=$1
-  value=${value//OpenCode Go/Go}
-  value=${value//Claude Code/Claude}
-  printf '%s\n' "${value// \(stale\)/}"
+actionable_summary() {
+  jq -r '
+    def reset_in:
+      ((.reset_at - now | floor) as $seconds |
+        if $seconds <= 0 then "now"
+        elif $seconds >= 86400 then "\($seconds / 86400 | floor)d"
+        elif $seconds >= 3600 then "\($seconds / 3600 | floor)h"
+        else "\($seconds / 60 | floor)m"
+        end);
+    def window_text:
+      "\(.used_percent | round)% \(.label)\(if .reset_at then " ↻\(reset_in)" else "" end)";
+    def preferred_window:
+      ([.windows[] | select(.label == "5h" and .status != "unavailable" and .used_percent != null)] | first)
+      // .display.limiting_window;
+    def short_name:
+      if .provider == "opencode-go" then "Go"
+      elif .provider == "claude-code" then "Claude"
+      else .display.name
+      end;
+    def provider_text:
+      (preferred_window | if . == null then "no usage data" else window_text end) +
+      (if .status == "stale" then " (stale)" else "" end);
+    [.providers[] | select(.status != "unavailable" and .display.capacity_used_percent != null) |
+      "\(short_name) \(provider_text)"] | join(" · ")
+  ' "${1:-$cache}"
+}
+
+popup_rows() {
+  jq -r '
+    def reset_in:
+      ((.reset_at - now | floor) as $seconds |
+        if $seconds <= 0 then "now"
+        elif $seconds >= 86400 then "\($seconds / 86400 | floor)d"
+        elif $seconds >= 3600 then "\($seconds / 3600 | floor)h"
+        else "\($seconds / 60 | floor)m"
+        end);
+    def window_text:
+      "\(.used_percent | round)% \(.label)\(if .reset_at then " ↻\(reset_in)" else "" end)";
+    def provider_text:
+      .display.name + " " +
+      ([.windows[] | select(.status != "unavailable" and .used_percent != null) | window_text] | join(" · ")) +
+      (if .status == "stale" then " (stale)" else "" end);
+    .providers[] | select(.status != "unavailable" and .display.capacity_used_percent != null) |
+      [.provider, provider_text] | @tsv
+  ' "${1:-$cache}"
 }
 
 if [ "${1:-}" = "--test" ]; then
@@ -30,7 +70,11 @@ if [ "${1:-}" = "--test" ]; then
   [ "$(color_for_severity warning)" = "0xfff6c177" ] || exit 1
   [ "$(color_for_severity critical)" = "0xffeb6f92" ] || exit 1
   [ "$(color_for_severity unknown)" = "0xfff6c177" ] || exit 1
-  [ "$(compact_summary 'Codex · OpenCode Go · Claude Code (stale)')" = "Codex · Go · Claude" ] || exit 1
+  test_cache=$(mktemp)
+  printf '%s' '{"providers":[{"provider":"codex","status":"ok","windows":[{"label":"5h","status":"ok","used_percent":62},{"label":"7d","status":"ok","used_percent":18}],"display":{"name":"Codex","capacity_used_percent":62,"limiting_window":{"label":"5h","used_percent":62}}},{"provider":"opencode-go","status":"ok","windows":[{"label":"5h","status":"ok","used_percent":4}],"display":{"name":"OpenCode Go","capacity_used_percent":4,"limiting_window":{"label":"5h","used_percent":4}}},{"provider":"claude-code","status":"stale","windows":[{"label":"5h","status":"unavailable"},{"label":"7d","status":"ok","used_percent":23}],"display":{"name":"Claude Code","capacity_used_percent":23,"limiting_window":{"label":"7d","used_percent":23}}}]}' >"$test_cache"
+  [ "$(actionable_summary "$test_cache")" = "Codex 62% 5h · Go 4% 5h · Claude 23% 7d (stale)" ] || exit 1
+  [ "$(popup_rows "$test_cache")" = $'codex\tCodex 62% 5h · 18% 7d\nopencode-go\tOpenCode Go 4% 5h\nclaude-code\tClaude Code 23% 7d (stale)' ] || exit 1
+  rm -f "$test_cache"
   exit 0
 fi
 
@@ -49,13 +93,13 @@ refresh() {
 refresh &
 [ -r "$cache" ] || exit 0
 
-summary=$(compact_summary "$(jq -r '.presentation.summary' "$cache")")
+summary=$(actionable_summary)
 severity=$(jq -r '.presentation.severity' "$cache")
 color=$(color_for_severity "$severity")
 
 if [ "${1:-}" = popup ]; then
   sketchybar --set llm_usage.codex drawing=off --set llm_usage.opencode_go drawing=off --set llm_usage.claude_code drawing=off
-  jq -r '.presentation.providers[] | select(.visible) | [.provider, .label] | @tsv' "$cache" |
+  popup_rows |
     while IFS=$'\t' read -r provider label; do
       case "$provider" in
         codex|opencode-go|claude-code) ;;
