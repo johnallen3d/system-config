@@ -18,33 +18,6 @@ color_for_severity() {
   esac
 }
 
-actionable_summary() {
-  jq -r '
-    def reset_in:
-      ((.reset_at - now | floor) as $seconds |
-        if $seconds <= 0 then "now"
-        elif $seconds >= 86400 then "\($seconds / 86400 | floor)d"
-        elif $seconds >= 3600 then "\($seconds / 3600 | floor)h"
-        else "\($seconds / 60 | floor)m"
-        end);
-    def window_text:
-      "\(.used_percent | round)% \(.label)\(if .reset_at then " ↻\(reset_in)" else "" end)";
-    def preferred_window:
-      ([.windows[] | select(.label == "5h" and .status != "unavailable" and .used_percent != null)] | first)
-      // .display.limiting_window;
-    def short_name:
-      if .provider == "opencode-go" then "Go"
-      elif .provider == "claude-code" then "Claude"
-      else .display.name
-      end;
-    def provider_text:
-      (preferred_window | if . == null then "no usage data" else window_text end) +
-      (if .status == "stale" then " (stale)" else "" end);
-    [.providers[] | select(.status != "unavailable" and .display.capacity_used_percent != null) |
-      "\(short_name) \(provider_text)"] | join(" · ")
-  ' "${1:-$cache}"
-}
-
 popup_rows() {
   jq -r '
     def reset_in:
@@ -81,7 +54,6 @@ if [ "${1:-}" = "--test" ]; then
   [ "$(color_for_severity unknown)" = "0xfff6c177" ] || exit 1
   test_cache=$(mktemp)
   printf '%s' '{"providers":[{"provider":"codex","status":"ok","windows":[{"label":"5h","status":"ok","used_percent":62},{"label":"7d","status":"ok","used_percent":18}],"display":{"name":"Codex","capacity_used_percent":62,"limiting_window":{"label":"5h","used_percent":62}}},{"provider":"opencode-go","status":"ok","windows":[{"label":"5h","status":"ok","used_percent":4}],"display":{"name":"OpenCode Go","capacity_used_percent":4,"limiting_window":{"label":"5h","used_percent":4}}},{"provider":"claude-code","status":"stale","windows":[{"label":"5h","status":"unavailable"},{"label":"7d","status":"ok","used_percent":23}],"display":{"name":"Claude Code","capacity_used_percent":23,"limiting_window":{"label":"7d","used_percent":23}}}]}' >"$test_cache"
-  [ "$(actionable_summary "$test_cache")" = "Codex 62% 5h · Go 4% 5h · Claude 23% 7d (stale)" ] || exit 1
   [ "$(popup_rows "$test_cache")" = $'codex\tCodex         5h  62%       7d  18%     \nopencode_go\tOpenCode Go   5h   4%                   \nclaude_code\tClaude Code                 7d  23%      (stale)' ] || exit 1
   rm -f "$test_cache"
   exit 0
@@ -102,7 +74,7 @@ refresh() {
 refresh &
 [ -r "$cache" ] || exit 0
 
-summary=$(actionable_summary)
+summary=$(jq -r '.presentation.summary' "$cache")
 severity=$(jq -r '.presentation.severity' "$cache")
 color=$(color_for_severity "$severity")
 
