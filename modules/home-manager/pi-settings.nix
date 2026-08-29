@@ -153,7 +153,7 @@
 
   piSettings = {
     defaultProvider = "openai-codex";
-    defaultModel = "gpt-5.6-terra";
+    defaultModel = "gpt-5.6-sol";
     compaction.enabled = false;
     packages = piPackages.personalPackageSpecs;
     theme = managedTheme.activeTheme.name;
@@ -162,7 +162,7 @@
 
   piWorkSettings = {
     defaultProvider = "openai-codex";
-    defaultModel = "gpt-5.6-terra";
+    defaultModel = "gpt-5.6-sol";
     compaction.enabled = false;
     packages = piPackages.workPackageSpecs;
     theme = managedTheme.activeTheme.name;
