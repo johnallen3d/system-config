@@ -135,7 +135,7 @@
       accentColor = "";
       baseFontSize = 17;
       cssTheme = managedTheme.activeTheme.name;
-      enabledCssSnippets = ["tasks"];
+      enabledCssSnippets = ["tasks" "recipe-table"];
       nativeMenus = true;
       showViewHeader = true;
       textFontFamily = "Inter";
