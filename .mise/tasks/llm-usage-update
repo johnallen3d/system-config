@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+#MISE description="Update and validate the nix-managed llm-usage pin"
+#USAGE flag "--rebuild" help="Apply the updated pin with nix-rebuild"
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+package="$repo_root/modules/home-manager/packages/llm-usage.nix"
+rebuild="${usage_rebuild:-false}"
+
+for command in curl git nix python3; do
+  command -v "$command" >/dev/null || {
+    echo "Required command not found: $command" >&2
+    exit 1
+  }
+done
+
+current_rev="$(sed -nE 's/^[[:space:]]*rev = "([0-9a-f]{40})";/\1/p' "$package")"
+latest_rev="$(git ls-remote https://github.com/amfaro/llm-usage.git refs/heads/main | awk 'NF {print $1; exit}')"
+
+if [[ ! "$latest_rev" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "Could not resolve llm-usage main revision" >&2
+  exit 1
+fi
+
+apply_rebuild() {
+  echo "Applying llm-usage with mise run nix-rebuild --switch-only"
+  (cd "$repo_root" && mise run nix-rebuild --switch-only)
+}
+
+if [[ "$current_rev" == "$latest_rev" ]]; then
+  echo "llm-usage is already up to date: ${latest_rev:0:12}"
+  if [[ "$rebuild" == true ]]; then
+    apply_rebuild
+  fi
+  exit 0
+fi
+
+commit_date="$(
+  curl -fsSL --retry 2 \
+    -H 'Accept: application/vnd.github+json' \
+    "https://api.github.com/repos/amfaro/llm-usage/commits/$latest_rev" |
+    python3 -c 'import json, sys; print(json.load(sys.stdin)["commit"]["committer"]["date"][:10])'
+)"
+source_hash="$(
+  nix store prefetch-file --json --unpack --name llm-usage-source \
+    "https://github.com/amfaro/llm-usage/archive/$latest_rev.tar.gz" |
+    python3 -c 'import json, sys; print(json.load(sys.stdin)["hash"])'
+)"
+
+fake_hash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+candidate="$tmp_dir/llm-usage.nix"
+cp "$package" "$candidate"
+
+update_pin() {
+  python3 - "$1" "$2" "$3" "$4" "$5" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path, version, revision, source_hash, cargo_hash = sys.argv[1:]
+text = Path(path).read_text()
+replacements = (
+    (r'version = "[^"]+";', f'version = "{version}";'),
+    (r'rev = "[0-9a-f]{40}";', f'rev = "{revision}";'),
+    (r'hash = "sha256-[^"]+";', f'hash = "{source_hash}";'),
+    (r'cargoHash = "sha256-[^"]+";', f'cargoHash = "{cargo_hash}";'),
+)
+
+for pattern, replacement in replacements:
+    text, count = re.subn(pattern, replacement, text, count=1)
+    if count != 1:
+        raise SystemExit(f"Expected one match for {pattern!r}, found {count}")
+
+Path(path).write_text(text)
+PY
+}
+
+update_pin "$candidate" "$commit_date" "$latest_rev" "$source_hash" "$fake_hash"
+
+build_package() {
+  local path="$1"
+  nix build --impure --no-link --print-build-logs --expr \
+    "let flake = builtins.getFlake (toString $repo_root); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; }; in import $path { inherit pkgs; }"
+}
+
+cargo_log="$tmp_dir/cargo-hash.log"
+if build_package "$candidate" >"$cargo_log" 2>&1; then
+  echo "Unexpectedly accepted fake cargo hash" >&2
+  exit 1
+fi
+
+cargo_hash="$(sed -nE 's/.*got:[[:space:]]+(sha256-[A-Za-z0-9+/=]+).*/\1/p' "$cargo_log" | tail -n 1)"
+if [[ ! "$cargo_hash" =~ ^sha256-[A-Za-z0-9+/=]+$ ]]; then
+  echo "Could not determine cargo dependency hash; package unchanged" >&2
+  sed -nE '/error:|failed|warning/Ip' "$cargo_log" | tail -n 30 >&2
+  exit 1
+fi
+
+update_pin "$candidate" "$commit_date" "$latest_rev" "$source_hash" "$cargo_hash"
+
+validation_log="$tmp_dir/validation.log"
+if ! build_package "$candidate" >"$validation_log" 2>&1; then
+  echo "llm-usage validation failed; package unchanged" >&2
+  sed -nE '/error:|failed|warning/Ip' "$validation_log" | tail -n 30 >&2
+  exit 1
+fi
+
+mv "$candidate" "$package"
+echo "Updated llm-usage: ${current_rev:0:12} -> ${latest_rev:0:12} ($commit_date)"
+echo "Source and Cargo hashes validated by Nix build"
+
+if [[ "$rebuild" == true ]]; then
+  apply_rebuild
+fi
