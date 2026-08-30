@@ -130,30 +130,10 @@
       color-scheme: dark;
     }
   '';
-  obsidianAppearance =
-    builtins.toJSON {
-      accentColor = "";
-      baseFontSize = 17;
-      cssTheme = managedTheme.activeTheme.name;
-      enabledCssSnippets = ["tasks" "recipe-table"];
-      nativeMenus = true;
-      showViewHeader = true;
-      textFontFamily = "Inter";
-      theme = "obsidian";
-    }
-    + "\n";
   obsidianThemeFiles = lib.mergeAttrsList (map (variant: {
       "${obsidianConfigDir}/themes/${managedTheme.themeName variant}/manifest.json".text = mkObsidianManifest variant;
       "${obsidianConfigDir}/themes/${managedTheme.themeName variant}/theme.css".text = mkObsidianThemeCss variant;
     }) managedTheme.variantNames);
 in {
-  home.file = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
-    {
-      "${obsidianConfigDir}/appearance.json" = {
-        force = true;
-        text = obsidianAppearance;
-      };
-    }
-    // obsidianThemeFiles
-  );
+  home.file = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin obsidianThemeFiles;
 }
