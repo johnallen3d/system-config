@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#MISE description="Apply macOS config; optionally refresh nix-managed Pi packages"
+#USAGE flag "--switch-only" help="Skip nix flake update"
+#USAGE flag "--pi-refresh" help="Refresh nix-managed Pi packages after rebuild"
+set -euo pipefail
+
+if [[ "${usage_switch_only:-false}" == "true" ]]; then
+  mise run nix-rebuild --switch-only
+else
+  mise run nix-rebuild
+fi
+
+if [[ "${usage_pi_refresh:-false}" == "true" ]]; then
+  mise run pi-refresh
+fi

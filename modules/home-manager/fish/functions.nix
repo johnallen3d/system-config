@@ -159,21 +159,5 @@
         command pi --extension "$HOME/.config/pi-notes/git/github.com/badlogic/pi-telegram/index.ts" $argv
       '';
     };
-    nix-rebuild = {
-      body = ''
-        argparse 'switch-only' -- $argv
-        or return
-
-        # macOS launchd can leave GUI shells at maxfiles soft=256.
-        # Raise to hard limit so flake input fetches do not hit tarball-cache EMFILE.
-        ulimit -Sn (ulimit -Hn)
-
-        if not set -q _flag_switch_only
-          nix flake update
-        end
-
-        sudo darwin-rebuild switch --impure --flake ~/dev/src/system-config/
-      '';
-    };
   };
 }

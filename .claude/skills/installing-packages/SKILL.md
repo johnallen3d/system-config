@@ -246,7 +246,7 @@ After creating the module file, add to `modules/home-manager/packages/default.ni
 
 ## After Installation
 
-Run `nix-rebuild --switch-only` (fish shell) or `sudo darwin-rebuild switch --impure --flake ~/dev/src/system-config/` (bash) to apply changes.
+Run `mise update-system --switch-only` from the repository to apply changes.
 
 ## Common Pitfalls
 

@@ -9,6 +9,10 @@ file = "./.mise/tasks/nix-rebuild"
 description = "Refresh nix-managed pi packages for personal, work + notes profiles"
 file = "./.mise/tasks/pi-refresh"
 
+[tasks.update-system]
+description = "Apply macOS config and optionally refresh nix-managed Pi packages"
+file = "./.mise/tasks/update-system"
+
 [tasks.pi-model-usage]
 description = "Summarize Pi parent/subagent model usage from session logs"
 file = "./.mise/tasks/pi-model-usage"

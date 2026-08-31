@@ -53,8 +53,12 @@ nix \
 ## Apply Changes
 
 ```bash
-# on macOS
-set -xg NIXPKGS_ALLOW_UNFREE 1; darwin-rebuild switch --impure --flake ~/dev/src/system-config/
+# on macOS (run from this repository)
+mise update-system
+# skip flake input update
+mise update-system --switch-only
+# also refresh nix-managed Pi packages
+mise update-system --switch-only --pi-refresh
 
 # on NixOS
 sudo nixos-rebuild switch --impure --flake ~/dev/src/system-config/.#

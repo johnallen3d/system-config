@@ -8,14 +8,14 @@ Telegram theme support is partial/manual: rebuild writes `~/.local/share/theme/t
 
 ## Quick Reference
 
-- **Apply macOS**: `mise run nix-rebuild` (flake update + switch) or `mise run nix-rebuild -- --switch-only` (skip flake update)
+- **Apply macOS**: `mise update-system` (flake update + switch), `mise update-system --switch-only` (skip flake update), append `--pi-refresh` to refresh managed Pi packages
 - **Apply NixOS**: `sudo nixos-rebuild switch --impure --flake .#drummer`
 - **Lint**: `nix flake check`
 - **Search packages**: `nix search nixpkgs <name>`
 
 ### Rebuild Task (mandatory)
 
-When rebuilding the macOS system, use **only** `mise run nix-rebuild`. Do not invoke `darwin-rebuild` or `nix flake update` directly.
+When applying the macOS system, use **only** the repo-local `mise` tasks: `mise update-system` for the normal workflow or `mise run nix-rebuild` for a rebuild without Pi refresh. Do not invoke `darwin-rebuild` or `nix flake update` directly.
 
 The task writes full output to a temp log and prints `nix-rebuild log: <path>` to stderr on start and finish. It exits with the rebuild's exit code.
 
@@ -36,13 +36,13 @@ The task writes full output to a temp log and prints `nix-rebuild log: <path>` t
 **Process**:
 1. Search nixpkgs first: `nix search nixpkgs <package-name>`
 2. Add to appropriate file in `home.packages` list (alphabetically sorted)
-3. Apply: `mise run nix-rebuild` (see Rebuild Task above)
+3. Apply: `mise update-system` (see Rebuild Task above)
 
 ## Policy
 
 Never create git commits unless explicitly requested.
 
-After changes to scripts, configs, packages — run `mise run nix-rebuild` so user can test immediately. Use `mise run nix-rebuild -- --switch-only` if no inputs need updating.
+After changes to scripts, configs, packages — run `mise update-system` so user can test immediately. Use `mise update-system --switch-only` if no inputs need updating.
 
 ## Landing the Plane (Session Completion)
 
