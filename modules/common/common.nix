@@ -47,6 +47,7 @@
     LEADR_CONFIG_DIR = "$HOME/.config/leadr/";
     MANPAGER = "nvim +Man!";
     MUSIC_DIR = "$HOME/Music/Music/Media.localized/Music";
+    PI_RESPONSE_FEEDBACK = "1";
     PYENV_ROOT = "$HOME/.pyenv";
     TIME_STYLE = "long-iso";
     # NOTE: this is meant as a macOS only workaround
