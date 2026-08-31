@@ -6,8 +6,8 @@ pkgs.rustPlatform.buildRustPackage rec {
   src = pkgs.fetchFromGitHub {
     owner = "amfaro";
     repo = "llm-usage";
-    rev = "658d23808740c605502a58ecbbf7b25d834f4b3f";
-    hash = "sha256-Ivdt1rZkHUMS8VRM4LSDXnS3hW1qATw6y/VTx5m2gMc=";
+    rev = "ad4a24a3d13d26fef155aa47ce742cd1dabeeb26";
+    hash = "sha256-1JuyaF1MV8FWWTpMiCui+kmahpgxZYt/0LlrNztURPY=";
   };
 
   cargoHash = "sha256-RceG5OO3OSc03MqKOr/YmlnINe7dqpK1VGvxIFk6k8Q=";
