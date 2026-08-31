@@ -59,6 +59,8 @@ mise update-system
 mise update-system --switch-only
 # also refresh nix-managed Pi packages
 mise update-system --switch-only --pi-refresh
+# refresh Pi packages without rebuilding
+mise update-system --pi-only
 
 # on NixOS
 sudo nixos-rebuild switch --impure --flake ~/dev/src/system-config/.#

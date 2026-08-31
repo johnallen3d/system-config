@@ -2,7 +2,12 @@
 #MISE description="Apply macOS config; optionally refresh nix-managed Pi packages"
 #USAGE flag "--switch-only" help="Skip nix flake update"
 #USAGE flag "--pi-refresh" help="Refresh nix-managed Pi packages after rebuild"
+#USAGE flag "--pi-only" help="Refresh nix-managed Pi packages without rebuilding"
 set -euo pipefail
+
+if [[ "${usage_pi_only:-false}" == "true" ]]; then
+  exec mise run pi-refresh
+fi
 
 if [[ "${usage_switch_only:-false}" == "true" ]]; then
   mise run nix-rebuild --switch-only

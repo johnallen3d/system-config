@@ -8,7 +8,7 @@ Telegram theme support is partial/manual: rebuild writes `~/.local/share/theme/t
 
 ## Quick Reference
 
-- **Apply macOS**: `mise update-system` (flake update + switch), `mise update-system --switch-only` (skip flake update), append `--pi-refresh` to refresh managed Pi packages
+- **Apply macOS**: `mise update-system` (flake update + switch), `mise update-system --switch-only` (skip flake update), append `--pi-refresh` to refresh managed Pi packages, or use `mise update-system --pi-only` to refresh Pi without rebuilding
 - **Apply NixOS**: `sudo nixos-rebuild switch --impure --flake .#drummer`
 - **Lint**: `nix flake check`
 - **Search packages**: `nix search nixpkgs <name>`
