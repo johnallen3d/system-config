@@ -137,6 +137,7 @@
       "telegram-desktop"
       # "utm"
       "visual-studio-code"
+      "vorssaint"
       "whatsapp"
       # "wooshy"
       "zed"
