@@ -4,7 +4,8 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
-package="$repo_root/modules/home-manager/packages/llm-usage.nix"
+package_rel="modules/home-manager/packages/llm-usage.nix"
+package="$repo_root/$package_rel"
 rebuild="${usage_rebuild:-false}"
 
 for command in curl git nix python3; do
@@ -13,6 +14,12 @@ for command in curl git nix python3; do
     exit 1
   }
 done
+
+if ! git -C "$repo_root" diff --quiet -- "$package_rel" ||
+  ! git -C "$repo_root" diff --cached --quiet -- "$package_rel"; then
+  echo "Refusing to overwrite uncommitted changes in $package_rel" >&2
+  exit 1
+fi
 
 current_rev="$(sed -nE 's/^[[:space:]]*rev = "([0-9a-f]{40})";/\1/p' "$package")"
 latest_rev="$(git ls-remote https://github.com/amfaro/llm-usage.git refs/heads/main | awk 'NF {print $1; exit}')"
@@ -114,3 +121,7 @@ echo "Source and Cargo hashes validated by Nix build"
 if [[ "$rebuild" == true ]]; then
   apply_rebuild
 fi
+
+git -C "$repo_root" commit --only \
+  -m "chore(nix): update llm-usage package pin" -- "$package_rel"
+echo "Committed llm-usage package pin"
