@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -9,14 +9,22 @@ export type JournalEntry = {
   endedAtMs: number;
 };
 
-const OBSIDIAN_BIN = process.env["PI_SESSION_CAPTURE_OBSIDIAN"]?.trim()
-  || (process.platform === "darwin" ? "/Applications/Obsidian.app/Contents/MacOS/obsidian-cli" : "obsidian");
-const DAILY_VAULT = process.env["PI_SESSION_CAPTURE_VAULT"]?.trim() || "Personal";
 const PROFILE = process.env["PI_CODING_AGENT_DIR"]?.endsWith("pi-work") ? "work" : "personal";
 const SUMMARY_LIMIT = 100;
 const PI_LOG_HEADING = "## Pi Log";
 const PROFILE_HEADING = `### ${PROFILE}`;
-const PENDING_DIR = join(process.env["HOME"] ?? process.cwd(), ".local", "state", "pi-session-capture", "pending");
+
+function homeDir(): string {
+  return process.env["HOME"] ?? process.cwd();
+}
+
+function pendingDir(): string {
+  return join(homeDir(), ".local", "state", "pi-session-capture", "pending");
+}
+
+function configuredVault(): string {
+  return process.env["PI_SESSION_CAPTURE_VAULT"]?.trim() || "Personal";
+}
 
 export type SessionIdentity = {
   sessionId?: string | null;
@@ -116,7 +124,7 @@ export function getSessionIdentity(ctx: any): SessionIdentity {
 }
 
 function pendingPathFor(key: string): string {
-  return join(PENDING_DIR, `${key}.json`);
+  return join(pendingDir(), `${key}.json`);
 }
 
 async function persistPendingEntry(identity: SessionIdentity | undefined, entry: JournalEntry): Promise<void> {
@@ -127,7 +135,7 @@ async function persistPendingEntry(identity: SessionIdentity | undefined, entry:
     sessionId: identity.sessionId ?? null,
     sessionFile: identity.sessionFile ?? null,
   };
-  await mkdir(PENDING_DIR, { recursive: true });
+  await mkdir(pendingDir(), { recursive: true });
   await writeFile(pendingPathFor(identity.pendingKey), `${JSON.stringify(payload)}\n`, "utf8");
 }
 
@@ -138,7 +146,7 @@ async function clearPendingEntry(identity: SessionIdentity | undefined): Promise
 
 async function readPersistedEntries(): Promise<Array<PersistedEntry & { pendingKey: string }>> {
   try {
-    const names = await readdir(PENDING_DIR);
+    const names = await readdir(pendingDir());
     const results: Array<PersistedEntry & { pendingKey: string }> = [];
     for (const name of names) {
       if (!name.endsWith(".json")) continue;
@@ -277,40 +285,86 @@ export function upsertSessionSummary(
   return upsertLogEntries(existingText, blockLines);
 }
 
-function encodeObsidianContent(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
-    .replace(/\t/g, "\\t");
-}
-
-async function readDailyNote(pi: ExtensionAPI): Promise<{ path: string; text: string } | undefined> {
-  const pathResult = await pi.exec(OBSIDIAN_BIN, ["daily:path", `vault=${DAILY_VAULT}`], { timeout: 10_000 });
-  const path = collapseWhitespace(pathResult.stdout);
-  if (pathResult.code !== 0 || !path) return undefined;
-
-  const readResult = await pi.exec(OBSIDIAN_BIN, ["daily:read", `vault=${DAILY_VAULT}`], { timeout: 10_000 });
-  if (readResult.code !== 0) return undefined;
-
-  return {
-    path,
-    text: readResult.stdout ?? "",
+export function formatDailyNoteDate(date: Date, format = "YYYY-MM-DD"): string {
+  const values: Record<string, string> = {
+    YYYY: String(date.getFullYear()),
+    YY: String(date.getFullYear()).slice(-2),
+    MM: String(date.getMonth() + 1).padStart(2, "0"),
+    M: String(date.getMonth() + 1),
+    DD: String(date.getDate()).padStart(2, "0"),
+    D: String(date.getDate()),
   };
+  return format.replace(/YYYY|YY|MM|M|DD|D/g, (token) => values[token] ?? token);
 }
 
-async function overwriteDailyNote(pi: ExtensionAPI, path: string, content: string, ctx: any, source: "auto" | "manual"): Promise<boolean> {
-  const result = await pi.exec(OBSIDIAN_BIN, [
-    "create",
-    `path=${path}`,
-    "overwrite",
-    `content=${encodeObsidianContent(content)}`,
-    `vault=${DAILY_VAULT}`,
-  ], { timeout: 10_000 });
-  if (result.code !== 0) {
+export async function resolveDailyNotePath(
+  home = homeDir(),
+  vaultName = configuredVault(),
+  now = new Date(),
+): Promise<string | undefined> {
+  let vaultPath = process.env["PI_SESSION_CAPTURE_VAULT_PATH"]?.trim();
+  if (!vaultPath && isAbsolute(vaultName)) vaultPath = vaultName;
+
+  if (!vaultPath) {
+    const configPaths = [
+      process.env["PI_SESSION_CAPTURE_OBSIDIAN_CONFIG"]?.trim(),
+      join(home, "Library", "Application Support", "obsidian", "obsidian.json"),
+      join(process.env["XDG_CONFIG_HOME"] ?? join(home, ".config"), "obsidian", "obsidian.json"),
+    ].filter((value): value is string => Boolean(value));
+
+    for (const configPath of configPaths) {
+      try {
+        const config = JSON.parse(await readFile(configPath, "utf8")) as {
+          vaults?: Record<string, { path?: string }>;
+        };
+        const match = Object.entries(config.vaults ?? {}).find(([id, vault]) =>
+          id === vaultName || basename(vault.path ?? "") === vaultName
+        );
+        vaultPath = match?.[1].path;
+        if (vaultPath) break;
+      } catch {
+        continue;
+      }
+    }
+  }
+  if (!vaultPath) return undefined;
+
+  let folder = "";
+  let format = "YYYY-MM-DD";
+  try {
+    const settings = JSON.parse(await readFile(join(vaultPath, ".obsidian", "daily-notes.json"), "utf8")) as {
+      folder?: string;
+      format?: string;
+    };
+    folder = settings.folder?.trim() ?? "";
+    format = settings.format?.trim() || format;
+  } catch {
+    // Obsidian defaults: vault root and YYYY-MM-DD.
+  }
+
+  return join(vaultPath, folder, `${formatDailyNoteDate(now, format)}.md`);
+}
+
+export async function readDailyNote(): Promise<{ path: string; text: string } | undefined> {
+  const path = await resolveDailyNotePath();
+  if (!path) return undefined;
+  try {
+    return { path, text: await readFile(path, "utf8") };
+  } catch (error: any) {
+    if (error?.code === "ENOENT") return { path, text: "" };
+    return undefined;
+  }
+}
+
+async function overwriteDailyNote(path: string, content: string, ctx: any, source: "auto" | "manual"): Promise<boolean> {
+  try {
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, content, "utf8");
+    return true;
+  } catch {
     if (ctx.hasUI) ctx.ui.notify(`session-capture ${source} failed`, "warning");
     return false;
   }
-  return true;
 }
 
 export default function (pi: ExtensionAPI) {
@@ -322,7 +376,7 @@ export default function (pi: ExtensionAPI) {
     const bullet = buildBullet(entry);
     if (lastLoggedBullet === bullet) return "unchanged";
 
-    const dailyNote = await readDailyNote(pi);
+    const dailyNote = await readDailyNote();
     if (!dailyNote) {
       if (ctx.hasUI) ctx.ui.notify(`session-capture ${source} failed`, "warning");
       return "failed";
@@ -334,7 +388,7 @@ export default function (pi: ExtensionAPI) {
       return "unchanged";
     }
 
-    const result = await overwriteDailyNote(pi, dailyNote.path, content, ctx, source);
+    const result = await overwriteDailyNote(dailyNote.path, content, ctx, source);
     if (!result) return "failed";
 
     lastLoggedBullet = bullet;

@@ -1,13 +1,15 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
+import sessionCapture, {
   buildBullet,
   buildPendingKey,
   isChildSessionFile,
   parseEntry,
   parseIssueEntry,
+  resolveDailyNotePath,
   upsertLogEntries,
 } from "./index.ts";
 
@@ -91,6 +93,84 @@ function checkPendingKey(fixture: Fixture) {
   }
 }
 
+async function checkColdStartReplay() {
+  const home = await mkdtemp(join(tmpdir(), "session-capture-check-"));
+  const vault = join(home, "vaults", "Test");
+  const originalHome = process.env["HOME"];
+  const originalVault = process.env["PI_SESSION_CAPTURE_VAULT"];
+  const originalVaultPath = process.env["PI_SESSION_CAPTURE_VAULT_PATH"];
+  const originalConfig = process.env["PI_SESSION_CAPTURE_OBSIDIAN_CONFIG"];
+
+  try {
+    process.env["HOME"] = home;
+    process.env["PI_SESSION_CAPTURE_VAULT"] = "Test";
+    delete process.env["PI_SESSION_CAPTURE_VAULT_PATH"];
+    delete process.env["PI_SESSION_CAPTURE_OBSIDIAN_CONFIG"];
+
+    await mkdir(join(home, "Library", "Application Support", "obsidian"), { recursive: true });
+    await mkdir(join(vault, ".obsidian"), { recursive: true });
+    await writeFile(
+      join(home, "Library", "Application Support", "obsidian", "obsidian.json"),
+      JSON.stringify({ vaults: { test: { path: vault } } }),
+    );
+    await writeFile(join(vault, ".obsidian", "daily-notes.json"), JSON.stringify({ folder: "journal" }));
+
+    const pendingKey = "previous-session";
+    const pendingDir = join(home, ".local", "state", "pi-session-capture", "pending");
+    await mkdir(pendingDir, { recursive: true });
+    await writeFile(join(pendingDir, `${pendingKey}.json`), JSON.stringify({
+      summary: "Replayed without Obsidian running",
+      details: [],
+      endedAtMs: Date.now(),
+      profile: process.env["PI_CODING_AGENT_DIR"]?.endsWith("pi-work") ? "work" : "personal",
+    }));
+
+    const events = new Map<string, Function>();
+    const warnings: string[] = [];
+    const api = {
+      exec: () => { throw new Error("Obsidian CLI must not be called"); },
+      on: (name: string, handler: Function) => events.set(name, handler),
+      registerCommand: () => {},
+      registerTool: () => {},
+    };
+    sessionCapture(api as any);
+
+    await events.get("session_start")?.({}, {
+      hasUI: true,
+      sessionManager: {
+        getSessionFile: () => join(home, "current-session.jsonl"),
+        getSessionId: () => "current-session",
+      },
+      ui: { notify: (message: string, level: string) => level === "warning" && warnings.push(message) },
+    });
+
+    const dailyPath = await resolveDailyNotePath(home, "Test");
+    if (!dailyPath) fail("cold-start replay", "daily note path was not resolved");
+    const content = await readFile(dailyPath, "utf8");
+    if (!content.includes("Replayed without Obsidian running")) {
+      fail("cold-start replay", "pending summary was not written");
+    }
+    try {
+      await readFile(join(pendingDir, `${pendingKey}.json`), "utf8");
+      fail("cold-start replay", "pending summary was not cleared");
+    } catch (error: any) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    if (warnings.length > 0) fail("cold-start replay", `unexpected warnings: ${warnings.join(", ")}`);
+    console.log("PASS cold-start replay without Obsidian");
+  } finally {
+    if (originalHome === undefined) delete process.env["HOME"];
+    else process.env["HOME"] = originalHome;
+    if (originalVault === undefined) delete process.env["PI_SESSION_CAPTURE_VAULT"];
+    else process.env["PI_SESSION_CAPTURE_VAULT"] = originalVault;
+    if (originalVaultPath === undefined) delete process.env["PI_SESSION_CAPTURE_VAULT_PATH"];
+    else process.env["PI_SESSION_CAPTURE_VAULT_PATH"] = originalVaultPath;
+    if (originalConfig === undefined) delete process.env["PI_SESSION_CAPTURE_OBSIDIAN_CONFIG"];
+    else process.env["PI_SESSION_CAPTURE_OBSIDIAN_CONFIG"] = originalConfig;
+    await rm(home, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   const here = dirname(fileURLToPath(import.meta.url));
   const fixturePath = join(here, "session-capture.fixtures.json");
@@ -122,7 +202,8 @@ async function main() {
     console.log(`PASS ${fixture.name}`);
   }
 
-  console.log(`Validated ${fixtures.length} session-capture fixtures.`);
+  await checkColdStartReplay();
+  console.log(`Validated ${fixtures.length} session-capture fixtures plus cold-start replay.`);
 }
 
 main().catch((error) => {
