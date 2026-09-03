@@ -10,7 +10,7 @@ export type JournalEntry = {
 };
 
 const OBSIDIAN_BIN = process.env["PI_SESSION_CAPTURE_OBSIDIAN"]?.trim()
-  || (process.platform === "darwin" ? "/Applications/Obsidian.app/Contents/MacOS/obsidian" : "obsidian");
+  || (process.platform === "darwin" ? "/Applications/Obsidian.app/Contents/MacOS/obsidian-cli" : "obsidian");
 const DAILY_VAULT = process.env["PI_SESSION_CAPTURE_VAULT"]?.trim() || "Personal";
 const PROFILE = process.env["PI_CODING_AGENT_DIR"]?.endsWith("pi-work") ? "work" : "personal";
 const SUMMARY_LIMIT = 100;
