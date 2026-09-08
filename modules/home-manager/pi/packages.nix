@@ -30,7 +30,7 @@ in rec {
   workPackageSpecs =
     sharedPackageSpecs
     ++ [
-      (npm "pi-ask-user")
+      # (npm "pi-ask-user")
       "git:github.com/amfaro/pi-workflows"
       # "git:github.com/amfaro/pi-workflows@feature/disable-pi-subagents"
     ];
