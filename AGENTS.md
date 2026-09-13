@@ -1,169 +1,41 @@
 # AGENTS.md
 
-Nix flake for macOS (nix-darwin), NixOS, Home Manager.
+Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
-Current managed theme: rose-pine. If asked for the theme, answer `rose-pine`; change it in `modules/home-manager/managed-theme.nix` (`activeVariant`).
+- Theme: `rose-pine`; edit `activeVariant` in `modules/home-manager/managed-theme.nix`.
+- Telegram theme output: `~/.local/share/theme/telegram-managed.tdesktop-theme`. Choose it once in Chat Settings → Chat Wallpaper → Choose from file; it reloads on launch. Never manage `tdata` declaratively.
 
-Telegram theme support is partial/manual: rebuild writes `~/.local/share/theme/telegram-managed.tdesktop-theme`, then Telegram must be pointed at it once via Settings → Chat Settings → Chat Wallpaper → Choose from file. After that, Telegram reloads the file on relaunch. Do not try to edit Telegram's internal `tdata` state declaratively.
+## Commands
 
-## Quick Reference
-
-- **Apply macOS**: `mise update-system` (flake update + switch), `mise update-system --switch-only` (skip flake update), append `--pi-refresh` to refresh managed Pi packages, or use `mise update-system --pi-only` to refresh Pi without rebuilding
-- **Apply NixOS**: `sudo nixos-rebuild switch --impure --flake .#drummer`
-- **Lint**: `nix flake check`
-- **Search packages**: `nix search nixpkgs <name>`
-
-### Rebuild Task (mandatory)
-
-When applying the macOS system, use **only** the repo-local `mise` tasks: `mise update-system` for the normal workflow or `mise run nix-rebuild` for a rebuild without Pi refresh. Do not invoke `darwin-rebuild` or `nix flake update` directly.
-
-The task writes full output to a temp log and prints `nix-rebuild log: <path>` to stderr on start and finish. It exits with the rebuild's exit code.
-
-**Log access rules**:
-- Do **not** read or stream the log on success — exit code 0 is the confirmation.
-- Read the log **only when** (a) the task exits non-zero, or (b) the user explicitly asks to confirm/inspect output.
-- Always query the log with **targeted `rg`** (e.g. `rg -i 'error|fail|warning' "$log"`, `rg -n 'building' "$log" | tail`). Never `cat`/`tail` the whole file — rebuild logs are large.
-
-## Adding Packages
-
-**Preference order**: nix packages > homebrew
-
-**Package locations**:
-- `modules/home-manager/packages/default.nix` - General packages (all platforms)
-- `modules/home-manager/packages/darwin.nix` - macOS-only packages
-- `modules/home-manager/packages/linux.nix` - Linux-only packages
-
-**Process**:
-1. Search nixpkgs first: `nix search nixpkgs <package-name>`
-2. Add to appropriate file in `home.packages` list (alphabetically sorted)
-3. Apply: `mise update-system` (see Rebuild Task above)
+- macOS: `mise update-system`; `--switch-only` skips flake updates, `--pi-refresh` refreshes Pi, and `--pi-only` updates only Pi.
+- macOS rebuild without Pi: `mise run nix-rebuild`.
+- NixOS: `sudo nixos-rebuild switch --impure --flake .#drummer`.
+- Check: `nix flake check`; search: `nix search nixpkgs <name>`.
 
 ## Policy
 
-Never create git commits unless explicitly requested.
+- Apply macOS only with the repo-local commands above; never run `darwin-rebuild` or `nix flake update` directly.
+- Rebuild tasks print `nix-rebuild log: <path>` and return the rebuild status. Inspect logs only on failure/request with targeted `rg` (for example `rg -i 'error|fail|warning' "$log"`); never stream a whole log.
+- Prefer Nix to Homebrew. Search first, then add alphabetically to `modules/home-manager/packages/default.nix` (all), `darwin.nix` (macOS), or `linux.nix` (Linux).
+- Apply executable script/config/package changes immediately; use `--switch-only` when inputs are unchanged.
+- Never commit unless explicitly requested.
 
-After changes to scripts, configs, packages — run `mise update-system` so user can test immediately. Use `mise update-system --switch-only` if no inputs need updating.
+## Issue tracking
 
-## Landing the Plane (Session Completion)
+Use `bd` only—no Markdown TODOs, external trackers, or duplicates. Use `--json` programmatically.
 
-End session: finish issue tracking, quality checks, and hand-off. Do not treat wrap-up as a rebuild trigger, and do not push unless the user explicitly asks.
+1. Check `bd ready --json`, then claim with `bd update <id> --claim --json`.
+2. Implement and validate.
+3. File discoveries with `bd create "Title" --description="Context" -t bug|feature|task -p 0-4 --deps discovered-from:<id> --json`.
+4. Finish with `bd close <id> --reason="Done" --json`.
 
-**MANDATORY WORKFLOW:**
+Types: `bug|feature|task|epic|chore`; priorities: 0 critical, 1 high, 2 default, 3 low, 4 backlog. Writes auto-commit to Dolt; remote pull/push requires an explicit request.
 
-1. **File issues for remaining work** - Create issues for follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished, update in-progress
-4. **Review git state** - Check `git status` and summarize staged/unstaged changes
-5. **Hand off** - Share what changed, what was validated, and any next steps
+## Session completion
 
-**CRITICAL RULES:**
+1. File remaining work and update/close issues.
+2. Run relevant quality gates.
+3. Run `git status`; report staged/unstaged changes.
+4. Hand off changes, validation, and next steps.
 
-- Do **not** run `mise run nix-rebuild` or `mise run nix-rebuild -- --switch-only` as part of wrap-up unless the task itself changed executable config/scripts/packages and a rebuild is otherwise required.
-- Do **not** run `git push`, `bd sync`, or `bd dolt push` during wrap-up unless the user explicitly asks for that remote-sync step.
-- Say `ready to push when you are` **only if** a local commit already exists and push is the only remaining remote-sync step.
-- If changes are uncommitted, summarize git state and use wording like `ready to commit when you are` or just hand off without push wording.
-
-<!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:d4f96305 -->
-## Issue Tracking with bd (beads)
-
-**IMPORTANT**: Project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
-
-### Why bd?
-
-- Dependency-aware: Track blockers + relationships
-- Git-friendly: Dolt-powered version control, native sync
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking + confusion
-
-### Quick Start
-
-**Check for ready work:**
-
-```bash
-bd ready --json
-```
-
-**Create new issues:**
-
-```bash
-bd create "Issue title" --description="Detailed context" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" --description="What this issue is about" -p 1 --deps discovered-from:bd-123 --json
-```
-
-**Claim and update:**
-
-```bash
-bd update <id> --claim --json
-bd update bd-42 --priority 1 --json
-```
-
-**Complete work:**
-
-```bash
-bd close bd-42 --reason "Completed" --json
-```
-
-### Issue Types
-
-- `bug` - Broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
-
-### Priorities
-
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
-
-### Workflow for AI Agents
-
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim atomically**: `bd update <id> --claim`
-3. **Work**: Implement, test, document
-4. **New work found?** Create linked issue:
-   - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-
-### Auto-Sync
-
-bd auto-syncs via Dolt:
-
-- Each write auto-commits to Dolt history
-- Use `bd dolt push`/`bd dolt pull` for remote sync
-- No manual export/import needed
-
-### Important Rules
-
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
-
-See README.md and docs/QUICKSTART.md.
-
-## Landing the Plane (Session Completion)
-
-End session: finish issue tracking, quality checks, and hand-off. Wrap-up does not require a rebuild or remote push by default.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished, update in-progress
-4. **Review git state** - Check `git status` and summarize staged/unstaged changes
-5. **Hand off** - Share what changed, what was validated, and any next steps
-
-**CRITICAL RULES:**
-- Do **not** treat wrap-up as authority to run `mise run nix-rebuild` or `mise run nix-rebuild -- --switch-only`; only rebuild when the task itself requires it.
-- Do **not** run `bd dolt push` or `git push` unless the user explicitly asks for remote sync/push.
-- Say `ready to push when you are` **only if** a local commit already exists and push is the only remaining remote-sync step.
-- If changes are uncommitted, summarize git state and use wording like `ready to commit when you are` or just hand off without push wording.
-
-<!-- END BEADS INTEGRATION -->
+Wrap-up alone never authorizes a rebuild, `git push`, `bd sync`, or `bd dolt push`. Say `ready to push when you are` only if a local commit exists and push is the sole remaining step; otherwise say `ready to commit when you are` or simply hand off.
