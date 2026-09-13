@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
-import type { ExtensionAPI, ExtensionCommandContext, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  SessionEntry,
+  Skill,
+} from "@earendil-works/pi-coding-agent";
 
 type ToolInfo = ReturnType<ExtensionAPI["getAllTools"]>[number];
 
@@ -17,6 +22,7 @@ type CachedServer = {
 
 type ContextComponents = {
   systemPrompt: number;
+  skillMetadata: number;
   loadedSkills: number;
   toolSchemas: number;
   messages: number;
@@ -24,11 +30,23 @@ type ContextComponents = {
   toolResults: number;
 };
 
+type SkillMetadataEstimate = {
+  prompt: string;
+  estimatedTokens: number;
+  overheadTokens: number;
+  skills: Array<{ name: string; estimatedTokens: number; source: string }>;
+};
+
 const numberFormat = new Intl.NumberFormat("en-US");
 const estimatedImageChars = 4_800;
 
 function estimateChars(chars: number): number {
   return Math.ceil(chars / 4);
+}
+
+function formatSkillSource(skill: Skill): string {
+  if (skill.sourceInfo.origin === "package") return skill.sourceInfo.source;
+  return `${skill.sourceInfo.scope} local`;
 }
 
 function estimateContentTokens(content: unknown): number {
@@ -62,13 +80,41 @@ export function selectActiveTools(activeNames: string[], allTools: ToolInfo[]): 
   });
 }
 
+export function estimateSkillMetadata(systemPrompt: string, skills: Skill[]): SkillMetadataEstimate {
+  const listStart = systemPrompt.lastIndexOf("<available_skills>");
+  const listEnd = systemPrompt.indexOf("</available_skills>", listStart);
+  if (listStart < 0 || listEnd < 0) {
+    return { prompt: "", estimatedTokens: 0, overheadTokens: 0, skills: [] };
+  }
+
+  const introStart = systemPrompt.lastIndexOf("\n\nThe following skills provide specialized instructions", listStart);
+  const prompt = systemPrompt.slice(introStart >= 0 ? introStart : listStart, listEnd + "</available_skills>".length);
+  const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);
+  const blocks = prompt.match(/  <skill>\n[\s\S]*?\n  <\/skill>/g) ?? [];
+  const skillCosts = visibleSkills.map((skill, index) => ({
+    name: skill.name,
+    estimatedTokens: estimateChars(blocks[index]?.length ?? 0),
+    source: formatSkillSource(skill),
+  }));
+  const blockChars = blocks.reduce((total, block) => total + block.length, 0);
+
+  return {
+    prompt,
+    estimatedTokens: estimateChars(prompt.length),
+    overheadTokens: estimateChars(prompt.length - blockChars),
+    skills: skillCosts,
+  };
+}
+
 export function estimateContextComponents(
   systemPrompt: string,
   entries: SessionEntry[],
   toolSchemas: number,
+  skillMetadata = 0,
 ): ContextComponents {
   const components: ContextComponents = {
     systemPrompt: estimateChars(systemPrompt.length),
+    skillMetadata,
     loadedSkills: 0,
     toolSchemas,
     messages: 0,
@@ -183,15 +229,21 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
 
   const usage = ctx.getContextUsage();
   const currentTotal = usage?.tokens && usage.tokens > 0 ? usage.tokens : null;
+  const systemPrompt = ctx.getSystemPrompt();
+  const promptOptions = ctx.getSystemPromptOptions();
+  const skillMetadata = estimateSkillMetadata(systemPrompt, promptOptions.skills ?? []);
+  const baseSystemPrompt = skillMetadata.prompt ? systemPrompt.replace(skillMetadata.prompt, "") : systemPrompt;
   const components = estimateContextComponents(
-    ctx.getSystemPrompt(),
+    baseSystemPrompt,
     ctx.sessionManager.buildContextEntries(),
     toolSchemaTotal,
+    skillMetadata.estimatedTokens,
   );
   const componentTotal = sumComponents(components);
   const breakdownRows: Array<[string, string]> = [
-    ["effective system prompt", formatComponent(components.systemPrompt, currentTotal)],
-    ["separate loaded skills", formatComponent(components.loadedSkills, currentTotal)],
+    ["base system prompt", formatComponent(components.systemPrompt, currentTotal)],
+    ["available skill metadata", formatComponent(components.skillMetadata, currentTotal)],
+    ["loaded skill bodies", formatComponent(components.loadedSkills, currentTotal)],
     ["active tool schemas", formatComponent(components.toolSchemas, currentTotal)],
     ["conversation messages", formatComponent(components.messages, currentTotal)],
     ["tool calls", formatComponent(components.toolCalls, currentTotal)],
@@ -220,6 +272,16 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
     mcpRows.push(...cachedServers.map((server): [string, string] => [server.name, `${server.toolCount} cached tools`]));
   }
 
+  const skillRows: Array<[string, string, string]> = skillMetadata.skills
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((skill) => [skill.name, formatEstimate(skill.estimatedTokens), skill.source]);
+  if (skillRows.length > 0) skillRows.push(["listing overhead", formatEstimate(skillMetadata.overheadTokens), ""]);
+  const skillNameWidth = Math.max(...skillRows.map(([name]) => name.length));
+  const skillCostWidth = Math.max(...skillRows.map(([, cost]) => cost.length));
+  const formattedSkillRows = skillRows.map(
+    ([name, cost, source]) => `  ${name.padEnd(skillNameWidth)}  ${cost.padEnd(skillCostWidth)}  ${source}`.trimEnd(),
+  );
+
   const unknownSuffix = unknownCount ? `; ${unknownCount} unknown` : "";
   return [
     formatContext(ctx),
@@ -228,6 +290,11 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
     "",
     "Current-context breakdown:",
     ...formatRows(breakdownRows),
+    "",
+    skillRows.length > 0
+      ? `Available skill metadata: ${skillMetadata.skills.length} skills, estimated prompt cost ${formatEstimate(skillMetadata.estimatedTokens)}`
+      : "Available skill metadata: none in the effective system prompt",
+    ...formattedSkillRows,
     "",
     `Active tools: ${activeTools.length}, estimated schema cost ${formatEstimate(toolSchemaTotal)}${unknownSuffix}`,
     ...formatRows(toolRows),
@@ -286,10 +353,34 @@ if (process.argv.includes("--self-test")) {
     },
   ] as SessionEntry[];
 
+  const skills = [
+    {
+      name: "example",
+      description: "Example skill",
+      filePath: "/tmp/example/SKILL.md",
+      disableModelInvocation: false,
+      sourceInfo: {
+        path: "/tmp/example/SKILL.md",
+        source: "auto",
+        scope: "project",
+        origin: "top-level",
+      },
+    },
+  ] as Skill[];
+  const skillPrompt = `\n\nThe following skills provide specialized instructions for specific tasks.\n<available_skills>\n  <skill>\n    <name>example</name>\n    <description>Example skill</description>\n    <location>/tmp/example/SKILL.md</location>\n  </skill>\n</available_skills>`;
+  const skillMetadata = estimateSkillMetadata(`base${skillPrompt}`, skills);
+
   assert.equal(estimateToolTokens(tools[0]), 12);
   assert.deepEqual(selectActiveTools(["a"], tools).map((tool) => tool.name), ["a"]);
-  assert.deepEqual(estimateContextComponents("1234", entries, 12), {
+  assert.equal(skillMetadata.skills[0].name, "example");
+  assert.equal(skillMetadata.skills[0].source, "project local");
+  assert.ok(skillMetadata.skills[0].estimatedTokens > 0);
+  assert.ok(skillMetadata.overheadTokens > 0);
+  assert.equal(skillMetadata.estimatedTokens, estimateChars(skillPrompt.length));
+  assert.deepEqual(estimateSkillMetadata("base", skills).skills, []);
+  assert.deepEqual(estimateContextComponents("1234", entries, 12, skillMetadata.estimatedTokens), {
     systemPrompt: 1,
+    skillMetadata: skillMetadata.estimatedTokens,
     loadedSkills: 2,
     toolSchemas: 12,
     messages: 1,
