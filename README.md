@@ -41,6 +41,17 @@ git clone https://github.com/johnallen3d/system-config.git
 cd system-config
 ```
 
+## Secrets
+
+Secrets are managed in the Doppler `system-config` project. After authenticating the Doppler CLI, initialize this repository using its checked-in defaults:
+
+```bash
+doppler login
+doppler setup
+```
+
+Run commands that need secrets with `doppler run -- <command>`.
+
 Install `nix-darwin` and initial apply:
 
 ```bash
