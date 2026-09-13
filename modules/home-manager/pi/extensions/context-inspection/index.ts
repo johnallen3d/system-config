@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { homedir } from "node:os";
 import assert from "node:assert/strict";
 import type {
   ExtensionAPI,
@@ -34,7 +36,7 @@ type SkillMetadataEstimate = {
   prompt: string;
   estimatedTokens: number;
   overheadTokens: number;
-  skills: Array<{ name: string; estimatedTokens: number; source: string }>;
+  skills: Array<{ name: string; estimatedTokens: number; source: string; path: string; nixManaged: boolean }>;
 };
 
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -44,9 +46,32 @@ function estimateChars(chars: number): number {
   return Math.ceil(chars / 4);
 }
 
+function skillFolder(skill: Skill): string {
+  const file = skill.filePath || skill.sourceInfo.path || "";
+  if (!file || file.startsWith("<")) return skill.sourceInfo.path || "";
+  if (file.endsWith("/SKILL.md") || file.endsWith("/skill.md")) return dirname(file);
+  return dirname(file);
+}
+
+function shortenHome(path: string): string {
+  const home = homedir();
+  if (home && (path === home || path.startsWith(`${home}/`))) return `~${path.slice(home.length)}`;
+  return path;
+}
+
+function isNixManagedSkill(skill: Skill): boolean {
+  return [skill.filePath, skill.sourceInfo.path, skill.baseDir, skill.sourceInfo.baseDir].some((value) =>
+    typeof value === "string" && value.includes("/nix/store"),
+  );
+}
+
 function formatSkillSource(skill: Skill): string {
-  if (skill.sourceInfo.origin === "package") return skill.sourceInfo.source;
-  return `${skill.sourceInfo.scope} local`;
+  const base =
+    skill.sourceInfo.origin === "package" ? skill.sourceInfo.source : `${skill.sourceInfo.scope} local`;
+  const folder = skillFolder(skill);
+  const managed = isNixManagedSkill(skill) ? " [nix-managed]" : "";
+  if (!folder) return `${base}${managed}`;
+  return `${base} ${shortenHome(folder)}${managed}`;
 }
 
 function estimateContentTokens(content: unknown): number {
@@ -95,6 +120,8 @@ export function estimateSkillMetadata(systemPrompt: string, skills: Skill[]): Sk
     name: skill.name,
     estimatedTokens: estimateChars(blocks[index]?.length ?? 0),
     source: formatSkillSource(skill),
+    path: shortenHome(skillFolder(skill)),
+    nixManaged: isNixManagedSkill(skill),
   }));
   const blockChars = blocks.reduce((total, block) => total + block.length, 0);
 
@@ -283,6 +310,10 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
   );
 
   const unknownSuffix = unknownCount ? `; ${unknownCount} unknown` : "";
+  const hasNixManagedSkills = skillMetadata.skills.some((skill) => skill.nixManaged);
+  const skillLegend = hasNixManagedSkills
+    ? "Skill source: <scope> local <folder> ([nix-managed] = installed by this system-config repo via home-manager)."
+    : "Skill source: <scope> local <folder>.";
   return [
     formatContext(ctx),
     "Scope: current context only; /session reports cumulative usage.",
@@ -295,6 +326,7 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
       ? `Available skill metadata: ${skillMetadata.skills.length} skills, estimated prompt cost ${formatEstimate(skillMetadata.estimatedTokens)}`
       : "Available skill metadata: none in the effective system prompt",
     ...formattedSkillRows,
+    ...(skillRows.length > 0 ? [skillLegend] : []),
     "",
     `Active tools: ${activeTools.length}, estimated schema cost ${formatEstimate(toolSchemaTotal)}${unknownSuffix}`,
     ...formatRows(toolRows),
@@ -373,11 +405,39 @@ if (process.argv.includes("--self-test")) {
   assert.equal(estimateToolTokens(tools[0]), 12);
   assert.deepEqual(selectActiveTools(["a"], tools).map((tool) => tool.name), ["a"]);
   assert.equal(skillMetadata.skills[0].name, "example");
-  assert.equal(skillMetadata.skills[0].source, "project local");
+  assert.ok(skillMetadata.skills[0].source.startsWith("project local"));
+  assert.ok(skillMetadata.skills[0].source.includes("/tmp/example"));
+  assert.equal(skillMetadata.skills[0].path, "/tmp/example");
+  assert.equal(skillMetadata.skills[0].nixManaged, false);
   assert.ok(skillMetadata.skills[0].estimatedTokens > 0);
   assert.ok(skillMetadata.overheadTokens > 0);
   assert.equal(skillMetadata.estimatedTokens, estimateChars(skillPrompt.length));
   assert.deepEqual(estimateSkillMetadata("base", skills).skills, []);
+  assert.ok(
+    formatSkillSource({
+      name: "nix-skill",
+      description: "nix",
+      filePath: "/nix/store/hash-home-manager-files/.config/pi/skills/nix-skill/SKILL.md",
+      baseDir: "/nix/store/hash-home-manager-files/.config/pi/skills/nix-skill",
+      disableModelInvocation: false,
+      sourceInfo: {
+        path: "/nix/store/hash-home-manager-files/.config/pi/skills/nix-skill/SKILL.md",
+        source: "auto",
+        scope: "user",
+        origin: "top-level",
+      },
+    } as Skill).includes("[nix-managed]"),
+  );
+  assert.ok(
+    formatSkillSource({
+      name: "pkg-skill",
+      description: "pkg",
+      filePath: "/tmp/pkg/SKILL.md",
+      baseDir: "/tmp/pkg",
+      disableModelInvocation: false,
+      sourceInfo: { path: "/tmp/pkg/SKILL.md", source: "npm:pi-example", scope: "user", origin: "package" },
+    } as Skill).startsWith("npm:pi-example"),
+  );
   assert.deepEqual(estimateContextComponents("1234", entries, 12, skillMetadata.estimatedTokens), {
     systemPrompt: 1,
     skillMetadata: skillMetadata.estimatedTokens,
