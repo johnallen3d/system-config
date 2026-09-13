@@ -59,7 +59,6 @@
     ];
 
     brews = [
-      "beads"
       "borders"
       "cloudflared"
       # "dagger"

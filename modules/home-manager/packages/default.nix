@@ -6,7 +6,6 @@
 }: let
   managedTheme = import ../managed-theme.nix {inherit lib;};
   scripts = [
-    (import ./bin/bv.nix {inherit pkgs;})
     (import ./bin/chat-gpt-key.nix {
       inherit pkgs;
       inherit op_path;

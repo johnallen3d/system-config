@@ -22,14 +22,14 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 ## Issue tracking
 
-Use `bd` only—no Markdown TODOs, external trackers, or duplicates. Use `--json` programmatically.
+Use Fizzy only—no Markdown TODOs, other trackers, or duplicate cards. The project board is selected by `.fizzy.yaml`. Use the CLI's built-in `--jq` for programmatic output.
 
-1. Check `bd ready --json`, then claim with `bd update <id> --claim --json`.
-2. Implement and validate.
-3. File discoveries with `bd create "Title" --description="Context" -t bug|feature|task -p 0-4 --deps discovered-from:<id> --json`.
-4. Finish with `bd close <id> --reason="Done" --json`.
+1. Check existing work with `fizzy card list --all --jq '[.data[] | {number, title}]'` and search before creating a card.
+2. Claim an existing card with `fizzy card self-assign <number>` when appropriate.
+3. File discoveries with `fizzy card create --board <board-id> --title "Title" --description "Context"` and relate them in the originating card's description or comments.
+4. Finish with `fizzy card close <number>`.
 
-Types: `bug|feature|task|epic|chore`; priorities: 0 critical, 1 high, 2 default, 3 low, 4 backlog. Writes auto-commit to Dolt; remote pull/push requires an explicit request.
+Card commands use the card `number`, not its internal ID. Use board columns for workflow state and tags for type or priority when useful.
 
 ## Session completion
 
@@ -38,4 +38,4 @@ Types: `bug|feature|task|epic|chore`; priorities: 0 critical, 1 high, 2 default,
 3. Run `git status`; report staged/unstaged changes.
 4. Hand off changes, validation, and next steps.
 
-Wrap-up alone never authorizes a rebuild, `git push`, `bd sync`, or `bd dolt push`. Say `ready to push when you are` only if a local commit exists and push is the sole remaining step; otherwise say `ready to commit when you are` or simply hand off.
+Wrap-up alone never authorizes a rebuild or `git push`. Say `ready to push when you are` only if a local commit exists and push is the sole remaining step; otherwise say `ready to commit when you are` or simply hand off.

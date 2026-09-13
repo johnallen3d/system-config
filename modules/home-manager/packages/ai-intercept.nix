@@ -12,8 +12,8 @@ pkgs.rustPlatform.buildRustPackage {
       let
         baseName = baseNameOf path;
       in
-      # Exclude .beads directory and other non-source files
-      !(baseName == ".beads" || baseName == ".git" || baseName == "target");
+      # Exclude version-control metadata and build outputs
+      !(baseName == ".git" || baseName == "target");
   };
 
   cargoLock = {

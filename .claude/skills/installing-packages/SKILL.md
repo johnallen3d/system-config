@@ -217,7 +217,7 @@ pkgs.rustPlatform.buildRustPackage {
     src = srcPath;
     filter = path: type:
       let baseName = baseNameOf path;
-      in !(baseName == ".beads" || baseName == ".git" || baseName == "target");
+      in !(baseName == ".git" || baseName == "target");
   };
 
   cargoLock = {
