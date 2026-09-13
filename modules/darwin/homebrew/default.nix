@@ -41,10 +41,6 @@
         trusted = true;
       }
       {
-        name = "migsilva89/imark";
-        trusted = true;
-      }
-      {
         name = "nikitabobko/homebrew-tap";
         trusted = true;
       }
@@ -113,7 +109,6 @@
       "font-monaspace"
       "fluidvoice"
       "ghostty"
-      "migsilva89/imark/imark"
       "istat-menus"
       "karabiner-elements"
       # "kindavim"
