@@ -126,7 +126,6 @@ in
     if [ -z "$PI_CODING_AGENT_DIR" ]; then
       export PI_CODING_AGENT_DIR="$HOME/.config/pi"
     fi
-    export PONYTAIL_DEFAULT_MODE="''${PONYTAIL_DEFAULT_MODE:-off}"
 
     if [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-work" ]; then
       expected_stamp='${workPackageStamp}'
