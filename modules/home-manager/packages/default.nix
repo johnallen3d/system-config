@@ -86,6 +86,7 @@ in {
       gnugrep
       gotop
       harper
+      herdr
       home-manager
       # hurl
       imagemagick
