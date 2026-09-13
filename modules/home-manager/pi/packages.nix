@@ -13,7 +13,6 @@ in rec {
   personalPackageSpecs =
     sharedPackageSpecs
     ++ [
-      (npm "@ramarivera/pi-grok-build")
       # (npm "@samfp/pi-memory")
       # (npm "context-mode")
       # (npm "pi-claude-bridge")
