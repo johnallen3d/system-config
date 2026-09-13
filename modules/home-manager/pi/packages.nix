@@ -19,7 +19,7 @@ in rec {
       (npm "pi-mcp-adapter")
       (npm "pi-prompt-template-model")
       # (npm "pi-subagents")
-      (npm "pi-web-access")
+      (npm "pi-web-search")
     ];
 
   notesPackageSpecs = [
