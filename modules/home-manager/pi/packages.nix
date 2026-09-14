@@ -7,7 +7,6 @@ in rec {
     # (npm "@tmustier/pi-skill-creator")
     (npm "pi-headroom")
     # (npm "pi-intercom")
-    (npm "pi-markdown-preview")
   ];
 
   personalPackageSpecs =

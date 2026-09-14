@@ -3,6 +3,9 @@ onboarding = false
 [theme]
 name = "rose-pine"
 
+[ui.toast]
+delivery = "system"
+
 [ui]
 agent_panel_scope = "all"
 hide_tab_bar_when_single_tab = true
