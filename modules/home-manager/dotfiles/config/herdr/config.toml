@@ -1,0 +1,7 @@
+onboarding = false
+
+[theme]
+name = "rose-pine"
+
+[ui]
+agent_panel_scope = "all"

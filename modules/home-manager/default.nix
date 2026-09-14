@@ -44,6 +44,7 @@ in {
   imports = [
     ./packages
     ./claude-prompts.nix
+    ./herdr.nix
     ./obsidian.nix
     ./pi-extensions.nix
     ./pi-prompts.nix
