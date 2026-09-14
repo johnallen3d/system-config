@@ -5,6 +5,7 @@ name = "rose-pine"
 
 [ui]
 agent_panel_scope = "all"
+hide_tab_bar_when_single_tab = true
 
 [keys]
 # Keep the prefix bindings as fallbacks while moving the matching Ghostty
