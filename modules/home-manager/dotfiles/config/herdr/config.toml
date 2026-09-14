@@ -5,3 +5,25 @@ name = "rose-pine"
 
 [ui]
 agent_panel_scope = "all"
+
+[keys]
+# Keep the prefix bindings as fallbacks while moving the matching Ghostty
+# shortcuts to Herdr's persistent workspace, tabs, and panes.
+goto = ["prefix+g", "cmd+k"]
+new_worktree = ["prefix+shift+g", "cmd+n"]
+toggle_sidebar = ["prefix+b", "cmd+s"]
+new_tab = ["prefix+c", "cmd+t"]
+close_pane = ["prefix+x", "cmd+w"]
+split_vertical = ["prefix+v", "cmd+d"]
+split_horizontal = ["prefix+minus", "cmd+shift+d"]
+
+# Preserve the existing Vim-style Ghostty navigation and resize chords rather
+# than adopting the guide's bracket-based pane cycling.
+focus_pane_left = ["prefix+h", "cmd+ctrl+h"]
+focus_pane_down = ["prefix+j", "cmd+ctrl+j"]
+focus_pane_up = ["prefix+k", "cmd+ctrl+k"]
+focus_pane_right = ["prefix+l", "cmd+ctrl+l"]
+resize_pane_left = "cmd+ctrl+alt+h"
+resize_pane_down = "cmd+ctrl+alt+j"
+resize_pane_up = "cmd+ctrl+alt+k"
+resize_pane_right = "cmd+ctrl+alt+l"
