@@ -240,6 +240,16 @@ async function readCachedServers(): Promise<CachedServer[] | null> {
   }
 }
 
+function compareUsage(a: number | null, b: number | null): number {
+  if (a === null) return b === null ? 0 : 1;
+  if (b === null) return -1;
+  return b - a;
+}
+
+function sortByUsage<T>(items: readonly T[], getUsage: (item: T) => number | null, getLabel: (item: T) => string): T[] {
+  return [...items].sort((a, b) => compareUsage(getUsage(a), getUsage(b)) || getLabel(a).localeCompare(getLabel(b)));
+}
+
 function formatRows(rows: Array<[string, string]>): string[] {
   const width = Math.max(...rows.map(([label]) => label.length));
   return rows.map(([label, value]) => `  ${label.padEnd(width)}  ${value}`);
@@ -250,8 +260,7 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
   const knownEstimates = activeTools.flatMap((tool) => tool.estimatedTokens === null ? [] : [tool.estimatedTokens]);
   const toolSchemaTotal = knownEstimates.reduce((sum, tokens) => sum + tokens, 0);
   const unknownCount = activeTools.length - knownEstimates.length;
-  const toolRows = activeTools
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const toolRows = sortByUsage(activeTools, (tool) => tool.estimatedTokens, (tool) => tool.name)
     .map((tool): [string, string] => [tool.name, formatEstimate(tool.estimatedTokens)]);
 
   const usage = ctx.getContextUsage();
@@ -285,23 +294,25 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
   const direct = adapterTools.filter((tool) => tool.name !== "mcp" && tool.name !== "mcpScript");
   const directTokens = direct.reduce((sum, tool) => sum + (tool.estimatedTokens ?? 0), 0);
   const cachedServers = await readCachedServers();
-  const mcpRows: Array<[string, string]> = [
-    ["proxy gateway", proxy ? `active, ${formatEstimate(proxy.estimatedTokens)}` : "inactive"],
-    ["script gateway", script ? `active, ${formatEstimate(script.estimatedTokens)}` : "inactive"],
-    ["direct server tools", `${direct.length} active, ${formatEstimate(directTokens)}`],
+  const mcpRows: Array<[string, string, number | null]> = [
+    ["proxy gateway", proxy ? `active, ${formatEstimate(proxy.estimatedTokens)}` : "inactive", proxy?.estimatedTokens ?? null],
+    ["script gateway", script ? `active, ${formatEstimate(script.estimatedTokens)}` : "inactive", script?.estimatedTokens ?? null],
+    ["direct server tools", `${direct.length} active, ${formatEstimate(directTokens)}`, directTokens],
   ];
 
   if (cachedServers === null) {
-    mcpRows.push(["metadata cache", "unavailable: PI_CODING_AGENT_DIR not set"]);
+    mcpRows.push(["metadata cache", "unavailable: PI_CODING_AGENT_DIR not set", null]);
   } else if (cachedServers.length === 0) {
-    mcpRows.push(["metadata cache", "empty or unreadable"]);
+    mcpRows.push(["metadata cache", "empty or unreadable", null]);
   } else {
-    mcpRows.push(...cachedServers.map((server): [string, string] => [server.name, `${server.toolCount} cached tools`]));
+    mcpRows.push(...cachedServers.map((server): [string, string, number | null] => [server.name, `${server.toolCount} cached tools`, server.toolCount]));
   }
 
-  const skillRows: Array<[string, string, string]> = skillMetadata.skills
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((skill) => [skill.name, formatEstimate(skill.estimatedTokens), skill.source]);
+  const skillRows: Array<[string, string, string]> = sortByUsage(
+    skillMetadata.skills,
+    (skill) => skill.estimatedTokens,
+    (skill) => skill.name,
+  ).map((skill) => [skill.name, formatEstimate(skill.estimatedTokens), skill.source]);
   if (skillRows.length > 0) skillRows.push(["listing overhead", formatEstimate(skillMetadata.overheadTokens), ""]);
   const skillNameWidth = Math.max(...skillRows.map(([name]) => name.length));
   const skillCostWidth = Math.max(...skillRows.map(([, cost]) => cost.length));
@@ -331,8 +342,10 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
     `Active tools: ${activeTools.length}, estimated schema cost ${formatEstimate(toolSchemaTotal)}${unknownSuffix}`,
     ...formatRows(toolRows),
     "",
-    "MCP (cache counts are not live connection state):",
-    ...formatRows(mcpRows),
+    "MCP (sorted by estimated usage; cache counts are not live connection state):",
+    ...formatRows(
+      sortByUsage(mcpRows, ([, , usage]) => usage, ([label]) => label).map(([label, value]) => [label, value]),
+    ),
   ].join("\n");
 }
 
