@@ -28,12 +28,6 @@
   legacyHarnessExtensions = {
     supacode = mkOutOfStoreSymlink "${homeDir}/.pi/agent/extensions/supacode";
   };
-  legacyHarnessSkills = {
-    supacode-cli = mkOutOfStoreSymlink "${homeDir}/.pi/agent/skills/supacode-cli";
-  };
-  managedSkills = {
-    taskboard = ./pi/skills/taskboard;
-  };
   themes = import ./pi/themes.nix {inherit lib pkgs;};
   themeSource = theme:
     if theme ? source
@@ -65,22 +59,6 @@ in {
       (name: pkg:
         lib.nameValuePair ".config/pi-work/extensions/${name}" {source = pkg;})
       legacyHarnessExtensions)
-    // (lib.mapAttrs'
-      (name: pkg:
-        lib.nameValuePair ".config/pi/skills/${name}" {source = pkg;})
-      legacyHarnessSkills)
-    // (lib.mapAttrs'
-      (name: pkg:
-        lib.nameValuePair ".config/pi-work/skills/${name}" {source = pkg;})
-      legacyHarnessSkills)
-    // (lib.mapAttrs'
-      (name: pkg:
-        lib.nameValuePair ".config/pi/skills/${name}" {source = pkg;})
-      managedSkills)
-    // (lib.mapAttrs'
-      (name: pkg:
-        lib.nameValuePair ".config/pi-work/skills/${name}" {source = pkg;})
-      managedSkills)
     # Themes — personal context (pi-work symlinks to this dir, see pi-settings.nix)
     // (lib.mapAttrs'
       (name: theme:

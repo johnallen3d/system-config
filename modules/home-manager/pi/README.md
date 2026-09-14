@@ -38,7 +38,7 @@ The personal `usage-footer` reads Codex OAuth credentials from the active Pi pro
 
 ## Legacy harness integrations
 
-Some harness installers still hardcode `~/.pi/agent/extensions` and `~/.pi/agent/skills`.
+Some harness installers still hardcode `~/.pi/agent/extensions`.
 
 This repo bridges declared legacy entries from that location into both managed Pi profiles with Home Manager symlinks, so one install can show up in:
 
@@ -48,7 +48,6 @@ This repo bridges declared legacy entries from that location into both managed P
 Current bridge set:
 
 - extension: `supacode`
-- skill: `supacode-cli`
 
 ## Model usage summaries
 
