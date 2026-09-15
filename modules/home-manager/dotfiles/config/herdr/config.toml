@@ -9,6 +9,7 @@ delivery = "system"
 [ui]
 agent_panel_scope = "all"
 hide_tab_bar_when_single_tab = true
+sidebar_collapsed_mode = "hidden"
 
 [keys]
 # Keep the prefix bindings as fallbacks while moving the matching Ghostty
