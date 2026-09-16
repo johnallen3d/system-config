@@ -18,7 +18,6 @@
   herdrWorktrunk = pkgs.runCommand "herdr-worktrunk-0.7.0" {} ''
     cp -R ${herdrWorktrunkSrc}/. "$out"
     chmod -R u+w "$out"
-    install -m755 ${./herdr-worktrunk-cleanup-gone.sh} "$out/cleanup-gone.sh"
 
     cat >> "$out/config.sh" <<'EOF'
 
@@ -31,33 +30,12 @@
       printf '%s\n' "$value"
     }
 
-    # Print "true" when opening the picker should clean up safe worktrees whose
-    # configured upstream branch disappeared after fetching remote state.
-    worktrunk_cleanup_deleted_upstreams() {
-      local value
-
-      value=$(worktrunk_config_value cleanup_deleted_upstreams)
-      case "$value" in
-        true)
-          printf '%s\n' true
-          ;;
-        ""|false)
-          printf '%s\n' false
-          ;;
-        *)
-          printf '\033[33mWarning:\033[0m unsupported cleanup_deleted_upstreams %q; disabling cleanup\n' "$value" >&2
-          printf '%s\n' false
-          ;;
-      esac
-    }
     EOF
 
     substituteInPlace "$out/picker.sh" \
       --replace-fail \
         'source "$plugin_root/helpers.sh"' \
         'source "$plugin_root/helpers.sh"
-
-    "$plugin_root/cleanup-gone.sh"
 
     # The current-branch action always uses @. Other picker variants may override
     # Worktrunk'"'"'s default branch with a configured ref such as origin/main.
