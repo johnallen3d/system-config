@@ -12,29 +12,29 @@ hide_tab_bar_when_single_tab = true
 sidebar_collapsed_mode = "hidden"
 
 [keys]
-# Keep the prefix bindings as fallbacks while moving the matching Ghostty
-# shortcuts to Herdr's persistent workspace, tabs, and panes.
-goto = ["prefix+g", "cmd+k"]
-new_worktree = "prefix+shift+g"
-toggle_sidebar = ["prefix+b", "cmd+s"]
-new_tab = ["prefix+c", "cmd+t"]
-close_pane = ["prefix+x", "cmd+w"]
-split_vertical = ["prefix+v", "cmd+d"]
-split_horizontal = ["prefix+minus", "cmd+shift+d"]
+# Use direct macOS shortcuts for common workspace, tab, and pane actions.
+goto = "cmd+k"
+new_workspace = "cmd+ctrl+n"
+new_worktree = ""
+toggle_sidebar = "cmd+s"
+new_tab = "cmd+t"
+close_pane = "cmd+w"
+split_vertical = "cmd+d"
+split_horizontal = "cmd+shift+d"
 
 # Preserve the existing Vim-style Ghostty navigation and resize chords rather
 # than adopting the guide's bracket-based pane cycling.
-focus_pane_left = ["prefix+h", "cmd+ctrl+h"]
-focus_pane_down = ["prefix+j", "cmd+ctrl+j"]
-focus_pane_up = ["prefix+k", "cmd+ctrl+k"]
-focus_pane_right = ["prefix+l", "cmd+ctrl+l"]
+focus_pane_left = "cmd+ctrl+h"
+focus_pane_down = "cmd+ctrl+j"
+focus_pane_up = "cmd+ctrl+k"
+focus_pane_right = "cmd+ctrl+l"
 resize_pane_left = "cmd+ctrl+alt+h"
 resize_pane_down = "cmd+ctrl+alt+j"
 resize_pane_up = "cmd+ctrl+alt+k"
 resize_pane_right = "cmd+ctrl+alt+l"
 
 [[keys.command]]
-key = "cmd+n"
+key = "cmd+shift+n"
 type = "plugin_action"
 command = "worktrunk.open"
 description = "Worktree: switch or create from origin/main"

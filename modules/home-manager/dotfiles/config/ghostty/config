@@ -21,6 +21,7 @@ font-thicken = true
 keybind = clear
 
 keybind = global:cmd+`=toggle_quick_terminal
+keybind = super+n=new_window
 
 keybind = super+shift+r=reload_config
 keybind = super+shift+i=inspector:toggle
