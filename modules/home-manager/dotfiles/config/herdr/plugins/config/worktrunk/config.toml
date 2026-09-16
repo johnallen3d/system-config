@@ -1,2 +1,0 @@
-# Keep new branches independent of whichever branch is checked out locally.
-create_base = "origin/main"

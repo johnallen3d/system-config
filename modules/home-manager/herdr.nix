@@ -9,44 +9,12 @@
     mkdir -p "$out"
     cp -R ${pkgs.herdr.src}/skills/herdr/. "$out/"
   '';
-  herdrWorktrunkSrc = pkgs.fetchFromGitHub {
+  herdrWorktrunk = pkgs.fetchFromGitHub {
     owner = "devashish2203";
     repo = "herdr-worktrunk";
     rev = "v0.7.0";
     hash = "sha256-Tx++zTQ1z4H8dLdCjOZ1yX9QGY/i6M3Yvi39KGHDoH4=";
   };
-  herdrWorktrunk = pkgs.runCommand "herdr-worktrunk-0.7.0" {} ''
-    cp -R ${herdrWorktrunkSrc}/. "$out"
-    chmod -R u+w "$out"
-
-    cat >> "$out/config.sh" <<'EOF'
-
-    # Print the optional ref used as the base for branches created by the default
-    # picker. An empty value preserves Worktrunk's default-branch behavior.
-    worktrunk_create_base() {
-      local value
-
-      value=$(worktrunk_config_value create_base)
-      printf '%s\n' "$value"
-    }
-
-    EOF
-
-    substituteInPlace "$out/picker.sh" \
-      --replace-fail \
-        'source "$plugin_root/helpers.sh"' \
-        'source "$plugin_root/helpers.sh"
-
-    # The current-branch action always uses @. Other picker variants may override
-    # Worktrunk'"'"'s default branch with a configured ref such as origin/main.
-    if [[ $create_base != @ ]]; then
-      configured_create_base=$(worktrunk_create_base)
-      if [[ -n $configured_create_base ]]; then
-        create_base=$configured_create_base
-        create_base_label=$configured_create_base
-      fi
-    fi'
-  '';
   homeDir = config.home.homeDirectory;
   skillTargets = [
     ".agents/skills/herdr"
