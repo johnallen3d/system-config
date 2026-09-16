@@ -92,6 +92,7 @@
       ".pi"
       ".pi-lens"
       ".pry_history"
+      ".worktrees/"
     ];
   };
 

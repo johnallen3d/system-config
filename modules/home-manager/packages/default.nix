@@ -140,6 +140,7 @@ in {
       vscode-langservers-extracted
       websocat
       wget
+      worktrunk
       xc
       yamlfmt
       yamllint

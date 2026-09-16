@@ -1,0 +1,24 @@
+worktree-path = "{{ repo_path }}/.worktrees/{{ branch | sanitize }}"
+
+[list]
+json-schema = 2
+
+[remove]
+delete-branch = true
+
+# Fetch/prune remotes, then safely remove worktrees whose tracked upstream branch
+# was deleted. Worktrunk still refuses dirty or unintegrated worktrees.
+[[aliases.cleanup]]
+fetch = "git fetch --all --prune"
+
+[[aliases.cleanup]]
+remove = '''
+git worktree list --porcelain |
+  sed -n 's|^branch refs/heads/||p' |
+  while IFS= read -r branch; do
+    tracking=$(git for-each-ref --format='%(upstream:track)' "refs/heads/$branch")
+    if [ "$tracking" = "[gone]" ]; then
+      wt remove --foreground "$branch"
+    fi
+  done
+'''

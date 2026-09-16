@@ -1,0 +1,6 @@
+# Keep new branches independent of whichever branch is checked out locally.
+create_base = "origin/main"
+
+# Refresh remotes before the picker opens and remove only safe, inactive
+# worktrees whose configured upstream branch was deleted.
+cleanup_deleted_upstreams = true

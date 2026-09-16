@@ -15,7 +15,7 @@ sidebar_collapsed_mode = "hidden"
 # Keep the prefix bindings as fallbacks while moving the matching Ghostty
 # shortcuts to Herdr's persistent workspace, tabs, and panes.
 goto = ["prefix+g", "cmd+k"]
-new_worktree = ["prefix+shift+g", "cmd+n"]
+new_worktree = "prefix+shift+g"
 toggle_sidebar = ["prefix+b", "cmd+s"]
 new_tab = ["prefix+c", "cmd+t"]
 close_pane = ["prefix+x", "cmd+w"]
@@ -32,3 +32,9 @@ resize_pane_left = "cmd+ctrl+alt+h"
 resize_pane_down = "cmd+ctrl+alt+j"
 resize_pane_up = "cmd+ctrl+alt+k"
 resize_pane_right = "cmd+ctrl+alt+l"
+
+[[keys.command]]
+key = "cmd+n"
+type = "plugin_action"
+command = "worktrunk.open"
+description = "Worktree: switch or create from origin/main"

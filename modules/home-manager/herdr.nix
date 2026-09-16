@@ -9,6 +9,66 @@
     mkdir -p "$out"
     cp -R ${pkgs.herdr.src}/skills/herdr/. "$out/"
   '';
+  herdrWorktrunkSrc = pkgs.fetchFromGitHub {
+    owner = "devashish2203";
+    repo = "herdr-worktrunk";
+    rev = "v0.7.0";
+    hash = "sha256-Tx++zTQ1z4H8dLdCjOZ1yX9QGY/i6M3Yvi39KGHDoH4=";
+  };
+  herdrWorktrunk = pkgs.runCommand "herdr-worktrunk-0.7.0" {} ''
+    cp -R ${herdrWorktrunkSrc}/. "$out"
+    chmod -R u+w "$out"
+    install -m755 ${./herdr-worktrunk-cleanup-gone.sh} "$out/cleanup-gone.sh"
+
+    cat >> "$out/config.sh" <<'EOF'
+
+    # Print the optional ref used as the base for branches created by the default
+    # picker. An empty value preserves Worktrunk's default-branch behavior.
+    worktrunk_create_base() {
+      local value
+
+      value=$(worktrunk_config_value create_base)
+      printf '%s\n' "$value"
+    }
+
+    # Print "true" when opening the picker should clean up safe worktrees whose
+    # configured upstream branch disappeared after fetching remote state.
+    worktrunk_cleanup_deleted_upstreams() {
+      local value
+
+      value=$(worktrunk_config_value cleanup_deleted_upstreams)
+      case "$value" in
+        true)
+          printf '%s\n' true
+          ;;
+        ""|false)
+          printf '%s\n' false
+          ;;
+        *)
+          printf '\033[33mWarning:\033[0m unsupported cleanup_deleted_upstreams %q; disabling cleanup\n' "$value" >&2
+          printf '%s\n' false
+          ;;
+      esac
+    }
+    EOF
+
+    substituteInPlace "$out/picker.sh" \
+      --replace-fail \
+        'source "$plugin_root/helpers.sh"' \
+        'source "$plugin_root/helpers.sh"
+
+    "$plugin_root/cleanup-gone.sh"
+
+    # The current-branch action always uses @. Other picker variants may override
+    # Worktrunk'"'"'s default branch with a configured ref such as origin/main.
+    if [[ $create_base != @ ]]; then
+      configured_create_base=$(worktrunk_create_base)
+      if [[ -n $configured_create_base ]]; then
+        create_base=$configured_create_base
+        create_base_label=$configured_create_base
+      fi
+    fi'
+  '';
   homeDir = config.home.homeDirectory;
   skillTargets = [
     ".agents/skills/herdr"
@@ -54,6 +114,8 @@ in {
   # Install into both personal/work Pi and Claude profile pairs after their
   # mutable settings files have been initialized.
   home.activation.herdrIntegrations = lib.hm.dag.entryAfter ["piSettings" "piWorkSettings"] ''
+    ${herdr} plugin link ${herdrWorktrunk} --enabled
+
     for profile in "${homeDir}/.config/pi" "${homeDir}/.config/pi-work"; do
       PI_CODING_AGENT_DIR="$profile" ${herdr} integration install pi
     done
