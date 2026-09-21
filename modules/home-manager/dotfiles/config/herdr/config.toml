@@ -39,3 +39,9 @@ key = "cmd+shift+n"
 type = "plugin_action"
 command = "worktrunk.open"
 description = "Worktree: switch or create from the default branch"
+
+[[keys.command]]
+key = "prefix+shift+o"
+type = "shell"
+command = "herdr-open-wt"
+description = "Open all linked worktree checkouts in this space"
