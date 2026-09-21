@@ -17,7 +17,9 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Apply macOS only with the repo-local commands above; never run `darwin-rebuild` or `nix flake update` directly.
 - Rebuild tasks print `nix-rebuild log: <path>` and return the rebuild status. Inspect logs only on failure/request with targeted `rg` (for example `rg -i 'error|fail|warning' "$log"`); never stream a whole log.
 - Prefer Nix to Homebrew. Search first, then add alphabetically to `modules/home-manager/packages/default.nix` (all), `darwin.nix` (macOS), or `linux.nix` (Linux).
-- Apply executable script/config/package changes immediately; use `--switch-only` when inputs are unchanged.
+- Apply executable script/config/package changes immediately; use `--switch-only` when inputs are unchanged. A rebuild alone does not reload application config.
+- After applying Herdr config changes, run `herdr server reload-config`.
+- After applying Ghostty config changes, reload each running instance with its `reload_config` action (AppleScript on macOS, `SIGUSR2` on Linux); use the guarded platform behavior in `.mise/tasks/theme-switch` and skip when Ghostty is not running.
 - Never commit unless explicitly requested.
 
 ## Issue tracking
