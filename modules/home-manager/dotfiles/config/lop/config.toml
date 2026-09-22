@@ -1,0 +1,4 @@
+roots = ["~/dev/src"]
+scan_depth = 3
+fetch_timeout_seconds = 60
+check_processes = false
