@@ -1,5 +1,6 @@
 {
   home-manager,
+  lop,
   nix-darwin,
   nixpkgs,
   user,
@@ -64,7 +65,7 @@ in
             useUserPackages = true;
             backupFileExtension = "hm-backup";
             extraSpecialArgs = {
-              inherit brew_bin full_name home op_path op_ssh_sign_path;
+              inherit brew_bin full_name home lop op_path op_ssh_sign_path;
             };
             users.${user}.imports = [
               ../modules/home-manager

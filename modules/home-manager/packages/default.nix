@@ -1,5 +1,6 @@
 {
   lib,
+  lop,
   pkgs,
   op_path,
   ...
@@ -100,6 +101,7 @@ in {
       less
       lf
       # llm # broken in nixpkgs jan 2025 - test failures
+      lop.packages.${pkgs.stdenv.hostPlatform.system}.default
       lua-language-server
       markdownlint-cli2
       # marksman # broken in nixpkgs oct 2025 - dotnet build takes forever

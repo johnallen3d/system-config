@@ -12,10 +12,15 @@
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    lop = {
+      url = "github:johnallen3d/lop";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
     home-manager,
+    lop,
     nix-darwin,
     nixpkgs,
     ...
@@ -24,13 +29,13 @@
     full_name = "John Allen";
 
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
-      inherit home-manager nix-darwin nixpkgs user full_name;
+      inherit home-manager lop nix-darwin nixpkgs user full_name;
     };
     makeNixosSystem = import ./lib/make-nixos-system.nix {
-      inherit home-manager nixpkgs user full_name;
+      inherit home-manager lop nixpkgs user full_name;
     };
     makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
-      inherit home-manager nixpkgs user full_name;
+      inherit home-manager lop nixpkgs user full_name;
     };
   in {
     darwinConfigurations = {

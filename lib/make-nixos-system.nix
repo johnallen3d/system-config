@@ -1,5 +1,6 @@
 {
   home-manager,
+  lop,
   nixpkgs,
   user,
   full_name,
@@ -33,7 +34,7 @@ in
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.extraSpecialArgs = {
-            inherit user full_name;
+            inherit lop user full_name;
             op_path = "${pkgs._1password-cli}/bin/op";
             op_ssh_sign_path = "${pkgs._1password-gui}/bin/op-ssh-sign";
           };
