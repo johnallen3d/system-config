@@ -27,11 +27,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790108108,
-        "narHash": "sha256-2q3K1E5u69ukzCo8WAh5DrVpaqQzcYIdM1BBx0unbks=",
+        "lastModified": 1790173710,
+        "narHash": "sha256-9lrLiAqDMNcutCxXLJrAm1V5lIfEkY8yTe3W0mjpS/0=",
         "owner": "johnallen3d",
         "repo": "lop",
-        "rev": "be6bf6ab998bdf24ff09b1ed80629a66567830b1",
+        "rev": "21e680706aff3b75cbd240133738b0e6857c3163",
         "type": "github"
       },
       "original": {
