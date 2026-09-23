@@ -11,6 +11,12 @@ agent_panel_scope = "all"
 hide_tab_bar_when_single_tab = true
 sidebar_collapsed_mode = "hidden"
 
+[ui.sidebar.spaces]
+rows = [
+  ["state_icon", "workspace"],
+  ["branch"],
+]
+
 [keys]
 # Use direct macOS shortcuts for common workspace, tab, and pane actions.
 goto = "cmd+k"
