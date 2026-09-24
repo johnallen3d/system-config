@@ -118,6 +118,7 @@
       # "kindavim"
       # "lunar"
       "marked-app"
+      "meetingbar"
       # issues with macOS Sequoia
       # https://github.com/canonical/multipass/issues/3661#issuecomment-2363403467
       # "multipass"
