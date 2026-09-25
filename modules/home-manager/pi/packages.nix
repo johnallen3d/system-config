@@ -29,8 +29,7 @@ in rec {
     sharedPackageSpecs
     ++ [
       # (npm "pi-ask-user")
-      "git:github.com/amfaro/pi-workflows"
-      # "git:github.com/amfaro/pi-workflows@feature/disable-pi-subagents"
+      "git:github.com/amfaro/agent-kit"
     ];
 
   allPackageSpecs = lib.unique (personalPackageSpecs ++ workPackageSpecs);

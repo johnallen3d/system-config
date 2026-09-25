@@ -29,6 +29,8 @@ The personal `usage-footer` reads Codex OAuth credentials from the active Pi pro
 
 - `modules/home-manager/pi-settings.nix` — Pi settings + Claude bridge settings
 - `modules/home-manager/pi-extensions.nix` — managed Pi extensions, skills, themes, legacy harness bridges
+- `modules/home-manager/pi/packages.nix` — work profile installs `amfaro/agent-kit` from Git
+- `modules/home-manager/claude-prompts.nix` — work Claude profile installs the `agent-kit@amfaro` plugin; old checkout-backed skill/command links are removed
 - `modules/home-manager/pi/local-extensions.nix` — local Pi extensions
 - `modules/home-manager/pi/extensions/usage-footer/index.ts` — footer showing provider/subscription usage
 

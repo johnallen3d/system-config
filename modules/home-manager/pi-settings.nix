@@ -194,6 +194,14 @@ in {
     mkPiSettingsActivation "$HOME/.config/pi-work/settings.json" piWorkSettings
   );
 
+  # The renamed package uses a new Pi git cache key. Drop only the old work
+  # checkout once the managed package list no longer references it.
+  home.activation.piAgentKitMigration = lib.hm.dag.entryAfter ["piWorkSettings"] ''
+    if ! ${jq} -e '.packages | index("git:github.com/amfaro/pi-workflows")' "$HOME/.config/pi-work/settings.json" >/dev/null; then
+      $DRY_RUN_CMD rm -rf "$HOME/.config/pi-work/git/github.com/amfaro/pi-workflows"
+    fi
+  '';
+
   home.activation.piNotesSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
     mkPiSettingsActivation "$HOME/.config/pi-notes/settings.json" piNotesSettings
   );

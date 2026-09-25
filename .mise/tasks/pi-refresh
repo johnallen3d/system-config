@@ -8,6 +8,15 @@ if [ -z "$pi_bin" ]; then
   exit 1
 fi
 
+# Git packages run npm inside their checkout. Prefer Nix's node/npm over mise
+# shims there, which reject the freshly cloned (untrusted) mise.toml.
+for nix_bin in "$HOME/.nix-profile/bin" "/etc/profiles/per-user/$USER/bin" /run/current-system/sw/bin; do
+  if [ -x "$nix_bin/node" ] && [ -x "$nix_bin/npm" ]; then
+    export PATH="$nix_bin:$PATH"
+    break
+  fi
+done
+
 cleanup_legacy_global_packages() {
   local profile_context_mode="$HOME/.config/pi/npm/node_modules/context-mode"
   local legacy_context_mode="$HOME/.local/lib/node_modules/context-mode"

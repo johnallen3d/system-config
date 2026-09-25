@@ -14,7 +14,7 @@
     ".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
     ".config/claude-personal/commands/wrap.md".source = ./claude-prompts/wrap.md;
 
-    # Work-local prompts not maintained by pi-workflows.
+    # Work-local prompts not shipped by the agent-kit plugin.
     ".config/claude-gmatter/commands/implement.md".source = ./claude-prompts/implement.md;
     ".config/claude-gmatter/commands/issue-plan.md".source = ./claude-prompts/issue-plan.md;
     ".config/claude-gmatter/commands/issue-review.md".source = ./claude-prompts/issue-review.md;
@@ -28,28 +28,36 @@
     ".config/claude-personal/agents/reviewer.md".source = ./claude-agents/reviewer.md;
   };
 
-  # The checkout lives outside this flake, so discover new entries at activation
-  # time instead of reading it during pure Nix evaluation.
-  home.activation.claudePiWorkflowsLinks = lib.hm.dag.entryAfter ["writeBoundary"] ''
-    pi_workflows="$HOME/dev/src/amfaro/pi-workflows"
-    claude_workflows="$HOME/.config/claude-gmatter"
-    mkdir -p "$claude_workflows/skills" "$claude_workflows/commands"
-
-    link_workflows() {
-      local source_dir="$1" target_dir="$2" pattern="$3" entry name target
-      [ -d "$source_dir" ] || return 0
-      for entry in "$source_dir"/$pattern; do
-        [ -e "$entry" ] || continue
-        name="$(basename "$entry")"
-        target="$target_dir/$name"
-        if [ ! -e "$target" ] || [ -L "$target" ]; then
-          ln -sfn "$entry" "$target"
-        fi
+  # The plugin owns agent-kit skills and commands. Remove only the links made
+  # by the former checkout bridge; leave local and Home Manager entries alone.
+  home.activation.claudeAgentKitLinkMigration = lib.hm.dag.entryAfter ["claudeGmatterAgentKit"] ''
+    for dir in "$HOME/.config/claude-gmatter/skills" "$HOME/.config/claude-gmatter/commands"; do
+      [ -d "$dir" ] || continue
+      for entry in "$dir"/*; do
+        [ -L "$entry" ] || continue
+        case "$(readlink "$entry")" in
+          "$HOME/dev/src/amfaro/pi-workflows/skills/"*|\
+          "$HOME/dev/src/amfaro/pi-workflows/prompts/"*|\
+          "$HOME/dev/src/amfaro/agent-kit/skills/"*|\
+          "$HOME/dev/src/amfaro/agent-kit/prompts/"*)
+            $DRY_RUN_CMD rm -f "$entry"
+            ;;
+        esac
       done
-    }
+    done
+  '';
 
-    link_workflows "$pi_workflows/skills" "$claude_workflows/skills" '*'
-    link_workflows "$pi_workflows/prompts" "$claude_workflows/commands" '*.md'
+  # Claude keeps its own plugin state under the work profile. Install once,
+  # leaving marketplace/plugin updates to Claude rather than every rebuild.
+  home.activation.claudeGmatterAgentKit = lib.hm.dag.entryAfter ["claudeCodeSymlink"] ''
+    export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
+    claude="$HOME/.local/bin/claude"
+    if ! "$claude" plugin marketplace list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .name == "amfaro")' >/dev/null; then
+      $DRY_RUN_CMD "$claude" plugin marketplace add amfaro/agent-kit
+    fi
+    if ! "$claude" plugin list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .id == "agent-kit@amfaro")' >/dev/null; then
+      $DRY_RUN_CMD "$claude" plugin install agent-kit@amfaro --scope user
+    fi
   '';
 
   # Remove stale directory-symlinks before home.file writes individual files.
