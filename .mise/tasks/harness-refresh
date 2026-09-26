@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#MISE description="Refresh Pi packages and the work Claude Code agent-kit plugin"
+set -uo pipefail
+
+# Refresh both harnesses even if one fails, so a partial failure is visible.
+status=0
+if ! "$(dirname "$0")/../scripts/pi-refresh"; then
+  echo "Pi package refresh failed" >&2
+  status=1
+fi
+
+claude="$HOME/.local/bin/claude"
+if [ ! -x "$claude" ]; then
+  echo "Claude Code not found at $claude" >&2
+  status=1
+else
+  export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
+  if "$claude" plugin marketplace update amfaro; then
+    if ! "$claude" plugin update agent-kit@amfaro; then
+      echo "Claude Code agent-kit update failed" >&2
+      status=1
+    fi
+  else
+    echo "Claude Code marketplace update failed; skipping plugin update" >&2
+    status=1
+  fi
+fi
+
+if [ "$status" -eq 0 ]; then
+  echo "Done. Restart Claude Code to load the updated plugin."
+fi
+exit "$status"

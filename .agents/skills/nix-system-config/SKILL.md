@@ -32,7 +32,8 @@ nix build .#homeConfigurations."john.allen@pi-01"
 # Apply (macOS - repo-local mise task)
 mise update-system                         # updates flake first
 mise update-system --switch-only           # skip flake update
-mise update-system --switch-only --pi-refresh  # also refresh managed Pi packages
+mise update-system --switch-only --harness-refresh  # refresh Pi and work Claude Code agent-kit
+mise update-system --harness-only           # refresh both without rebuilding; restart Claude Code
 
 # Test single option
 nix eval .#darwinConfigurations.m4-mbp.config.services.sketchybar.enable

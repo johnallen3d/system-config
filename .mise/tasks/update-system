@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-#MISE description="Apply macOS config; optionally refresh nix-managed Pi packages"
+#MISE description="Apply macOS config; optionally refresh Pi and Claude Code harnesses"
 #USAGE flag "--switch-only" help="Skip nix flake update"
-#USAGE flag "--pi-refresh" help="Refresh nix-managed Pi packages after rebuild"
-#USAGE flag "--pi-only" help="Refresh nix-managed Pi packages without rebuilding"
+#USAGE flag "--harness-refresh" help="Refresh Pi packages and work Claude Code plugin after rebuild"
+#USAGE flag "--harness-only" help="Refresh Pi packages and work Claude Code plugin without rebuilding"
 set -euo pipefail
 
-if [[ "${usage_pi_only:-false}" == "true" ]]; then
-  exec mise run pi-refresh
+if [[ "${usage_harness_only:-false}" == "true" ]]; then
+  exec mise run harness-refresh
 fi
 
 if [[ "${usage_switch_only:-false}" == "true" ]]; then
@@ -15,6 +15,6 @@ else
   mise run nix-rebuild
 fi
 
-if [[ "${usage_pi_refresh:-false}" == "true" ]]; then
-  mise run pi-refresh
+if [[ "${usage_harness_refresh:-false}" == "true" ]]; then
+  mise run harness-refresh
 fi

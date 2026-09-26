@@ -68,10 +68,11 @@ nix \
 mise update-system
 # skip flake input update
 mise update-system --switch-only
-# also refresh nix-managed Pi packages
-mise update-system --switch-only --pi-refresh
-# refresh Pi packages without rebuilding
-mise update-system --pi-only
+# also refresh Pi packages and the work Claude Code agent-kit plugin
+mise update-system --switch-only --harness-refresh
+# refresh both harnesses without rebuilding (or run mise run harness-refresh)
+mise update-system --harness-only
+# restart Claude Code to load the updated plugin
 
 # on NixOS
 sudo nixos-rebuild switch --impure --flake ~/dev/src/system-config/.#

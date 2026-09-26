@@ -7,7 +7,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 ## Commands
 
-- macOS: `mise update-system`; `--switch-only` skips flake updates, `--pi-refresh` refreshes Pi, and `--pi-only` updates only Pi.
+- macOS: `mise update-system`; `--switch-only` skips flake updates, `--harness-refresh` refreshes Pi and work Claude Code after the rebuild, and `--harness-only` refreshes both without rebuilding (`mise run harness-refresh` also works). Restart Claude Code after a plugin update.
 - macOS rebuild without Pi: `mise run nix-rebuild`.
 - NixOS: `sudo nixos-rebuild switch --impure --flake .#drummer`.
 - Check: `nix flake check`; search: `nix search nixpkgs <name>`.
