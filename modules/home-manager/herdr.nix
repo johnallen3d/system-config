@@ -22,6 +22,7 @@
     version = "0.1.0";
     src = projectPickerSrc;
     cargoHash = "sha256-DS3GQVhJf4wnFAfe1iPTlWspMW0bzKrzFGc/SIiyzgY=";
+    nativeCheckInputs = [pkgs.git];
   };
   # A local link does not run the plugin's Cargo build; package the binary
   # ahead of time and link a manifest pointing at the Nix-built executable.
