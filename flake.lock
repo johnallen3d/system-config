@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "herdrProjectPicker": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790375532,
+        "narHash": "sha256-mB7OFuJK3mTy2O2a1dSkdmJ+J4lTm/JH+wQfvLqx5nQ=",
+        "owner": "johnallen3d",
+        "repo": "herdr-project-picker",
+        "rev": "8ef17a593a8cf8627509649fe8ca0c6aba45bf73",
+        "type": "github"
+      },
+      "original": {
+        "owner": "johnallen3d",
+        "repo": "herdr-project-picker",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -78,6 +94,7 @@
     },
     "root": {
       "inputs": {
+        "herdrProjectPicker": "herdrProjectPicker",
         "home-manager": "home-manager",
         "lop": "lop",
         "nix-darwin": "nix-darwin",

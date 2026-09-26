@@ -41,6 +41,12 @@ resize_pane_up = "cmd+ctrl+alt+k"
 resize_pane_right = "cmd+ctrl+alt+l"
 
 [[keys.command]]
+key = "prefix+p"
+type = "plugin_action"
+command = "herdr.project-picker.open"
+description = "Projects: open bookmarked project"
+
+[[keys.command]]
 key = "cmd+shift+n"
 type = "plugin_action"
 command = "worktrunk.open"

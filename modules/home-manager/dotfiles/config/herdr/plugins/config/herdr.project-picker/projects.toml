@@ -1,0 +1,24 @@
+# Managed by Home Manager; edit this file in system-config and rebuild.
+# The plugin's add-current action replaces managed symlinks when it writes.
+version = 1
+
+[[sessions.personal.projects]]
+path = "~/dev/src/system-config"
+
+[[sessions.personal.projects]]
+path = "~/dev/src/playground/pi-cielo"
+
+[[sessions.personal.projects]]
+path = "~/dev/src/playground/home-assistant"
+
+[[sessions.work.projects]]
+path = "~/dev/src/amfaro/calc"
+
+[[sessions.work.projects]]
+path = "~/dev/src/amfaro/dataops"
+
+[[sessions.work.projects]]
+path = "~/dev/src/amfaro/global-catalog"
+
+[[sessions.work.projects]]
+path = "~/dev/src/amfaro/agent-kit"

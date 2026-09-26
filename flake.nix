@@ -16,10 +16,15 @@
       url = "github:johnallen3d/lop";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    herdrProjectPicker = {
+      url = "github:johnallen3d/herdr-project-picker";
+      flake = false;
+    };
   };
 
   outputs = {
     home-manager,
+    herdrProjectPicker,
     lop,
     nix-darwin,
     nixpkgs,
@@ -29,13 +34,13 @@
     full_name = "John Allen";
 
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
-      inherit home-manager lop nix-darwin nixpkgs user full_name;
+      inherit home-manager herdrProjectPicker lop nix-darwin nixpkgs user full_name;
     };
     makeNixosSystem = import ./lib/make-nixos-system.nix {
-      inherit home-manager lop nixpkgs user full_name;
+      inherit home-manager herdrProjectPicker lop nixpkgs user full_name;
     };
     makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
-      inherit home-manager lop nixpkgs user full_name;
+      inherit home-manager herdrProjectPicker lop nixpkgs user full_name;
     };
   in {
     darwinConfigurations = {

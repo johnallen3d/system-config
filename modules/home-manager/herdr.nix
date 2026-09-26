@@ -1,5 +1,6 @@
 {
   config,
+  herdrProjectPicker,
   lib,
   pkgs,
   ...
@@ -15,6 +16,21 @@
     rev = "v0.7.0";
     hash = "sha256-Tx++zTQ1z4H8dLdCjOZ1yX9QGY/i6M3Yvi39KGHDoH4=";
   };
+  projectPickerSrc = herdrProjectPicker;
+  projectPickerBinary = pkgs.rustPlatform.buildRustPackage {
+    pname = "herdr-project-picker";
+    version = "0.1.0";
+    src = projectPickerSrc;
+    cargoHash = "sha256-DS3GQVhJf4wnFAfe1iPTlWspMW0bzKrzFGc/SIiyzgY=";
+  };
+  # A local link does not run the plugin's Cargo build; package the binary
+  # ahead of time and link a manifest pointing at the Nix-built executable.
+  projectPickerPlugin = pkgs.runCommand "herdr-project-picker-plugin" {} ''
+    mkdir -p "$out/bin"
+    sed '/^\[\[build\]\]$/,/^$/d; s#\./target/release/herdr-project-picker#./bin/herdr-project-picker#g' \
+      ${projectPickerSrc}/herdr-plugin.toml > "$out/herdr-plugin.toml"
+    ln -s ${projectPickerBinary}/bin/herdr-project-picker "$out/bin/herdr-project-picker"
+  '';
   homeDir = config.home.homeDirectory;
   skillTargets = [
     ".agents/skills/herdr"
@@ -61,6 +77,7 @@ in {
   # mutable settings files have been initialized.
   home.activation.herdrIntegrations = lib.hm.dag.entryAfter ["piSettings" "piWorkSettings"] ''
     ${herdr} plugin link ${herdrWorktrunk} --enabled
+    ${herdr} plugin link ${projectPickerPlugin} --enabled
 
     for profile in "${homeDir}/.config/pi" "${homeDir}/.config/pi-work"; do
       PI_CODING_AGENT_DIR="$profile" ${herdr} integration install pi
