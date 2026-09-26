@@ -3,11 +3,11 @@
     "herdrProjectPicker": {
       "flake": false,
       "locked": {
-        "lastModified": 1790428258,
-        "narHash": "sha256-paXRZJreCsxTs3f6zKc2nXhuye+WuvtRMhkXrFWoJKw=",
+        "lastModified": 1790429208,
+        "narHash": "sha256-G5a56t8Z1RbccyyakJ0vNg47JKz2l/wi2PA4KJ/hHt0=",
         "owner": "johnallen3d",
         "repo": "herdr-project-picker",
-        "rev": "d775d6c03d470699cc4442a85d75e844d7e6e764",
+        "rev": "cec140d95d1025966e73de673ef63fe92935adc5",
         "type": "github"
       },
       "original": {

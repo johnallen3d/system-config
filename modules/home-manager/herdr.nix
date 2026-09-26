@@ -21,7 +21,7 @@
     pname = "herdr-project-picker";
     version = "0.1.0";
     src = projectPickerSrc;
-    cargoHash = "sha256-DS3GQVhJf4wnFAfe1iPTlWspMW0bzKrzFGc/SIiyzgY=";
+    cargoLock.lockFile = "${projectPickerSrc}/Cargo.lock";
     nativeCheckInputs = [pkgs.git];
   };
   # A local link does not run the plugin's Cargo build; package the binary
