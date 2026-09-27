@@ -19,7 +19,6 @@ rows = [
 
 [keys]
 # Use direct macOS shortcuts for common workspace, tab, and pane actions.
-goto = "cmd+k"
 new_workspace = "cmd+ctrl+n"
 new_worktree = ""
 open_worktree = "prefix+o"
@@ -41,7 +40,7 @@ resize_pane_up = "cmd+ctrl+alt+k"
 resize_pane_right = "cmd+ctrl+alt+l"
 
 [[keys.command]]
-key = "prefix+p"
+key = "cmd+k"
 type = "plugin_action"
 command = "herdr.project-picker.open"
 description = "Projects: open bookmarked project"
