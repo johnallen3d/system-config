@@ -27,6 +27,8 @@ new_tab = "cmd+t"
 close_pane = "cmd+w"
 split_vertical = "cmd+d"
 split_horizontal = "cmd+shift+d"
+copy_mode = "cmd+shift+c"
+edit_scrollback = "cmd+shift+e"
 
 # Preserve the existing Vim-style Ghostty navigation and resize chords rather
 # than adopting the guide's bracket-based pane cycling.
