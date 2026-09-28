@@ -10,12 +10,37 @@
     mkdir -p "$out"
     cp -R ${pkgs.herdr.src}/skills/herdr/. "$out/"
   '';
-  herdrWorktrunk = pkgs.fetchFromGitHub {
+  herdrWorktrunkSrc = pkgs.fetchFromGitHub {
     owner = "devashish2203";
     repo = "herdr-worktrunk";
     rev = "v0.7.0";
     hash = "sha256-Tx++zTQ1z4H8dLdCjOZ1yX9QGY/i6M3Yvi39KGHDoH4=";
   };
+  # Match the project picker's centered popup instead of a cramped split
+  # or a full-pane overlay. Other Worktrunk actions remain downward splits.
+  herdrWorktrunk = pkgs.runCommand "herdr-worktrunk-popup-picker" {} ''
+    cp -R ${herdrWorktrunkSrc}/. "$out"
+    chmod -R u+w "$out"
+    substituteInPlace "$out/open.sh" \
+      --replace-fail 'args+=(--placement split --direction down)' \
+      'if [[ $entrypoint == picker-* ]]; then [[ -n $HERDR_WORKSPACE_ID ]] && args+=(--env "HERDR_WORKSPACE_ID=$HERDR_WORKSPACE_ID"); else args+=(--placement split --direction down); fi'
+    awk '
+      /^\[\[panes\]\]/ { picker = 0 }
+      /^id = "picker-/ { picker = 1 }
+      picker && /^placement = "split"$/ {
+        print "placement = \"popup\""
+        print "width = \"80%\""
+        print "height = \"70%\""
+        next
+      }
+      { print }
+    ' "$out/herdr-plugin.toml" > "$out/herdr-plugin.toml.new"
+    mv "$out/herdr-plugin.toml.new" "$out/herdr-plugin.toml"
+    test "$(grep -c '^placement = "popup"$' "$out/herdr-plugin.toml")" -eq 3
+    substituteInPlace "$out/picker.sh" \
+      --replace-fail $'worktrunk_fzf_layout\n' \
+      $'worktrunk_fzf_layout\nWORKTRUNK_FZF_LAYOUT=(--border=none --margin=0)\n'
+  '';
   projectPickerSrc = herdrProjectPicker;
   projectPickerBinary = pkgs.rustPlatform.buildRustPackage {
     pname = "herdr-project-picker";
