@@ -81,7 +81,7 @@ in {
       };
       serviceConfig = {
         ProgramArguments = [
-          "/Applications/mpv.app/Contents/MacOS/mpv"
+          "${pkgs.mpv}/Applications/mpv.app/Contents/MacOS/mpv"
           "--idle=yes"
           "--input-ipc-server=/tmp/mpv-music.sock"
           "--no-resume-playback"

@@ -20,6 +20,7 @@ in {
       agent-desktop
       macchina
       mas
+      mpv
       (python3.withPackages (ps: [ps.pyobjc-framework-Quartz]))
     ]
     ++ scripts;
