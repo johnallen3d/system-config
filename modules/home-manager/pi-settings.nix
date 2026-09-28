@@ -214,8 +214,8 @@ in {
     mkPiSettingsActivation "$HOME/.config/pi-work/claude-bridge.json" claudeBridgeSettings
   );
 
-  home.file.".config/pi/mcp.json".source = jsonFormat.generate "pi-mcp.json" piMcpSettings;
-  home.file.".config/pi-work/mcp.json".source = jsonFormat.generate "pi-work-mcp.json" piWorkMcpSettings;
+  home.file.".config/pi/mcp-adapter.json".source = jsonFormat.generate "pi-mcp-adapter.json" piMcpSettings;
+  home.file.".config/pi-work/mcp-adapter.json".source = jsonFormat.generate "pi-work-mcp-adapter.json" piWorkMcpSettings;
 
   # home.file handles all extension symlinks (nix store paths) for both contexts.
   # Themes are identical so pi-work just symlinks to the personal themes dir.
