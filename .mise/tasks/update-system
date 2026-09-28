@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Apply macOS config; optionally refresh Pi and Claude Code harnesses"
 #USAGE flag "--switch-only" help="Skip nix flake update"
+#USAGE flag "--picker-only" help="Update only the Herdr project picker input"
 #USAGE flag "--harness-refresh" help="Refresh Pi packages and work Claude Code plugin after rebuild"
 #USAGE flag "--harness-only" help="Refresh Pi packages and work Claude Code plugin without rebuilding"
 set -euo pipefail
@@ -9,8 +10,15 @@ if [[ "${usage_harness_only:-false}" == "true" ]]; then
   exec mise run harness-refresh
 fi
 
+if [[ "${usage_switch_only:-false}" == "true" && "${usage_picker_only:-false}" == "true" ]]; then
+  echo "--switch-only and --picker-only are mutually exclusive" >&2
+  exit 2
+fi
+
 if [[ "${usage_switch_only:-false}" == "true" ]]; then
   mise run nix-rebuild --switch-only
+elif [[ "${usage_picker_only:-false}" == "true" ]]; then
+  mise run nix-rebuild --picker-only
 else
   mise run nix-rebuild
 fi

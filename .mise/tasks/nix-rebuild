@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 #MISE description="Apply darwin-rebuild (updates flake by default); logs to temp file"
 #USAGE flag "--switch-only" help="Skip nix flake update"
+#USAGE flag "--picker-only" help="Update only the Herdr project picker input"
 set -uo pipefail
+
+if [[ "${usage_switch_only:-false}" == "true" && "${usage_picker_only:-false}" == "true" ]]; then
+  echo "--switch-only and --picker-only are mutually exclusive" >&2
+  exit 2
+fi
 
 raise_nofile_limit() {
   local hard_limit
@@ -22,7 +28,9 @@ printf 'nix-rebuild log: %s\n' "$log" >&2
   # Raise to hard limit so flake input fetches do not hit tarball-cache EMFILE.
   raise_nofile_limit
 
-  if [[ "${usage_switch_only:-}" != "true" ]]; then
+  if [[ "${usage_picker_only:-false}" == "true" ]]; then
+    nix flake update herdrProjectPicker
+  elif [[ "${usage_switch_only:-false}" != "true" ]]; then
     nix flake update
   fi
   sudo darwin-rebuild switch --impure --flake "$HOME/dev/src/system-config/"
