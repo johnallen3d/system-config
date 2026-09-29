@@ -164,6 +164,8 @@
     defaultProvider = "openai-codex";
     defaultModel = "gpt-6-sol";
     compaction.enabled = false;
+    # agent-kit bundles pi-mcp-adapter, which owns /mcp in the work profile.
+    extensions = ["-builtin:mcp"];
     packages = piPackages.workPackageSpecs;
     theme = managedTheme.activeTheme.name;
     quietStartup = true;
