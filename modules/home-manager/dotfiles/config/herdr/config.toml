@@ -9,12 +9,21 @@ delivery = "system"
 [ui]
 agent_panel_scope = "all"
 hide_tab_bar_when_single_tab = true
+mouse_capture = false
 sidebar_collapsed_mode = "hidden"
 
+# Section headings (Spaces / Agents) are not configurable in Herdr 0.9.1;
+# these layouts only control the entries below them.
 [ui.sidebar.spaces]
 rows = [
   ["state_icon", "workspace"],
-  ["branch"],
+  [{ token = "branch", fg = "__HERDR_BRANCH_COLOR__" }],
+]
+
+[ui.sidebar.agents]
+rows = [
+  ["state_icon", "machine", "workspace", "tab"],
+  ["state_text", { token = "agent", fg = "__HERDR_AGENT_COLOR__" }],
 ]
 
 [keys]

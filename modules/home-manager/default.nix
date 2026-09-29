@@ -24,6 +24,9 @@ ${managedTheme.ghosttyThemes.${variant}}
 EOF'') managedTheme.variantNames}
     substituteInPlace "$out/ghostty/config" \
       --replace-fail "theme = tokyo-night-moon" "theme = ${managedTheme.activeTheme.hyphenName}"
+    substituteInPlace "$out/herdr/config.toml" \
+      --replace-fail "__HERDR_BRANCH_COLOR__" "${managedTheme.activeTheme.palette.blue}" \
+      --replace-fail "__HERDR_AGENT_COLOR__" "${managedTheme.activeTheme.palette.accent}"
     substituteInPlace "$out/borders/bordersrc" \
       --replace-fail "__BORDERS_ACTIVE_COLOR__" "${managedTheme.activeBordersActiveColor}" \
       --replace-fail "__BORDERS_ACTIVE_ACCENT__" "${managedTheme.activeBordersActiveAccent}"
