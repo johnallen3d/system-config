@@ -8,6 +8,7 @@ delivery = "system"
 
 [ui]
 agent_panel_scope = "all"
+agent_panel_sort = "priority"
 hide_tab_bar_when_single_tab = true
 mouse_capture = false
 sidebar_collapsed_mode = "hidden"
