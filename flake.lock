@@ -3,11 +3,11 @@
     "herdrProjectPicker": {
       "flake": false,
       "locked": {
-        "lastModified": 1790722097,
-        "narHash": "sha256-bxMJBz+rqVdDmfCdQZDpJVq76r5mN2FhbWss40JxZ/A=",
+        "lastModified": 1790785629,
+        "narHash": "sha256-HZZ73HkU2xewQ4acjLy3tIF574hGZX93OsO8P2RRY8c=",
         "owner": "johnallen3d",
         "repo": "herdr-project-picker",
-        "rev": "66f3ced07be8accaeea136d519b6f2f9a178b3f8",
+        "rev": "70219b8e1157f85dab8a8b9cf3b67907e6ca969d",
         "type": "github"
       },
       "original": {
@@ -23,11 +23,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790775610,
-        "narHash": "sha256-vIexOe2vzi+l0TStoe2EiSTN3C/3gI3+P6Y5vcabui8=",
+        "lastModified": 1790779675,
+        "narHash": "sha256-wswYlVaovcex/IMSqGrN/GLlvHN29bgoIXMBoMyLmTI=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "bf3f7a120d14e1bc51f4e1c3739fa6f3a98e9233",
+        "rev": "b75a0703c9ef757386ec3807a55106c2ca64f770",
         "type": "github"
       },
       "original": {
