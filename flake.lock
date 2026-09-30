@@ -98,7 +98,25 @@
         "home-manager": "home-manager",
         "lop": "lop",
         "nix-darwin": "nix-darwin",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "yem": "yem"
+      }
+    },
+    "yem": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790799820,
+        "narHash": "sha256-bQXUH2Pyg+dZRO1Zf/Kqg8vsm+Pp2Z33KuZiqZO42rk=",
+        "ref": "main",
+        "rev": "59fc42e053e8b3fb73076627ce79b3891547ddeb",
+        "revCount": 82,
+        "type": "git",
+        "url": "https://github.com/johnallen3d/cue.git"
+      },
+      "original": {
+        "ref": "main",
+        "type": "git",
+        "url": "https://github.com/johnallen3d/cue.git"
       }
     }
   },

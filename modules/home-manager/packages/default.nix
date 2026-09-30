@@ -3,6 +3,7 @@
   lop,
   pkgs,
   op_path,
+  yem,
   ...
 }: let
   managedTheme = import ../managed-theme.nix {inherit lib;};
@@ -27,7 +28,10 @@
   ai-intercept = import ./ai-intercept.nix {inherit pkgs;};
   context-mode = import ./context-mode.nix {inherit pkgs;};
   pi = import ./pi.nix {inherit pkgs;};
-  yem = import ./yem.nix {inherit pkgs;};
+  yemPackage = import ./yem.nix {
+    inherit pkgs;
+    src = yem;
+  };
   nail-parquet = import ./nail-parquet.nix {inherit pkgs;};
   llm-usage = import ./llm-usage.nix {inherit pkgs;};
   pinned_yt_dlp = import ./yt-dlp.nix {inherit pkgs;};
@@ -156,7 +160,7 @@ in {
     ]
     ++ scripts
     ++ [context-mode llm-usage nail-parquet pi vlt]
-    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ai-intercept yem];
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ai-intercept yemPackage];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
   # programs.bacon = {

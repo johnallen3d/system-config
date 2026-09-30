@@ -4,6 +4,7 @@
   lop,
   nix-darwin,
   nixpkgs,
+  yem,
   user,
   full_name,
 }: {
@@ -66,7 +67,7 @@ in
             useUserPackages = true;
             backupFileExtension = "hm-backup";
             extraSpecialArgs = {
-              inherit brew_bin full_name herdrProjectPicker home lop op_path op_ssh_sign_path;
+              inherit brew_bin full_name herdrProjectPicker home lop yem op_path op_ssh_sign_path;
             };
             users.${user}.imports = [
               ../modules/home-manager

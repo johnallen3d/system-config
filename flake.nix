@@ -16,6 +16,11 @@
       url = "github:johnallen3d/lop";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yem = {
+      # Upstream is private and still named cue; use Git's configured credentials.
+      url = "git+https://github.com/johnallen3d/cue.git?ref=main";
+      flake = false;
+    };
     herdrProjectPicker = {
       url = "github:johnallen3d/herdr-project-picker";
       flake = false;
@@ -28,19 +33,20 @@
     lop,
     nix-darwin,
     nixpkgs,
+    yem,
     ...
   }: let
     user = "john.allen";
     full_name = "John Allen";
 
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
-      inherit home-manager herdrProjectPicker lop nix-darwin nixpkgs user full_name;
+      inherit home-manager herdrProjectPicker lop nix-darwin nixpkgs yem user full_name;
     };
     makeNixosSystem = import ./lib/make-nixos-system.nix {
-      inherit home-manager herdrProjectPicker lop nixpkgs user full_name;
+      inherit home-manager herdrProjectPicker lop nixpkgs yem user full_name;
     };
     makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
-      inherit home-manager herdrProjectPicker lop nixpkgs user full_name;
+      inherit home-manager herdrProjectPicker lop nixpkgs yem user full_name;
     };
   in {
     darwinConfigurations = {

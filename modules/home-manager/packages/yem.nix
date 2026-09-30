@@ -1,32 +1,27 @@
-{pkgs, ...}:
-let
-  srcPath = /Users/john.allen/dev/src/playground/yem;
+{
+  pkgs,
+  src,
+  ...
+}: let
+  manifest = builtins.fromTOML (builtins.readFile "${src}/Cargo.toml");
 in
-pkgs.rustPlatform.buildRustPackage {
-  pname = "yem";
-  version = "0.1.0";
+  pkgs.rustPlatform.buildRustPackage {
+    pname = "yem";
+    version = manifest.package.version;
 
-  src = pkgs.lib.cleanSourceWith {
-    src = srcPath;
-    filter = path: type:
-      let
-        baseName = baseNameOf path;
-      in
-      # Exclude version-control metadata and build outputs
-      !(baseName == ".git" || baseName == "target");
-  };
+    inherit src;
 
-  cargoLock = {
-    lockFile = /Users/john.allen/dev/src/playground/yem/Cargo.lock;
-  };
+    cargoLock = {
+      lockFile = "${src}/Cargo.lock";
+    };
 
-  nativeBuildInputs = [
-    pkgs.cmake
-  ];
+    nativeBuildInputs = [
+      pkgs.cmake
+    ];
 
-  meta = with pkgs.lib; {
-    description = "Minimal TUI for browsing and controlling the mpv playlist queue";
-    license = licenses.mit;
-    mainProgram = "yem";
-  };
-}
+    meta = with pkgs.lib; {
+      description = "Minimal TUI for browsing and controlling the mpv playlist queue";
+      license = licenses.mit;
+      mainProgram = "yem";
+    };
+  }
