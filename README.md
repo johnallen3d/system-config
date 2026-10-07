@@ -11,10 +11,12 @@ Set hostname to a known (configured) value:
 - drummer (NixOS)
 - xcel (Debian, Home Manager)
 - pi-01 (Debian/Pi, Home Manager)
-- omarchy (Arch/Omarchy, isolated standalone Home Manager POC)
+- omarchy (Arch/Omarchy, standalone Home Manager)
 
-For Omarchy, use the [minimal POC guide](docs/omarchy-poc.md), not the macOS
-bootstrap or shared dotfile setup below. Its login is `johna`, not `john.allen`.
+For Omarchy, use the [standalone Home Manager guide](docs/omarchy-poc.md), not
+the macOS bootstrap or shared dotfile setup below. Its login is `johna`, not
+`john.allen`. See the [VNC guide](docs/omarchy-vnc.md) for direct Tailscale access
+to its existing desktop.
 
 Install Nix:
 

@@ -2,6 +2,11 @@
 
 Tracked in [Fizzy #688](https://app.fizzy.do/6284043/cards/688).
 
+The results below describe the original isolated POC. The current host profile
+also manages an opt-in [VNC user service](omarchy-vnc.md). Uninstalling the
+whole Home Manager profile would remove that service too; do not repeat the
+POC teardown on a host with additional managed resources unintentionally.
+
 Host: Omarchy 4.0.4 (Arch-based), `x86_64-linux`; SSH: `johna@omarchy`;
 home: `/home/johna`. This is not a NixOS conversion.
 
@@ -25,7 +30,7 @@ Live testing on Omarchy succeeded with Nix 2.35.2:
 - All 25 recorded shell/desktop file fingerprints remained unchanged, including
   after the Nix bootstrap. The flake lock and host module were also unchanged.
 
-The original POC profile is currently active. This proves standalone user-level
+The original POC was restored after testing. This proves standalone user-level
 package/dotfile management on Omarchy, not GUI/GPU or full-system management.
 Application configuration and package compatibility outside this scope still
 need their own testing.

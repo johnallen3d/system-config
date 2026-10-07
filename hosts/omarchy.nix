@@ -1,5 +1,7 @@
 {pkgs, ...}: {
-  # Deliberately no shared imports: Omarchy owns the shell and desktop.
+  # Only opt-in host modules: Omarchy still owns the shell and desktop.
+  imports = [../modules/home-manager/omarchy-vnc.nix];
+
   home = {
     username = "johna";
     homeDirectory = "/home/johna";
@@ -11,9 +13,6 @@
     # This CLI-only POC must not install or configure GPU drivers.
     gpu.enable = false;
   };
-
-  # Do not generate user services or session environment for the desktop.
-  systemd.user.enable = false;
 
   # Keep the proof small and avoid desktop MIME database integration.
   xdg.mime.enable = false;

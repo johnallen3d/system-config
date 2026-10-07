@@ -69,7 +69,7 @@
     };
 
     homeConfigurations = {
-      # Keep the Omarchy POC isolated from the shared dotfiles and desktop setup.
+      # Keep Omarchy isolated from the shared dotfiles and desktop setup.
       "johna@omarchy" = home-manager.lib.homeManagerConfiguration {
         pkgs = import nixpkgs {system = "x86_64-linux";};
         modules = [./hosts/omarchy.nix];
