@@ -11,6 +11,10 @@ Set hostname to a known (configured) value:
 - drummer (NixOS)
 - xcel (Debian, Home Manager)
 - pi-01 (Debian/Pi, Home Manager)
+- omarchy (Arch/Omarchy, isolated standalone Home Manager POC)
+
+For Omarchy, use the [minimal POC guide](docs/omarchy-poc.md), not the macOS
+bootstrap or shared dotfile setup below. Its login is `johna`, not `john.allen`.
 
 Install Nix:
 
