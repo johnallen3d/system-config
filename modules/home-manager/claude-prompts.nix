@@ -8,7 +8,11 @@
 # Model mapping (pi.dev → Claude Code), used when porting prompt frontmatter:
 #   gpt-5.6-terra       → opus    (Claude Opus 4.x family alias)
 #   gpt-5.6-luna  → haiku   (Claude Haiku 4.x family alias)
-{lib, pkgs, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
   home.file = {
     # Personal prompts → ~/.config/claude-personal/commands/
     ".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
@@ -49,16 +53,22 @@
 
   # Claude keeps its own plugin state under the work profile. Install once,
   # leaving marketplace/plugin updates to Claude rather than every rebuild.
-  home.activation.claudeGmatterAgentKit = lib.hm.dag.entryAfter ["claudeCodeSymlink"] ''
-    export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
-    claude="$HOME/.local/bin/claude"
-    if ! "$claude" plugin marketplace list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .name == "amfaro")' >/dev/null; then
-      $DRY_RUN_CMD "$claude" plugin marketplace add amfaro/agent-kit
-    fi
-    if ! "$claude" plugin list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .id == "agent-kit@amfaro")' >/dev/null; then
-      $DRY_RUN_CMD "$claude" plugin install agent-kit@amfaro --scope user
-    fi
-  '';
+  home.activation.claudeGmatterAgentKit = lib.hm.dag.entryAfter ["claudeCodeSymlink"] (
+    if pkgs.stdenv.hostPlatform.isDarwin
+    then ''
+      export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
+      claude="$HOME/.local/bin/claude"
+      if ! "$claude" plugin marketplace list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .name == "amfaro")' >/dev/null; then
+        $DRY_RUN_CMD "$claude" plugin marketplace add amfaro/agent-kit
+      fi
+      if ! "$claude" plugin list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .id == "agent-kit@amfaro")' >/dev/null; then
+        $DRY_RUN_CMD "$claude" plugin install agent-kit@amfaro --scope user
+      fi
+    ''
+    else ''
+      echo "Work agent-kit: run agent-work-setup after configuring GitHub access."
+    ''
+  );
 
   # Remove stale directory-symlinks before home.file writes individual files.
   # Matches the pattern in pi-prompts.nix:9-17.
@@ -76,7 +86,7 @@
 
   # Work profile shares the personal agents/ directory via symlink.
   # Mirrors pi-settings.nix:131-132 (pi-work/themes → pi/themes).
-  home.activation.claudeGmatterAgentsLink = lib.hm.dag.entryAfter ["writeBoundary"] ''
+  home.activation.claudeGmatterAgentsLink = lib.hm.dag.entryAfter ["linkGeneration"] ''
     ln -sfn "$HOME/.config/claude-personal/agents" "$HOME/.config/claude-gmatter/agents"
   '';
 

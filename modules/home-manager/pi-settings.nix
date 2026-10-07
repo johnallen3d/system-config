@@ -54,7 +54,11 @@
     };
     provider = {
       strictMcpConfig = true;
-      pathToClaudeCodeExecutable = "${config.home.homeDirectory}/.local/bin/claude";
+      pathToClaudeCodeExecutable = "${config.home.homeDirectory}/${
+        if pkgs.stdenv.hostPlatform.isDarwin
+        then ".local"
+        else ".nix-profile"
+      }/bin/claude";
     };
   };
 
@@ -133,6 +137,20 @@
           "x-api-key" = "hello-world";
         };
       };
+    };
+  };
+
+  # Linux has no macOS Keychain or Mac-local headroom/calc services. Credentials
+  # for subprocess MCP servers come from the selected launch environment.
+  linuxMcpSettings = {
+    mcpServers = {
+      inherit (piMcpSettings.mcpServers) cloudflare-api mcp-server-motherduck;
+      mcp-server-doppler = piWorkMcpSettings.mcpServers.doppler;
+    };
+  };
+  linuxWorkMcpSettings = {
+    mcpServers = {
+      inherit (piWorkMcpSettings.mcpServers) cloudflare-api doppler mcp-server-motherduck calc;
     };
   };
 
@@ -218,8 +236,16 @@ in {
     mkPiSettingsActivation "$HOME/.config/pi-work/claude-bridge.json" claudeBridgeSettings
   );
 
-  home.file.".config/pi/mcp-adapter.json".source = jsonFormat.generate "pi-mcp-adapter.json" piMcpSettings;
-  home.file.".config/pi-work/mcp-adapter.json".source = jsonFormat.generate "pi-work-mcp-adapter.json" piWorkMcpSettings;
+  home.file.".config/pi/mcp-adapter.json".source = jsonFormat.generate "pi-mcp-adapter.json" (
+    if pkgs.stdenv.hostPlatform.isDarwin
+    then piMcpSettings
+    else linuxMcpSettings
+  );
+  home.file.".config/pi-work/mcp-adapter.json".source = jsonFormat.generate "pi-work-mcp-adapter.json" (
+    if pkgs.stdenv.hostPlatform.isDarwin
+    then piWorkMcpSettings
+    else linuxWorkMcpSettings
+  );
 
   # home.file handles all extension symlinks (nix store paths) for both contexts.
   # Themes are identical so pi-work just symlinks to the personal themes dir.

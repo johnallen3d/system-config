@@ -22,10 +22,15 @@
   mkOutOfStoreSymlink = config.lib.file.mkOutOfStoreSymlink;
   homeDir = config.home.homeDirectory;
   localExtensions = import ./pi/local-extensions.nix {inherit lib;};
-  localPersonalExtensions = import ./pi/local-personal-extensions.nix {inherit lib;};
+  # The Mac usage footer falls back across profile auth files. Do not enable
+  # that cross-profile credential read on standalone Linux agent hosts.
+  localPersonalExtensions =
+    lib.filterAttrs
+    (name: _: config.codingAgents.enableCrossProfileUsageFooter || name != "usage-footer")
+    (import ./pi/local-personal-extensions.nix {inherit lib;});
   localWorkExtensions = import ./pi/local-work-extensions.nix {};
   extensions = import ./pi/packaged-extensions.nix {};
-  legacyHarnessExtensions = {
+  legacyHarnessExtensions = lib.optionalAttrs config.codingAgents.enableLegacyHarnessBridges {
     supacode = mkOutOfStoreSymlink "${homeDir}/.pi/agent/extensions/supacode";
   };
   themes = import ./pi/themes.nix {inherit lib pkgs;};
@@ -34,7 +39,20 @@
     then theme.source
     else "${theme.pkg}/themes/${theme.file}";
 in {
-  home.file =
+  options.codingAgents = {
+    enableCrossProfileUsageFooter = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable the personal usage footer that falls back across Pi profile credentials.";
+    };
+    enableLegacyHarnessBridges = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Link externally installed legacy harness extensions into managed Pi profiles.";
+    };
+  };
+
+  config.home.file =
     # Shared extensions — personal context
     (lib.mapAttrs'
       (name: pkg:

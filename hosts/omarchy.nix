@@ -1,6 +1,9 @@
 {pkgs, ...}: {
   # Only opt-in host modules: Omarchy still owns the shell and desktop.
-  imports = [../modules/home-manager/omarchy-vnc.nix];
+  imports = [
+    ../modules/home-manager/coding-agents.nix
+    ../modules/home-manager/omarchy-vnc.nix
+  ];
 
   home = {
     username = "johna";
@@ -10,7 +13,7 @@
 
   targets.genericLinux = {
     enable = true;
-    # This CLI-only POC must not install or configure GPU drivers.
+    # User-level CLI/services must not install or configure GPU drivers.
     gpu.enable = false;
   };
 

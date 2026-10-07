@@ -3,7 +3,8 @@
 Tracked in [Fizzy #688](https://app.fizzy.do/6284043/cards/688).
 
 The results below describe the original isolated POC. The current host profile
-also manages an opt-in [VNC user service](omarchy-vnc.md). Uninstalling the
+also manages an opt-in [VNC user service](omarchy-vnc.md) and
+[work/personal coding agents](omarchy-agents.md). Uninstalling the
 whole Home Manager profile would remove that service too; do not repeat the
 POC teardown on a host with additional managed resources unintentionally.
 
@@ -12,7 +13,8 @@ home: `/home/johna`. This is not a NixOS conversion.
 
 The `johna@omarchy` flake output imports only `hosts/omarchy.nix`, not the
 shared package/dotfile suite. It installs Nix-managed `jq` and the Home Manager
-CLI, and links `~/.config/nix-home-manager-poc/status.json`. Home Manager also
+CLI, and links `~/.config/nix-home-manager-poc/status.json`; the current profile
+also opts into the agent and VNC modules linked above. Home Manager also
 creates its profile/session-variable support and XDG `.keep` placeholders.
 Shell configuration, Hyprland, Omarchy themes, GPU integration, MIME databases,
 and user systemd management are deliberately excluded. Arch's `/usr/bin/jq`

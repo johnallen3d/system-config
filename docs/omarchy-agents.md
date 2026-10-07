@@ -1,0 +1,153 @@
+# Omarchy coding agents
+
+Tracked in [Fizzy #692](https://app.fizzy.do/6284043/cards/692).
+Builds on the [standalone Home Manager setup](omarchy-poc.md); this is not NixOS.
+
+`hosts/omarchy.nix` opts into `modules/home-manager/coding-agents.nix`, without
+importing the Mac's shell/desktop configuration. Pi uses the same Nix-managed
+latest-upstream wrapper and package declarations as the Mac. Claude Code comes
+from the locked nixpkgs input, with its unfree allowance limited to that package.
+Nix Node/npm, Git, Python, ripgrep, and uv are available to agent subprocesses.
+Pi exports `SHARP_IGNORE_GLOBAL_LIBVIPS=1` so package installation uses Sharp's
+bundled binaries rather than attempting a source build against Omarchy's system
+libvips. This is required for the work kit's image/transformer dependencies.
+
+## Profiles
+
+| Command | Pi directory | Claude directory |
+| --- | --- | --- |
+| `pi-personal`, `claude-personal` | `~/.config/pi` | `~/.config/claude-personal` |
+| `pi-work`, `claude-work` | `~/.config/pi-work` | `~/.config/claude-gmatter` |
+
+Explicit launchers set **both** `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`, even
+when called from a shell with the other profile selected. Bare `pi`/`claude`
+default to personal, while respecting an explicitly selected directory. Use the
+named launchers when switching contexts. Project mise environments can still
+select the paired directories as they do on the Mac.
+
+John currently has no personal Claude account. The personal Claude profile stays
+installed but dormant; this is intentional, not an authentication failure. Use
+`claude-work` for Claude Code and `pi-personal` for personal work. Bare `claude`
+still defaults to the dormant personal profile, so use the explicit work launcher.
+Personal Claude-dependent prompts/bridge calls are unavailable until a personal
+account is added; they must not silently fall back to work credentials.
+
+Pi settings, package declarations, themes, extensions, prompts, Claude subagent
+roles, keybindings, and ELI5 output style are shared with the Mac. Linux gets a
+host-appropriate `/pkg-install` prompt. The Claude bridge points at the Nix
+profile executable. Mac-only legacy extension links, Keychain commands, local
+headroom, and local calc endpoints are not enabled here. The Mac usage footer
+is also excluded because its credential fallback reads across Pi profiles. Remote MCP endpoints
+still require their own login or environment credentials; no Mac tokens are
+transferred. Session-capture's Obsidian journal integration requires a separately
+configured vault/CLI; this setup does not install Obsidian.
+
+Authentication files and sessions remain writable, machine-local, and outside
+Home Manager. Existing `~/.pi/agent` and `~/.claude` data are **not** migrated.
+Claude settings are seeded without overwriting user-owned keys. No personal
+credentials, cached plugins, or sessions are shared with the work profile.
+
+## Apply
+
+On Omarchy as `johna`, from the system-config checkout (currently the staged
+working-tree snapshot at `~/dev/src/system-config-poc`):
+
+```bash
+. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+export NIX_CONFIG='extra-experimental-features = nix-command flakes'
+nix build --no-write-lock-file \
+  'path:.#homeConfigurations."johna@omarchy".activationPackage' --out-link result-agents
+./result-agents/activate
+```
+
+Launchers are linked into `~/.local/bin`, already on Omarchy's PATH, as well as
+the Nix profile. Shell startup files are not modified. On first activation,
+review existing unmanaged `~/.local/bin/pi`/`claude` and back them up outside PATH
+before applying. Do not use forced replacement or Home Manager's blanket backup
+flag. Unexpected collisions should fail. Run `hash -r` in an existing Bash shell
+if it has cached an old command.
+
+## Account status: available-account setup complete
+
+GitHub access and work-kit provisioning have been completed and verified on
+Omarchy. **Do not repeat the installation steps below.** Latest verification:
+
+| Profile | Authentication state |
+| --- | --- |
+| Personal Pi | Credentials configured for its default OpenAI provider |
+| Work Pi | Credentials configured for its default OpenAI Codex provider |
+| Work Claude Code | Logged in through claude.ai |
+| Personal Claude Code | Intentionally dormant: no personal account at present |
+
+No further agent-login steps are required for the accounts John currently has.
+If a personal Claude account is added later, run `claude-personal auth login` on
+Omarchy and approve that account in the browser. This is optional, not a blocker.
+Do not copy credential files between profiles or from the Mac.
+
+Shared skills and profile-specific MCP services remain separately tracked in
+Fizzy #692; no installation commands need to be repeated.
+
+## Provisioning reference (agent/operator only)
+
+Provisioning, credential-helper configuration, package installation, and testing
+are agent/operator work, not a manual checklist for John. Only interactive account
+approvals require John.
+
+The work Pi package and Claude plugin both use the private `amfaro/agent-kit`
+repository. On a fresh host, configure GitHub access with an authorized account first:
+
+```bash
+gh auth login
+gh auth setup-git
+git ls-remote https://github.com/amfaro/agent-kit HEAD
+agent-work-setup
+```
+
+`agent-work-setup` checks Git access before installing the work Pi package and
+`agent-kit@amfaro` Claude plugin. It is safe to rerun: existing marketplaces and
+plugins are updated rather than added again. On Linux, Home Manager does not attempt private
+plugin installation during activation. Work prompts that depend on the plugin
+will not be ready until this succeeds. The shared Pi wrapper currently tolerates
+failed bootstrap installs, so a successful `pi-work --version` alone does **not**
+prove the private package installed; use the explicit setup command and check
+`pi-work list` and `claude-work plugin list`.
+
+Do not copy the Mac's credential files to bypass these logins.
+
+Verify actual installation and runtime behavior without model calls:
+
+```bash
+python3 tests/coding-agent-profiles.py
+python3 tests/agent-work-kit.py
+```
+
+Claude may show a dependency-install advisory for the plugin's bundled Pi
+package-lock entries. The Claude MCP adapter is dependency-free; the second test
+checks its real startup, initialization, and tool discovery. Do not disable
+Claude's dependency checks or install arbitrary dependencies to hide the warning.
+
+## Refresh
+
+Pi's runtime follows latest upstream; a new process resolves it through npx.
+Refresh packages in the intended profile:
+
+```bash
+pi-personal update
+pi-work update
+claude-work plugin marketplace update amfaro
+claude-work plugin update agent-kit@amfaro
+```
+
+Restart Claude Code after plugin updates. Claude's binary follows the locked
+nixpkgs version; update inputs only as a separate requested change, then apply
+Home Manager on Omarchy. Do not run the repository's macOS `update-system` or
+`nix-rebuild` tasks here.
+
+## Rollback
+
+Keep the previous Home Manager generation path before applying. Its `activate`
+script restores managed packages/files without uninstalling VNC or Nix. Original
+mise wrappers are saved at `~/.cache/coding-agents/legacy-launchers` during the
+initial deployment; after rolling back (which removes managed launcher links),
+they can be restored to `~/.local/bin`. Runtime profile data are intentionally
+retained and must not be deleted as part of rollback.
