@@ -127,6 +127,7 @@
       "orbstack"
       "raycast"
       "rocket"
+      "royal-tsx"
       "signal"
       "supacode"
       "syncthing-app"
