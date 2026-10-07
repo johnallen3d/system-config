@@ -16,7 +16,8 @@ Set hostname to a known (configured) value:
 For Omarchy, use the [standalone Home Manager guide](docs/omarchy-poc.md), not
 the macOS bootstrap or shared dotfile setup below. Its login is `johna`, not
 `john.allen`. See the [agent guide](docs/omarchy-agents.md) for Pi and Claude Code
-work/personal profiles, and the [VNC guide](docs/omarchy-vnc.md) for direct Tailscale access
+work/personal profiles, the [Herdr guide](docs/omarchy-herdr.md) for persistent remote
+agent sessions, and the [VNC guide](docs/omarchy-vnc.md) for direct Tailscale access
 to its existing desktop.
 
 Install Nix:

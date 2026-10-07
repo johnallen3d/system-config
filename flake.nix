@@ -72,6 +72,7 @@
       # Keep Omarchy isolated from the shared dotfiles and desktop setup.
       "johna@omarchy" = home-manager.lib.homeManagerConfiguration {
         pkgs = import nixpkgs {system = "x86_64-linux";};
+        extraSpecialArgs = {inherit herdrProjectPicker;};
         modules = [./hosts/omarchy.nix];
       };
       "john.allen@xcel" = makeHomeManagerSystem {

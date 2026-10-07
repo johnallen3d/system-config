@@ -2,6 +2,7 @@
   # Only opt-in host modules: Omarchy still owns the shell and desktop.
   imports = [
     ../modules/home-manager/coding-agents.nix
+    ../modules/home-manager/omarchy-herdr.nix
     ../modules/home-manager/omarchy-vnc.nix
   ];
 

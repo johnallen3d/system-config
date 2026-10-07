@@ -2,6 +2,7 @@
 
 Tracked in [Fizzy #692](https://app.fizzy.do/6284043/cards/692).
 Builds on the [standalone Home Manager setup](omarchy-poc.md); this is not NixOS.
+For persistent sessions and Mac remote access, see the [Herdr guide](omarchy-herdr.md).
 
 `hosts/omarchy.nix` opts into `modules/home-manager/coding-agents.nix`, without
 importing the Mac's shell/desktop configuration. Pi uses the same Nix-managed
