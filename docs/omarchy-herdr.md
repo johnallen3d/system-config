@@ -34,14 +34,18 @@ keeps the existing Linux keybindings, including `ctrl+space` as prefix and
 Use `pi-personal`, `pi-work`, and `claude-work` as in the
 [agent guide](omarchy-agents.md). Named launchers set both
 `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`. New remote panes default to the
-personal pair; personal Claude remains intentionally dormant. No credentials,
-sessions or repositories are copied from the Mac.
+personal pair; personal Claude remains intentionally dormant. Credentials and
+sessions remain machine-local. [Favorite projects](herdr-favorite-projects.md)
+are provisioned at the same home-relative paths as the Mac; existing checkouts
+and worktrees are never synchronized.
 
 ## Nix ownership
 
 `hosts/omarchy.nix` opts into `modules/home-manager/omarchy-herdr.nix`:
 
 - Nix Herdr, fzf, Worktrunk and the linked-worktree helper.
+- The same favorite-project catalog as the Mac, with missing repositories cloned
+  during Home Manager activation.
 - The same pinned project-picker and Worktrunk plugins as the Mac, including
   [short-name feature worktrees](herdr-worktree-naming.md) in the Worktrunk popup.
 - Herdr's package-versioned skill in global, personal/work Pi and work Claude

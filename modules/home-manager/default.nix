@@ -15,6 +15,8 @@
   configDir = pkgs.runCommand "home-config-dir" {} ''
     cp -R ${./dotfiles/config} "$out"
     chmod -R u+w "$out"
+    # The shared Herdr module owns favorites on both macOS and Omarchy.
+    rm "$out/herdr/plugins/config/herdr.project-picker/projects.toml"
     mkdir -p "$out/bat/themes" "$out/ghostty/themes"
 ${lib.concatMapStringsSep "\n" (variant: ''    cat > "$out/bat/themes/${managedTheme.batThemeName variant}.tmTheme" <<'EOF'
 ${managedTheme.batThemes.${variant}}

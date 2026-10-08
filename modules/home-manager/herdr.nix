@@ -26,6 +26,11 @@
       chmod -R u+w "$out"
       patch --directory="$out" --strip=1 --fuzz=0 --batch --forward \
         < ${./patches/herdr-worktrunk-short-names.patch}
+      # Linux's Nix sandbox has no /usr/bin/env. Patch runtime scripts and
+      # the executable Bash stubs generated inside upstream test heredocs.
+      patchShebangs "$out"
+      substituteInPlace "$out"/tests/*_test.sh \
+        --replace-quiet '#!/usr/bin/env bash' '#!${pkgs.bash}/bin/bash'
       # Upstream open tests assume split placement; run before our popup overrides.
       for test in "$out"/tests/*_test.sh; do
         bash "$test"
@@ -79,6 +84,8 @@
     ".config/claude-gmatter/skills/herdr"
   ];
 in {
+  imports = [./herdr-projects.nix];
+
   # Keep one package-versioned Herdr skill available globally, in both custom
   # Pi profiles, and in the work Claude profile. The personal Claude profile
   # shares the global skills directory below.

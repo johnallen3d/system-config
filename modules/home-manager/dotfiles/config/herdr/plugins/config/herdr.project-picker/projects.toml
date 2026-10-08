@@ -1,24 +1,32 @@
 # Managed by Home Manager; edit this file in system-config and rebuild.
+# clone_url is used by activation, not the picker. Existing repositories are untouched.
 # The plugin's add-current action replaces managed symlinks when it writes.
 version = 1
 
 [[sessions.personal.projects]]
 path = "~/dev/src/system-config"
+clone_url = "https://github.com/johnallen3d/system-config.git"
 
 [[sessions.personal.projects]]
 path = "~/dev/src/playground/pi-cielo"
+clone_url = "~/.local/share/herdr/project-seeds/pi-cielo.bundle"
 
 [[sessions.personal.projects]]
 path = "~/dev/src/playground/home-assistant"
+clone_url = "https://github.com/johnallen3d/home-assistant.git"
 
 [[sessions.work.projects]]
 path = "~/dev/src/amfaro/calc"
+clone_url = "https://github.com/amfaro/calc.git"
 
 [[sessions.work.projects]]
 path = "~/dev/src/amfaro/dataops"
+clone_url = "https://github.com/amfaro/dataops.git"
 
 [[sessions.work.projects]]
 path = "~/dev/src/amfaro/global-catalog"
+clone_url = "https://github.com/amfaro/global-catalog.git"
 
 [[sessions.work.projects]]
 path = "~/dev/src/amfaro/agent-kit"
+clone_url = "https://github.com/amfaro/agent-kit.git"
