@@ -5,7 +5,7 @@
   claude = pkgs.writeShellScriptBin "claude" ''
     export PATH="${runtimePath}:$PATH"
     export CLAUDE_CONFIG_DIR="''${CLAUDE_CONFIG_DIR:-$HOME/.config/claude-personal}"
-    export CLAUDE_CODE_DISABLE_1M_CONTEXT=1
+    export CLAUDE_CODE_DISABLE_1M_CONTEXT=0
     export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
     exec ${pkgs.claude-code}/bin/claude "$@"
   '';
