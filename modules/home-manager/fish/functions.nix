@@ -1,9 +1,16 @@
-{...}: {
+{pkgs, ...}: {
   programs.fish.functions = {
     argo_pass = {
       body = ''
         set ARGOCD_PASSWORD $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-        echo $ARGOCD_PASSWORD | pbcopy
+        if command -q pbcopy
+          echo $ARGOCD_PASSWORD | pbcopy
+        else if command -q wl-copy
+          echo $ARGOCD_PASSWORD | wl-copy
+        else
+          echo "No clipboard command available" >&2
+          return 1
+        end
       '';
     };
     # https://github.com/fish-shell/fish-shell/wiki/Bash-Style-Command-Substitution-and-Chaining-(!!-!$)
@@ -41,10 +48,12 @@
         case Darwin
           ifconfig | grep inet | grep broadcast | awk '{print $2}'
         case Linux
-          ipconfig getifaddr en0 || \
-            ipconfig getifaddr en1 || \
-            ipconfig getifaddr en2 || \
-            ipconfig getifaddr en3
+          # Preserve iproute2 arguments; bare `ip` lists local IPv4 addresses.
+          if test (count $argv) -gt 0
+            command ip $argv
+          else
+            command ip -o -4 addr show scope global | awk '{print $4}' | cut -d / -f 1
+          end
         end
       '';
     };
@@ -121,7 +130,11 @@
       body = ''
         cd ~/notes
         set -lx PATH (string match -v -- '*/.npm/_npx/*' $PATH)
-        command pi --model openai-codex/gpt-5.6-luna --thinking low --extension "$HOME/.config/pi-notes/git/github.com/badlogic/pi-telegram/index.ts" $argv
+        command pi --model openai-codex/gpt-5.6-luna --thinking low ${
+          if pkgs.stdenv.hostPlatform.isDarwin
+          then ''--extension "$HOME/.config/pi-notes/git/github.com/badlogic/pi-telegram/index.ts" ''
+          else ""
+        }$argv
       '';
     };
   };

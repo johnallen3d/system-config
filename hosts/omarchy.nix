@@ -1,7 +1,8 @@
 {pkgs, ...}: {
-  # Only opt-in host modules: Omarchy still owns the shell and desktop.
+  # Only opt-in host modules: Omarchy still owns Bash and the desktop.
   imports = [
     ../modules/home-manager/coding-agents.nix
+    ../modules/home-manager/omarchy-fish.nix
     ../modules/home-manager/omarchy-herdr.nix
     ../modules/home-manager/omarchy-vnc.nix
   ];

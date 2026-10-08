@@ -1,8 +1,7 @@
 {pkgs, ...}: let
-  shellAliases = {
+  sharedAliases = {
     ":e" = "nvim";
     ":q" = "exit";
-    assume = "source /opt/homebrew/bin/assume.fish";
     dadbod = "nvim +DBUI";
     db = "delete-branch";
     downloads = "cd ~/Downloads";
@@ -10,7 +9,6 @@
     gb = "git bv";
     gc = "git commit -v";
     gco = "git checkout";
-    ghostty = "/Applications/Ghostty.app/Contents/MacOS/ghostty";
     gl = "git pull";
     gp = "git push";
     gpf = "git push --force-with-lease";
@@ -31,13 +29,27 @@
     tab = "tw ";
     par = "tw ";
     parquet = "tw ";
-    uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
     vi = "nvim";
     vim = "nvim";
     weather = "curl wttr.in";
     whatismyip = "curl -4 ifconfig.co/";
     yt = "youtube-dl -f bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
   };
+
+  shellAliases =
+    sharedAliases
+    // (
+      if pkgs.stdenv.hostPlatform.isDarwin
+      then {
+        assume = "source /opt/homebrew/bin/assume.fish";
+        ghostty = "/Applications/Ghostty.app/Contents/MacOS/ghostty";
+        uuid = "uuidgen | tr -d \\n | tr [:upper:] [:lower:] | pbcopy; pbpaste; echo";
+      }
+      else {
+        ghostty = "command ghostty";
+        uuid = "uuidgen | tr [:upper:] [:lower:]";
+      }
+    );
 
   commonVariables = {
     EDITOR = "nvim-editor";

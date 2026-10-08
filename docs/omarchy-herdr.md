@@ -46,11 +46,12 @@ sessions or repositories are copied from the Mac.
 - Herdr's package-versioned skill in global, personal/work Pi and work Claude
   locations; personal Claude uses the global skills directory.
 - Pi and Claude integrations installed separately into all four profiles.
-- The reviewed original Linux Herdr config, with a Herdr-only Bash wrapper.
-  The wrapper sources the existing `.bashrc`, prioritizes managed tools and
-  initializes Worktrunk's directory-changing function **only in Herdr panes**.
-  It does not edit shell startup files. Config reload affects newly created
-  panes; open a new tab to get the wrapper in an already-running session.
+- The reviewed original Linux Herdr config, with a managed shell wrapper.
+  When the [Fish module](omarchy-fish.md) is enabled, new panes use the shared
+  Fish configuration, including Worktrunk's directory-changing function.
+  Without Fish, the wrapper falls back to the existing `.bashrc` plus managed
+  PATH and Worktrunk integration. Bash startup files remain untouched.
+  Config reload affects new panes; open a new tab in an already-running session.
 - A `herdr.service` user unit owning the headless `default` session. It starts
   with the user manager, not the graphical session, and restarts on failure.
   It opens only local Unix sockets; remote access uses existing SSH.

@@ -12,9 +12,11 @@
     export PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:$PATH"
     eval "$(${pkgs.worktrunk}/bin/wt config shell init bash)"
   '';
-  paneShell = pkgs.writeShellScript "herdr-omarchy-shell" ''
-    exec /usr/bin/bash --rcfile ${paneRc} "$@"
-  '';
+  paneShell = pkgs.writeShellScript "herdr-omarchy-shell" (
+    if config.programs.fish.enable
+    then ''exec ${lib.getExe config.programs.fish.package} "$@"''
+    else ''exec /usr/bin/bash --rcfile ${paneRc} "$@"''
+  );
   launchers = {
     herdr = pkgs.herdr;
     herdr-open-wt = import ./packages/bin/herdr-open-wt.nix {inherit pkgs;};

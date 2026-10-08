@@ -10,13 +10,16 @@ for path_entry in $PATH
 end
 set -gx PATH $clean_path
 
-fish_add_path --move --prepend --path $HOME/.nix-profile/bin
-fish_add_path --move --prepend --path /nix/var/nix/profiles/default/bin
+# Global (not universal) user paths stay ahead when mise updates PATH.
+fish_add_path --global --move --prepend $HOME/.nix-profile/bin
+fish_add_path --global --move --prepend /nix/var/nix/profiles/default/bin
+fish_add_path --global --move --prepend $HOME/.local/bin
 fish_add_path --move --path $HOME/.cargo/bin
-
-# TODO: can we find a better/more nix way?
 fish_add_path --prepend $HOME/.npm-global/bin
-fish_add_path --append /Applications/Obsidian.app/Contents/MacOS
+
+if test (uname) = Darwin
+    fish_add_path --append /Applications/Obsidian.app/Contents/MacOS
+end
 
 # use 1Password to authenticate `gh`
 if test -e ~/.config/op/plugins.sh
@@ -27,8 +30,21 @@ if command -q nix-your-shell
     nix-your-shell fish | source
 end
 
-leadr --fish | source
-mise activate fish | source
-tv init fish | source
+if command -q leadr
+    leadr --fish | source
+end
+if command -q mise
+    mise activate fish | source
+end
+
+# Mise's first environment hook may restore Omarchy's system-first PATH.
+# Keep managed wrappers and tools ahead of Arch/Homebrew executables.
+fish_add_path --global --move --prepend /nix/var/nix/profiles/default/bin
+fish_add_path --global --move --prepend $HOME/.nix-profile/bin
+fish_add_path --global --move --prepend $HOME/.local/bin
+
+if command -q tv
+    tv init fish | source
+end
 
 fish_config theme choose tokyo-night-moon
