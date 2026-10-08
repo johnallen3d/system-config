@@ -42,7 +42,8 @@ sessions or repositories are copied from the Mac.
 `hosts/omarchy.nix` opts into `modules/home-manager/omarchy-herdr.nix`:
 
 - Nix Herdr, fzf, Worktrunk and the linked-worktree helper.
-- The same pinned project-picker and Worktrunk plugins as the Mac.
+- The same pinned project-picker and Worktrunk plugins as the Mac, including
+  [short-name feature worktrees](herdr-worktree-naming.md) in the Worktrunk popup.
 - Herdr's package-versioned skill in global, personal/work Pi and work Claude
   locations; personal Claude uses the global skills directory.
 - Pi and Claude integrations installed separately into all four profiles.

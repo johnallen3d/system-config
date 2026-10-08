@@ -1,0 +1,236 @@
+--- a/helpers.sh
++++ b/helpers.sh
+@@ -1,13 +1,12 @@
+ #!/usr/bin/env bash
+
+ # True when NAME is a token worktrunk resolves itself — a branch shortcut
+-# (^ default, - previous) or `:` syntax (pr:N, mr:N, or a PR/MR URL). Git branch
++# (^ default, - previous, @ current) or `:` syntax (pr:N, mr:N, or a PR/MR URL). Git branch
+ # names can't be these bare symbols or contain `:`, so these must be passed to
+-# `wt switch` as-is, never with --create. `@` (current) is omitted: switching to
+-# the current worktree is a no-op, and its only real use is as a --base.
++# `wt switch` as-is, never with --create.
+ worktrunk_is_shortcut() {
+   case $1 in
+-    '^'|'-'|*:*) return 0 ;;
++    '^'|'-'|'@'|*:*) return 0 ;;
+     *) return 1 ;;
+   esac
+ }
+--- a/picker.sh
++++ b/picker.sh
+@@ -64,31 +64,46 @@
+       | fzf --print-query --reverse --info=inline "${WORKTRUNK_FZF_LAYOUT[@]}" \
+             --bind=alt-enter:print-query \
+             --prompt='worktree ❯ ' \
+-            --header="↵ on a match → switch · type a new name + ↵ → create from ${create_base_label} · alt-↵ → force typed name · esc → cancel"
++            --header="↵ on a match → switch · new short name → feature/<name> from ${create_base_label} · alt-↵ → force typed name · esc → cancel"
+   )
+   ret=$?
+   [[ $ret -gt 1 ]] && exit 0      # 130 = esc/abort → cancel (0 = picked, 1 = typed-new)
+   name=${choice##*$'\n'}          # last line: the selection if any, else the typed query
+ else
+-  printf 'Branch (existing → switch · new → create from %s): ' "$create_base_label"
+-  read -r name
++  printf 'Branch (existing → switch · new short name → feature/<name> from %s): ' "$create_base_label"
++  read -r name || exit 0
+ fi
+ [[ -z $name ]] && exit 0
+
+ open_mode=$(worktrunk_open_mode)
+
+-# Existing local or remote-tracking branch → switch (wt creates the worktree if
+-# it doesn't exist yet, and checks out a remote ref like origin/foo directly).
+-# worktrunk shortcuts (^ default, - previous, pr:N/mr:N, PR/MR URL) are resolved
+-# by worktrunk itself, so pass them through as-is — never --create.
+-# Anything else is a new branch → create it.
+-if worktrunk_is_shortcut "$name" || worktrunk_ref_exists "$name"; then
+-  wtargs=(switch "$name")
+-  is_create=false
++# Keep picker input distinct from the target. Exact refs and shortcuts win;
++# only a new bare name gets feature/. Explicit other namespaces are unchanged.
++target=$name
++short_feature=false
++if ! worktrunk_is_shortcut "$name"; then
++  if ! worktrunk_ref_exists "$name" && [[ $name != */* ]]; then
++    target="feature/$name"
++  fi
++  [[ $target == feature/* ]] && short_feature=true
++fi
++
++if worktrunk_is_shortcut "$target" || worktrunk_ref_exists "$target"; then
++  wtargs=(switch "$target")
+ else
+-  wtargs=(switch --create "$name")
++  if ! git check-ref-format --branch "$target" >/dev/null 2>&1; then
++    printf '\033[31m%s\033[0m\n' "invalid branch name: $target" >&2
++    sleep 2
++    exit 1
++  fi
++  wtargs=(switch --create "$target")
+   [[ -n $create_base ]] && wtargs+=(--base "$create_base")
+-  is_create=true
++fi
++
++# Constant TOML: user input never becomes config syntax. Worktrunk sanitizes the
++# suffix, detects collisions, and reuses existing checkouts without moving them.
++if [[ $short_feature == true ]]; then
++  wtargs+=(--config-set 'worktree-path = "{{ repo_path }}/.worktrees/{{ branch[8:] | sanitize }}"')
+ fi
+
+ herdr=${HERDR_BIN_PATH:-herdr}
+@@ -96,23 +111,18 @@
+ if [[ $open_mode == tab ]]; then
+   # Preserve the original behavior: run wt in a new tab's interactive shell so
+   # shell integration can cd into the worktree and keep the user there.
+-  printf -v quoted_name '%q' "$name"
+-  if [[ $is_create == true ]]; then
+-    if [[ -n $create_base ]]; then
+-      printf -v quoted_base '%q' "$create_base"
+-      wtcmd="wt switch --create $quoted_name --base $quoted_base"
+-    else
+-      wtcmd="wt switch --create $quoted_name"
+-    fi
+-  else
+-    wtcmd="wt switch $quoted_name"
+-  fi
++  # Quote each shared argv element for Bash, Zsh, or Fish interactive shells.
++  wtcmd=wt
++  for arg in "${wtargs[@]}"; do
++    arg=${arg//\'/\'\\\'\'}
++    wtcmd+=" '$arg'"
++  done
+
+   tab_json=$("$herdr" tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "$name" \
+-    --env "WT_PICKER_NAME=$name" --focus)
+-  newpane=$(printf '%s\n' "$tab_json" | jq -r '.result.root_pane.pane_id')
+-  tab_id=$(printf '%s\n' "$tab_json" | jq -r '.result.root_pane.tab_id')
+-  [[ -z $newpane ]] && { printf '\033[31m%s\033[0m\n' "failed to open worktree tab"; sleep 2; exit 1; }
++    --env "WT_PICKER_NAME=$name" --env "WT_PICKER_SHORT_FEATURE=$short_feature" --focus) || exit 1
++  newpane=$(printf '%s\n' "$tab_json" | jq -er '.result.root_pane.pane_id // empty')
++  tab_id=$(printf '%s\n' "$tab_json" | jq -er '.result.root_pane.tab_id // empty')
++  [[ -z $newpane || -z $tab_id ]] && { printf '\033[31m%s\033[0m\n' "failed to open worktree tab"; sleep 2; exit 1; }
+
+   # $name may be a worktrunk shortcut (^, -, pr:N, mr:N, a PR/MR URL) rather than the
+   # actual branch, so the tab label above is a placeholder. Once the switch lands,
+@@ -120,13 +130,17 @@
+   # parens (e.g. "feat/eager-worktree-focus (pr:16)") when it differs.
+   printf -v quoted_herdr '%q' "$herdr"
+   printf -v quoted_tab_id '%q' "$tab_id"
++  # This script runs in Bash even when the tab uses Fish; && gates ALL relabeling.
++  # shellcheck disable=SC2016
+   relabel_cmd='branch=$(git branch --show-current)'
+-  relabel_cmd+='; [ "$branch" = "$WT_PICKER_NAME" ] && label=$branch || label="$branch ($WT_PICKER_NAME)"'
++  # shellcheck disable=SC2016
++  relabel_cmd+='; if [ "$WT_PICKER_SHORT_FEATURE" = true ]; then label=$(basename "$PWD"); elif [ "$branch" = "$WT_PICKER_NAME" ]; then label=$branch; else label="$branch ($WT_PICKER_NAME)"; fi'
+   relabel_cmd+="; $quoted_herdr tab rename $quoted_tab_id \"\$label\""
+
+   # pane run sends the command to the tab's interactive shell; the terminal buffers it
+   # until the shell finishes loading, so its `wt` function is in place when it runs.
+-  "$herdr" pane run "$newpane" "$wtcmd && $relabel_cmd"
++  relabel_cmd=${relabel_cmd//\'/\'\\\'\'}
++  "$herdr" pane run "$newpane" "$wtcmd && bash -c '$relabel_cmd'"
+   exit
+ fi
+
+@@ -134,31 +148,35 @@
+ # then register the resulting existing checkout through herdr's worktree API.
+ if ! result=$(wt "${wtargs[@]}" --no-cd --format=json); then
+   printf '\n\033[31m%s\033[0m press any key to close' "wt switch failed (see above)."
+-  read -n1
+-  exit 1
+-fi
+-
+-# $name may be a worktrunk shortcut (^, -, pr:N, mr:N, a PR/MR URL) rather than the
+-# actual branch, so use what it resolved to for the label, keeping the typed name
+-# alongside in parens (e.g. "feat/eager-worktree-focus (pr:16)") when it differs.
+-label=$(printf '%s\n' "$result" | jq -r '.branch // empty' 2>/dev/null)
+-if [[ -z $label ]]; then
+-  label=$name
+-elif [[ $label != "$name" ]]; then
+-  label="$label ($name)"
+-fi
+-
+-wtpath=$(printf '%s\n' "$result" | jq -r '.path // empty' 2>/dev/null)
++  read -r -n1
++  exit 1
++fi
++
++# Reject malformed JSON rather than silently using a guessed checkout.
++if ! printf '%s\n' "$result" | jq -e 'type == "object"' >/dev/null 2>&1; then
++  printf '\033[31m%s\033[0m\n' "worktrunk returned invalid switch JSON" >&2
++  sleep 2
++  exit 1
++fi
++branch=$(printf '%s\n' "$result" | jq -r '.branch // empty')
++wtpath=$(printf '%s\n' "$result" | jq -r '.path // empty')
+ if [[ -z $wtpath ]]; then
+   wtpath=$(wt list --format=json 2>/dev/null \
+     | worktrunk_list_items \
+-    | jq -r --arg b "$name" 'select(.branch == $b and .kind == "worktree") | .path' \
++    | jq -r --arg b "${branch:-$target}" 'select(.branch == $b and .kind == "worktree") | .path // empty' \
+     | head -n1)
+ fi
+-if [[ -z $wtpath ]]; then
+-  printf '\033[31m%s\033[0m\n' "worktrunk returned no worktree path for: $name"
++if [[ -z $wtpath || ! -d $wtpath ]]; then
++  printf '\033[31m%s\033[0m\n' "worktrunk returned no valid worktree path for: $target" >&2
+   sleep 2
+   exit 1
++fi
++
++if [[ $short_feature == true ]]; then
++  label=$(basename "$wtpath")
++else
++  label=${branch:-$name}
++  [[ $label != "$name" ]] && label="$label ($name)"
+ fi
+
+ # Register the worktree under the repo's ROOT workspace, not the picker pane's
+@@ -166,8 +184,13 @@
+ # workspace, $HERDR_WORKSPACE_ID is that worktree's own (linked-worktree)
+ # workspace, which `worktree open` rejects. Resolve the repository root instead;
+ # Herdr reuses its parent workspace or creates one when absent.
+-source_json=$("$herdr" worktree list --cwd "$PWD" --json 2>/dev/null)
+-repo_root=$(printf '%s\n' "$source_json" | jq -r '.result.source.repo_root')
++source_json=$("$herdr" worktree list --cwd "$PWD" --json) || exit 1
++repo_root=$(printf '%s\n' "$source_json" | jq -er '.result.source.repo_root // empty')
++if [[ -z $repo_root || ! -d $repo_root ]]; then
++  printf '\033[31m%s\033[0m\n' "herdr returned no valid repository root" >&2
++  sleep 2
++  exit 1
++fi
+
+ # When no workspace covers the root yet, herdr's own auto-created label falls back
+ # to the checkout directory's basename verbatim (e.g. "repo.git" for a bare repo)
+--- a/tests/helpers_test.sh
++++ b/tests/helpers_test.sh
+@@ -5,15 +5,14 @@
+ # shellcheck source=../helpers.sh
+ source "$repo_root/helpers.sh"
+
+-for tok in '^' '-' 'pr:123' 'mr:45' 'https://github.com/o/r/pull/7'; do
++for tok in '^' '-' '@' 'pr:123' 'mr:45' 'https://github.com/o/r/pull/7'; do
+   if ! worktrunk_is_shortcut "$tok"; then
+     printf 'expected %q to be a worktrunk shortcut\n' "$tok" >&2
+     exit 1
+   fi
+ done
+
+-# @ (current) is intentionally not a shortcut — see helpers.sh.
+-for tok in 'my-feature' 'main' 'feature/foo' '@'; do
++for tok in 'my-feature' 'main' 'feature/foo'; do
+   if worktrunk_is_shortcut "$tok"; then
+     printf 'expected %q not to be a worktrunk shortcut\n' "$tok" >&2
+     exit 1
+--- a/tests/picker_test.sh
++++ b/tests/picker_test.sh
+@@ -8,7 +8,7 @@
+ trap 'rm -rf "$stub_dir" "$work_dir"' EXIT
+
+ config_dir="$stub_dir/config"
+-mkdir -p "$config_dir"
++mkdir -p "$config_dir" "$stub_dir/checkout"
+
+ # A real repo: picker.sh lists refs with `git for-each-ref` and helpers.sh resolves
+ # existing branches with `git show-ref`, so git is never stubbed.

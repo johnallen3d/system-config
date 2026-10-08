@@ -18,29 +18,43 @@
   };
   # Match the project picker's centered popup instead of a cramped split
   # or a full-pane overlay. Other Worktrunk actions remain downward splits.
-  herdrWorktrunk = pkgs.runCommand "herdr-worktrunk-popup-picker" {} ''
-    cp -R ${herdrWorktrunkSrc}/. "$out"
-    chmod -R u+w "$out"
-    substituteInPlace "$out/open.sh" \
-      --replace-fail 'args+=(--placement split --direction down)' \
-      'if [[ $entrypoint == picker-* ]]; then [[ -n $HERDR_WORKSPACE_ID ]] && args+=(--env "HERDR_WORKSPACE_ID=$HERDR_WORKSPACE_ID"); else args+=(--placement split --direction down); fi'
-    awk '
-      /^\[\[panes\]\]/ { picker = 0 }
-      /^id = "picker-/ { picker = 1 }
-      picker && /^placement = "split"$/ {
-        print "placement = \"popup\""
-        print "width = \"80%\""
-        print "height = \"70%\""
-        next
-      }
-      { print }
-    ' "$out/herdr-plugin.toml" > "$out/herdr-plugin.toml.new"
-    mv "$out/herdr-plugin.toml.new" "$out/herdr-plugin.toml"
-    test "$(grep -c '^placement = "popup"$' "$out/herdr-plugin.toml")" -eq 3
-    substituteInPlace "$out/picker.sh" \
-      --replace-fail $'worktrunk_fzf_layout\n' \
-      $'worktrunk_fzf_layout\nWORKTRUNK_FZF_LAYOUT=(--border=none --margin=0)\n'
-  '';
+  herdrWorktrunk =
+    pkgs.runCommand "herdr-worktrunk-popup-picker" {
+      nativeBuildInputs = with pkgs; [fish git jq patch python3 shellcheck worktrunk];
+    } ''
+      cp -R ${herdrWorktrunkSrc}/. "$out"
+      chmod -R u+w "$out"
+      patch --directory="$out" --strip=1 --fuzz=0 --batch --forward \
+        < ${./patches/herdr-worktrunk-short-names.patch}
+      # Upstream open tests assume split placement; run before our popup overrides.
+      for test in "$out"/tests/*_test.sh; do
+        bash "$test"
+      done
+      substituteInPlace "$out/open.sh" \
+        --replace-fail 'args+=(--placement split --direction down)' \
+        'if [[ $entrypoint == picker-* ]]; then [[ -n $HERDR_WORKSPACE_ID ]] && args+=(--env "HERDR_WORKSPACE_ID=$HERDR_WORKSPACE_ID"); else args+=(--placement split --direction down); fi'
+      awk '
+        /^\[\[panes\]\]/ { picker = 0 }
+        /^id = "picker-/ { picker = 1 }
+        picker && /^placement = "split"$/ {
+          print "placement = \"popup\""
+          print "width = \"80%\""
+          print "height = \"70%\""
+          next
+        }
+        { print }
+      ' "$out/herdr-plugin.toml" > "$out/herdr-plugin.toml.new"
+      mv "$out/herdr-plugin.toml.new" "$out/herdr-plugin.toml"
+      test "$(grep -c '^placement = "popup"$' "$out/herdr-plugin.toml")" -eq 3
+      substituteInPlace "$out/picker.sh" \
+        --replace-fail $'worktrunk_fzf_layout\n' \
+        $'worktrunk_fzf_layout\nWORKTRUNK_FZF_LAYOUT=(--border=none --margin=0)\n'
+
+      cd "$out"
+      bash -n picker.sh helpers.sh
+      shellcheck -x picker.sh helpers.sh
+      python3 ${../../tests/herdr-worktrunk-short-names.py} "$out"
+    '';
   projectPickerSrc = herdrProjectPicker;
   projectPickerBinary = pkgs.rustPlatform.buildRustPackage {
     pname = "herdr-project-picker";
