@@ -30,6 +30,8 @@ rows = [
 [keys]
 # Use direct macOS shortcuts for common workspace, tab, and pane actions.
 new_workspace = "cmd+ctrl+n"
+next_workspace = "ctrl+tab"
+previous_workspace = "ctrl+shift+tab"
 new_worktree = ""
 open_worktree = "prefix+o"
 toggle_sidebar = "cmd+s"

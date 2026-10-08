@@ -39,8 +39,11 @@ keybind = super+minus=decrease_font_size:1
 keybind = super+zero=reset_font_size
 
 # Herdr owns workspace, tab, and pane shortcuts. Since defaults are cleared
-# above, leaving these chords unbound passes them through without redundant
-# unbind entries.
+# above, most chords pass through without redundant unbind entries.
+# Explicit CSI-u forwarding preserves Ctrl/Shift on Tab for workspace cycling.
+keybind = ctrl+tab=csi:9;5u
+keybind = ctrl+shift+tab=csi:9;6u
+
 # Herdr has no equivalent for equalizing panes, so Ghostty keeps this one.
 keybind = super+ctrl+equal=equalize_splits
 
