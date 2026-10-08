@@ -33,6 +33,16 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - After applying Ghostty config changes, reload each running instance with its `reload_config` action (AppleScript on macOS, `SIGUSR2` on Linux); use the guarded platform behavior in `.mise/tasks/theme-switch` and skip when Ghostty is not running.
 - Never commit unless explicitly requested.
 
+## Shared Mac/Omarchy deployment
+
+- Before changing shared agent, project-context, or user-automation config, identify which hosts import it. Unless John explicitly requests a single-host change, changes shared by Mac and Omarchy must be applied and verified on **both**; a Mac rebuild is not an Omarchy deployment.
+- Use the repo-local macOS apply command and Omarchy's standalone Home Manager activation from `docs/omarchy-agents.md`, without updating inputs when unchanged. Do not run macOS tasks on Omarchy.
+- Omarchy currently activates from `~/dev/src/system-config-amfaro`, a working-tree snapshot, not an automatically synchronized checkout. A local edit, commit, or push does not update that snapshot or its installed config. Inspect the actual remote source and installed state before applying; transfer only intended changes after checking for divergence. Preserve unrelated remote edits and credentials; stop and report conflicts rather than overwriting them.
+- SSH connects as `johna@omarchy`; its login shell is Fish. Run Bash scripts explicitly with `bash -s`, and use `mise -C ~/dev/src/amfaro exec -- ...` for noninteractive work-profile commands. Use absolute script paths when `mise -C` changes the working directory.
+- Verify installed config and effective profile/runtime behavior independently on each host, not just source files or build success. Do not restart active agents or Herdr servers merely to refresh environment; report any required agent restart explicitly.
+- If a host is unreachable, synchronization is blocked, or verification fails, the shared deployment is **partial**. Keep its Fizzy card open and name the pending host/action in the handoff. Never report unqualified "applied", "done", or "ready to push" while deployment remains pending.
+- Documentation-only changes do not require activation. Keep these deployment instructions available in Omarchy's active snapshot too.
+
 ## Issue tracking
 
 Use Fizzy only—no Markdown TODOs, other trackers, or duplicate cards. The project board is selected by `.fizzy.yaml`. Use the CLI's built-in `--jq` for programmatic output.
@@ -49,6 +59,6 @@ Card commands use the card `number`, not its internal ID. Use board columns for 
 1. File remaining work and update/close issues.
 2. Run relevant quality gates.
 3. Run `git status`; report staged/unstaged changes.
-4. Hand off changes, validation, and next steps.
+4. Hand off changes, validation, and next steps. For shared config changes, report Mac and Omarchy deployment/verification status separately, including pending activation or agent restarts.
 
 Wrap-up alone never authorizes a rebuild or `git push`. Say `ready to push when you are` only if a local commit exists and push is the sole remaining step; otherwise say `ready to commit when you are` or simply hand off.

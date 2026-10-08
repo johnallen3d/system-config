@@ -82,6 +82,32 @@ No personal credentials, cached plugins, or sessions are shared with work.
 
 ## Apply
 
+### Shared changes require two deployments
+
+For agent configuration shared by Mac and Omarchy, apply and verify both hosts
+unless the request explicitly targets only one. The Mac's
+`mise update-system --switch-only` does not activate Omarchy. A commit or push
+also does not refresh Omarchy's current `~/dev/src/system-config-amfaro`
+working-tree snapshot. Before building there, inspect its source and installed
+state, check for divergence, and transfer only the intended changed files;
+preserve unrelated edits and all machine-local credentials.
+
+Ordinary SSH commands use Omarchy's Fish login shell. Execute Bash scripts with
+`ssh johna@omarchy 'bash -s'` and pass the script on stdin. For noninteractive
+work commands use `mise -C ~/dev/src/amfaro exec -- ...`. Give test scripts
+absolute paths because `mise -C` changes the command's working directory, e.g.:
+
+```bash
+mise -C ~/dev/src/amfaro exec -- python3 /home/johna/dev/src/system-config-amfaro/tests/amfaro-mise.py --installed
+```
+
+Verify installed config and effective profile behavior on each host after
+activation. Report the two host statuses separately, plus any agent restarts
+required to pick up launch-time environment. Do not silently restart active
+agents or Herdr servers. An unreachable or unverified host means a partial
+deployment: keep its Fizzy card open and hand off the missing host/action.
+Documentation-only changes need no activation.
+
 On Omarchy as `johna`, from the system-config checkout (currently the staged
 working-tree snapshot at `~/dev/src/system-config-amfaro`):
 
