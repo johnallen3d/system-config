@@ -21,13 +21,24 @@ This repo manages two Pi profiles and their matching Claude Code profiles.
 - Claude config dir: `~/.config/claude-gmatter`
 - Use for work context
 
+## Managed settings
+
+Pi `settings.json` files remain writable, but rebuilds regenerate all configuration
+from `modules/home-manager/pi-settings.nix`. Only `lastChangelogVersion` is
+preserved as runtime bookkeeping. Interactive settings and package changes last
+until the next rebuild; declare persistent changes in Nix. Removing a declaration
+also removes its JSON key. Authentication and sessions are not managed.
+
+Claude Code profiles are independent; the retired Claude Bridge integration and
+its AskClaude prompt are no longer installed.
+
 ## Why this matters
 
 The personal `usage-footer` reads Codex OAuth credentials from the active Pi profile's `auth.json`, falling back across `~/.config/pi-work` and `~/.config/pi`. This keeps Codex usage working even when Pi's runtime auth storage does not expose the right token.
 
 ## Related files in this repo
 
-- `modules/home-manager/pi-settings.nix` — Pi settings + Claude bridge settings
+- `modules/home-manager/pi-settings.nix` — authoritative writable Pi settings
 - `modules/home-manager/pi-extensions.nix` — managed Pi extensions, skills, themes, legacy harness bridges
 - `modules/home-manager/pi/packages.nix` — work profile installs `amfaro/agent-kit` from Git
 - `modules/home-manager/claude-prompts.nix` — work Claude profile installs the `agent-kit@amfaro` plugin; old checkout-backed skill/command links are removed

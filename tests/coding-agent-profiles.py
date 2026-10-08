@@ -71,11 +71,11 @@ def main():
             settings = json.loads((profile / "settings.json").read_text())
             assert isinstance(settings.get("packages"), list)
             assert not (profile / "extensions/supacode.ts").exists()
-            bridge = json.loads((profile / "claude-bridge.json").read_text())
-            assert bridge["provider"]["pathToClaudeCodeExecutable"] == str(home / ".nix-profile/bin/claude")
+            assert not (profile / "claude-bridge.json").exists()
+            assert not (profile / "prompts/issue-implement-claude.md").exists()
         assert not (personal / "extensions/usage-footer").exists()
         assert (home / ".config/claude-gmatter/agents").resolve() == home / ".config/claude-personal/agents"
-        print("PASS portable MCP configuration, Claude bridge, and shared role links")
+        print("PASS portable MCP configuration, retired bridge removal, and shared role links")
 
 
 if __name__ == "__main__":

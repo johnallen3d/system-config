@@ -30,13 +30,14 @@ John currently has no personal Claude account. The personal Claude profile stays
 installed but dormant; this is intentional, not an authentication failure. Use
 `claude-work` for Claude Code and `pi-personal` for personal work. Bare `claude`
 still defaults to the dormant personal profile, so use the explicit work launcher.
-Personal Claude-dependent prompts/bridge calls are unavailable until a personal
-account is added; they must not silently fall back to work credentials.
+The retired Pi Claude Bridge integration is not installed. Personal Claude Code
+must not silently fall back to work credentials.
 
 Pi settings, package declarations, themes, extensions, prompts, Claude subagent
 roles, keybindings, and ELI5 output style are shared with the Mac. Linux gets a
-host-appropriate `/pkg-install` prompt. The Claude bridge points at the Nix
-profile executable. Mac-only legacy extension links, Keychain commands, local
+host-appropriate `/pkg-install` prompt. Pi configuration is regenerated on each
+activation, preserving only `lastChangelogVersion`; persistent changes belong in
+Nix. Mac-only legacy extension links, Keychain commands, local
 headroom, and local calc endpoints are not enabled here. The Mac usage footer
 is also excluded because its credential fallback reads across Pi profiles. Remote MCP endpoints
 still require their own login or environment credentials; no Mac tokens are

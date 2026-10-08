@@ -14,7 +14,6 @@ in rec {
     ++ [
       # (npm "@samfp/pi-memory")
       # (npm "context-mode")
-      # (npm "pi-claude-bridge")
       (npm "pi-mcp-adapter")
       (npm "pi-prompt-template-model")
       # (npm "pi-subagents")

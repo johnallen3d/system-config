@@ -1,23 +1,19 @@
 # Pi agent settings managed declaratively.
 #
-# ~/.config/pi/settings.json is writable at runtime (pi updates lastChangelogVersion etc.)
-# so we use home.activation with a jq merge instead of a read-only home.file symlink.
-#
-# Strategy: on every rebuild, overlay our desired settings on top of whatever pi wrote,
-# preserving volatile fields such as lastChangelogVersion while keeping selected keys
-# declarative from nix.
+# Pi settings.json files stay writable because Pi updates settings at runtime.
+# On every rebuild, replace configuration with Nix declarations and preserve only
+# the explicitly allowed lastChangelogVersion bookkeeping field. Removing a Nix
+# setting therefore removes it from JSON; interactive changes last until rebuild.
 #
 # Two agent dirs:
 #   ~/.config/pi        — personal Pi profile ↔ ~/.config/claude-personal
 #   ~/.config/pi-work   — work Pi profile ↔ ~/.config/claude-gmatter
 #
 # Personal is the default PI_CODING_AGENT_DIR. Work is selected by per-project mise/env wiring.
-# Claude usage/account data shown through claude-bridge should come from the matching Claude profile.
 #
-# Extensions and themes are shared — pi-work symlinks back to the personal dir so
-# we only manage them in one place (pi-extensions.nix).
+# Extensions are managed for each profile in pi-extensions.nix; work themes
+# symlink back to the personal profile.
 {
-  config,
   pkgs,
   lib,
   ...
@@ -27,40 +23,27 @@
   jq = "${pkgs.jq}/bin/jq";
 
   mkPiSettingsActivation = settingsFile: settings: ''
-    nixSettings='${builtins.toJSON settings}'
-    mkdir -p "$(dirname "${settingsFile}")"
-
-    if [ -f "${settingsFile}" ] && ${jq} empty "${settingsFile}" >/dev/null 2>&1; then
-      merged=$(${jq} -s '.[0] * .[1] | del(.mcpServers)' "${settingsFile}" - <<< "$nixSettings")
+    if [ -n "''${DRY_RUN:-}" ]; then
+      echo "Would update managed settings: ${settingsFile}"
     else
-      if [ -f "${settingsFile}" ]; then
-        cp "${settingsFile}" "${settingsFile}.invalid.bak"
-        echo "Warning: ${settingsFile} contained invalid JSON; backed it up to ${settingsFile}.invalid.bak and restored managed defaults." >&2
+      nixSettings='${builtins.toJSON settings}'
+      mkdir -p "$(dirname "${settingsFile}")"
+
+      if [ -f "${settingsFile}" ] && ${jq} -e -s 'length == 1 and (.[0] | type == "object")' "${settingsFile}" >/dev/null 2>&1; then
+        merged=$(${jq} -s '(.[0] | with_entries(select(.key == "lastChangelogVersion"))) * .[1]' "${settingsFile}" - <<< "$nixSettings")
+      else
+        if [ -f "${settingsFile}" ]; then
+          cp "${settingsFile}" "${settingsFile}.invalid.bak"
+          echo "Warning: ${settingsFile} contained invalid JSON settings; backed it up to ${settingsFile}.invalid.bak and restored managed defaults." >&2
+        fi
+        merged="$nixSettings"
       fi
-      merged="$nixSettings"
+
+      tmp_file="${settingsFile}.tmp.$$"
+      printf '%s\n' "$merged" > "$tmp_file"
+      mv "$tmp_file" "${settingsFile}"
     fi
-
-    tmp_file="${settingsFile}.tmp.$$"
-    printf '%s\n' "$merged" > "$tmp_file"
-    mv "$tmp_file" "${settingsFile}"
   '';
-
-  claudeBridgeSettings = {
-    askClaude = {
-      enabled = true;
-      allowFullMode = true;
-      defaultIsolated = false;
-      appendSkills = true;
-    };
-    provider = {
-      strictMcpConfig = true;
-      pathToClaudeCodeExecutable = "${config.home.homeDirectory}/${
-        if pkgs.stdenv.hostPlatform.isDarwin
-        then ".local"
-        else ".nix-profile"
-      }/bin/claude";
-    };
-  };
 
   piMcpSettings = {
     mcpServers = {
@@ -169,33 +152,83 @@
     - NEVER FORGET ABOUT $PI_CODING_AGENT_DIR
   '';
 
-  piSettings = {
+  piCommonSettings = {
     defaultProvider = "openai-codex";
     defaultModel = "gpt-6.1-sol";
     compaction.enabled = false;
-    packages = piPackages.personalPackageSpecs;
     theme = managedTheme.activeTheme.name;
     quietStartup = true;
+    tuiMode = "fullscreen";
   };
 
-  piWorkSettings = {
-    defaultProvider = "openai-codex";
-    defaultModel = "gpt-6.1-sol";
-    compaction.enabled = false;
-    # agent-kit bundles pi-mcp-adapter, which owns /mcp in the work profile.
-    extensions = ["-builtin:mcp"];
-    packages = piPackages.workPackageSpecs;
-    theme = managedTheme.activeTheme.name;
-    quietStartup = true;
+  piPersonalUiSettings = {
+    enableInstallTelemetry = false;
+    collapseChangelog = true;
+    showCacheMissNotices = true;
+    terminal.showTerminalProgress = true;
+    editorPaddingX = 1;
   };
 
-  piNotesSettings = {
-    defaultProvider = "openai-codex";
-    defaultModel = "gpt-6.1-sol";
-    packages = piPackages.notesPackageSpecs;
-    theme = managedTheme.activeTheme.name;
-    quietStartup = true;
-  };
+  piSettings =
+    piCommonSettings
+    // piPersonalUiSettings
+    // {
+      defaultThinkingLevel = "high";
+      hideThinkingBlock = false;
+      # The personal profile still uses pi-mcp-adapter.
+      extensions = ["-builtin:mcp"];
+      packages = piPackages.personalPackageSpecs;
+    };
+
+  piWorkSettings =
+    piCommonSettings
+    // {
+      defaultThinkingLevel = "high";
+      defaultProjectTrust = "always";
+      packages = piPackages.workPackageSpecs;
+      subagents.agentOverrides = {
+        context-builder = {
+          model = "opencode-go/glm-5.2";
+          thinking = "off";
+        };
+        delegate = {
+          model = "opencode-go/glm-5.2";
+          thinking = "medium";
+        };
+        oracle = {
+          model = "opencode-go/kimi-k2.6";
+          thinking = "high";
+        };
+        planner = {
+          model = "opencode-go/glm-5.2";
+          thinking = "medium";
+        };
+        researcher = {
+          model = "opencode-go/glm-5.2";
+          thinking = "low";
+        };
+        reviewer = {
+          model = "opencode-go/kimi-k2.6";
+          thinking = "high";
+        };
+        scout = {
+          model = "opencode-go/deepseek-v4-flash";
+          thinking = "off";
+        };
+        worker = {
+          model = "opencode-go/glm-5.2";
+          thinking = "medium";
+        };
+      };
+    };
+
+  piNotesSettings =
+    piCommonSettings
+    // piPersonalUiSettings
+    // {
+      defaultThinkingLevel = "medium";
+      packages = piPackages.notesPackageSpecs;
+    };
   jsonFormat = pkgs.formats.json {};
 in {
   home.activation.piSystemMd = lib.hm.dag.entryAfter ["writeBoundary"] ''
@@ -228,13 +261,16 @@ in {
     mkPiSettingsActivation "$HOME/.config/pi-notes/settings.json" piNotesSettings
   );
 
-  home.activation.piClaudeBridgeSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
-    mkPiSettingsActivation "$HOME/.config/pi/claude-bridge.json" claudeBridgeSettings
-  );
-
-  home.activation.piWorkClaudeBridgeSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
-    mkPiSettingsActivation "$HOME/.config/pi-work/claude-bridge.json" claudeBridgeSettings
-  );
+  # Remove files written by the retired integration, including the notes link.
+  home.activation.piClaudeBridgeCleanup = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    if [ -n "''${DRY_RUN:-}" ]; then
+      echo "Would remove retired Claude Bridge configuration"
+    else
+      rm -f "$HOME/.config/pi/claude-bridge.json" \
+        "$HOME/.config/pi-work/claude-bridge.json" \
+        "$HOME/.config/pi-notes/claude-bridge.json"
+    fi
+  '';
 
   home.file.".config/pi/mcp-adapter.json".source = jsonFormat.generate "pi-mcp-adapter.json" (
     if pkgs.stdenv.hostPlatform.isDarwin
