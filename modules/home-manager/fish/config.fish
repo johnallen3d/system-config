@@ -47,4 +47,12 @@ if command -q tv
     tv init fish | source
 end
 
+# Mise refreshes PATH on directory changes; restore managed tools last.
+function __fish_prefer_managed_paths --on-variable PWD
+    fish_add_path --global --move --prepend /nix/var/nix/profiles/default/bin
+    fish_add_path --global --move --prepend $HOME/.nix-profile/bin
+    fish_add_path --global --move --prepend $HOME/.local/bin
+end
+__fish_prefer_managed_paths
+
 fish_config theme choose tokyo-night-moon

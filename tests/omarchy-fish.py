@@ -5,6 +5,7 @@ credentials, or existing agent profiles.
 """
 
 import os
+import pwd
 import subprocess
 import tempfile
 from pathlib import Path
@@ -40,7 +41,7 @@ output = run(
     "command -q $name; or exit 1; end; "
     "string match -rq -- '^9ccfd8($| )' (string lower -- $fish_color_command); or exit 1; "
     'test $STARSHIP_CONFIG = "$HOME/.config/fish/starship.toml"; or exit 1; '
-    "string match -q '/nix/store/*/bin/fish' $SHELL; or exit 1; "
+    'test $SHELL = "$HOME/.nix-profile/bin/fish"; or exit 1; '
     "functions ghostty; functions uuid; command -s pi-personal; command -s starship; "
     "cd /tmp; test -r $STARSHIP_CONFIG; or exit 1; command -s starship"
 )
@@ -89,3 +90,60 @@ result = subprocess.run(
 )
 assert "FISH_VERSION=" in result.stdout and not result.stderr.strip(), result
 print("PASS configured Herdr shell wrapper launches Fish with Worktrunk")
+
+clean_env = {
+    "HOME": str(home),
+    "USER": "johna",
+    "LOGNAME": "johna",
+    "PATH": "/usr/bin:/bin",
+    "TERM": "xterm-256color",
+    "PI_CODING_AGENT_DIR": "/tmp/fish-login-pi-profile",
+    "CLAUDE_CONFIG_DIR": "/tmp/fish-login-claude-profile",
+}
+result = subprocess.run(
+    [
+        str(fish),
+        "--login",
+        "--command",
+        (
+            "status is-login; or exit 1; "
+            "command -q nix; or exit 1; "
+            'test -n "$NIX_PROFILES"; or exit 1; '
+            'test -r "$NIX_SSL_CERT_FILE"; or exit 1; '
+            "test $OMARCHY_PATH = /usr/share/omarchy; or exit 1; "
+            'contains -- "$HOME/.local/share/mise/shims" $PATH; or exit 1; '
+            "test $PI_CODING_AGENT_DIR = /tmp/fish-login-pi-profile; or exit 1; "
+            "test $CLAUDE_CONFIG_DIR = /tmp/fish-login-claude-profile; or exit 1"
+        ),
+    ],
+    capture_output=True,
+    text=True,
+    env=clean_env,
+    timeout=30,
+    check=False,
+)
+assert result.returncode == 0 and not result.stderr.strip(), result
+result = subprocess.run(
+    [str(fish), "--command", "printf 'ALREADY_INITIALIZED_OK'"],
+    capture_output=True,
+    text=True,
+    env={**clean_env, "__ETC_PROFILE_NIX_SOURCED": "1"},
+    timeout=30,
+    check=True,
+)
+assert result.stdout == "ALREADY_INITIALIZED_OK" and not result.stderr.strip(), result
+print("PASS pristine login environment, Omarchy bootstrap and Nix source guard")
+
+# Do not confuse setting $SHELL inside Fish with changing the account default.
+account = pwd.getpwnam("johna")
+assert account.pw_shell == str(fish), (
+    f"Account default is still {account.pw_shell}; authorize "
+    "~/.nix-profile/bin/omarchy-fish-default-shell"
+)
+assert str(fish) in Path("/etc/shells").read_text().splitlines()
+subprocess.run(
+    [str(home / ".nix-profile/bin/omarchy-fish-default-shell"), "--check"],
+    check=True,
+    timeout=30,
+)
+print("PASS account database and allowed-shell registration select Fish")

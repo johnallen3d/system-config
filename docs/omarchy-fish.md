@@ -1,29 +1,33 @@
 # Omarchy Fish
 
-Tracked in [Fizzy #696](https://app.fizzy.do/6284043/cards/696).
+Tracked in [Fizzy #696](https://app.fizzy.do/6284043/cards/696), with the account
+default-shell correction in [#697](https://app.fizzy.do/6284043/cards/697).
 
 ## Use it
 
-New Herdr panes use Nix-managed Fish. Existing panes keep their running shell;
-open a new tab, or run `exec ~/.nix-profile/bin/fish` in an idle shell.
-From an ordinary SSH or desktop terminal, use the same command:
+Fish must be the **account login shell**, not merely a Herdr pane setting.
+After Home Manager activation, run the installed helper once as `johna`:
 
 ```bash
-exec ~/.nix-profile/bin/fish
+~/.nix-profile/bin/omarchy-fish-default-shell
 ```
 
-The account's login shell remains `/usr/bin/bash`. This avoids changing
-Omarchy's login/session bootstrap or requiring sudo. Bash startup files,
-Ghostty, Hyprland, Omarchy themes and the existing Bash Starship config are not
-managed or modified by this module. To launch Fish directly in Ghostty without
-changing the account login shell, add this to your **user-owned** Ghostty config
-and reload it:
+Authorize its sudo prompt. It idempotently registers
+`/home/johna/.nix-profile/bin/fish` in `/etc/shells` and sets that path as
+`johna`'s account shell with Arch's `chsh`. The stable profile path follows
+Fish package upgrades; do not use a versioned `/nix/store` path. Standalone
+Home Manager cannot change the account database through user activation.
+The helper does not grant passwordless sudo or edit authentication policy.
 
-```ini
-command = /home/johna/.nix-profile/bin/fish
-```
+Fresh SSH logins then start Fish. Log out and back into the desktop once so
+applications inherit the new account shell instead of a cached Bash `SHELL`.
+New Herdr panes also use Fish. Existing shells keep running; replace an idle
+one with `exec ~/.nix-profile/bin/fish`, or open a new terminal. No Ghostty
+override is required: leave its default shell selection alone.
 
-That terminal opt-in is not applied automatically.
+Fish initializes Nix and imports `OMARCHY_PATH` and `PATH` from Omarchy's
+native bootstrap for login and noninteractive SSH command shells. Bash startup
+files, Ghostty, Hyprland, Omarchy themes and Bash's Starship config stay intact.
 
 ## What is shared
 
@@ -53,26 +57,41 @@ those requires their own package installation.
 Run on Omarchy as `johna`, from its system-config checkout/snapshot:
 
 ```bash
-. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-export NIX_CONFIG='extra-experimental-features = nix-command flakes'
+NIX_CONFIG='extra-experimental-features = nix-command flakes' \
 nix build --no-write-lock-file \
   'path:.#homeConfigurations."johna@omarchy".activationPackage' \
   --out-link result-fish
 DRY_RUN=1 ./result-fish/activate
 ./result-fish/activate
+~/.nix-profile/bin/omarchy-fish-default-shell
 ~/.local/bin/herdr server reload-config
 python3 tests/omarchy-fish.py
+
+# Read-only confirmation; no sudo needed.
+~/.nix-profile/bin/omarchy-fish-default-shell --check
+getent passwd johna
 ```
 
 Do not force unexpected file collisions or use automatic backups to overwrite
 an existing Fish/Television configuration. Build and review the dry run first.
 Reloading Herdr affects new panes only; it does not interrupt running agents.
 
-Live verification passed on Omarchy, including repeat activation, shell/helper
-checks and unchanged fingerprints for Bash, Bash Starship, Hyprland, Ghostty and
-Omarchy configuration. No account login-shell change was made.
+The original Fish installation passed live shell/helper and repeat activation
+checks, but incorrectly left the account shell as Bash. The default-shell
+correction additionally requires `/etc/shells` registration, an account database
+check and fresh SSH/login verification; helper installation alone is not proof
+that the account change has been authorized.
 
-To remove the opt-in, remove the Fish module import, rebuild and activate the
-host profile, then reload Herdr. New Herdr panes fall back to the existing
+## Revert safely
+
+**Before removing Fish from Home Manager**, restore a valid installed shell:
+
+```bash
+sudo /usr/bin/chsh -s /usr/bin/bash johna
+getent passwd johna
+```
+
+Then remove the Fish module import, rebuild and activate the host profile,
+and reload Herdr. New Herdr panes fall back to the existing
 Bash wrapper; do not uninstall the entire Home Manager profile, which also owns
 agents and services. See the [standalone guide](omarchy-poc.md).
