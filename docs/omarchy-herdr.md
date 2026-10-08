@@ -71,13 +71,29 @@ work. Running processes do not survive reboot; Herdr's saved-session restoration
 is not a guarantee that an agent resumes its in-flight task.
 
 On the Mac, `hosts/m4-mbp.nix` imports `herdr-omarchy-client.nix`. Its activation
-uses the Nix-managed `herdr-omarchy-setup` helper to seed the profile through the
-supported CLI. It preserves the opaque profile ID, unrelated machines,
-selection and an existing disabled state. It never approves an installer or
+uses the Nix-managed `herdr-omarchy-setup` helper to seed one `Omarchy` connection
+in each local named session:
+
+- Local `personal` connects to remote `default`, preserving its existing panes
+  and the Home Manager-managed remote service.
+- Local `work` connects to remote `work`, with independent workspaces and panes.
+
+Upstream Herdr 0.9.3 shares a machine catalog across all local sessions. The Mac
+Nix package carries a small patch to scope both the catalog and saved selection
+under `~/.local/state/herdr/sessions/<local-session>/client/`. Default-session
+clients retain the original global catalog. Server sockets, config, plugins, and
+pane processes are unchanged. Existing clients must **detach with `ctrl+b q` and
+reattach** (`herdr session attach personal` / `herdr session attach work`) to load
+the patched client; do not stop their servers. Reloading config cannot change the
+old client's catalog path.
+
+The helper uses the supported CLI and preserves existing per-session profile
+IDs, unrelated machines, and disabled state. It never approves an installer or
 server replacement. An unavailable box defers setup without breaking the Mac
-rebuild; retry with `herdr-omarchy-setup`. The machine catalog remains user-owned,
-not a read-only Home Manager file. Removing the profile will allow the next
-activation to seed it again; disable it if you want it retained but disconnected.
+rebuild; retry with `herdr-omarchy-setup`. Catalogs remain user-owned, not read-only
+Home Manager files. Removing a profile allows the next activation to seed it
+again; disable it if you want it retained but disconnected. The remote `work`
+daemon is started by setup, not owned by the default-session systemd service.
 
 ## Apply and operate
 
@@ -92,8 +108,9 @@ nix build --no-write-lock-file \
 ~/.local/bin/herdr server reload-config
 ```
 
-Apply the Mac with `mise update-system --switch-only`. Machine additions are
-picked up by existing clients without restarting or changing their selection.
+Apply the Mac with `mise update-system --switch-only`, then detach and reattach
+existing clients once to activate catalog isolation. Later machine additions are
+picked up by patched clients without restarting or changing their selection.
 
 On Omarchy:
 
@@ -114,7 +131,9 @@ client and server versions differ; compatibility is negotiated.
 From a Mac Herdr pane, discover remote IDs before controlling them:
 
 ```bash
-herdr machine status Omarchy --json
+herdr --session personal machine status Omarchy --json
+herdr --session work machine status Omarchy --json
+# In a named session, inherited context selects its own Omarchy connection.
 herdr --machine Omarchy workspace list
 herdr --machine Omarchy agent list
 ```

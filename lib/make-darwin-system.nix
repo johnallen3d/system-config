@@ -46,6 +46,25 @@ in
             broken = false;
           };
         };
+        # Upstream 0.9.3 shares saved SSH profiles across every local session.
+        # Scope only client catalogs/selection; keep server sockets and panes
+        # unchanged so clients can detach/reattach without stopping their work.
+        herdr = prev.herdr.overrideAttrs (old: {
+          postPatch = (old.postPatch or "") + ''
+            substituteInPlace src/client/endpoint/catalog.rs \
+              --replace-fail 'crate::config::state_dir()' 'session_client_state_dir()'
+            cat >> src/client/endpoint/catalog.rs <<'EOF'
+
+            fn session_client_state_dir() -> std::path::PathBuf {
+                let root = crate::config::state_dir();
+                match crate::session::active_name() {
+                    Some(name) => root.join("sessions").join(name),
+                    None => root,
+                }
+            }
+            EOF
+          '';
+        });
         # Temporary workaround for fish pexpect test failures on darwin
         # See: https://github.com/NixOS/nixpkgs/issues/461406
         fish = prev.fish.overrideAttrs (old: {
