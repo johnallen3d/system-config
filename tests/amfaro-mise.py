@@ -32,11 +32,13 @@ def check(home, mise, env, tmp):
         "import json, os, sys\n"
         "print(json.dumps({'pi': os.getenv('PI_CODING_AGENT_DIR'), "
         "'claude': os.getenv('CLAUDE_CONFIG_DIR'), "
+        "'jev_mode': os.getenv('PI_MODEL_ROUTER_JEV_MODE'), "
         "'keys': [os.getenv(k) for k in " + repr(KEYS) + "], 'args': sys.argv[1:]}))\n"
     )
     env = dict(env, MISE_EXEC_AUTO_INSTALL="false", MISE_AUTO_INSTALL="false",
                PI_CODING_AGENT_DIR=str(home / ".config/pi"),
                CLAUDE_CONFIG_DIR=str(home / ".config/claude-personal"),
+               PI_MODEL_ROUTER_JEV_MODE="fallback",
                **{key: "test-key" for key in KEYS})
     for directory, profile in ((work, "work"), (nested, "work"), (home, "personal")):
         args = ["--test", "argument with spaces"]
@@ -48,10 +50,11 @@ def check(home, mise, env, tmp):
         assert actual == {
             "pi": str(home / ".config" / ("pi-work" if profile == "work" else "pi")),
             "claude": str(home / ".config" / ("claude-gmatter" if profile == "work" else "claude-personal")),
+            "jev_mode": "primary" if profile == "work" else "fallback",
             "keys": [""] * 3 if profile == "work" else ["test-key"] * 3,
             "args": args,
         }, (directory, actual)
-        print(f"PASS {directory}: {profile} paired profiles, API-key isolation, arguments intact")
+        print(f"PASS {directory}: {profile} paired profiles, JEV mode, API-key isolation, arguments intact")
 
 
 def main():

@@ -3,4 +3,5 @@ ANTHROPIC_API_KEY = { value = "", tools = false }
 OPENAI_API_KEY = { value = "", tools = false }
 OPENROUTER_API_KEY = { value = "", tools = false }
 PI_CODING_AGENT_DIR = "{{env.HOME}}/.config/pi-work"
+PI_MODEL_ROUTER_JEV_MODE = "primary"
 CLAUDE_CONFIG_DIR = "{{env.HOME}}/.config/claude-gmatter"

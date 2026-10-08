@@ -31,6 +31,8 @@ Use plain `pi` and `claude`. Interactive Fish already activates mise on both
 hosts. Changing into an Amfaro project selects **both** `PI_CODING_AGENT_DIR`
 and `CLAUDE_CONFIG_DIR`, and clears `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and
 `OPENROUTER_API_KEY` for agent execution (not mise's tool installation).
+The work context also sets `PI_MODEL_ROUTER_JEV_MODE=primary`; personal contexts
+leave the inherited JEV mode unchanged.
 Child project configs can override parent values: avoid overriding these profile
 variables unless intentional. Named `pi-personal`, `pi-work`, `claude-personal`,
 and `claude-work` launchers have been retired.
