@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check installed launchers without installing packages or invoking a model.
+"""Check installed base wrappers without installing packages or invoking a model.
 
 Run on Omarchy: python3 tests/coding-agent-profiles.py
 Replaces only the final exec in a temporary script; tests the installed wiring.
@@ -23,20 +23,20 @@ def main():
             "'claude': os.environ.get('CLAUDE_CONFIG_DIR'), 'args': sys.argv[1:]}))\n"
         )
         for agent in ("pi", "claude"):
+            source = (home / ".local/bin" / agent).read_text()
+            lines = source.splitlines()
+            exec_lines = [i for i, line in enumerate(lines) if line.startswith("exec ")]
+            assert len(exec_lines) == 1, agent
+            lines[exec_lines[0]] = f'exec python3 "{probe}" "$@"'
+            script = directory / agent
+            script.write_text("\n".join(lines) + "\n")
             for profile, pi_dir, claude_dir in (
                 ("personal", "pi", "claude-personal"),
                 ("work", "pi-work", "claude-gmatter"),
             ):
-                name = f"{agent}-{profile}"
-                source = (home / ".local/bin" / name).read_text()
-                lines = source.splitlines()
-                exec_lines = [i for i, line in enumerate(lines) if line.startswith("exec ")]
-                assert len(exec_lines) == 1, name
-                lines[exec_lines[0]] = f'exec python3 "{probe}" "$@"'
-                script = directory / name
-                script.write_text("\n".join(lines) + "\n")
                 env = dict(os.environ)
-                env.update(PI_CODING_AGENT_DIR="/wrong/pi", CLAUDE_CONFIG_DIR="/wrong/claude")
+                env.update(PI_CODING_AGENT_DIR=str(home / ".config" / pi_dir),
+                           CLAUDE_CONFIG_DIR=str(home / ".config" / claude_dir))
                 args = ["--test", "argument with spaces"]
                 result = subprocess.run(
                     ["bash", str(script), *args], env=env, check=True,
@@ -47,8 +47,10 @@ def main():
                     "pi": str(home / ".config" / pi_dir),
                     "claude": str(home / ".config" / claude_dir),
                     "args": args,
-                }, (name, actual)
-                print(f"PASS {name}: paired profile overrides inherited context; arguments intact")
+                }, (agent, profile, actual)
+                print(f"PASS {agent}: selected {profile} profile preserved; arguments intact")
+            for profile in ("personal", "work"):
+                assert not (home / ".local/bin" / f"{agent}-{profile}").exists()
 
         # Exercise the base Pi wrapper without executing its package installer.
         source = (home / ".local/bin/pi").read_text().splitlines()

@@ -31,11 +31,11 @@ come first. The Mac UI uses its Mac keybindings and theme; a Linux-local client
 keeps the existing Linux keybindings, including `ctrl+space` as prefix and
 `prefix+d` to detach.
 
-Use `pi-personal`, `pi-work`, and `claude-work` as in the
-[agent guide](omarchy-agents.md). Named launchers set both
-`PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`. New remote panes default to the
-personal pair; personal Claude remains intentionally dormant. Credentials and
-sessions remain machine-local. [Favorite projects](herdr-favorite-projects.md)
+Use plain `pi` and `claude` as in the [agent guide](omarchy-agents.md).
+Interactive Fish/mise selects paired profiles from the working directory:
+`~/dev/src/amfaro` and descendants use work; personal directories use the default
+personal context. For noninteractive commands use `mise exec` explicitly.
+Credentials and sessions remain machine-local. [Favorite projects](herdr-favorite-projects.md)
 are provisioned at the same home-relative paths as the Mac; existing checkouts
 and worktrees are never synchronized.
 

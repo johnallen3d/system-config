@@ -16,24 +16,44 @@ libvips. This is required for the work kit's image/transformer dependencies.
 
 ## Profiles
 
-| Command | Pi directory | Claude directory |
-| --- | --- | --- |
-| `pi-personal`, `claude-personal` | `~/.config/pi` | `~/.config/claude-personal` |
-| `pi-work`, `claude-work` | `~/.config/pi-work` | `~/.config/claude-gmatter` |
+Tracked directory-context ownership in [Fizzy #708](https://app.fizzy.do/6284043/cards/708).
+Both Mac and Omarchy manage `~/dev/src/amfaro/mise.toml` through the shared
+`agent-projects.nix` Home Manager module. Activation trusts only that managed
+config. Its source is `modules/home-manager/agent-projects/amfaro-mise.toml`;
+project-specific tools and dependencies remain owned by each project's mise file.
 
-Explicit launchers set **both** `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`, even
-when called from a shell with the other profile selected. Bare `pi`/`claude`
-default to personal, while respecting an explicitly selected directory. Use the
-named launchers when switching contexts. Project mise environments can still
-select the paired directories as they do on the Mac.
+| Directory context | Pi directory | Claude directory |
+| --- | --- | --- |
+| Personal (default) | `~/.config/pi` | `~/.config/claude-personal` |
+| `~/dev/src/amfaro` and descendants | `~/.config/pi-work` | `~/.config/claude-gmatter` |
+
+Use plain `pi` and `claude`. Interactive Fish already activates mise on both
+hosts. Changing into an Amfaro project selects **both** `PI_CODING_AGENT_DIR`
+and `CLAUDE_CONFIG_DIR`, and clears `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and
+`OPENROUTER_API_KEY` for agent execution (not mise's tool installation).
+Child project configs can override parent values: avoid overriding these profile
+variables unless intentional. Named `pi-personal`, `pi-work`, `claude-personal`,
+and `claude-work` launchers have been retired.
+
+Noninteractive shells, ordinary SSH commands, and automation must use mise
+explicitly; `cd` alone does not activate it there:
+
+```bash
+mise -C ~/dev/src/amfaro exec -- claude
+mise -C ~/dev/src/amfaro exec -- pi list
+```
+
+Bare wrappers respect inherited profile variables. Leaving the work directory
+restores the pre-mise environment, which need not be personal if the shell was
+started with explicit work variables. Existing agents keep their launch-time
+profile: restart in the intended directory rather than changing a running
+process's environment. This also applies to `PI_CODING_AGENT_DIR` in Pi sessions.
 
 John currently has no personal Claude account. The personal Claude profile stays
 installed but dormant; this is intentional, not an authentication failure. Use
-`claude-work` for Claude Code and `pi-personal` for personal work. Bare `claude`
-still defaults to the dormant personal profile, so use the explicit work launcher.
-An already-running session retains its launch environment; activation cannot
-switch it to work or set its missing `PI_CODING_AGENT_DIR`. Start `claude-work`
-when ready, without copying credentials or session data between profiles.
+Claude from an Amfaro directory for work and Pi from a personal directory for
+personal work. No credentials are copied between profiles or hosts.
+
 The retired Pi Claude Bridge integration is not installed. Personal Claude Code
 must not silently fall back to work credentials.
 
@@ -61,7 +81,7 @@ No personal credentials, cached plugins, or sessions are shared with work.
 ## Apply
 
 On Omarchy as `johna`, from the system-config checkout (currently the staged
-working-tree snapshot at `~/dev/src/system-config-poc`):
+working-tree snapshot at `~/dev/src/system-config-amfaro`):
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -91,7 +111,7 @@ Omarchy. **Do not repeat the installation steps below.** Latest verification:
 | Personal Claude Code | Intentionally dormant: no personal account at present |
 
 No further agent-login steps are required for the accounts John currently has.
-If a personal Claude account is added later, run `claude-personal auth login` on
+If a personal Claude account is added later, run `claude auth login` from a personal directory on
 Omarchy and approve that account in the browser. This is optional, not a blocker.
 Do not copy credential files between profiles or from the Mac.
 
@@ -121,13 +141,15 @@ plugin installation during activation. Work prompts that depend on the plugin
 will not be ready until this succeeds. The shared Pi wrapper currently tolerates
 failed bootstrap installs, so a successful `pi-work --version` alone does **not**
 prove the private package installed; use the explicit setup command and check
-`pi-work list` and `claude-work plugin list`.
+`mise -C ~/dev/src/amfaro exec -- pi list` and
+`mise -C ~/dev/src/amfaro exec -- claude plugin list`.
 
 Do not copy the Mac's credential files to bypass these logins.
 
 Verify actual installation and runtime behavior without model calls:
 
 ```bash
+python3 tests/amfaro-mise.py --installed
 python3 tests/coding-agent-profiles.py
 python3 tests/agent-work-kit.py
 python3 tests/claude-work-statusline.py --installed
@@ -144,10 +166,12 @@ Pi's runtime follows latest upstream; a new process resolves it through npx.
 Refresh packages in the intended profile:
 
 ```bash
-pi-personal update
-pi-work update
-claude-work plugin marketplace update amfaro
-claude-work plugin update agent-kit@amfaro
+cd ~
+mise exec -- pi update
+cd ~/dev/src/amfaro
+mise exec -- pi update
+mise exec -- claude plugin marketplace update amfaro
+mise exec -- claude plugin update agent-kit@amfaro
 ```
 
 Restart Claude Code after plugin updates. Claude's binary follows the locked

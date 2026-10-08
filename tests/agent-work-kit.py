@@ -24,7 +24,8 @@ sharp({create:{width:1,height:1,channels:3,background:'#000'}}).png().toBuffer()
     )
 
     result = subprocess.run(
-        [str(home / ".local/bin/claude-work"), "plugin", "list", "--json"],
+        ["mise", "-C", str(home / "dev/src/amfaro"), "exec", "--",
+         str(home / ".local/bin/claude"), "plugin", "list", "--json"],
         check=True, capture_output=True, text=True, timeout=30,
     )
     plugin = next(item for item in json.loads(result.stdout) if item["id"] == "agent-kit@amfaro")

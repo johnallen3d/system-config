@@ -24,16 +24,6 @@
     fi
     exec ${pi}/bin/pi "$@"
   '';
-  profileLauncher = agent: profile: piDir: claudeDir:
-    pkgs.writeShellScriptBin "${agent}-${profile}" ''
-      export PI_CODING_AGENT_DIR="$HOME/.config/${piDir}"
-      export CLAUDE_CONFIG_DIR="$HOME/.config/${claudeDir}"
-      exec ${
-        if agent == "pi"
-        then managedPi
-        else claude
-      }/bin/${agent} "$@"
-    '';
   workSetup = pkgs.writeShellScriptBin "agent-work-setup" ''
     set -euo pipefail
     export PATH="${runtimePath}:$PATH"
@@ -57,10 +47,6 @@
   commands = {
     inherit claude;
     pi = managedPi;
-    claude-personal = profileLauncher "claude" "personal" "pi" "claude-personal";
-    claude-work = profileLauncher "claude" "work" "pi-work" "claude-gmatter";
-    pi-personal = profileLauncher "pi" "personal" "pi" "claude-personal";
-    pi-work = profileLauncher "pi" "work" "pi-work" "claude-gmatter";
     agent-work-setup = workSetup;
   };
 in {

@@ -55,17 +55,19 @@ a guarantee against global `/etc` changes; the Home Manager POC itself does
 not manage shell startup files. Review the installer's plan before confirming.
 Do not grant passwordless sudo just for this POC.
 
-For the current experiment, an uncommitted working-tree snapshot is staged at
-`~/dev/src/system-config-poc`, and a pre-install shell/desktop fingerprint is
-stored at `~/.cache/nix-home-manager-poc/baseline.sha256`. The snapshot has now
-been built and activated. Test logs are also in that cache directory.
+The original experiment's working-tree snapshot remains at
+`~/dev/src/system-config-poc`, and its pre-install shell/desktop fingerprint is
+stored at `~/.cache/nix-home-manager-poc/baseline.sha256`. That snapshot is retained
+untouched. The current applied snapshot is `~/dev/src/system-config-amfaro`,
+including shared directory-selected agent profiles (Fizzy #708); use it rather
+than reactivating the older POC.
 
 ## Build and apply on Omarchy (no sudo)
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
-cd ~/dev/src/system-config-poc
+cd ~/dev/src/system-config-amfaro
 
 # path: includes the staged working tree without needing a git commit.
 nix build --no-write-lock-file \

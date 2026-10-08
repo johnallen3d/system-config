@@ -48,6 +48,7 @@ in {
 
   imports = [
     ./packages
+    ./agent-projects.nix
     ./claude-prompts.nix
     ./herdr.nix
     ./obsidian.nix

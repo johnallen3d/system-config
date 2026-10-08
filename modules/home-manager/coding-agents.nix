@@ -11,6 +11,7 @@
 in {
   imports = [
     ./packages/coding-agents.nix
+    ./agent-projects.nix
     ./claude-prompts.nix
     ./pi-extensions.nix
     ./pi-prompts.nix

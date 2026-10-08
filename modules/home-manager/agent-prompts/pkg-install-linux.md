@@ -22,4 +22,4 @@ nix build --no-write-lock-file \
 
 Do not overwrite unexpected file collisions or change Omarchy's shell/desktop.
 Verify the executable and its version. Pi packages are bootstrapped on the next
-launch; use `pi-personal list` or `pi-work list` for the intended profile.
+launch; use `mise exec -- pi list` from the intended personal or Amfaro work directory.

@@ -6,6 +6,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 - John's Omarchy machine **already uses this repository's standalone Home Manager setup** on Arch Linux. Do not assume Omarchy is outside Nix or ask whether it uses Home Manager.
 - Its flake output is `homeConfigurations."johna@omarchy"`, configured in `hosts/omarchy.nix`; its home directory is `/home/johna`.
+- `~/dev/src/amfaro/mise.toml` is shared Home Manager-owned profile context on Mac and Omarchy (`modules/home-manager/agent-projects.nix`). Use plain `pi`/`claude`; use `mise exec` explicitly for noninteractive work commands. Respect both profile variables, including `PI_CODING_AGENT_DIR`; no named profile launchers are installed.
 - Shared project declarations and user-level automation belong in this Nix/Home Manager setup by default, not a separate mise task merely because the target is Omarchy. Project dependencies are managed with mise.
 - Omarchy is not NixOS. Keep host modules opt-in and leave Omarchy's native desktop configuration alone; never run macOS rebuild tasks there.
 - Consult `docs/omarchy-agents.md` for activation and agent profiles, and `docs/omarchy-herdr.md` for Herdr and remote access. Respect `PI_CODING_AGENT_DIR` when working with Pi profiles.
