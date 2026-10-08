@@ -12,7 +12,21 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  workStatusLine = pkgs.writeShellApplication {
+    name = "claude-work-statusline";
+    runtimeInputs = [pkgs.git pkgs.jq pkgs.nodejs_24];
+    text = builtins.readFile ./scripts/claude-work-statusline.sh;
+  };
+  workSettings = {
+    outputStyle = "ELI5";
+    statusLine = {
+      type = "command";
+      command = "${workStatusLine}/bin/claude-work-statusline";
+      padding = 0;
+    };
+  };
+in {
   home.file = {
     # Personal prompts → ~/.config/claude-personal/commands/
     ".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
@@ -90,15 +104,19 @@
     ln -sfn "$HOME/.config/claude-personal/agents" "$HOME/.config/claude-gmatter/agents"
   '';
 
-  # Claude owns the rest of this runtime settings file; set only this profile default.
-  home.activation.claudeGmatterOutputStyle = lib.hm.dag.entryAfter ["writeBoundary"] ''
+  # Share the work UI on Mac/Linux; leave all other runtime/auth settings alone.
+  home.activation.claudeGmatterSettings = lib.hm.dag.entryAfter ["writeBoundary" "claudeProfileDefaults"] ''
     settings="$HOME/.config/claude-gmatter/settings.json"
-    mkdir -p "$(dirname "$settings")"
-    if [ -e "$settings" ]; then
-      ${pkgs.jq}/bin/jq '.outputStyle = "ELI5"' "$settings" > "$settings.tmp"
-    else
-      printf '%s\n' '{"outputStyle":"ELI5"}' > "$settings.tmp"
+    if [ -z "''${DRY_RUN_CMD:-}" ]; then
+      mkdir -p "$(dirname "$settings")"
+      if [ ! -e "$settings" ]; then
+        printf '%s\n' '{}' > "$settings"
+      fi
+      tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
+      ${pkgs.jq}/bin/jq --argjson managed ${lib.escapeShellArg (builtins.toJSON workSettings)} \
+        '. * $managed' "$settings" > "$tmp"
+      chmod 0600 "$tmp"
+      mv "$tmp" "$settings"
     fi
-    mv "$settings.tmp" "$settings"
   '';
 }

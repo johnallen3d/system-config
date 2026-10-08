@@ -1,6 +1,7 @@
 # Omarchy coding agents
 
-Tracked in [Fizzy #692](https://app.fizzy.do/6284043/cards/692).
+Tracked in [Fizzy #692](https://app.fizzy.do/6284043/cards/692), with shared work
+footer parity in [#706](https://app.fizzy.do/6284043/cards/706).
 Builds on the [standalone Home Manager setup](omarchy-poc.md); this is not NixOS.
 For persistent sessions and Mac remote access, see the [Herdr guide](omarchy-herdr.md).
 
@@ -30,6 +31,9 @@ John currently has no personal Claude account. The personal Claude profile stays
 installed but dormant; this is intentional, not an authentication failure. Use
 `claude-work` for Claude Code and `pi-personal` for personal work. Bare `claude`
 still defaults to the dormant personal profile, so use the explicit work launcher.
+An already-running session retains its launch environment; activation cannot
+switch it to work or set its missing `PI_CODING_AGENT_DIR`. Start `claude-work`
+when ready, without copying credentials or session data between profiles.
 The retired Pi Claude Bridge integration is not installed. Personal Claude Code
 must not silently fall back to work credentials.
 
@@ -46,8 +50,13 @@ configured vault/CLI; this setup does not install Obsidian.
 
 Authentication files and sessions remain writable, machine-local, and outside
 Home Manager. Existing `~/.pi/agent` and `~/.claude` data are **not** migrated.
-Claude settings are seeded without overwriting user-owned keys. No personal
-credentials, cached plugins, or sessions are shared with the work profile.
+Claude defaults are seeded without overwriting user-owned keys, except for the
+Nix-managed work UI: ELI5 output style and the same `agent-kit` status/footer as
+the Mac. The footer resolves the registered user plugin within the selected
+`CLAUDE_CONFIG_DIR`, using Nix-provided Node, jq, and Git. It remains blank if the
+plugin is not installed; no other profile's plugin or credentials are used.
+This Claude footer is separate from the excluded cross-profile Pi usage footer.
+No personal credentials, cached plugins, or sessions are shared with work.
 
 ## Apply
 
@@ -121,6 +130,7 @@ Verify actual installation and runtime behavior without model calls:
 ```bash
 python3 tests/coding-agent-profiles.py
 python3 tests/agent-work-kit.py
+python3 tests/claude-work-statusline.py --installed
 ```
 
 Claude may show a dependency-install advisory for the plugin's bundled Pi
