@@ -14,6 +14,11 @@
     # Omarchy provides a global libvips. Sharp otherwise switches from its
     # bundled binaries to a source build requiring undeclared build tooling.
     export SHARP_IGNORE_GLOBAL_LIBVIPS=1
+    # Headroom's pip-installed native wheels need the C++/zlib runtimes that
+    # Nix Python does not find in Arch's /usr/lib. Scope this to Pi and its
+    # children (including the extension-managed proxy), not the login shell
+    # or Claude. Keep the extension's venv installation/lifecycle unchanged.
+    export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [pkgs.stdenv.cc.cc.lib pkgs.zlib]}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PI_CODING_AGENT_DIR="''${PI_CODING_AGENT_DIR:-$HOME/.config/pi}"
     if [ -z "''${CLAUDE_CONFIG_DIR:-}" ]; then
       if [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-work" ]; then

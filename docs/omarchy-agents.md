@@ -63,12 +63,23 @@ Pi settings, package declarations, themes, extensions, prompts, Claude subagent
 roles, keybindings, and ELI5 output style are shared with the Mac. Linux gets a
 host-appropriate `/pkg-install` prompt. Pi configuration is regenerated on each
 activation, preserving only `lastChangelogVersion`; persistent changes belong in
-Nix. Mac-only legacy extension links, Keychain commands, local
-headroom, and local calc endpoints are not enabled here. The Mac usage footer
+Nix. Mac-only legacy extension links, Keychain commands, and Mac-local
+Headroom MCP/calc endpoints are not enabled here. The Mac usage footer
 is also excluded because its credential fallback reads across Pi profiles. Remote MCP endpoints
 still require their own login or environment credentials; no Mac tokens are
 transferred. Session-capture's Obsidian journal integration requires a separately
 configured vault/CLI; this setup does not install Obsidian.
+
+The shared `pi-headroom` extension **is** enabled for both Pi profiles. It
+installs and manages its own local proxy in `~/.pi/headroom-venv`, independently
+of MCP configuration. Omarchy's Pi launcher supplies Nix C++ and zlib runtime
+libraries through process-scoped `LD_LIBRARY_PATH`; otherwise native Python
+wheels can fail with `libstdc++.so.6` missing and the extension only reports
+“proxy offline.” This does not change the login shell or Claude environment.
+After launcher changes, restart Pi in the intended directory (or retry
+`/headroom on` if its process already has the corrected library path).
+Verify with `python3 tests/headroom-omarchy.py`; it tests both installed profiles
+on isolated ports without model calls or touching an active agent's proxy.
 
 Authentication files and sessions remain writable, machine-local, and outside
 Home Manager. Existing `~/.pi/agent` and `~/.claude` data are **not** migrated.
