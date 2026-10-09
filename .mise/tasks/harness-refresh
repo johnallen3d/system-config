@@ -1,32 +1,74 @@
 #!/usr/bin/env bash
-#MISE description="Refresh Pi packages and the work Claude Code agent-kit plugin"
+#MISE description="Refresh Pi packages and work Claude plugin on Mac and Omarchy"
+#USAGE flag "--local-only" help="Refresh only this host (macOS defaults to both hosts)"
 set -uo pipefail
 
-# Refresh both harnesses even if one fails, so a partial failure is visible.
+local_only="${usage_local_only:-false}"
+# Also support direct invocation, without mise's usage parser.
+if [ "${1:-}" = "--local-only" ]; then
+  local_only=true
+  shift
+fi
+if [ "$#" -ne 0 ]; then
+  echo "Usage: harness-refresh [--local-only]" >&2
+  exit 2
+fi
+
+scripts_dir="$(cd "$(dirname "$0")/../scripts" && pwd)"
+
+refresh_omarchy() {
+  # Ship only the two workers, into a disposable directory. This runs exactly
+  # the same implementation without relying on/synchronizing the remote snapshot.
+  # No credentials, profile config, or repository state crosses the SSH boundary.
+  local payload
+  if ! payload="$(COPYFILE_DISABLE=1 tar --format=ustar -C "$scripts_dir" -czf - harness-refresh-local pi-refresh | base64)"; then
+    return 1
+  fi
+  {
+    cat <<'BASH'
+set -euo pipefail
+if [ "$(uname -s)" != Linux ] || [ "$HOME" != /home/johna ]; then
+  echo 'Unexpected Omarchy host/user; refusing refresh' >&2
+  exit 1
+fi
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+base64 --decode <<'HARNESS_PAYLOAD' | tar -xzf - -C "$tmp_dir"
+BASH
+    printf '%s\n' "$payload"
+    cat <<'BASH'
+HARNESS_PAYLOAD
+mise -C "$HOME/dev/src/amfaro" exec -- bash "$tmp_dir/harness-refresh-local"
+BASH
+  } | ssh -o BatchMode=yes -o ConnectTimeout=10 \
+    -o ServerAliveInterval=15 -o ServerAliveCountMax=3 johna@omarchy 'bash -s'
+}
+
 status=0
-if ! "$(dirname "$0")/../scripts/pi-refresh"; then
-  echo "Pi package refresh failed" >&2
+host="$(uname -s)"
+printf '[%s] Refreshing local harness packages\n' "$host"
+if mise -C "$HOME/dev/src/amfaro" exec -- bash "$scripts_dir/harness-refresh-local"; then
+  printf '[%s] SUCCESS\n' "$host"
+else
+  printf '[%s] FAILED\n' "$host" >&2
   status=1
 fi
 
-claude="$HOME/.local/bin/claude"
-if [ ! -x "$claude" ]; then
-  echo "Claude Code not found at $claude" >&2
-  status=1
-else
-  export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
-  if "$claude" plugin marketplace update amfaro; then
-    if ! "$claude" plugin update agent-kit@amfaro; then
-      echo "Claude Code agent-kit update failed" >&2
-      status=1
-    fi
+# Linux is always host-local, preventing recursion and Mac rebuilds on Omarchy.
+# Attempt Omarchy even when the local refresh fails.
+if [ "$host" = Darwin ] && [ "$local_only" != true ]; then
+  echo '[Omarchy] Refreshing remote harness packages'
+  if refresh_omarchy; then
+    echo '[Omarchy] SUCCESS'
   else
-    echo "Claude Code marketplace update failed; skipping plugin update" >&2
+    echo '[Omarchy] FAILED (shared refresh is partial)' >&2
     status=1
   fi
 fi
 
 if [ "$status" -eq 0 ]; then
-  echo "Done. Restart Claude Code to load the updated plugin."
+  echo 'All requested hosts refreshed. Restart Claude Code on each refreshed host to load plugin updates.'
+else
+  echo 'Harness refresh incomplete; see per-host failures above.' >&2
 fi
 exit "$status"

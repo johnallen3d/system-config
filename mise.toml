@@ -6,11 +6,11 @@ description = "Apply darwin-rebuild (updates flake by default); logs to temp fil
 file = "./.mise/tasks/nix-rebuild"
 
 [tasks.harness-refresh]
-description = "Refresh Pi packages and the work Claude Code agent-kit plugin"
+description = "Refresh Pi packages and work Claude plugin on Mac and Omarchy"
 file = "./.mise/tasks/harness-refresh"
 
 [tasks.update-system]
-description = "Apply macOS config and optionally refresh Pi and Claude Code harnesses"
+description = "Apply macOS config and optionally refresh Mac and Omarchy harnesses"
 file = "./.mise/tasks/update-system"
 
 [tasks.pi-model-usage]

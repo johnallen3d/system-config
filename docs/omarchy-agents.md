@@ -201,8 +201,43 @@ Claude's dependency checks or install arbitrary dependencies to hide the warning
 
 ## Refresh
 
+Tracked in [Fizzy #714](https://app.fizzy.do/6284043/cards/714).
+
+From the Mac's system-config checkout, `mise run harness-refresh` refreshes
+**both Mac and Omarchy** by default. `mise update-system --harness-only` does the
+same without rebuilding; `--harness-refresh` refreshes both after the Mac rebuild.
+The task refreshes personal, work, and notes Pi packages plus the work Claude
+`agent-kit@amfaro` marketplace/plugin. It does not update Claude's binary or
+activate Home Manager on Omarchy.
+
+The remote run connects as `johna@omarchy` with noninteractive SSH, executes Bash
+explicitly, and selects work context through `mise -C ~/dev/src/amfaro exec --`.
+Only the two refresh workers are sent into a temporary directory, cleaned up on
+exit. No repository synchronization, config, sessions, or credentials are
+transferred; each host uses its own installed profiles and GitHub access.
+Per-host success/failure is reported. Both hosts are attempted even if one fails;
+an unreachable Omarchy or any package/plugin failure returns nonzero and means
+the shared refresh is partial. No agents or servers are restarted automatically.
+
+Use `mise run harness-refresh --local-only` for an explicitly Mac-only refresh.
+On Omarchy, run `mise run harness-refresh` from `~/dev/src/system-config-amfaro`;
+Linux always refreshes only itself and never connects back to the Mac.
+
+Validate orchestration offline with `mise exec -- python3 tests/harness-refresh.py`
+on each host. After a live refresh, use the absolute checkout path with work
+context (mise changes the working directory):
+
+```bash
+mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/harness-refresh-installed.py"
+```
+
+The installed test checks each profile's declared npm versions/Git revisions
+against upstream, Pi runtime and package discovery, the enabled Claude plugin,
+native Sharp processing, and Claude MCP startup/tool discovery without model
+calls. It tests host-local installations, not just source files or marker files.
+
 Pi's runtime follows latest upstream; a new process resolves it through npx.
-Refresh packages in the intended profile:
+For a single-profile refresh on either host:
 
 ```bash
 cd ~
@@ -215,8 +250,8 @@ mise exec -- claude plugin update agent-kit@amfaro
 
 Restart Claude Code after plugin updates. Claude's binary follows the locked
 nixpkgs version; update inputs only as a separate requested change, then apply
-Home Manager on Omarchy. Do not run the repository's macOS `update-system` or
-`nix-rebuild` tasks here.
+Home Manager on Omarchy. Do not run the repository's macOS rebuild tasks here;
+`update-system` rejects rebuilds on Linux (`--harness-only` is safe and host-local).
 
 ## Rollback
 

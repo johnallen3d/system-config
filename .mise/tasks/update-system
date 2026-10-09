@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-#MISE description="Apply macOS config; optionally refresh Pi and Claude Code harnesses"
+#MISE description="Apply macOS config; optionally refresh Mac and Omarchy harnesses"
 #USAGE flag "--switch-only" help="Skip nix flake update"
 #USAGE flag "--picker-only" help="Update only the Herdr project picker input"
-#USAGE flag "--harness-refresh" help="Refresh Pi packages and work Claude Code plugin after rebuild"
-#USAGE flag "--harness-only" help="Refresh Pi packages and work Claude Code plugin without rebuilding"
+#USAGE flag "--harness-refresh" help="Refresh Mac and Omarchy Pi packages and work Claude plugin after rebuild"
+#USAGE flag "--harness-only" help="Refresh harness packages without rebuilding (Mac + Omarchy from macOS)"
 set -euo pipefail
 
 if [[ "${usage_harness_only:-false}" == "true" ]]; then
   exec mise run harness-refresh
+fi
+
+if [[ "$(uname -s)" != Darwin ]]; then
+  echo "System rebuilds are macOS-only; use harness-refresh for host-local Linux refreshes" >&2
+  exit 2
 fi
 
 if [[ "${usage_switch_only:-false}" == "true" && "${usage_picker_only:-false}" == "true" ]]; then

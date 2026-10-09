@@ -18,7 +18,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 ## Commands
 
-- macOS: `mise update-system`; `--switch-only` skips flake updates, `--harness-refresh` refreshes Pi and work Claude Code after the rebuild, and `--harness-only` refreshes both without rebuilding (`mise run harness-refresh` also works). Restart Claude Code after a plugin update.
+- macOS: `mise update-system`; `--switch-only` skips flake updates, `--harness-refresh` refreshes Pi packages and the work Claude plugin on **Mac and Omarchy** after the Mac rebuild, and `--harness-only` refreshes both hosts without rebuilding (`mise run harness-refresh` also works). `mise run harness-refresh --local-only` explicitly skips Omarchy; on Linux the task is always host-local. Failures on either host return nonzero. These tasks do not update Claude's binary or activate Omarchy. Restart Claude Code on each refreshed host after a plugin update.
 - macOS rebuild without Pi: `mise run nix-rebuild`.
 - NixOS: `sudo nixos-rebuild switch --impure --flake .#drummer`.
 - Check: `nix flake check`; search: `nix search nixpkgs <name>`.

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Host-local worker; called through the managed Amfaro mise context.
+set -uo pipefail
+
+# Refresh both harnesses even if one fails, so a partial failure is visible.
+status=0
+if ! "$(dirname "$0")/pi-refresh"; then
+  echo "Pi package refresh failed" >&2
+  status=1
+fi
+
+claude="$HOME/.local/bin/claude"
+if [ ! -x "$claude" ]; then
+  echo "Claude Code not found at $claude" >&2
+  status=1
+else
+  export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
+  if "$claude" plugin marketplace update amfaro; then
+    if ! "$claude" plugin update agent-kit@amfaro; then
+      echo "Claude Code agent-kit update failed" >&2
+      status=1
+    fi
+  else
+    echo "Claude Code marketplace update failed; skipping plugin update" >&2
+    status=1
+  fi
+fi
+
+if [ "$status" -eq 0 ]; then
+  echo "Host-local package refresh succeeded."
+fi
+exit "$status"
