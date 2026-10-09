@@ -55,7 +55,10 @@ in {
     ./pi-extensions.nix
     ./pi-prompts.nix
     ./pi-settings.nix
+    ./subscription-proxy.nix
   ];
+
+  subscriptionProxy.enable = pkgs.stdenv.hostPlatform.isDarwin;
 
   home.sessionVariables = {
     CLAUDE_CONFIG_DIR = "$HOME/.config/claude-personal";

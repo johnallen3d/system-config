@@ -29,6 +29,11 @@ in {
     ../modules/home-manager/omarchy-vnc.nix
   ];
 
+  subscriptionProxy = {
+    enable = true;
+    server.enable = true;
+  };
+
   home = {
     username = "johna";
     homeDirectory = "/home/johna";

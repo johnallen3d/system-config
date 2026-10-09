@@ -16,6 +16,7 @@ in {
     ./pi-extensions.nix
     ./pi-prompts.nix
     ./pi-settings.nix
+    ./subscription-proxy.nix
   ];
 
   codingAgents = {
