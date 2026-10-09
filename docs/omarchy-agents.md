@@ -127,6 +127,17 @@ plugin is not installed; no other profile's plugin or credentials are used.
 This Claude footer is separate from the excluded cross-profile Pi usage footer.
 No personal credentials, cached plugins, or sessions are shared with work.
 
+## Claude startup context
+
+The [Mac/Omarchy context audit](claude-context-audit.md) (#726) found that the
+Mac's user-owned native-tool/skill trimming is not shared with Omarchy. Matched
+fresh requests measured about 14k tokens on Mac versus 35k on Omarchy; a
+temporary Mac context-policy overlay reduced Omarchy to about 13k. These are
+absolute input counts including cached tokens, not context-window percentages.
+A reviewed persistent work-only policy remains tracked in #731; no trimming
+settings were installed by the audit. Its reproducible installed inventory and
+explicit live probe are in `tests/claude-context-audit.py`.
+
 ## Apply
 
 ### Shared changes require two deployments
