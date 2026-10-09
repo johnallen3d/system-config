@@ -1,155 +1,46 @@
 ---
 name: pi-nix-integration
-description: Manage pi packages, skills, and themes within this nix-darwin system-config project. Use when adding pi packages to nix config, managing local skills, or understanding pi integration in this project.
+description: Manage Pi packages, skills, themes, and profile configuration in this Nix/Home Manager repository.
 ---
 
-# Pi Nix Integration
+# Pi Nix integration
 
-This skill manages pi packages, extensions, skills, and themes within the nix-darwin system-config project.
+## Ownership and profiles
 
-## Key Difference from Standard Pi
+- Package declarations: `modules/home-manager/pi/packages.nix`.
+- Latest-upstream Nix launcher and first-run bootstrap: `modules/home-manager/packages/pi.nix`.
+- Settings, personal native MCP, and prompt instructions: `modules/home-manager/pi-settings.nix`.
+- Shared/local extensions and themes: `modules/home-manager/pi-extensions.nix` and `modules/home-manager/pi/`.
+- Refresh owner: `.mise/tasks/harness-refresh` and `.mise/scripts/pi-refresh`.
+- Personal: `~/.config/pi`; work: `~/.config/pi-work`; Telegram notes: `~/.config/pi-notes`.
 
-**Standard pi workflow**: `pi install npm:package-name` 
+Always respect inherited `PI_CODING_AGENT_DIR`. Use plain `pi`; no named profile launchers exist. For noninteractive work commands, use `mise -C ~/dev/src/amfaro exec -- ...`. That directory selects both Pi and Claude work profiles. Never copy credentials or sessions between profiles or hosts.
 
-**This project workflow**: Pi packages are declared in nix configuration and installed automatically on first pi run.
+Pi stores npm packages under the selected profile's `npm/node_modules`, not the legacy global `~/.local/lib/node_modules`. The launcher tracks first-run bootstrap with `<profile>/packages-installed`; do not delete markers merely to update packages. Bootstrap failure reporting is tracked separately in Fizzy #693, and the Mac's explicit-profile/mise Node-shim edge case in #715.
 
-## Architecture
+## Package changes
 
-### Pi Package Management
-- **Declaration**: `modules/home-manager/packages/pi.nix`
-- **Auto-installation**: Packages install on first pi command run
-- **Tracking**: Uses pi's native package management but declared in nix
-- **Location**: Packages install to `~/.local/lib/node_modules/`
+1. Inspect the active profile with `pi --version` and `pi list`.
+2. Add/remove the appropriate `npm:<name>` or `git:<source>` declaration in `modules/home-manager/pi/packages.nix`. Keep shared packages in `sharedPackageSpecs` only when both personal and work need them.
+3. Apply unchanged inputs on Mac with `mise update-system --switch-only`.
+4. For shared changes, inspect Omarchy's actual `~/dev/src/system-config-amfaro` snapshot, check divergence, transfer only intended files, then build/activate its standalone Home Manager configuration as documented in `docs/omarchy-agents.md`. A Mac rebuild does not deploy Omarchy.
+5. Use `mise run harness-refresh` to refresh both hosts' Pi packages and work Claude plugin. `--local-only` explicitly skips Omarchy; Linux always runs host-local. This updates neither Claude's binary nor Omarchy's Home Manager configuration.
+6. Verify installed config and runtime discovery independently on each host. Do not restart active agents automatically. Restart Claude after plugin updates and start a new Pi session to load changed extensions.
 
-### Current Integration Method
-```nix
-{pkgs, ...}: let
-  piPackages = [
-    "pi-prompt-template-model"
-    "pi-subagents" 
-    "@tmustier/pi-skill-creator"
-  ];
-  
-  installPiPackages = pkgs.writeShellScript "install-pi-packages" ''
-    for package in ${toString piPackages}; do
-      ${pkgs.nodejs_24}/bin/npx --yes @earendil-works/pi-coding-agent@latest install npm:$package 2>/dev/null || true
-    done
-  '';
-in
-pkgs.writeShellScriptBin "pi" ''
-  # Ensure pi packages are installed on first run
-  if [ ! -f "$HOME/.pi/packages-installed" ]; then
-    echo "Installing pi packages..."
-    ${installPiPackages}
-    touch "$HOME/.pi/packages-installed"
-  fi
-  
-  exec ${pkgs.nodejs_24}/bin/npx --yes @earendil-works/pi-coding-agent@latest "$@"
-''
-```
+`pi install`/`pi remove` are native package operations, but persistent declarations belong in Nix. `pi update --extensions` is Pi's native extension-update command; do not add a competing startup updater. The existing refresh worker also removes a bounded list of retired, unregistered personal npm dependencies; it never prunes arbitrary packages or other profiles.
 
-## Smart Package Installation
+## Native MCP and prompts
 
-### Quick Install Command
-Use the project's `/pkg-install` command for intelligent package management:
+Personal uses Pi 1.x's built-in MCP from `<profile>/mcp.json`, with native codemode exposure by default. Use `/mcp` or `pi mcp list` for connection/sign-in status. Persistent configuration edits belong in Nix, not the store-backed file. Work agent-kit retains its separate MCP integration; do not migrate it as a side effect of personal changes.
 
-```bash
-/pkg-install package-name
-```
+Personal instructions go in `APPEND_SYSTEM.md`, preserving Pi's native system prompt. `SYSTEM.md` replaces that prompt entirely. Model/skill frontmatter in `/wrap` and `/pkg-install` still requires `pi-prompt-template-model`; ordinary description/argument templates are native.
 
-This command will:
-1. Research the package across nixpkgs, homebrew, and pi sources
-2. Determine the optimal installation method  
-3. Update the appropriate nix configuration file
-4. Execute the installation automatically
+## Resources and validation
 
-### Manual Package Addition
+- Project skills: `.agents/skills/`; profile skills: `<profile>/skills/`; shared user skills: `~/.agents/skills/`.
+- Local extension declarations: `modules/home-manager/pi/local-extensions.nix` and profile-specific variants.
+- Prompt declarations: `modules/home-manager/pi-prompts.nix`.
+- `/reload` reloads extensions, skills, prompts, themes, and context files; `pi --no-extensions` also disables built-in extensions unless explicitly supplied.
+- Useful gates: `tests/pi-settings.py`, `tests/coding-agent-profiles.py`, `tests/harness-refresh.py`, and `tests/pi-native-personal.mjs` (see `docs/pi-native-personal.md`).
 
-For manual control, follow these steps:
-
-### 1. Update Nix Configuration
-Edit `modules/home-manager/packages/pi.nix` and add the package name to the `piPackages` list:
-
-```nix
-piPackages = [
-  "pi-prompt-template-model"
-  "pi-subagents" 
-  "@tmustier/pi-skill-creator"
-  "new-package-name"  # ← Add here
-];
-```
-
-### 2. Apply Changes
-```bash
-sudo darwin-rebuild switch --flake ".#m4-mbp" --impure
-```
-
-### 3. Trigger Installation
-Remove the marker file to force reinstallation:
-```bash
-rm -f ~/.pi/packages-installed
-pi list  # This will install all packages including new ones
-```
-
-## Local Skills Management
-
-### Project-Local Skills
-- **Location**: `.agents/skills/` (this directory)
-- **Scope**: Available only within this project
-- **Priority**: Takes precedence over global skills with same name
-
-### Creating Local Skills
-```bash
-mkdir -p .agents/skills/my-skill
-# Create SKILL.md with proper frontmatter
-```
-
-### Global vs Local Skills
-- **Global**: `~/.pi/agent/skills/` - available everywhere
-- **Project**: `.agents/skills/` - available in this project only
-- **Package**: `skills/` in installed packages
-
-## Verification Commands
-
-### Check Pi Package Status
-```bash
-pi list                    # List all installed packages
-which pi                   # Should show nix-managed path
-```
-
-### Check Skill Loading
-```bash
-pi --no-skills            # Start without skills
-pi --skill /path/to/skill # Test specific skill
-/reload                   # Reload skills after changes
-```
-
-## Troubleshooting
-
-### Pi Command Not Found After Nix Rebuild
-```bash
-# Clear npx cache if old pi version is cached
-rm -rf ~/.npm/_npx
-exec $SHELL  # Reload shell
-```
-
-### Force Package Reinstallation
-```bash
-rm -f ~/.pi/packages-installed
-pi list  # Will reinstall all declared packages
-```
-
-### Skill Not Loading
-- Check frontmatter format in SKILL.md
-- Verify directory name matches `name` field
-- Use `/skill:name` to invoke explicitly
-- Check for syntax errors with `/reload`
-
-## Integration Benefits
-
-**Declarative**: Pi packages declared alongside other system packages
-**Reproducible**: Same pi setup across machines using this config
-**Versioned**: Pi package list tracked in git
-**Consistent**: Follows project's nix-first approach
-
-This approach maintains pi's native package management while gaining nix's reproducibility and declarative configuration benefits.
+Follow repository AGENTS.md for apply, issue tracking, quality gates, and two-host handoff. Never run direct macOS rebuild or flake-update commands.

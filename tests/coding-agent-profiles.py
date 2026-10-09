@@ -68,7 +68,7 @@ def main():
         personal = home / ".config/pi"
         work = home / ".config/pi-work"
         for profile in (personal, work):
-            mcp = (profile / "mcp-adapter.json").read_text()
+            mcp = (profile / ("mcp.json" if profile == personal else "mcp-adapter.json")).read_text()
             assert "/Users/" not in mcp and "security find-generic-password" not in mcp
             settings = json.loads((profile / "settings.json").read_text())
             assert isinstance(settings.get("packages"), list)

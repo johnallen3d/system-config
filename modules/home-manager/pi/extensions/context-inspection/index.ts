@@ -224,6 +224,28 @@ function isMcpAdapterTool(tool: ToolInfo | undefined): boolean {
   return `${tool.sourceInfo.source} ${tool.sourceInfo.path}`.toLowerCase().includes("pi-mcp-adapter");
 }
 
+export function summarizeNativeMcpTools(allTools: ToolInfo[], activeNames: string[]): Array<[string, string, number]> {
+  const active = new Set(activeNames);
+  const servers = new Map<string, { registered: number; active: number; tokens: number }>();
+  for (const tool of allTools) {
+    if (isMcpAdapterTool(tool)) continue;
+    const match = /^mcp__(.+?)__/.exec(tool.name);
+    if (!match) continue;
+    const server = servers.get(match[1]) ?? { registered: 0, active: 0, tokens: 0 };
+    server.registered++;
+    if (active.has(tool.name)) {
+      server.active++;
+      server.tokens += estimateToolTokens(tool);
+    }
+    servers.set(match[1], server);
+  }
+  return [...servers].map(([name, server]) => [
+    name,
+    `${server.registered} registered, ${server.active} declared, ${formatEstimate(server.tokens)} declared schemas`,
+    server.tokens,
+  ]);
+}
+
 async function readCachedServers(): Promise<CachedServer[] | null> {
   const agentDir = process.env.PI_CODING_AGENT_DIR;
   if (!agentDir) return null;
@@ -293,14 +315,26 @@ async function buildReport(pi: ExtensionAPI, ctx: ExtensionCommandContext): Prom
   const script = adapterTools.find((tool) => tool.name === "mcpScript");
   const direct = adapterTools.filter((tool) => tool.name !== "mcp" && tool.name !== "mcpScript");
   const directTokens = direct.reduce((sum, tool) => sum + (tool.estimatedTokens ?? 0), 0);
-  const cachedServers = await readCachedServers();
+  // Adapter cache files can outlive migration. Never present them as native
+  // runtime state; native tools are counted from the current tool registry.
+  const cachedServers = adapterTools.length > 0 ? await readCachedServers() : null;
+  const nativeRows = summarizeNativeMcpTools(pi.getAllTools(), pi.getActiveTools());
   const mcpRows: Array<[string, string, number | null]> = [
     ["proxy gateway", proxy ? `active, ${formatEstimate(proxy.estimatedTokens)}` : "inactive", proxy?.estimatedTokens ?? null],
     ["script gateway", script ? `active, ${formatEstimate(script.estimatedTokens)}` : "inactive", script?.estimatedTokens ?? null],
     ["direct server tools", `${direct.length} active, ${formatEstimate(directTokens)}`, directTokens],
   ];
 
-  if (cachedServers === null) {
+  if (adapterTools.length === 0) {
+    mcpRows.length = 0;
+    mcpRows.push(["implementation", "Pi native MCP; /mcp shows connection and sign-in state", null]);
+    for (const name of ["codemode", "tool_search"]) {
+      const gateway = activeTools.find((tool) => tool.name === name);
+      if (gateway) mcpRows.push([name, `active, ${formatEstimate(gateway.estimatedTokens)} (shared gateway)`, gateway.estimatedTokens]);
+    }
+    mcpRows.push(...nativeRows);
+    if (nativeRows.length === 0) mcpRows.push(["server tools", "none registered yet; not a connection-status probe", null]);
+  } else if (cachedServers === null) {
     mcpRows.push(["metadata cache", "unavailable: PI_CODING_AGENT_DIR not set", null]);
   } else if (cachedServers.length === 0) {
     mcpRows.push(["metadata cache", "empty or unreadable", null]);
@@ -415,6 +449,18 @@ if (process.argv.includes("--self-test")) {
   const skillPrompt = `\n\nThe following skills provide specialized instructions for specific tasks.\n<available_skills>\n  <skill>\n    <name>example</name>\n    <description>Example skill</description>\n    <location>/tmp/example/SKILL.md</location>\n  </skill>\n</available_skills>`;
   const skillMetadata = estimateSkillMetadata(`base${skillPrompt}`, skills);
 
+  const nativeTools = [
+    { ...tools[0], name: "mcp__example__read" },
+    { ...tools[0], name: "mcp__example__write" },
+    { ...tools[0], name: "mcp__legacy__read", sourceInfo: { ...tools[0].sourceInfo, source: "npm:pi-mcp-adapter" } },
+  ] as ToolInfo[];
+  const nativeRows = summarizeNativeMcpTools(nativeTools, ["mcp__example__read"]);
+  assert.equal(nativeRows.length, 1);
+  assert.equal(nativeRows[0][0], "example");
+  assert.ok(nativeRows[0][1].includes("2 registered, 1 declared"));
+  assert.equal(nativeRows[0][2], estimateToolTokens(nativeTools[0]));
+  assert.equal(summarizeNativeMcpTools(nativeTools, [])[0][2], 0);
+  assert.deepEqual(summarizeNativeMcpTools(tools, []), []);
   assert.equal(estimateToolTokens(tools[0]), 12);
   assert.deepEqual(selectActiveTools(["a"], tools).map((tool) => tool.name), ["a"]);
   assert.equal(skillMetadata.skills[0].name, "example");

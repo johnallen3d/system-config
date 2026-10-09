@@ -174,9 +174,6 @@
     // piPersonalUiSettings
     // {
       defaultThinkingLevel = "high";
-      hideThinkingBlock = false;
-      # The personal profile still uses pi-mcp-adapter.
-      extensions = ["-builtin:mcp"];
       packages = piPackages.personalPackageSpecs;
     };
 
@@ -232,13 +229,26 @@
   jsonFormat = pkgs.formats.json {};
 in {
   home.activation.piSystemMd = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    if [ -n "''${DRY_RUN:-}" ]; then
+      echo "Would configure Pi profile instructions"
+    else
         mkdir -p "$HOME/.config/pi" "$HOME/.config/pi-work" "$HOME/.config/pi-notes"
-        cat > "$HOME/.config/pi/SYSTEM.md" <<'EOF'
+        cat > "$HOME/.config/pi/APPEND_SYSTEM.md" <<'EOF'
     ${piSystemMd}
     EOF
+        # This module previously wrote these instructions as SYSTEM.md, replacing
+        # Pi's native prompt. Remove only that known content, never a user override.
+        if [ -f "$HOME/.config/pi/SYSTEM.md" ]; then
+          if ${pkgs.diffutils}/bin/diff -q -w -B "$HOME/.config/pi/SYSTEM.md" "$HOME/.config/pi/APPEND_SYSTEM.md" >/dev/null; then
+            rm "$HOME/.config/pi/SYSTEM.md"
+          else
+            echo "Warning: personal SYSTEM.md differs from the retired managed instructions; preserved user override." >&2
+          fi
+        fi
         cat > "$HOME/.config/pi-work/SYSTEM.md" <<'EOF'
     ${piWorkSystemMd}
     EOF
+    fi
   '';
 
   home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] (
@@ -272,7 +282,9 @@ in {
     fi
   '';
 
-  home.file.".config/pi/mcp-adapter.json".source = jsonFormat.generate "pi-mcp-adapter.json" (
+  # Personal uses Pi 1.x's built-in MCP (codemode exposure by default). The
+  # work agent-kit owns its MCP integration; leave its configuration unchanged.
+  home.file.".config/pi/mcp.json".source = jsonFormat.generate "pi-mcp.json" (
     if pkgs.stdenv.hostPlatform.isDarwin
     then piMcpSettings
     else linuxMcpSettings

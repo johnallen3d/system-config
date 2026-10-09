@@ -29,57 +29,13 @@
     done
   '';
 
-  repairPiPackages = pkgs.writeShellScript "repair-pi-packages" ''
+  repairNotesTelegram = pkgs.writeShellScript "repair-notes-telegram" ''
         profile_dir="''${PI_CODING_AGENT_DIR:-$HOME/.config/pi}"
-        node_modules_dir="$profile_dir/npm/node_modules"
-
-        skill_creator_dir="$node_modules_dir/@tmustier/pi-skill-creator"
-        if [ -d "$skill_creator_dir" ] && [ -f "$skill_creator_dir/SKILL.md" ]; then
-          mkdir -p "$skill_creator_dir/skill-creator"
-          cp "$skill_creator_dir/SKILL.md" "$skill_creator_dir/skill-creator/SKILL.md"
-          PROFILE_DIR="$profile_dir" ${pkgs.python3}/bin/python - <<'PY'
-import json
-import os
-from pathlib import Path
-
-profile_dir = Path(os.environ["PROFILE_DIR"])
-package_json = profile_dir / "npm" / "node_modules" / "@tmustier" / "pi-skill-creator" / "package.json"
-if package_json.exists():
-    data = json.loads(package_json.read_text())
-    pi = data.setdefault("pi", {})
-    if pi.get("skills") != ["./skill-creator"]:
-        pi["skills"] = ["./skill-creator"]
-        package_json.write_text(json.dumps(data, indent=2) + "\n")
-PY
-        fi
-
-        context_mode_dir="$node_modules_dir/context-mode"
-        if [ -d "$context_mode_dir/skills" ]; then
-          PROFILE_DIR="$profile_dir" ${pkgs.python3}/bin/python - <<'PY'
-import json
-import os
-from pathlib import Path
-
-profile_dir = Path(os.environ["PROFILE_DIR"])
-package_json = profile_dir / "npm" / "node_modules" / "context-mode" / "package.json"
-skills_dir = profile_dir / "npm" / "node_modules" / "context-mode" / "skills"
-if package_json.exists() and skills_dir.exists():
-    data = json.loads(package_json.read_text())
-    pi = data.setdefault("pi", {})
-    skill_paths = sorted(
-        f"./skills/{path.parent.name}"
-        for path in skills_dir.glob("*/SKILL.md")
-    )
-    if skill_paths and pi.get("skills") != skill_paths:
-        pi["skills"] = skill_paths
-        package_json.write_text(json.dumps(data, indent=2) + "\n")
-PY
-        fi
-
-        for telegram_extension in \
-          "$profile_dir/git/github.com/badlogic/pi-telegram/index.ts" \
-          "$HOME/.config/pi-notes/git/github.com/badlogic/pi-telegram/index.ts"; do
-          [ -f "$telegram_extension" ] || continue
+        # Telegram auto-connect is a notes-only integration. Do not patch retired
+        # skill/context packages or touch another profile during personal/work launch.
+        [ "$profile_dir" = "$HOME/.config/pi-notes" ] || exit 0
+        telegram_extension="$profile_dir/git/github.com/badlogic/pi-telegram/index.ts"
+          [ -f "$telegram_extension" ] || exit 0
           TELEGRAM_EXTENSION="$telegram_extension" ${pkgs.python3}/bin/python - <<'PY'
 import os
 from pathlib import Path
@@ -102,7 +58,6 @@ if new not in source:
         raise SystemExit(f"Telegram auto-connect patch target changed: {path}")
     path.write_text(source.replace(old, new, 1))
 PY
-        done
   '';
 in
   pkgs.writeShellScriptBin "pi" ''
@@ -172,7 +127,7 @@ PY
       echo "$expected_stamp" > "$marker"
     fi
 
-    ${repairPiPackages}
+    ${repairNotesTelegram}
 
     exec ${runPi} "$@"
   ''

@@ -126,6 +126,39 @@ sys.exit(int(os.environ.get(key, '0')))
         self.assertIn('mise -C "$HOME/dev/src/amfaro" exec -- bash "$tmp_dir/harness-refresh-local"', payload)
         self.assertIn("trap 'rm -rf \"$tmp_dir\"' EXIT", payload)
 
+    def test_retired_personal_packages_are_bounded_and_profile_local(self):
+        personal = self.home / '.config/pi'
+        (personal / 'npm').mkdir()
+        manifest = personal / 'npm/package.json'
+        manifest.write_text(json.dumps({'dependencies': {
+            'pi-mcp-adapter': '^5.1.0', 'context-mode': '^1.0.0',
+            '@tmustier/pi-skill-creator': '^0.3.0', 'unrelated-user-package': '^1.0.0'}}))
+        settings = json.loads((personal / 'settings.json').read_text())
+        settings['packages'].append({'source': 'npm:@tmustier/pi-skill-creator@0.3.0'})
+        (personal / 'settings.json').write_text(json.dumps(settings))
+        (personal / 'auth.json').write_text('credential sentinel')
+        self.executable(self.home / '.nix-profile/bin/npm', '''#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ['TEST_LOG'], 'a') as log:
+    log.write(json.dumps(['npm', os.environ['PI_CODING_AGENT_DIR'], sys.argv[1:]]) + '\\n')
+''')
+        result = self.run_task('--local-only')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls('npm'), [['npm', str(personal), [
+            'uninstall', '--prefix', str(personal / 'npm'), '--legacy-peer-deps',
+            'context-mode', 'pi-mcp-adapter']]])
+        self.assertEqual((personal / 'auth.json').read_text(), 'credential sentinel')
+
+    def test_retirement_failure_is_reported_but_other_profiles_continue(self):
+        personal = self.home / '.config/pi'
+        (personal / 'npm').mkdir()
+        (personal / 'npm/package.json').write_text(json.dumps({'dependencies': {'pi-mcp-adapter': '^5.1.0'}}))
+        self.executable(self.home / '.nix-profile/bin/npm', '#!/bin/bash\nexit 1\n')
+        result = self.run_task('--local-only')
+        self.assertEqual(result.returncode, 1)
+        updated = {c[1] for c in self.calls('pi') if c[2][0] == 'update'}
+        self.assertEqual(updated, {str(self.home / '.config/pi-work'), str(self.home / '.config/pi-notes')})
+
     def test_local_only_direct_and_mise_flag(self):
         for args, env in ((['--local-only'], {}), ([], {'usage_local_only': 'true'})):
             result = self.run_task(*args, **env)

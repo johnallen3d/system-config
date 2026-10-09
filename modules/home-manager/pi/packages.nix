@@ -2,21 +2,13 @@
   npm = name: "npm:${name}";
 in rec {
   sharedPackageSpecs = [
-    # "git:github.com/DietrichGebert/ponytail"
-    # (npm "@tintinweb/pi-tasks")
-    # (npm "@tmustier/pi-skill-creator")
     (npm "pi-headroom")
-    # (npm "pi-intercom")
   ];
 
   personalPackageSpecs =
     sharedPackageSpecs
     ++ [
-      # (npm "@samfp/pi-memory")
-      # (npm "context-mode")
-      (npm "pi-mcp-adapter")
       (npm "pi-prompt-template-model")
-      # (npm "pi-subagents")
       (npm "pi-web-search")
     ];
 
@@ -27,7 +19,6 @@ in rec {
   workPackageSpecs =
     sharedPackageSpecs
     ++ [
-      # (npm "pi-ask-user")
       "git:github.com/amfaro/agent-kit"
     ];
 

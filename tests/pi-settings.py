@@ -25,7 +25,7 @@ def activation_scripts():
         scripts = builtins.listToAttrs (map (name: {
           inherit name;
           value = activation.${name}.data;
-        }) ["piSettings" "piWorkSettings" "piNotesSettings" "piClaudeBridgeCleanup"]);
+        }) ["piSettings" "piWorkSettings" "piNotesSettings" "piClaudeBridgeCleanup" "piSystemMd"]);
         activationNames = builtins.attrNames activation;
         managedFiles = builtins.attrNames home.home.file;
       }
@@ -69,6 +69,10 @@ def main():
             defaults = json.loads(path.read_text())
             assert "lastChangelogVersion" not in defaults
             assert defaults["defaultModel"] == "gpt-6.1-sol"
+            if profile == "pi":
+                assert "extensions" not in defaults, "Native MCP must not be disabled"
+                assert "npm:pi-mcp-adapter" not in defaults["packages"]
+                assert "hideThinkingBlock" not in defaults, "Use Pi's native default"
             if profile == "pi-work":
                 assert "extensions" not in defaults, "Removed work extensions must stay absent"
                 assert defaults["defaultProjectTrust"] == "always"
@@ -107,6 +111,23 @@ def main():
             assert json.loads(path.read_text()) == defaults
             assert not list(path.parent.glob("settings.json.tmp.*"))
             print(f"PASS {profile}: authoritative writable settings, runtime allowlist, removal, recovery, dry run, idempotence")
+
+        path = home / ".config/pi/settings.json"
+        script = scripts["piSystemMd"]
+        run(script, home)
+        assert not (path.parent / "SYSTEM.md").exists()
+        append = path.parent / "APPEND_SYSTEM.md"
+        assert "$PI_CODING_AGENT_DIR" in append.read_text()
+        (path.parent / "SYSTEM.md").write_text(append.read_text())
+        run(script, home, dry_run=True)
+        assert (path.parent / "SYSTEM.md").exists()
+        run(script, home)
+        assert not (path.parent / "SYSTEM.md").exists(), "Retired managed prompt must be removed"
+        (path.parent / "SYSTEM.md").write_text("custom user override")
+        run(script, home)
+        assert (path.parent / "SYSTEM.md").read_text() == "custom user override"
+        (path.parent / "SYSTEM.md").unlink()
+        print("PASS native personal prompt preservation, safe migration, user override preservation, and dry run")
 
         bridges = [home / ".config" / profile / "claude-bridge.json"
                    for profile in ("pi", "pi-work", "pi-notes")]

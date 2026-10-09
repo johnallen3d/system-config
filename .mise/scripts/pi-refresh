@@ -17,13 +17,48 @@ for nix_bin in "$HOME/.nix-profile/bin" "/etc/profiles/per-user/$USER/bin" /run/
   fi
 done
 
-cleanup_legacy_global_packages() {
-  local profile_context_mode="$HOME/.config/pi/npm/node_modules/context-mode"
-  local legacy_context_mode="$HOME/.local/lib/node_modules/context-mode"
+# Retire known, formerly Nix-declared personal packages through the existing
+# refresh owner. Unregistered npm dependencies are not active Pi extensions,
+# but otherwise survive declaration changes indefinitely. Never prune work,
+# notes, arbitrary packages, credentials, caches, or legacy global installs.
+retire_personal_packages() {
+  local profile_dir="$HOME/.config/pi"
+  local retired name
+  retired="$(python3 - "$profile_dir" <<'PY'
+import json
+import sys
+from pathlib import Path
 
-  if [ -d "$profile_context_mode" ] && [ -d "$legacy_context_mode" ]; then
-    echo "Removing legacy global context-mode install: $legacy_context_mode"
-    rm -rf "$legacy_context_mode"
+profile = Path(sys.argv[1])
+manifest = profile / "npm/package.json"
+if not manifest.exists():
+    raise SystemExit(0)
+settings = json.loads((profile / "settings.json").read_text())
+declared = set()
+for package in settings.get("packages", []):
+    source = package if isinstance(package, str) else package.get("source", "")
+    if not source.startswith("npm:"):
+        continue
+    spec = source.removeprefix("npm:")
+    version_at = spec.find("@", 1)  # Preserve the leading @ in scoped names.
+    declared.add(spec[:version_at] if version_at >= 0 else spec)
+known_retired = {
+    "@samfp/pi-memory", "@tintinweb/pi-tasks", "@tmustier/pi-skill-creator",
+    "context-mode", "pi-answer", "pi-ask-user", "pi-claude-bridge", "pi-intercom",
+    "pi-mcp-adapter", "pi-subagents",
+}
+installed = json.loads(manifest.read_text()).get("dependencies", {})
+for name in sorted(known_retired.intersection(installed).difference(declared)):
+    print(name)
+PY
+  )" || return 1
+  local -a packages=()
+  while IFS= read -r name; do
+    [ -n "$name" ] && packages+=("$name")
+  done <<< "$retired"
+  if [ -n "$retired" ]; then
+    printf '[personal] Removing retired npm dependencies: %s\n' "${packages[*]}"
+    PI_CODING_AGENT_DIR="$profile_dir" npm uninstall --prefix "$profile_dir/npm" --legacy-peer-deps "${packages[@]}" || return 1
   fi
 }
 
@@ -73,6 +108,10 @@ PY
         npm:*) npm_packages+=("$package_source") ;;
       esac
     done <<< "$package_list"
+  fi
+
+  if [ "$label" = "personal" ]; then
+    retire_personal_packages || return 1
   fi
 
   if [ ! -f "$marker" ]; then
@@ -140,6 +179,5 @@ if [ "$refresh_failed" -ne 0 ]; then
   exit 1
 fi
 
-cleanup_legacy_global_packages
 
 echo "Done"

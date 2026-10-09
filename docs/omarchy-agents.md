@@ -99,8 +99,12 @@ must not silently fall back to work credentials.
 
 Pi settings, package declarations, themes, extensions, prompts, Claude subagent
 roles, keybindings, and ELI5 output style are shared with the Mac. Linux gets a
-host-appropriate `/pkg-install` prompt. Pi configuration is regenerated on each
-activation, preserving only `lastChangelogVersion`; persistent changes belong in
+host-appropriate `/pkg-install` prompt. Personal Pi uses native Pi 1.x MCP
+(`~/.config/pi/mcp.json`) and `APPEND_SYSTEM.md`, preserving the native system
+prompt; work agent-kit's MCP and work `SYSTEM.md` are unchanged. See the
+[personal Pi cleanup audit](pi-native-personal.md) for decisions and runtime tests.
+Pi configuration is regenerated on each activation, preserving only
+`lastChangelogVersion`; persistent changes belong in
 Nix. Mac-only legacy extension links, Keychain commands, and Mac-local
 Headroom MCP/calc endpoints are not enabled here. The Mac usage footer
 is also excluded because its credential fallback reads across Pi profiles. Remote MCP endpoints
