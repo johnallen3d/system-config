@@ -67,10 +67,14 @@ worktree is outside the Amfaro directory, provided both work profile variables a
 selected. A parent-directory file alone would not cover that case.
 
 The work policy requires a task-specific linked Git worktree before repository
-changes; a feature branch in the primary checkout is not sufficient. Prefer
-worktrees beneath `~/dev/src/amfaro` to retain mise context. These are agent
-instructions, not a write-blocking hook. Restart existing work agents to load the
-new context; do not restart them automatically. Verify through work-profile
+changes; a feature branch in the primary checkout is not sufficient. Create new
+worktrees from `main`, using a simple kebab-case slug: `add-xyz-feature` becomes
+`<repository>/.worktrees/add-xyz-feature` on branch `feature/add-xyz-feature`.
+The `feature/` prefix applies to every task, including fixes and chores. Keep
+work repositories beneath `~/dev/src/amfaro` to retain mise context in their
+`.worktrees/` descendants. These are agent instructions, not a write-blocking
+hook. Restart existing work agents to load the new context; do not restart them
+automatically. Verify through work-profile
 `mise exec` with `python3 tests/work-agent-instructions.py --installed --pi-loader
 /path/to/installed/pi-coding-agent/dist/core/resource-loader.js` and the installed
 profile test (`python3 tests/amfaro-mise.py --installed`). The loader path must be

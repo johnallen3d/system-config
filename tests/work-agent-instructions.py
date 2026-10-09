@@ -35,13 +35,23 @@ def check_git_rule():
         git(primary, "symbolic-ref", "HEAD", "refs/heads/feature/test-primary")
         git(primary, "update-ref", "HEAD", commit)
         assert not is_linked(primary), "Feature branches in primary are not linked worktrees"
-        linked = parent / "linked"
-        git(primary, "worktree", "add", "--quiet", "-b", "feature/test-linked", str(linked))
+        git(primary, "update-ref", "refs/heads/main", commit)
+        task_commit = git(primary, "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                          "-c", "commit.gpgsign=false", "commit-tree", tree, "-p", commit,
+                          "-m", "test: diverge primary branch from main")
+        git(primary, "update-ref", "HEAD", task_commit)
+        slug = "add-xyz-feature"
+        branch = f"feature/{slug}"
+        linked = primary / ".worktrees" / slug
+        git(primary, "worktree", "add", "--quiet", "-b", branch, str(linked), "main")
         assert is_linked(linked)
+        assert git(linked, "branch", "--show-current") == branch
+        assert git(linked, "rev-parse", "HEAD") == git(primary, "rev-parse", "main")
+        assert git(linked, "rev-parse", "HEAD") != git(primary, "rev-parse", "HEAD")
         alias = parent / "linked-alias"
         alias.symlink_to(linked, target_is_directory=True)
         assert is_linked(alias), "Canonicalize symlinks when checking worktrees"
-    print("PASS worktree check: primary feature branch rejected; linked and symlink accepted")
+    print("PASS worktree check: feature/<slug> in .worktrees/<slug> starts from main; linked and symlink accepted")
 
 
 def check_installed(loader):
@@ -93,7 +103,10 @@ def main():
     for fragment in ("linked Git worktree", "task-specific branch", "primary checkout",
                      "git worktree list --porcelain", "--git-dir --git-common-dir",
                      "PI_CODING_AGENT_DIR", "CLAUDE_CONFIG_DIR", "uncommitted changes",
-                     "stop and report", "explicitly authorizes"):
+                     "stop and report", "explicitly authorizes", "from `main`",
+                     "simple kebab-case task slug", "`.worktrees/<slug>`",
+                     "`feature/<slug>`", "including fixes and chores",
+                     'git -C "$repo_root" worktree add -b "feature/$slug" "$repo_root/.worktrees/$slug" main'):
         assert fragment in source, fragment
     module = (ROOT / "modules/home-manager/agent-projects.nix").read_text()
     assert "builtins.readFile ./agent-projects/work-instructions.md" in module
