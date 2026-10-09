@@ -17,6 +17,8 @@ importing the Mac's shell/desktop configuration. Pi uses the same Nix-managed
 latest-upstream wrapper and package declarations as the Mac. Claude Code uses the locked nixpkgs packaging with an independently pinned
 official release manifest, with its unfree allowance limited to that package.
 Nix Node/npm, Git, Python, ripgrep, and uv are available to agent subprocesses.
+For `Disk quota exceeded` errors or large Rust builds on Omarchy, see the
+[temporary-file quota and recovery guide](omarchy-tmp.md).
 Pi exports `SHARP_IGNORE_GLOBAL_LIBVIPS=1` so package installation uses Sharp's
 bundled binaries rather than attempting a source build against Omarchy's system
 libvips. This is required for the work kit's image/transformer dependencies.
