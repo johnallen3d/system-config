@@ -5,13 +5,17 @@ footer parity in [#706](https://app.fizzy.do/6284043/cards/706).
 Builds on the [standalone Home Manager setup](omarchy-poc.md); this is not NixOS.
 For persistent sessions and Mac remote access, see the [Herdr guide](omarchy-herdr.md).
 For centralized Codex/Claude/Go credentials and Tailscale client access, see
-[the subscription proxy guide](omarchy-subscription-proxy.md). Native routes stay
-selected until the central accounts are provisioned and client selection is verified.
+[the subscription proxy guide](omarchy-subscription-proxy.md). Pi routes stay native until central accounts are provisioned and client selection
+is verified. Work Claude Code uses the work proxy as its managed default on both
+hosts, with six curated Claude/Codex choices; no separate Claude activation is
+needed. Restart existing Claude sessions when convenient to pick up routing.
+The pinned official model catalog includes Haiku 5.5, and Omarchy's Nix-managed
+Claude Code is pinned to 2.1.295 to support it.
 
 `hosts/omarchy.nix` opts into `modules/home-manager/coding-agents.nix`, without
 importing the Mac's shell/desktop configuration. Pi uses the same Nix-managed
-latest-upstream wrapper and package declarations as the Mac. Claude Code comes
-from the locked nixpkgs input, with its unfree allowance limited to that package.
+latest-upstream wrapper and package declarations as the Mac. Claude Code uses the locked nixpkgs packaging with an independently pinned
+official release manifest, with its unfree allowance limited to that package.
 Nix Node/npm, Git, Python, ripgrep, and uv are available to agent subprocesses.
 Pi exports `SHARP_IGNORE_GLOBAL_LIBVIPS=1` so package installation uses Sharp's
 bundled binaries rather than attempting a source build against Omarchy's system
@@ -178,7 +182,7 @@ Omarchy. **Do not repeat the installation steps below.** Latest verification:
 | --- | --- |
 | Personal Pi | Credentials configured for its default OpenAI provider |
 | Work Pi | Credentials configured for its default OpenAI Codex provider |
-| Work Claude Code | Logged in through claude.ai |
+| Work Claude Code | Work proxy client key; central claude.ai login stays on Omarchy |
 | Personal Claude Code | Intentionally dormant: no personal account at present |
 
 No further agent-login steps are required for the accounts John currently has.

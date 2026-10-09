@@ -1,13 +1,30 @@
 # Small opt-in package set for standalone Linux agent hosts, not the desktop suite.
 {pkgs, ...}: let
   pi = import ./pi.nix {inherit pkgs;};
+  # Haiku 5.5 needs Claude Code >= 2.1.293. Pin the official release manifest
+  # independently of Omarchy's older nixpkgs lock; retain Nix's native wrapper.
+  claudeCode = pkgs.claude-code.override {
+    manifest = {
+      version = "2.1.295";
+      platforms = {
+        linux-x64 = {
+          binary = "claude.zst";
+          checksum = "71164c85f9d226928dec7acda1baf000f1991eb14fcec106536d84bd914032f8";
+        };
+        linux-arm64 = {
+          binary = "claude.zst";
+          checksum = "9b32b47ec4b3fa5b884e12b7e130e94338e7787d5db031adf48e1b20e3a893ee";
+        };
+      };
+    };
+  };
   runtimePath = pkgs.lib.makeBinPath [pkgs.nodejs_24 pkgs.git pkgs.python3 pkgs.ripgrep pkgs.uv];
   claude = pkgs.writeShellScriptBin "claude" ''
     export PATH="${runtimePath}:$PATH"
     export CLAUDE_CONFIG_DIR="''${CLAUDE_CONFIG_DIR:-$HOME/.config/claude-personal}"
     export CLAUDE_CODE_DISABLE_1M_CONTEXT=0
     export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
-    exec ${pkgs.claude-code}/bin/claude "$@"
+    exec ${claudeCode}/bin/claude "$@"
   '';
   managedPi = pkgs.writeShellScriptBin "pi" ''
     export PATH="${runtimePath}:$PATH"

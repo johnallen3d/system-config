@@ -24,6 +24,7 @@ def main():
     assert credentials["personal"]["client"] != credentials["work"]["client"]
     assert credentials["personal"]["management"] != credentials["work"]["management"]
     endpoints = json.loads((root / "endpoints.json").read_text())
+    selected = json.loads((root / "selected.json").read_text()) if (root / "selected.json").exists() else {}
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
     def get(url, token=None):
@@ -43,6 +44,11 @@ def main():
         assert get(endpoint + "/v1/models", credentials[other]["client"])[0] == 401
         code, models = get(endpoint + "/v1/models", credentials[profile]["client"])
         assert code == 200 and isinstance(models.get("data"), list)
+        if profile == "work" and selected.get("claude"):
+            required = {"claude-haiku-5-5", "claude-opus-5-5", "claude-fable-5-1",
+                        "gpt-6-luna", "gpt-6.1-sol", "gpt-6-astra"}
+            assert required <= {m["id"] for m in models["data"]}, "Live work registry is missing curated Claude/Codex routes"
+            print("PASS work: all six curated Claude/Codex models registered in the live gateway")
         code, accounts = get(endpoint + "/v8/management/credentials", credentials[profile]["management"])
         assert code == 200 and isinstance(accounts.get("files"), list)
         panel_status, panel = get(endpoint + "/management.html")
@@ -58,6 +64,9 @@ def main():
             assert config["management"]["allow-remote"] is True
             assert config["management"]["disable-control-panel"] is False
             assert config["management"]["disable-auto-update-panel"] is True
+            catalog = Path(config["models"]["catalog"])
+            assert str(catalog).startswith("/nix/store/")
+            assert "claude-haiku-5-5" in {m["id"] for m in json.loads(catalog.read_text())["claude"]}
             assert config["plugins"]["enabled"] is False
             assert config["server"]["discovery"]["enabled"] is False
             assert config["observability"]["logs"]["request-log"] is False
@@ -81,12 +90,11 @@ def main():
             assert go["compat"]["sessionAffinityFormat"] == "openai"
             assert "claude" not in json.dumps(go).lower()
         settings = json.loads((home / ".config" / dirname / "settings.json").read_text())
-        selected = json.loads((root / "selected.json").read_text()) if (root / "selected.json").exists() else {}
         profile = "personal" if dirname == "pi" else "work"
         if not selected.get(profile):
             assert settings["defaultProvider"] != "subscription-codex"
         print(f"PASS {dirname}: explicit Codex/non-Claude Go routes installed; unprovisioned native defaults preserved")
-    print("Provider approvals and authenticated inference/client-selection tests are separate pending gates.")
+    print("Provider approvals and authenticated inference/client-selection checks are covered by separate tests.")
 
 
 if __name__ == "__main__":

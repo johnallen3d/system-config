@@ -16,6 +16,14 @@ There is no custom OAuth/login/key editor: use the upstream panel.
 CLIProxyAPI is pinned to source **8.0.23** and official Management Center to
 **1.26.0**, independently of either host's nixpkgs lock. The official HTML asset
 is hash-pinned in Nix, served from an immutable store path, and not auto-updated.
+The official general model catalog is separately pinned to commit
+`e63af9856bda19828dfe93a6fa0559a5ab32965c` and its content hash: 8.0.23's
+embedded catalog predates Haiku 5.5. Both services load this immutable local
+catalog; Codex-specific catalogs remain embedded. No mutable catalog URL or
+automatic upstream catalog update is enabled. Activation explicitly PATCHes
+only the pinned catalog path on already-active services and verifies runtime
+publication: an atomic config-file write alone did not refresh the live registry.
+This reload does not restart the services or agents.
 
 Both services bind only to Omarchy's Tailscale IPv4 address `100.97.112.40`.
 Mac and Omarchy use the same endpoints; no SSH tunnels, public/LAN listeners,
@@ -203,14 +211,15 @@ by this automation.
 
 ## Select clients after provisioning and verification
 
-Initial activation installs optional providers but does not switch running
-agents/native defaults. Once account identities and minimal live provider calls
-have been verified, the operator selects routes on BOTH client hosts:
+Pi providers remain opt-in: once account identities and minimal live provider
+calls have been verified, the operator selects Pi routes on BOTH client hosts.
+Work Claude Code instead uses the proxy as its **managed default**, reapplied
+by Home Manager on both hosts; no separate Claude activation command is needed.
+This changes installed settings, never an already-running agent's environment.
 
 ```bash
 subscription-proxy activate personal
 subscription-proxy activate work
-subscription-proxy activate work --claude
 ```
 
 Selection is host-local and guarded by the selected client's central OAuth
@@ -226,11 +235,48 @@ embedded in Nix. Selected work subagents use `subscription-go/go/<model>`.
 `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR` still come from the shared Amfaro
 mise context. Use explicit `mise exec` for noninteractive work commands.
 
-Claude selection changes only its work profile's relevant environment settings:
-`ANTHROPIC_BASE_URL` is the work server root, `ANTHROPIC_AUTH_TOKEN` is a proxy
-client key, and `ANTHROPIC_API_KEY` is cleared. Permissions/hooks/sessions and
-other settings are preserved. No upstream example's permission-bypass settings
-are copied. Existing native auth files remain untouched, not copied or deleted.
+### Work Claude Code
+
+`subscriptionProxy.workClaude.enable` defaults to true wherever proxy clients
+are enabled (Mac and Omarchy). Activation writes only owned routing variables
+and `modelPicker` in `~/.config/claude-gmatter/settings.json`:
+`ANTHROPIC_BASE_URL` is the work server root, `ANTHROPIC_AUTH_TOKEN` is the work
+proxy client key, and `ANTHROPIC_API_KEY` is cleared. Opus/Sonnet/Haiku/Fable
+aliases are pinned to their work gateway IDs. The saved default model is
+preserved; the existing `opus` selection resolves to Opus 5.5.
+
+The `/model` picker has six labeled entries, in this order:
+
+| Label | Exact gateway model ID |
+| --- | --- |
+| Claude Haiku 5.5 | `claude-haiku-5-5` |
+| Claude Opus 5.5 | `claude-opus-5-5` |
+| Claude Fable 5.1 | `claude-fable-5-1` |
+| Codex 6 Luna | `gpt-6-luna` |
+| Codex 6.1 Sol | `gpt-6.1-sol` |
+| Codex 6 Astra | `gpt-6-astra` |
+
+Use plain `claude` in the shared Amfaro context and `/model` to switch; explicit
+`claude --model <id>` works too. Model selection does not change gateways or
+accounts. The curated picker replaces the built-in lineup, rather than relying
+on discovery that filters out non-Claude IDs. Sonnet 5.5 remains a pinned helper
+alias for existing subagents, not an extra picker entry. Omarchy's Nix-managed
+Claude is pinned to official 2.1.295 because Haiku 5.5 needs >=2.1.293; Mac's
+existing native Claude must also meet that minimum.
+
+Codex through Claude Code uses the gateway's Messages-to-Responses translation.
+Anthropic does not officially support non-Claude backends through gateways;
+live Claude Code streaming/tool tests are required, not just Pi inference.
+Tailscale and Omarchy must be available: there is no silent direct-account fallback.
+Client-settings activation requires the already-provisioned proxy client key
+but makes no inference/readiness calls, so offline client activation does not
+revert routing. Server activation separately verifies its live catalog reload.
+
+Permissions/hooks/plugins/sessions and unrelated settings are preserved. No
+upstream example's permission-bypass settings are copied. Personal Claude is
+untouched. Existing native auth files remain untouched, not copied or deleted.
+The legacy `activate work --claude` command remains available but is unnecessary
+for managed clients.
 
 Private `selected.json` records host-local selections for future Home Manager
 activation. Configuration/credential runtime data never belongs in Git.
@@ -267,11 +313,15 @@ lockfile. A Mac rebuild is not an Omarchy deployment.
 ```bash
 subscription-proxy deactivate personal
 subscription-proxy deactivate work
+# Work Claude: first set subscriptionProxy.workClaude.enable = false and apply
+# on BOTH hosts, then restore each host's previous owned routing/picker:
 subscription-proxy deactivate work --claude
 ```
 
 This restores only owned client settings from a private host-local rollback
-record, preserving unrelated changes. Restart affected agents when convenient.
+record, preserving unrelated changes. While managed Claude routing remains
+enabled, the next Home Manager activation restores the proxy and curated picker.
+Restart affected agents when convenient.
 Central logins are not revoked. Revoke upstream tokens separately when
 removing/decommissioning the gateway.
 
@@ -281,6 +331,12 @@ Tests:
   using Python with PyYAML (the manager's Nix-provided interpreter).
 - `subscription-proxy-installed.py`: installed Tailscale/auth/state checks and
   exact official-panel content hash; use `--server` on Omarchy.
+- `subscription-proxy-claude.py`: run with explicit work `mise exec` on each
+  host to verify installed profiles, client auth, aliases, six picker IDs, and
+  minimum Claude version. `--live` tests each model through actual Claude Code
+  streaming and a read-only tool, verifies exact model usage, suppresses raw
+  transcripts/errors, and disables session persistence; `--model <id>` limits
+  the live checks. Each call has a timeout and $1 budget cap.
 - `subscription-proxy-protocol.py`: isolated real proxy against a loopback mock,
   testing the panel's v8 configuration/OAuth API and Go routing/session headers.
 - `subscription-proxy-pi.mjs`: each host's actual Pi runtime model loader/key

@@ -67,6 +67,74 @@ class ManagerTests(unittest.TestCase):
             self.assertEqual(manager.load_json(directory / "settings.json")["defaultProvider"], "openai-codex")
             self.assertEqual(manager.load_json(directory / "auth.json"), {"sentinel": "not-a-real-credential"})
 
+    def managed_claude_settings(self):
+        return {
+            "env": {
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+                "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-fable-5-1",
+            },
+            "modelPicker": {"replaceBuiltInOptions": True, "options": [
+                {"model": "claude-haiku-5-5", "label": "Claude Haiku 5.5"},
+                {"model": "claude-opus-5-5", "label": "Claude Opus 5.5"},
+                {"model": "claude-fable-5-1", "label": "Claude Fable 5.1"},
+                {"model": "gpt-6-luna", "label": "Codex 6 Luna"},
+                {"model": "gpt-6.1-sol", "label": "Codex 6.1 Sol"},
+                {"model": "gpt-6-astra", "label": "Codex 6 Astra"},
+            ]},
+        }
+
+    def test_managed_claude_is_default_offline_and_preserves_profiles_and_user_settings(self):
+        work = self.home / ".config/claude-gmatter/settings.json"
+        original = {"model": "opus", "permissions": {"defaultMode": "default"},
+                    "hooks": {"existing": []}, "env": {"CUSTOM": "keep", "ANTHROPIC_API_KEY": "old-test-key"}}
+        personal = self.home / ".config/claude-personal/settings.json"
+        manager.private_json(work, original)
+        manager.private_json(personal, {"sentinel": "personal-untouched"})
+        settings = self.managed_claude_settings()
+        with patch.object(manager, "request", side_effect=AssertionError("activation must work offline")):
+            manager.client_config("/bin/subscription-proxy", settings)
+        first = manager.load_json(work)
+        self.assertEqual(first["model"], "opus")
+        self.assertEqual(first["permissions"], original["permissions"])
+        self.assertEqual(first["hooks"], original["hooks"])
+        self.assertEqual(first["env"]["CUSTOM"], "keep")
+        self.assertEqual(first["env"]["ANTHROPIC_BASE_URL"], "http://100.97.112.40:8318")
+        self.assertEqual(first["env"]["ANTHROPIC_AUTH_TOKEN"], "work-test-client")
+        self.assertEqual(first["env"]["ANTHROPIC_API_KEY"], "")
+        self.assertEqual(first["modelPicker"], settings["modelPicker"])
+        self.assertEqual(first["env"]["ANTHROPIC_DEFAULT_HAIKU_MODEL"], "claude-haiku-5-5")
+        self.assertEqual(manager.load_json(personal), {"sentinel": "personal-untouched"})
+        self.assertEqual(manager.load_json(manager.ROOT / "selected.json")["claude"], True)
+        manager.client_config("/bin/subscription-proxy", settings)
+        self.assertEqual(manager.load_json(work), first)
+        manager.deactivate("work", claude=True)
+        self.assertEqual(manager.load_json(work), original)
+        manager.client_config("/bin/subscription-proxy", settings)
+        self.assertEqual(manager.load_json(work), first)
+
+    def test_managed_claude_migrates_existing_selection_and_restores_original_picker(self):
+        work = self.home / ".config/claude-gmatter/settings.json"
+        original_picker = {"options": [{"model": "original-model"}]}
+        manager.private_json(work, {"modelPicker": original_picker,
+                                   "env": {"ANTHROPIC_DEFAULT_FABLE_MODEL": "old-fable"}})
+        manager.private_json(manager.ROOT / "selected.json", {"claude": True})
+        manager.private_json(manager.ROOT / "rollback.json", {"claudeEnv": {"ANTHROPIC_BASE_URL": None}})
+        manager.client_config("/bin/subscription-proxy", self.managed_claude_settings())
+        manager.deactivate("work", claude=True)
+        restored = manager.load_json(work)
+        self.assertEqual(restored["modelPicker"], original_picker)
+        self.assertEqual(restored["env"]["ANTHROPIC_DEFAULT_FABLE_MODEL"], "old-fable")
+        self.assertNotIn("ANTHROPIC_BASE_URL", restored["env"])
+
+    def test_managed_claude_rejects_unrelated_settings(self):
+        settings = self.managed_claude_settings()
+        settings["permissions"] = {"defaultMode": "bypassPermissions"}
+        with self.assertRaises(ValueError):
+            manager.configure_work_claude(settings)
+        self.assertFalse((manager.ROOT / "selected.json").exists())
+
     def test_scope_and_activation_are_guarded(self):
         with patch.object(manager, "provider_ready", return_value=False):
             with self.assertRaises(ValueError):
@@ -151,10 +219,22 @@ class ManagerTests(unittest.TestCase):
         self.assertFalse(hasattr(manager, "callback"))
         self.assertFalse(hasattr(manager, "set_go"))
 
+    def test_catalog_runtime_reload_only_patches_owned_source_and_verifies_publication(self):
+        catalog = self.home / "pinned-models.json"
+        manager.private_json(catalog, {"claude": [{"id": "claude-haiku-5-5"}]})
+        with patch.object(manager, "request", side_effect=[{}, {"models": [{"id": "claude-haiku-5-5"}]}]) as request, contextlib.redirect_stdout(io.StringIO()):
+            manager.reload_catalog("work", catalog)
+        self.assertEqual(request.call_args_list[0].args,
+                         ("work", "/config", "PATCH", {"models": {"catalog": str(catalog)}}))
+        self.assertEqual(request.call_args_list[1].args, ("work", "/routing/model-definitions/claude"))
+        with patch.object(manager, "request", side_effect=[{}, {"models": []}]), patch.object(manager.time, "monotonic", side_effect=[0, 16]):
+            with self.assertRaisesRegex(ValueError, "did not publish"):
+                manager.reload_catalog("work", catalog)
+
     def test_server_seed_preserves_mutable_upstreams_and_private_directories(self):
         import yaml
         definition = self.home / "template.json"
-        manager.private_json(definition, {"host": "100.97.112.40", "ports": {"personal": 8317, "work": 8318}})
+        manager.private_json(definition, {"host": "100.97.112.40", "ports": {"personal": 8317, "work": 8318}, "catalog": "/store/pinned-models.json"})
         with contextlib.redirect_stdout(io.StringIO()):
             manager.seed_server(definition)
         work = manager.ROOT / "server-work.yaml"
@@ -175,6 +255,7 @@ class ManagerTests(unittest.TestCase):
         self.assertTrue(data["management"]["disable-auto-update-panel"])
         self.assertEqual(data["management"]["secret-key"], "$2a$hashed-test-secret")
         self.assertEqual(data["server"]["host"], "100.97.112.40")
+        self.assertEqual(data["models"]["catalog"], "/store/pinned-models.json")
         personal = yaml.safe_load((manager.ROOT / "server-personal.yaml").read_text())
         self.assertNotEqual(personal["access"]["api-keys"], data["access"]["api-keys"])
         self.assertNotEqual(personal["oauth"]["auth-dir"], data["oauth"]["auth-dir"])

@@ -253,7 +253,24 @@ def refresh_go(command, server=False, cached=False, allow_shrink=False):
         print("No inference calls, profile/default changes, or agent restarts. See private go-catalog.json for exclusions.")
 
 
-def client_config(command):
+def configure_work_claude(settings):
+    """Apply Nix-owned routing/picker offline; central login is provisioned separately."""
+    mapped = settings["env"]
+    allowed = {"ANTHROPIC_DEFAULT_" + kind + "_MODEL" for kind in ("OPUS", "SONNET", "HAIKU", "FABLE")}
+    if set(settings) != {"env", "modelPicker"} or set(mapped) != allowed:
+        raise ValueError("Invalid managed work Claude settings; refusing unrelated settings changes.")
+    save_rollback("work", True, mapped)
+    backup = load_json(ROOT / "rollback.json")
+    if "claudePicker" not in backup:
+        data = load_json(Path.home() / ".config/claude-gmatter/settings.json")
+        backup["claudePicker"] = {"present": "modelPicker" in data, "value": data.get("modelPicker")}
+        private_json(ROOT / "rollback.json", backup)
+    selected = load_json(ROOT / "selected.json")
+    selected.update(claude=True, claudeModels=mapped, claudePicker=settings["modelPicker"])
+    private_json(ROOT / "selected.json", selected)
+
+
+def client_config(command, claude_settings=None):
     def model(identifier):
         return {"id": identifier, "reasoning": True, "input": ["text"],
                 "contextWindow": 128000, "maxTokens": 32000,
@@ -274,6 +291,8 @@ def client_config(command):
                 "compat": {"sendSessionAffinityHeaders": True, "sessionAffinityFormat": "openai"},
                 "models": cached_go_models() or [model("go/" + m) for m in GO_MODELS]}
         private_json(path, data)
+    if claude_settings is not None:
+        configure_work_claude(claude_settings)
     apply_selection()
 
 
@@ -299,18 +318,23 @@ def apply_selection():
         env["ANTHROPIC_AUTH_TOKEN"] = credentials()["work"]["client"]
         env["ANTHROPIC_API_KEY"] = ""
         env.update(ready.get("claudeModels", {}))
+        if "claudePicker" in ready:
+            data["modelPicker"] = ready["claudePicker"]
         private_json(path, data)
 
 
 def save_rollback(profile, claude, mapped=None):
     backup = load_json(ROOT / "rollback.json")
     selected = load_json(ROOT / "selected.json")
-    if claude and not selected.get("claude"):
+    if claude:
         data = load_json(Path.home() / ".config/claude-gmatter/settings.json")
         env = data.get("env", {})
         names = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", *(mapped or {})]
-        backup["claudeEnv"] = {name: env.get(name) for name in names}
-    elif not claude and not selected.get(profile):
+        owned = backup.setdefault("claudeEnv", {})
+        for name in names:
+            if name not in owned:
+                owned[name] = env.get(name)
+    elif not selected.get(profile):
         dirname = "pi" if profile == "personal" else "pi-work"
         data = load_json(Path.home() / ".config" / dirname / "settings.json")
         backup[profile] = {"defaultProvider": data.get("defaultProvider", "openai-codex")}
@@ -332,9 +356,16 @@ def deactivate(profile, claude=False):
                     env.pop(name, None)
                 else:
                     env[name] = value
+            if "claudePicker" in backup:
+                picker = backup["claudePicker"]
+                if picker["present"]:
+                    data["modelPicker"] = picker["value"]
+                else:
+                    data.pop("modelPicker", None)
             private_json(path, data)
         selected.pop("claude", None)
         selected.pop("claudeModels", None)
+        selected.pop("claudePicker", None)
     else:
         if selected.get(profile):
             dirname = "pi" if profile == "personal" else "pi-work"
@@ -381,6 +412,27 @@ def activate(profile, claude=False):
         print("Work Go subagents also use the proxy; add the central Go key before using them. No direct Go fallback is selected.")
 
 
+def reload_catalog(profile, catalog):
+    """Explicitly reload an active server's pinned catalog, without restarting it."""
+    catalog = Path(catalog)
+    definition = load_json(catalog)
+    required = {m["id"] for m in definition.get("claude", [])}
+    if not catalog.is_absolute() or not required:
+        raise ValueError("Pinned catalog must be an absolute local file with Claude definitions.")
+    # Atomic seed writes can update management-visible config without refreshing
+    # the registry. A minimal management PATCH commits the runtime update too.
+    request(profile, "/config", "PATCH", {"models": {"catalog": str(catalog)}})
+    deadline = time.monotonic() + 15
+    while True:
+        registered = {m["id"] for m in request(profile, "/routing/model-definitions/claude").get("models", [])}
+        if required <= registered:
+            print(f"Pinned {profile} model catalog reloaded and verified; server was not restarted.")
+            return
+        if time.monotonic() >= deadline:
+            raise ValueError(f"{profile}: runtime catalog did not publish the pinned Claude definitions.")
+        time.sleep(0.5)
+
+
 def seed_server(template):
     import yaml
     definition = load_json(template)
@@ -406,6 +458,8 @@ def seed_server(template):
         if data is None:
             data = {}
         data["config-version"] = 8
+        if "catalog" in definition:
+            data.setdefault("models", {})["catalog"] = definition["catalog"]
         data.setdefault("server", {}).update(host=definition["host"], port=definition["ports"][profile])
         data.setdefault("oauth", {})["auth-dir"] = str(directory / "auth")
         management = data.setdefault("management", {})
@@ -446,6 +500,7 @@ def main():
     p.add_argument("--claude", action="store_true")
     p = sub.add_parser("configure-client", help=argparse.SUPPRESS)
     p.add_argument("--command", required=True)
+    p.add_argument("--claude-settings", type=Path, help=argparse.SUPPRESS)
     p = sub.add_parser("refresh-go", help="Reconcile validated non-Claude Go models; no inference or agent restart")
     p.add_argument("--command", default=str(Path.home() / ".local/bin/subscription-proxy"), help=argparse.SUPPRESS)
     p.add_argument("--server", action="store_true", help="Reconcile central upstream routing on Omarchy too")
@@ -453,6 +508,9 @@ def main():
     p.add_argument("--allow-shrink", action="store_true", help="Accept an operator-reviewed catalog reduction larger than half")
     p = sub.add_parser("seed-server", help=argparse.SUPPRESS)
     p.add_argument("--template", required=True)
+    p = sub.add_parser("reload-catalog", help=argparse.SUPPRESS)
+    p.add_argument("profile", choices=PROFILES)
+    p.add_argument("--catalog", type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.action is None:
@@ -469,12 +527,15 @@ def main():
             # A persistent timer can fire during systemd activation. Wait for
             # its bounded refresh instead of failing the Home Manager switch.
             with catalog_lock(wait=True):
-                client_config(args.command)
+                client_config(args.command, load_json(args.claude_settings) if args.claude_settings else None)
         elif args.action == "refresh-go":
             refresh_go(args.command, args.server, args.cached, args.allow_shrink)
         elif args.action == "seed-server":
             with catalog_lock(wait=True):
                 seed_server(args.template)
+        elif args.action == "reload-catalog":
+            with catalog_lock(wait=True):
+                reload_catalog(args.profile, args.catalog)
         return 0
     except (ValueError, KeyError, OSError, EOFError, subprocess.SubprocessError) as exc:
         print(f"subscription-proxy: {exc}", file=sys.stderr)
