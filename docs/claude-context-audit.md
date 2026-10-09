@@ -2,7 +2,7 @@
 
 [Fizzy #726](https://app.fizzy.do/6284043/cards/726) audits John's observation of
 33–100k initial tokens on Omarchy versus about 15k on Mac. The persistent,
-reviewed context-policy change is tracked separately in
+reviewed context-policy change and its narrower capability tradeoffs are recorded in
 [#731](https://app.fizzy.do/6284043/cards/731).
 
 ## Result
@@ -196,8 +196,107 @@ policy is more aggressive: it also denies `AskUserQuestion`, plan/worktree
 helpers, notebook editing, messaging, scheduling/workflow tools, artifact tools,
 and selected claude.ai connectors. Review those capability tradeoffs first.
 
-Preserve unrelated host settings, credentials, saved model/window choices,
-existing restrictions, and personal profiles. Deploy any resulting shared
-policy independently to **both** hosts, and verify actual discovery and first
-request counts. That implementation and deployment remain open in #731.
-This audit/report/test change needs no Home Manager activation.
+The audit itself made no persistent changes. After rejecting an initial narrower
+implementation, John explicitly requested **Mac-equivalent context on both hosts**.
+The shared policy below implements that request, including Mac’s tool exclusions.
+
+## Reviewed work-context policy (#731)
+
+John explicitly requested replication of the full Mac work-context footprint on
+Omarchy, targeting **approximately 14k initial input tokens on both hosts**.
+An initial conservative policy only reduced Omarchy from 35,440 to 31,151 tokens;
+John rejected that compromise. It is superseded, not the completed outcome.
+
+### Mac-equivalent policy
+
+`modules/home-manager/claude-work-context/policy.json` was extracted from Mac’s
+work settings and is shared through `agent-projects.nix` on both hosts:
+
+- The **31 tool-name denies**, including Mac’s exclusions for question/plan/worktree
+  helpers, notebooks, scheduling, messaging, workflow tools, artifacts, and the
+  selected claude.ai connectors. Core coding tools and the agent-kit gateway remain.
+- All **10 named skill overrides** from Mac, including the documentation skill.
+- `disableBundledSkills = true`, `autoMemoryEnabled = false`,
+  `autoCompactEnabled = false`, and `channelsEnabled = false`.
+
+These exclusions are intentional and explicitly approved by John’s request to
+replicate Mac, rather than a capability-preserving redesign. No saved model,
+context-window/beta environment, routing, hooks, credentials, personal settings,
+or memory files are copied or changed. Existing host restrictions are retained.
+Other host-local integrations are not credential-cloned: Mac still has its
+Headroom and Supacode resources; the native-tool footprint matches on both hosts.
+
+Home Manager installs a readable `~/.config/claude-gmatter/work-context-policy.json`
+and runs an atomic work-only merge after the profile-default/UI writers. It
+appends missing denies without deleting existing rules, applies the named skill
+overrides and four owned flags, and leaves every other work field alone. Settings
+stay private (0600), writable, and host-local. Invalid settings and unexpected
+symlinks fail without replacement. Removing a declaration or rolling back a
+Home Manager generation does not silently revoke runtime restrictions; undoing
+one requires explicit review of whether it was already host-owned.
+
+### Deployment and preservation
+
+Both hosts were independently activated and verified with the **full** policy.
+Mac used `mise update-system --switch-only`; Omarchy used the documented standalone
+Home Manager `path:.` build/activation from its inspected snapshot. Only intended
+files were transferred. Each host retained its original flake.lock; Omarchy’s
+older inputs were not overwritten. No active agents or Herdr servers restarted.
+
+Installed checks verify both profile variables, policy/flags, private writable
+settings, and before/after hashes for all **unowned** work fields, existing denies,
+personal settings, and profile credentials. The four context flags and ten named
+skill overrides are now deliberately managed. Mac retained `haiku`; Omarchy
+retained `gpt-6-luna`. Saved window preferences/routing/hooks are unchanged.
+
+### Fresh measurements: approximately 14k achieved
+
+Matched tests used the same fixture/prompt hashes, work proxy,
+**Claude Code 2.1.295 / claude-haiku-5-5 / actual 1M window**, one bounded model
+turn, no tool calls, and no persisted session. Counts include cache categories.
+
+| Host | Full-policy before | Full-policy after |
+| --- | ---: | ---: |
+| Mac, existing footprint | 13,940 | **13,938** |
+| Omarchy, replacing the rejected conservative policy | 31,154 | **13,410** |
+
+Compared with the original untrimmed Omarchy baseline of **35,440**, the final
+**13,410** footprint removes **22,030 tokens (62.2%)**. Its small difference from
+Mac reflects remaining host-local integrations/instructions, not native tools.
+
+The plain installed launchers were also live-tested: **Mac 2.1.296: 14,038 tokens**;
+**Omarchy 2.1.295: 13,410 tokens**. The table uses 2.1.295 for a matched-version
+comparison; neither binary was updated by this change.
+
+Both hosts advertise exactly the same **eight native tools**: `Task`, `Bash`,
+`Edit`, `Read`, `Skill`, `WebFetch`, `WebSearch`, and `Write`. Both discover the
+connected agent-kit `find_tools`/`call_tool` gateway and matching agent-kit coding
+skills. Mac additionally advertises its three existing Headroom tools. The ten
+excluded skills are absent from both live inventories. Installed settings verify
+all denies, including those for interactive-only tools/connectors not advertised
+in proxy-backed print mode; that is not a native-login connector execution test.
+
+### Repeatable gates
+
+```bash
+# Offline merging, Mac capability boundary, safety, and ~14k regression checks.
+mise exec -- python3 tests/claude-work-context.py
+mise exec -- python3 tests/claude-context-audit.py --self-test
+
+# Immediately before activation; stores private hashes, not values.
+mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-work-context.py" \
+  --record-before /tmp/claude-work-before.json
+
+# Explicit live inference through the installed launcher.
+mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-context-audit.py" \
+  --live > /tmp/claude-work-live.json
+
+# Installed state, preservation, native-tool equality, and 12k–15k target gate.
+mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-work-context.py" \
+  --installed --before /tmp/claude-work-before.json \
+  --live-report /tmp/claude-work-live.json
+```
+
+Use absolute script paths on Omarchy because `mise -C` changes the working
+directory. Start **new work Claude sessions on both hosts** to load the full
+policy; existing agents keep launch-time tools/settings and were left running.

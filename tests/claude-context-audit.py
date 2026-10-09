@@ -27,8 +27,8 @@ SAFE_FLAGS = ("disableBundledSkills", "autoMemoryEnabled", "autoCompactEnabled",
 def overlay_policy(value):
     """Refuse accidental transfer of credentials or executable settings."""
     assert isinstance(value, dict)
-    assert set(value) <= {"permissions", "skillOverrides", "disableBundledSkills", "autoMemoryEnabled"}
-    for key in ("disableBundledSkills", "autoMemoryEnabled"):
+    assert set(value) <= {"permissions", "skillOverrides", *SAFE_FLAGS}
+    for key in SAFE_FLAGS:
         if key in value:
             assert isinstance(value[key], bool), key
     if "permissions" in value:
@@ -134,12 +134,15 @@ def live(claude, model, overlay):
 
 class OfflineTests(unittest.TestCase):
     def test_policy_isolation(self):
-        valid = {"permissions": {"deny": ["Workflow", "mcp__claude_ai_Gmail"]}, "disableBundledSkills": True}
+        valid = {"permissions": {"deny": ["Workflow", "mcp__claude_ai_Gmail"]},
+                 "disableBundledSkills": True, "autoMemoryEnabled": False,
+                 "autoCompactEnabled": False, "channelsEnabled": False}
         self.assertEqual(overlay_policy(valid), valid)
         for value in ({"env": {"ANTHROPIC_AUTH_TOKEN": "secret"}}, {"hooks": {}},
                       {"permissions": {"defaultMode": "bypassPermissions"}},
                       {"permissions": {"deny": ["Bash(curl --token secret)"]}},
-                      {"disableBundledSkills": "false"}, {"skillOverrides": {"x": "invalid"}}):
+                      {"disableBundledSkills": "false"}, {"channelsEnabled": "false"},
+                      {"autoCompactEnabled": "false"}, {"skillOverrides": {"x": "invalid"}}):
             with self.assertRaises(AssertionError):
                 overlay_policy(value)
 

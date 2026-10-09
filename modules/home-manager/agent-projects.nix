@@ -16,6 +16,8 @@
       See docs/omarchy-agents.md in system-config for application and authentication.
     '';
 in {
+  imports = [./claude-work-context.nix];
+
   # Shared directory context, not project dependencies (those stay in mise).
   # Home Manager must fail on unexpected unmanaged files; review/back up before
   # adopting an existing config rather than forcing replacement.

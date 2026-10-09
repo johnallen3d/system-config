@@ -136,9 +136,21 @@ Mac's user-owned native-tool/skill trimming is not shared with Omarchy. Matched
 fresh requests measured about 14k tokens on Mac versus 35k on Omarchy; a
 temporary Mac context-policy overlay reduced Omarchy to about 13k. These are
 absolute input counts including cached tokens, not context-window percentages.
-A reviewed persistent work-only policy remains tracked in #731; no trimming
-settings were installed by the audit. Its reproducible installed inventory and
-explicit live probe are in `tests/claude-context-audit.py`.
+The shared work-context policy from #731 **replicates Mac’s approximately 14k
+footprint on both hosts**, as explicitly requested by John. It is declared in
+`modules/home-manager/claude-work-context/policy.json` and atomically merged by
+Home Manager: Mac’s 31 tool-name denies, 10 named skill overrides, bundled skills
+disabled, automatic memory/autocompact/channels disabled. The question/plan/worktree,
+notebook, scheduling, messaging, workflow, and selected connector exclusions match
+Mac intentionally. Core coding tools and agent-kit remain available.
+Existing host restrictions, saved model/window choices, routing/hooks, personal
+settings, and credentials are preserved. The conservative 31k policy was rejected
+and superseded. Final installed-runtime measurements: **Mac 14,038; Omarchy 13,410**.
+See the [full policy and measurements](claude-context-audit.md#reviewed-work-context-policy-731).
+`tests/claude-context-audit.py --live` explicitly measures inference;
+`tests/claude-work-context.py` tests regressions offline and verifies installed
+settings with `--installed`. Add `--live-report PATH` to gate the ~14k footprint.
+Start a new work Claude session to load the full policy; do not restart active agents.
 
 ## Apply
 
