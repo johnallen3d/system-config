@@ -3,11 +3,11 @@
     "herdrProjectPicker": {
       "flake": false,
       "locked": {
-        "lastModified": 1790785629,
-        "narHash": "sha256-HZZ73HkU2xewQ4acjLy3tIF574hGZX93OsO8P2RRY8c=",
+        "lastModified": 1791466155,
+        "narHash": "sha256-Sbh8+XJZUhmYE7fMPKlSSg0p59jBMYBwBgC4kmNsDVI=",
         "owner": "johnallen3d",
         "repo": "herdr-project-picker",
-        "rev": "70219b8e1157f85dab8a8b9cf3b67907e6ca969d",
+        "rev": "b547c800b882029d876bf94130e4fd6296459065",
         "type": "github"
       },
       "original": {
@@ -23,11 +23,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791306979,
-        "narHash": "sha256-KuLePuhwJM9NLt/gTLHzXaOoSZKGoB3m7NfXjiQ98HY=",
+        "lastModified": 1791484883,
+        "narHash": "sha256-iKxFHJrg7Sltwhq3ssCZYQ4CFEDVvReVVuVuO9dj3sE=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "fae6e9e42c3b762ab47635cddcfaf6f52374a61b",
+        "rev": "dfadbe5162d5e86bc0808badec8f346f81b4b3f0",
         "type": "github"
       },
       "original": {
@@ -78,11 +78,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1791260994,
-        "narHash": "sha256-Miqqk/ammqnTUxaoCyvtwoPeLbI1ksFyLxi/CazZpWY=",
+        "lastModified": 1791456040,
+        "narHash": "sha256-H83yz/do+hjOO0uujHyH8RgtIQP2v7Mw+cLwcZK/xKc=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4",
+        "rev": "e7439b6b14ad3cc35d05608ebca9bce01a25f5f8",
         "type": "github"
       },
       "original": {
