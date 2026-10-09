@@ -35,8 +35,7 @@ function grokSessionCost(ctx: any): number {
 }
 
 const POLL_MS = 60_000;
-let codexUsage: CodexUsage | undefined;
-let lastCodexFetch = 0;
+const codexStates = new Map<string, { usage?: CodexUsage; lastFetch: number; inFlight: boolean }>();
 let requestRender: (() => void) | undefined;
 
 function formatTokens(count: number): string {
@@ -116,22 +115,56 @@ function readCodexCredential(paths = authStorageCandidatePaths()): CodexCredenti
   return undefined;
 }
 
-async function fetchCodexUsage(_ctx: any, force = false): Promise<void> {
+function codexProvider(ctx: any): boolean {
+  return ctx.model?.provider === "openai-codex" || ctx.model?.provider === "subscription-codex";
+}
+
+function codexState(ctx: any) {
+  const key = JSON.stringify([process.env["PI_CODING_AGENT_DIR"], ctx.model?.provider, ctx.model?.baseUrl]);
+  let state = codexStates.get(key);
+  if (!state) {
+    state = { lastFetch: 0, inFlight: false };
+    codexStates.set(key, state);
+  }
+  return state;
+}
+
+async function fetchCodexUsage(pi: ExtensionAPI, ctx: any, force = false): Promise<void> {
   const now = Date.now();
-  if (!force && now - lastCodexFetch < POLL_MS) return;
-  lastCodexFetch = now;
+  const state = codexState(ctx);
+  if (state.inFlight || (!force && now - state.lastFetch < POLL_MS)) return;
+  state.lastFetch = now;
+  state.inFlight = true;
   try {
-    const credential = readCodexCredential();
-    const access = credential?.type === "oauth" ? credential.access : undefined;
-    if (!access) throw new Error("credential not found");
-    const headers: Record<string, string> = {
-      "Authorization": "Bearer " + access,
-      "Accept": "application/json",
-    };
-    if (credential?.accountId) headers["ChatGPT-Account-Id"] = String(credential.accountId);
-    const res = await fetch("https://chatgpt.com/backend-api/wham/usage", { headers });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json() as any;
+    let data: any;
+    if (ctx.model?.provider === "subscription-codex") {
+      // Query the gateway's account, never a possibly unrelated local OAuth login.
+      const activeDir = process.env["PI_CODING_AGENT_DIR"]?.trim();
+      const profile = activeDir === join(homedir(), ".config", "pi") ? "personal"
+        : activeDir === join(homedir(), ".config", "pi-work") ? "work" : undefined;
+      if (!profile) throw new Error("unsupported proxy profile");
+      const result = await pi.exec("subscription-proxy", [
+        "codex-usage", profile, "--base-url", ctx.model.baseUrl,
+      ], { timeout: 35_000 });
+      // Never render helper stderr or upstream response bodies/credentials.
+      if (result.code !== 0 || result.killed) throw new Error("gateway quota unavailable");
+      try { data = JSON.parse(result.stdout); }
+      catch { throw new Error("invalid gateway quota response"); }
+    } else {
+      const credential = readCodexCredential();
+      const access = credential?.type === "oauth" ? credential.access : undefined;
+      if (!access) throw new Error("credential not found");
+      const headers: Record<string, string> = {
+        "Authorization": "Bearer " + access,
+        "Accept": "application/json",
+      };
+      if (credential?.accountId) headers["ChatGPT-Account-Id"] = String(credential.accountId);
+      const res = await fetch("https://chatgpt.com/backend-api/wham/usage", {
+        headers, signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      data = await res.json();
+    }
     const windows = [
       codexWindow(data?.rate_limit?.primary_window, "5h"),
       codexWindow(data?.rate_limit?.secondary_window, "7d"),
@@ -140,10 +173,12 @@ async function fetchCodexUsage(_ctx: any, force = false): Promise<void> {
     if (data?.credits?.has_credits) {
       credits = data.credits.unlimited ? "unlimited credits" : "$" + Number(data.credits.balance ?? 0).toFixed(2) + " credits";
     }
-    codexUsage = { plan: data?.plan_type, windows, credits, fetchedAt: now };
+    if (!windows.some(w => typeof w.usedPercent === "number")) throw new Error("quota windows unavailable");
+    state.usage = { plan: data?.plan_type, windows, credits, fetchedAt: now };
   } catch (err) {
-    codexUsage = { windows: [], error: err instanceof Error ? err.message : String(err), fetchedAt: now };
+    state.usage = { windows: [], error: err instanceof Error ? err.message : String(err), fetchedAt: now };
   } finally {
+    state.inFlight = false;
     requestRender?.();
   }
 }
@@ -187,10 +222,10 @@ function formatWindowUsage(windows: WindowUsage[] | undefined): string {
   }).join(" / ") || "?";
 }
 
-function usageText(ctx: any): string {
-  const provider = ctx.model?.provider;
-  if (provider === "openai-codex") {
-    void fetchCodexUsage(ctx);
+function usageText(pi: ExtensionAPI, ctx: any): string {
+  if (codexProvider(ctx)) {
+    void fetchCodexUsage(pi, ctx);
+    const codexUsage = codexState(ctx).usage;
     if (codexUsage?.error) return "usage: codex " + codexUsage.error;
     const plan = codexUsage?.plan ? codexUsage.plan + " " : "";
     const credits = codexUsage?.credits ? " • " + codexUsage.credits : "";
@@ -230,7 +265,7 @@ function modelText(ctx: any): string {
   return provider + "/" + model;
 }
 
-function installFooter(ctx: any) {
+function installFooter(pi: ExtensionAPI, ctx: any) {
   ctx.ui.setFooter((tui: any, theme: any, footerData: any) => {
     requestRender = () => tui.requestRender();
     const unsub = footerData.onBranchChange(() => tui.requestRender());
@@ -249,7 +284,7 @@ function installFooter(ctx: any) {
           : ctxInfo.percent !== undefined && ctxInfo.percent > 70
             ? theme.fg("warning", ctxInfo.text)
             : ctxInfo.text;
-        const usage = usageText(ctx);
+        const usage = usageText(pi, ctx);
         const model = modelText(ctx);
 
         const lines: string[] = [];
@@ -280,15 +315,16 @@ function installFooter(ctx: any) {
 
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", (_event, ctx) => {
-    installFooter(ctx);
-    if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(ctx, true);
+    if (ctx.mode !== "tui") return;
+    installFooter(pi, ctx);
+    if (codexProvider(ctx)) void fetchCodexUsage(pi, ctx, true);
   });
   pi.on("model_select", (event, ctx) => {
-    if (event.model?.provider === "openai-codex") void fetchCodexUsage(ctx, true);
+    if (ctx.mode === "tui" && codexProvider({ model: event.model })) void fetchCodexUsage(pi, { ...ctx, model: event.model }, true);
     requestRender?.();
   });
   pi.on("agent_end", (_event, ctx) => {
-    if (ctx.model?.provider === "openai-codex") void fetchCodexUsage(ctx, true);
+    if (ctx.mode === "tui" && codexProvider(ctx)) void fetchCodexUsage(pi, ctx, true);
     requestRender?.();
   });
 }

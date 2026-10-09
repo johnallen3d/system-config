@@ -63,9 +63,6 @@
           "--read-write"
         ];
       };
-      "cloudflare-api" = {
-        url = "https://mcp.cloudflare.com/mcp";
-      };
       "headroom" = {
         "command" = "/Users/john.allen/.pi/headroom-venv/bin/headroom";
         "args" = [
@@ -127,7 +124,7 @@
   # for subprocess MCP servers come from the selected launch environment.
   linuxMcpSettings = {
     mcpServers = {
-      inherit (piMcpSettings.mcpServers) cloudflare-api mcp-server-motherduck;
+      inherit (piMcpSettings.mcpServers) mcp-server-motherduck;
       mcp-server-doppler = piWorkMcpSettings.mcpServers.doppler;
     };
   };

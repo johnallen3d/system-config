@@ -7,6 +7,7 @@ import argparse
 import contextlib
 import fcntl
 import json
+import math
 import os
 from pathlib import Path
 import secrets
@@ -90,6 +91,60 @@ def request(profile, path, method="GET", body=None, management=True):
 
 def accounts(profile):
     return request(profile, "/credentials").get("files", [])
+
+
+def codex_usage(profile, base_url):
+    """Read quota through the selected gateway; never download upstream tokens."""
+    expected = load_json(ROOT / "endpoints.json")[profile].rstrip("/") + "/v1"
+    if base_url.rstrip("/") != expected:
+        raise ValueError("Codex quota gateway does not match the selected model.")
+    files = [a for a in accounts(profile) if a.get("provider") == "codex" and not a.get("disabled")]
+    # Do not guess which pooled account served the session or mix account quotas.
+    if len(files) != 1 or not files[0].get("auth_index"):
+        raise ValueError("Codex quota requires exactly one enabled gateway account.")
+    account = files[0]
+    header = {"Authorization": "Bearer $TOKEN$", "Accept": "application/json",
+              "User-Agent": "codex-tui/0.149.1"}
+    identity = account.get("id_token", {})
+    account_id = identity.get("chatgpt_account_id") if isinstance(identity, dict) else None
+    if account_id:
+        header["ChatGPT-Account-Id"] = str(account_id)
+    result = request(profile, "/requests/api-call", "POST", {
+        "auth_index": account["auth_index"], "method": "GET",
+        "url": "https://chatgpt.com/backend-api/wham/usage", "header": header})
+    status = result.get("status_code")
+    if status != 200:
+        raise ValueError(f"Codex quota returned HTTP {status if isinstance(status, int) else 'unknown'}.")
+    try:
+        raw = json.loads(result["body"]) if isinstance(result.get("body"), str) else result["body"]
+        limits = raw["rate_limit"]
+        if not isinstance(limits, dict):
+            raise ValueError()
+        clean = {"rate_limit": {}}
+        for name in ("primary_window", "secondary_window"):
+            window = limits.get(name)
+            if isinstance(window, dict):
+                clean["rate_limit"][name] = {
+                    key: value for key in ("used_percent", "limit_window_seconds", "reset_at")
+                    if isinstance(value := window.get(key), (int, float))
+                    and not isinstance(value, bool) and math.isfinite(value)}
+        if not any("used_percent" in w for w in clean["rate_limit"].values()):
+            raise ValueError()
+        plan = raw.get("plan_type")
+        if isinstance(plan, str) and plan.replace("_", "").replace("-", "").isalnum():
+            clean["plan_type"] = plan[:40]
+        credits = raw.get("credits")
+        if isinstance(credits, dict):
+            balance = credits.get("balance")
+            clean["credits"] = {"has_credits": credits.get("has_credits") is True,
+                                "unlimited": credits.get("unlimited") is True}
+            if isinstance(balance, (int, float, str)) and not isinstance(balance, bool):
+                number = float(balance)
+                if math.isfinite(number) and number >= 0:
+                    clean["credits"]["balance"] = number
+        return clean
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise ValueError("Invalid Codex quota response; upstream body suppressed.") from None
 
 
 def provider_ready(profile, provider):
@@ -492,6 +547,9 @@ def main():
     p.add_argument("profile", choices=PROFILES, nargs="?", default="work")
     key = sub.add_parser("client-key", help="Internal Pi key helper; prints a PROXY client key only")
     key.add_argument("profile", choices=PROFILES)
+    p = sub.add_parser("codex-usage", help="Read gateway Codex quota without downloading upstream credentials")
+    p.add_argument("profile", choices=PROFILES)
+    p.add_argument("--base-url", required=True, help="Selected Pi model base URL; must match this profile's gateway")
     p = sub.add_parser("activate", help="Select verified central routes on this client host")
     p.add_argument("profile", choices=PROFILES)
     p.add_argument("--claude", action="store_true")
@@ -519,6 +577,8 @@ def main():
             return open_ui(args.profile)
         if args.action == "client-key":
             print(credentials()[args.profile]["client"])
+        elif args.action == "codex-usage":
+            print(json.dumps(codex_usage(args.profile, args.base_url)))
         elif args.action == "activate":
             activate(args.profile, args.claude)
         elif args.action == "deactivate":

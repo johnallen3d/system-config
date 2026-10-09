@@ -107,7 +107,9 @@ Pi configuration is regenerated on each activation, preserving only
 `lastChangelogVersion`; persistent changes belong in
 Nix. Mac-only legacy extension links, Keychain commands, and Mac-local
 Headroom MCP/calc endpoints are not enabled here. The Mac usage footer
-is also excluded because its credential fallback reads across Pi profiles. Remote MCP endpoints
+is also excluded because its native credential fallback reads across Pi profiles.
+The shared proxy quota helper is available without downloading upstream tokens.
+Cloudflare MCP is work-only; personal Pi does not declare or require it. Remote MCP endpoints
 still require their own login or environment credentials; no Mac tokens are
 transferred. Session-capture's Obsidian journal integration requires a separately
 configured vault/CLI; this setup does not install Obsidian.

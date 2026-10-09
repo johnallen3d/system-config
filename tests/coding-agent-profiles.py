@@ -70,6 +70,7 @@ def main():
         for profile in (personal, work):
             mcp = (profile / ("mcp.json" if profile == personal else "mcp-adapter.json")).read_text()
             assert "/Users/" not in mcp and "security find-generic-password" not in mcp
+            assert ("cloudflare-api" in json.loads(mcp)["mcpServers"]) == (profile == work)
             settings = json.loads((profile / "settings.json").read_text())
             assert isinstance(settings.get("packages"), list)
             assert not (profile / "extensions/supacode.ts").exists()

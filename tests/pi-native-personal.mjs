@@ -20,6 +20,7 @@ const {loadMcpConfig}=await imp('extensions/mcp/config.js');
 const nativeConfig=personal ? loadMcpConfig({agentDir:profile,cwd:process.cwd(),projectTrusted:false}) : undefined;
 if(personal){
  assert.deepEqual(nativeConfig.errors,[],'Installed native MCP config must validate');
+ assert(!nativeConfig.servers.some(s=>s.name==='cloudflare-api'),'Cloudflare is work-only');
  assert(nativeConfig.servers.every(s=>!s.config.exposure || s.config.exposure==='codemode'));
 }
 const settings=SettingsManager.create(process.cwd(),profile);

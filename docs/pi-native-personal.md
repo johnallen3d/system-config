@@ -75,7 +75,9 @@ Configured servers remain profile/host appropriate:
   credential; Omarchy inherits `${DOPPLER_TOKEN}` through stdio `npx`.
 - MotherDuck: stdio `uvx`, existing `--read-write` policy preserved. Smoke query is
   read-only `SELECT 1`, not a database mutation.
-- Cloudflare: streamable HTTP, native browser OAuth when authorized.
+- Cloudflare: **work-only** streamable HTTP. John clarified that personal Pi does
+  not use it; the follow-up removed its personal Mac/Omarchy declaration rather
+  than requesting unnecessary personal authorization. Work configuration is unchanged.
 
 Before migration, native MCP connected Mac Headroom, Doppler (128 tools), and
 MotherDuck (4 tools). Cloudflare required sign-in **under both implementations**:
@@ -87,7 +89,8 @@ backend; credentials are never placed in Nix or synchronized between hosts.
 
 Omarchy's noninteractive personal environment did not have a Doppler token before
 this task. Profile-specific service-account authorizations remain in **#694**;
-missing approvals are not concealed by removing servers or warnings. Native
+missing approvals for intended services are not concealed. Removing personal
+Cloudflare is a profile-scope correction, not warning suppression. Native
 synthetic tests exercise authenticated HTTP calls and server-name/URL isolation
 without requiring browser approval, secret output, or paid model calls.
 
@@ -96,6 +99,32 @@ codemode calls; destructive annotations remain available. Codemode scripts can
 filter full results before returning them, while direct model-facing results have
 a native bounded-output/file fallback. There is no adapter gateway/schema overhead.
 Persistent MCP edits belong in Nix: native `/mcp` edits cannot rewrite a store link.
+
+## Follow-up: proxied Codex quota footer
+
+The retained Mac footer recognized only `openai-codex`. After the separate
+central-proxy rollout selected `subscription-codex`, it incorrectly fell back to
+`usage: $0.000 session`. The footer now queries the selected gateway account
+through `subscription-proxy codex-usage personal --base-url <selected-model-url>`.
+The helper uses the official panel's read-only quota request with a server-side
+`$TOKEN$` placeholder; upstream OAuth tokens are never downloaded. Output is
+allowlisted quota fields only. Wrong gateways, missing/ambiguous pooled accounts,
+and request failures display unavailable quota, never local-account fallback.
+Polling is bounded and throttled, and caches are scoped to provider/profile/URL.
+
+Display actual returned windows and reset times: the current personal `prolite`
+plan returns a 7-day window only. Do not invent a missing 5-hour percentage.
+Native Codex usage still works. Omarchy's cross-profile footer exclusion remains
+unchanged; its shared quota helper is deployed and independently verified.
+
+```bash
+# Mac: actual managed factory/rendering plus a read-only gateway quota check
+PI_CODING_AGENT_DIR="$HOME/.config/pi" node tests/pi-usage-footer.mjs "$runtime" --installed --live
+```
+
+Run `tests/subscription-proxy.py` with the managed helper's Nix Python (PyYAML).
+Use `/reload` or a new personal Pi session after activation for the footer and
+MCP removal. No package refresh or Claude restart is needed for this follow-up.
 
 ## Deployment and verification
 
@@ -128,5 +157,6 @@ Use Nix Node ahead of mise shims for those explicit-profile calls. The native te
 checks actual extension discovery, native prompt preservation, retained template
 support, exact personal npm ownership, absence of the adapter update notice,
 HTTP/OAuth credential isolation, read-only live calls, and work-loader regressions.
-It reports pre-existing Cloudflare/Doppler authorization gaps explicitly. No
+It rejects personal Cloudflare declarations and reports the pre-existing Omarchy
+Doppler authorization gap explicitly. No
 credential values, sessions, or model calls are used by the test.

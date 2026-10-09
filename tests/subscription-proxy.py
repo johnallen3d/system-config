@@ -49,6 +49,50 @@ class ManagerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             manager.private_json(link, {})
 
+    def test_codex_quota_is_profile_scoped_read_only_and_sanitized(self):
+        raw = {"plan_type": "prolite", "access_token": "secret-sentinel",
+               "rate_limit": {"primary_window": {"used_percent": 11, "limit_window_seconds": 604800,
+                               "reset_at": 1791989283, "secret": "secret-sentinel"}, "secondary_window": None},
+               "credits": {"has_credits": False, "unlimited": False, "balance": "0"}}
+        for profile, port in (("personal", 8317), ("work", 8318)):
+            account = {"provider": "codex", "auth_index": "test-index",
+                       "id_token": {"chatgpt_account_id": "test-account"}}
+            with patch.object(manager, "request", side_effect=[{"files": [account]},
+                              {"status_code": 200, "body": json.dumps(raw)}]) as request:
+                result = manager.codex_usage(profile, f"http://100.97.112.40:{port}/v1")
+            self.assertEqual(request.call_args_list[0].args, (profile, "/credentials"))
+            self.assertEqual(request.call_args_list[1].args, (profile, "/requests/api-call", "POST", {
+                "auth_index": "test-index", "method": "GET",
+                "url": "https://chatgpt.com/backend-api/wham/usage", "header": {
+                    "Authorization": "Bearer $TOKEN$", "Accept": "application/json",
+                    "User-Agent": "codex-tui/0.149.1", "ChatGPT-Account-Id": "test-account"}}))
+            self.assertEqual(result["rate_limit"], {"primary_window": {
+                "used_percent": 11, "limit_window_seconds": 604800, "reset_at": 1791989283}})
+            self.assertNotIn("secret-sentinel", json.dumps(result))
+            self.assertNotIn("auth_index", result)
+            self.assertEqual(result["credits"]["balance"], 0)
+        # Wrong gateway must be rejected before any network call/credential access.
+        with patch.object(manager, "request") as request:
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                manager.codex_usage("personal", "http://100.97.112.40:8318/v1")
+            request.assert_not_called()
+
+    def test_codex_quota_does_not_guess_accounts_or_leak_failure_bodies(self):
+        base = "http://100.97.112.40:8317/v1"
+        account = {"provider": "codex", "auth_index": "test"}
+        for files in ([], [dict(account, disabled=True)], [account, account], [{"provider": "claude"}]):
+            with patch.object(manager, "request", return_value={"files": files}) as request:
+                with self.assertRaisesRegex(ValueError, "exactly one"):
+                    manager.codex_usage("personal", base)
+                self.assertEqual(request.call_count, 1)
+        for response, error in (({"status_code": 401, "body": "secret-sentinel"}, "HTTP 401"),
+                                ({"status_code": 200, "body": "secret-sentinel"}, "Invalid Codex"),
+                                ({"status_code": 200, "body": {"rate_limit": {}}}, "Invalid Codex")):
+            with patch.object(manager, "request", side_effect=[{"files": [account]}, response]):
+                with self.assertRaisesRegex(ValueError, error) as raised:
+                    manager.codex_usage("personal", base)
+                self.assertNotIn("secret-sentinel", str(raised.exception))
+
     def test_client_config_preserves_unrelated_providers_and_native_settings(self):
         for name in ("pi", "pi-work"):
             directory = self.home / ".config" / name

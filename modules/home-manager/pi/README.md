@@ -34,7 +34,15 @@ its AskClaude prompt are no longer installed.
 
 ## Why this matters
 
-The personal `usage-footer` reads Codex OAuth credentials from the active Pi profile's `auth.json`, falling back across `~/.config/pi-work` and `~/.config/pi`. This keeps Codex usage working even when Pi's runtime auth storage does not expose the right token.
+The Mac personal `usage-footer` shows subscription quota percentages and reset
+times for native `openai-codex` and proxied `subscription-codex`. The proxy route
+queries its selected account through the managed `subscription-proxy codex-usage`
+helper without downloading upstream OAuth tokens or falling back to another
+local account. Actual returned quota windows are shown (some plans have only 7d).
+Native Codex retains its existing active-profile `auth.json` lookup, with fallback
+across `~/.config/pi-work` and `~/.config/pi`. This cross-profile legacy behavior
+keeps the footer Mac-only; it remains excluded on Omarchy. Cloudflare MCP is
+work-only, not part of personal Pi.
 
 ## Related files in this repo
 
