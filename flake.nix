@@ -75,7 +75,7 @@
           system = "x86_64-linux";
           overlays = [(import ./lib/worktrunk-overlay.nix)];
         };
-        extraSpecialArgs = {inherit herdrProjectPicker;};
+        extraSpecialArgs = {inherit herdrProjectPicker lop;};
         modules = [./hosts/omarchy.nix];
       };
       "john.allen@xcel" = makeHomeManagerSystem {

@@ -43,12 +43,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1790173710,
-        "narHash": "sha256-9lrLiAqDMNcutCxXLJrAm1V5lIfEkY8yTe3W0mjpS/0=",
+        "lastModified": 1791551599,
         "owner": "johnallen3d",
         "repo": "lop",
-        "rev": "21e680706aff3b75cbd240133738b0e6857c3163",
-        "type": "github"
+        "rev": "41f53f520e92c3fbd37c455414e59d7ab41a0d62",
+        "type": "github",
+        "narHash": "sha256-zhZDqBYWrtpjhCGzYeglOQGCGx48OgxoKnG1XfpAGTc="
       },
       "original": {
         "owner": "johnallen3d",
