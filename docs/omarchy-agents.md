@@ -51,6 +51,31 @@ started with explicit work variables. Existing agents keep their launch-time
 profile: restart in the intended directory rather than changing a running
 process's environment. This also applies to `PI_CODING_AGENT_DIR` in Pi sessions.
 
+### Shared work instructions
+
+Edit `modules/home-manager/agent-projects/work-instructions.md` in system-config
+for rules shared by all work repositories. `agent-projects.nix` installs the same
+content as `~/.config/pi-work/AGENTS.md` and
+`~/.config/claude-gmatter/CLAUDE.md`, with Linux-only Omarchy guidance appended.
+Neither personal profile receives these rules. Apply shared changes on both hosts
+using the deployment procedure below.
+
+Pi reads profile-global and ancestor `AGENTS.md` context (and supports `CLAUDE.md`
+as a fallback); Claude Code reads profile-global and ancestor `CLAUDE.md`, not
+`AGENTS.md` by default. Profile-global instructions remain available when a
+worktree is outside the Amfaro directory, provided both work profile variables are
+selected. A parent-directory file alone would not cover that case.
+
+The work policy requires a task-specific linked Git worktree before repository
+changes; a feature branch in the primary checkout is not sufficient. Prefer
+worktrees beneath `~/dev/src/amfaro` to retain mise context. These are agent
+instructions, not a write-blocking hook. Restart existing work agents to load the
+new context; do not restart them automatically. Verify through work-profile
+`mise exec` with `python3 tests/work-agent-instructions.py --installed --pi-loader
+/path/to/installed/pi-coding-agent/dist/core/resource-loader.js` and the installed
+profile test (`python3 tests/amfaro-mise.py --installed`). The loader path must be
+from that host's actual Pi runtime, not a copied runtime or a model call.
+
 John currently has no personal Claude account. The personal Claude profile stays
 installed but dormant; this is intentional, not an authentication failure. Use
 Claude from an Amfaro directory for work and Pi from a personal directory for
