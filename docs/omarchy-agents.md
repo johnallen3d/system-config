@@ -277,6 +277,20 @@ The task refreshes personal, work, and notes Pi packages plus the work Claude
 `agent-kit@amfaro` marketplace/plugin. It does not update Claude's binary or
 activate Home Manager on Omarchy.
 
+[Fizzy #733](https://app.fizzy.do/6284043/cards/733) adds a bounded transitive
+npm refresh to this same owner, after each profile's Pi reconciliation succeeds.
+It selects production transitive names from the existing locks in that profile's
+npm root (including retained inactive packages) and declared Git package roots.
+`npm update --save=false --omit=dev --legacy-peer-deps` respects parent dependency
+ranges, preserves manifests and direct/pinned package versions, and does not
+install Pi's host-provided peers. Direct, dev-only, peer, and linked names are
+excluded; undeclared cached Git packages are untouched. A missing/unreadable lock
+or failed npm update fails that host's refresh; there is no unbounded fallback,
+`audit fix --force`, or startup updater. Audit findings requiring direct-package
+or major upgrades need separate review, not forced upgrades here; remaining
+agent-kit and Mac legacy notes findings are tracked in
+[Fizzy #740](https://app.fizzy.do/6284043/cards/740).
+
 The remote run connects as `johna@omarchy` with noninteractive SSH, executes Bash
 explicitly, and selects work context through `mise -C ~/dev/src/amfaro exec --`.
 Only the two refresh workers are sent into a temporary directory, cleaned up on
@@ -301,7 +315,9 @@ mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/harness-refresh-installed.p
 The installed test checks each profile's declared npm versions/Git revisions
 against upstream, Pi runtime and package discovery, the enabled Claude plugin,
 native Sharp processing, and Claude MCP startup/tool discovery without model
-calls. It tests host-local installations, not just source files or marker files.
+calls. It also audits production dependency roots, fails on the stale
+brace-expansion advisories, and reports remaining findings separately. It tests
+host-local installations, not just source files or marker files.
 
 Pi's runtime follows latest upstream; a new process resolves it through npx.
 For a single-profile refresh on either host:

@@ -30,6 +30,24 @@ def git_head(directory):
     return installed
 
 
+def audit_dependencies(root, env):
+    if not (root / 'package.json').is_file():
+        return
+    result = subprocess.run(
+        ['npm', 'audit', '--json', '--omit=dev', '--legacy-peer-deps'],
+        cwd=root, env=env, capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode in (0, 1), result.stderr
+    report = json.loads(result.stdout)
+    assert 'error' not in report, report
+    remaining = report.get('vulnerabilities', {})
+    assert 'brace-expansion' not in remaining, f'{root}: stale vulnerable brace-expansion'
+    print(f'PASS {root}: brace-expansion advisories absent; '
+          f'audit counts {report["metadata"]["vulnerabilities"]}')
+    if remaining:
+        print(f'INFO remaining audit packages: {", ".join(sorted(remaining))}')
+
+
 def main():
     home = Path.home()
     assert os.environ.get('PI_CODING_AGENT_DIR') == str(home / '.config/pi-work')
@@ -73,6 +91,10 @@ def main():
         for source in packages:
             assert source in listing, (profile, source, listing)
         print(f'PASS {profile}: Pi CLI discovers all declared packages')
+        audit_dependencies(directory / 'npm', env)
+        for source in packages:
+            if source.startswith('git:'):
+                audit_dependencies(directory / 'git' / source.removeprefix('git:'), env)
 
     runtime = command(str(pi), '--version')
     expected = latest_npm_version('@earendil-works/pi-coding-agent')

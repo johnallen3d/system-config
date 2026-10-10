@@ -36,8 +36,13 @@ class HarnessRefreshTests(unittest.TestCase):
         # Match pi-refresh's preferred Nix tool directory, keeping Python out of
         # real mise shims when HOME is an isolated fixture.
         nix_bin = self.home / '.nix-profile/bin'
-        for tool in ('node', 'npm'):
-            self.executable(nix_bin / tool, '#!/bin/bash\nexit 0\n')
+        self.executable(nix_bin / 'node', '#!/bin/bash\nexit 0\n')
+        self.executable(nix_bin / 'npm', '''#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ['TEST_LOG'], 'a') as log:
+    log.write(json.dumps(['npm', os.environ['PI_CODING_AGENT_DIR'], sys.argv[1:], os.getcwd()]) + '\\n')
+sys.exit(int(os.environ.get('MOCK_DEPENDENCY_RC', '0')))
+''')
         (nix_bin / 'python3').symlink_to(sys.executable)
         self.executable(self.bin / "uname", '#!/bin/bash\necho "$MOCK_PLATFORM"\n')
         self.executable(self.bin / "mise", '''#!/usr/bin/env python3
@@ -58,10 +63,14 @@ pathlib.Path(os.environ['HOME'], 'payload.sh').write_text(sys.stdin.read())
 sys.exit(int(os.environ.get('MOCK_SSH_RC', '0')))
 ''')
         self.executable(self.bin / "pi", '''#!/usr/bin/env python3
-import json, os, sys
+import json, os, shutil, sys
+from pathlib import Path
 profile = os.environ['PI_CODING_AGENT_DIR']
 with open(os.environ['TEST_LOG'], 'a') as log:
     log.write(json.dumps(['pi', profile, sys.argv[1:]]) + '\\n')
+if sys.argv[1:2] == ['install'] and sys.argv[2].startswith('git:') and os.environ.get('TEST_GIT_FIXTURE'):
+    target = Path(profile) / 'git' / sys.argv[2][4:]
+    shutil.copytree(os.environ['TEST_GIT_FIXTURE'], target, dirs_exist_ok=True)
 sys.exit(int(os.environ.get('MOCK_PI_RC', '0'))
          if sys.argv[1] == 'update' else 0)
 ''')
@@ -129,6 +138,7 @@ sys.exit(int(os.environ.get(key, '0')))
     def test_retired_personal_packages_are_bounded_and_profile_local(self):
         personal = self.home / '.config/pi'
         (personal / 'npm').mkdir()
+        (personal / 'npm/package-lock.json').write_text(json.dumps({'packages': {}}))
         manifest = personal / 'npm/package.json'
         manifest.write_text(json.dumps({'dependencies': {
             'pi-mcp-adapter': '^5.1.0', 'context-mode': '^1.0.0',
@@ -148,6 +158,86 @@ with open(os.environ['TEST_LOG'], 'a') as log:
             'uninstall', '--prefix', str(personal / 'npm'), '--legacy-peer-deps',
             'context-mode', 'pi-mcp-adapter']]])
         self.assertEqual((personal / 'auth.json').read_text(), 'credential sentinel')
+
+    def dependency_root(self, root):
+        root.mkdir(parents=True, exist_ok=True)
+        manifest = {'dependencies': {'test-package': '^1.0.0'},
+                    'devDependencies': {'test-dev': '^1.0.0'},
+                    'peerDependencies': {'test-peer': '*'},
+                    'optionalDependencies': {'test-optional': '^1.0.0'}}
+        (root / 'package.json').write_text(json.dumps(manifest))
+        packages = {
+            '': manifest,
+            'node_modules/test-package': {'version': '1.0.0'},
+            'node_modules/test-package/node_modules/brace-expansion': {'version': '5.0.7'},
+            'node_modules/@example/transitive': {'version': '1.0.0'},
+            'node_modules/test-dev': {'version': '1.0.0', 'dev': True},
+            'node_modules/dev-only-child': {'version': '1.0.0', 'dev': True},
+            'node_modules/test-peer': {'version': '1.0.0'},
+            'node_modules/host-provided-peer': {'version': '1.0.0', 'peer': True},
+            'node_modules/test-optional': {'version': '1.0.0'},
+            'node_modules/optional-child': {'version': '1.0.0', 'optional': True},
+            'node_modules/local-link': {'link': True},
+        }
+        (root / 'package-lock.json').write_text(json.dumps({'lockfileVersion': 3, 'packages': packages}))
+        return (root / 'package.json').read_bytes()
+
+    def test_transitive_refresh_is_bounded_and_profile_local(self):
+        roots = []
+        for name in ('pi', 'pi-work', 'pi-notes'):
+            profile = self.home / '.config' / name
+            settings = {'packages': [{'source': 'npm:test-package@1.0.0'},
+                                     {'source': 'git:github.com/example/test-kit'}]}
+            (profile / 'settings.json').write_text(json.dumps(settings))
+            for suffix in ('npm', 'git/github.com/example/test-kit'):
+                root = profile / suffix
+                roots.append((profile, root, self.dependency_root(root)))
+            self.dependency_root(profile / 'git/github.com/example/undeclared-cache')
+            (profile / 'auth.json').write_text('credential sentinel')
+        fixture = self.bin / 'git-dependency-fixture'
+        self.dependency_root(fixture)
+        result = self.run_task('--local-only', TEST_GIT_FIXTURE=str(fixture))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = {call[3]: call for call in self.calls('npm')}
+        self.assertEqual(len(calls), 6)
+        for profile, root, manifest in roots:
+            call = calls[str(root.resolve())]
+            self.assertEqual(call[1], str(profile))
+            self.assertEqual(call[3], str(root.resolve()))
+            self.assertEqual(call[2], ['update', '--save=false', '--omit=dev',
+                                     '--legacy-peer-deps', '--no-fund',
+                                     '@example/transitive', 'brace-expansion', 'optional-child'])
+            self.assertEqual((root / 'package.json').read_bytes(), manifest)
+            self.assertEqual((profile / 'auth.json').read_text(), 'credential sentinel')
+        self.assertEqual(len([c for c in self.calls('pi') if c[2] == ['update', 'npm:test-package@1.0.0']]), 3)
+
+    def test_dependency_failure_propagates_and_other_profiles_continue(self):
+        for name in ('pi', 'pi-work', 'pi-notes'):
+            self.dependency_root(self.home / '.config' / name / 'npm')
+        result = self.run_task(MOCK_DEPENDENCY_RC='1')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(len(self.calls('npm')), 3)
+        self.assertEqual(len(self.calls('claude')), 2)
+        self.assertEqual(len(self.calls('ssh')), 1)
+        for label in ('personal', 'work', 'notes'):
+            self.assertIn(f'{label}:npm-dependencies', result.stderr)
+
+    def test_missing_lock_fails_without_unbounded_fallback(self):
+        root = self.home / '.config/pi/npm'
+        self.dependency_root(root)
+        (root / 'package-lock.json').unlink()
+        result = self.run_task('--local-only')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.calls('npm'), [])
+        self.assertIn('Cannot read dependency lock', result.stderr)
+        self.assertEqual(len([c for c in self.calls('pi') if c[2] == ['update', 'npm:test-package']]), 3)
+
+    def test_failed_reconciliation_skips_dependency_refresh(self):
+        for name in ('pi', 'pi-work', 'pi-notes'):
+            self.dependency_root(self.home / '.config' / name / 'npm')
+        result = self.run_task('--local-only', MOCK_PI_RC='1')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.calls('npm'), [])
 
     def test_retirement_failure_is_reported_but_other_profiles_continue(self):
         personal = self.home / '.config/pi'

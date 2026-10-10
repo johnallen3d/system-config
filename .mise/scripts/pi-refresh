@@ -62,6 +62,55 @@ PY
   fi
 }
 
+# Pi install/update preserves valid lock resolutions. Refresh only transitive
+# production dependencies within parent manifest ranges after reconciliation.
+# Excluding direct names preserves Pi's pinned sources (npm install can save a
+# caret range even for a pinned source). Never force upgrades or resolve peers.
+refresh_dependencies() {
+  local profile_dir="$1"
+  local label="$2"
+  local root="$3"
+  [ -f "$root/package.json" ] || return 0
+  local dependency_list
+  if ! dependency_list="$(python3 - "$root" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+manifest = json.loads((root / "package.json").read_text())
+lock = json.loads((root / "package-lock.json").read_text())
+direct = set()
+for field in ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies"):
+    direct.update(manifest.get(field, {}))
+transitive = set()
+for path, metadata in lock["packages"].items():
+    if "node_modules/" not in path or metadata.get("dev") or metadata.get("peer") or metadata.get("link"):
+        continue
+    name = path.rsplit("node_modules/", 1)[1]
+    if name not in direct:
+        transitive.add(name)
+for name in sorted(transitive):
+    print(name)
+PY
+  )"; then
+    echo "[$label] Cannot read dependency lock for $root" >&2
+    return 1
+  fi
+  local -a dependencies=()
+  local name
+  while IFS= read -r name; do
+    [ -n "$name" ] && dependencies+=("$name")
+  done <<< "$dependency_list"
+  [ "${#dependencies[@]}" -gt 0 ] || return 0
+  echo "[$label] Refreshing ${#dependencies[@]} semver-compatible transitive dependencies: $root"
+  (
+    # Keep lockfile paths relative to the installation root, not the caller.
+    cd "$root" || exit 1
+    PI_CODING_AGENT_DIR="$profile_dir" npm update --save=false --omit=dev --legacy-peer-deps --no-fund "${dependencies[@]}"
+  )
+}
+
 refresh_profile() {
   local profile_dir="$1"
   local label="$2"
@@ -93,8 +142,9 @@ except json.JSONDecodeError as exc:
     sys.exit(1)
 
 for package in data.get("packages", []):
-    if isinstance(package, str):
-        print(package)
+    source = package if isinstance(package, str) else package.get("source", "")
+    if source:
+        print(source)
 PY
     )"; then
       echo "[$label] Cannot read declared packages from $settings_file" >&2
@@ -137,6 +187,20 @@ PY
       failures+=("$label:$package_source")
     fi
   done
+
+  # Do not refresh a partially reconciled tree. Registry packages share a
+  # profile-local npm root (including retained, inactive packages); Git package
+  # roots are limited to declarations, not arbitrary cached checkouts.
+  if [ "${#failures[@]}" -eq 0 ]; then
+    if ! refresh_dependencies "$profile_dir" "$label" "$profile_dir/npm"; then
+      failures+=("$label:npm-dependencies")
+    fi
+    for package_source in "${git_packages[@]}"; do
+      if ! refresh_dependencies "$profile_dir" "$label" "$profile_dir/git/${package_source#git:}"; then
+        failures+=("$label:$package_source:dependencies")
+      fi
+    done
+  fi
 
   if [ "${#failures[@]}" -gt 0 ]; then
     printf '%s\n' "${failures[@]}" > "$failure_file"
