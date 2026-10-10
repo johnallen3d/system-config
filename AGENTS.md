@@ -56,6 +56,8 @@ Use Fizzy only—no Markdown TODOs, other trackers, or duplicate cards. The proj
 
 Card commands use the card `number`, not its internal ID. Use board columns for workflow state and tags for type or priority when useful.
 
+An actual `/wrap` invocation includes the command's expanded user prompt. On that invocation, you MUST close completed, in-scope cards after checking completion and deployment; do not misclassify the expanded invocation as a mere mention or quotation. Reading a prompt file through tools is not an invocation.
+
 ## Session completion
 
 1. File remaining work and update issue comments. Keep cards open unless John explicitly requests closure directly or actually invokes `/wrap`; apply the closure authorization and scope rules above.

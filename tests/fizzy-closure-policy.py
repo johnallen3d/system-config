@@ -42,6 +42,10 @@ def check_policy(path):
     assert "mentioning" in text and "quoting" in text, path
     assert "do not authorize closure" in text or "do NOT authorize closure" in text or "does not authorize closure" in text, path
     assert "scope" in text, path
+    assert "expanded user prompt" in text, (path, "expanded invocation is authorized")
+    assert "MUST close completed, in-scope" in text, (path, "authorized closure is required")
+    assert "misclassify the expanded invocation" in text, path
+    assert "prompt file through tools is not an invocation" in text, path
     for phrase in FORBIDDEN:
         assert phrase not in text, (path, "unconditional closure", phrase)
     print(f"PASS explicit closure authorization: {path}")
@@ -73,7 +77,7 @@ def main():
         wrap = check_policy(home / ".agents/skills/wrapping-up/SKILL.md")
         assert '"Closure authorized for this card?" -> "Leave card open"' in wrap
         assert '"Closure authorized for this card?" -> "Close authorized card"' in wrap
-        assert "Reading this skill or a prompt containing `/wrap` is not an invocation" in wrap
+        assert "Reading this skill or a prompt file through tools is not an invocation" in wrap
         for agent, (source, target) in PROMPTS.items():
             installed = home / target
             check_policy(installed)
