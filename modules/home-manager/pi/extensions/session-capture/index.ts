@@ -38,7 +38,7 @@ type PersistedEntry = JournalEntry & {
   sessionFile?: string | null;
 };
 
-type AppendResult = "logged" | "unchanged" | "failed";
+type AppendResult = "logged" | "unchanged" | "deferred" | "failed";
 
 export function collapseWhitespace(value: string | undefined | null): string {
   return (value ?? "").replace(/\s+/g, " ").trim();
@@ -352,18 +352,7 @@ export async function readDailyNote(): Promise<{ path: string; text: string } | 
     return { path, text: await readFile(path, "utf8") };
   } catch (error: any) {
     if (error?.code === "ENOENT") return { path, text: "" };
-    return undefined;
-  }
-}
-
-async function overwriteDailyNote(path: string, content: string, ctx: any, source: "auto" | "manual"): Promise<boolean> {
-  try {
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, content, "utf8");
-    return true;
-  } catch {
-    if (ctx.hasUI) ctx.ui.notify(`session-capture ${source} failed`, "warning");
-    return false;
+    throw error;
   }
 }
 
@@ -376,20 +365,33 @@ export default function (pi: ExtensionAPI) {
     const bullet = buildBullet(entry);
     if (lastLoggedBullet === bullet) return "unchanged";
 
-    const dailyNote = await readDailyNote();
-    if (!dailyNote) {
-      if (ctx.hasUI) ctx.ui.notify(`session-capture ${source} failed`, "warning");
+    try {
+      const dailyNote = await readDailyNote();
+      if (!dailyNote) {
+        // Journaling is optional on hosts without a vault. Keep pending entries
+        // for replay after configuration, without warning on every startup.
+        if (ctx.hasUI && source === "manual") {
+          ctx.ui.notify(
+            `session-capture: Obsidian vault "${configuredVault()}" is not configured; set PI_SESSION_CAPTURE_VAULT_PATH to its local path. Queued summaries are retained.`,
+            "warning",
+          );
+        }
+        return "deferred";
+      }
+
+      const { content, changed } = upsertLogEntries(dailyNote.text, [bullet]);
+      if (!changed) {
+        lastLoggedBullet = bullet;
+        return "unchanged";
+      }
+
+      await mkdir(dirname(dailyNote.path), { recursive: true });
+      await writeFile(dailyNote.path, content, "utf8");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      if (ctx.hasUI) ctx.ui.notify(`session-capture ${source} failed: ${reason}`, "warning");
       return "failed";
     }
-
-    const { content, changed } = upsertLogEntries(dailyNote.text, [bullet]);
-    if (!changed) {
-      lastLoggedBullet = bullet;
-      return "unchanged";
-    }
-
-    const result = await overwriteDailyNote(dailyNote.path, content, ctx, source);
-    if (!result) return "failed";
 
     lastLoggedBullet = bullet;
     if (ctx.hasUI && source === "manual") ctx.ui.notify("Session summary logged to daily note", "info");
@@ -409,7 +411,7 @@ export default function (pi: ExtensionAPI) {
         continue;
       }
       const result = await appendEntry(ctx, restoredEntry, "auto");
-      if (result !== "failed") {
+      if (result === "logged" || result === "unchanged") {
         await clearPendingEntry({ pendingKey: entry.pendingKey });
       }
     }
@@ -460,7 +462,7 @@ export default function (pi: ExtensionAPI) {
 
     if (!pendingEntry) return;
     const result = await appendEntry(ctx, pendingEntry, "auto");
-    if (result !== "failed") {
+    if (result === "logged" || result === "unchanged") {
       await clearPendingEntry(currentSession ?? getSessionIdentity(ctx));
     }
   });
@@ -488,7 +490,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
       const result = await appendEntry(ctx, entry, "manual");
-      if (result !== "failed") {
+      if (result === "logged" || result === "unchanged") {
         pendingEntry = undefined;
         await clearPendingEntry(currentSession ?? getSessionIdentity(ctx));
       }
@@ -504,7 +506,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
       const result = await appendEntry(ctx, entry, "manual");
-      if (result !== "failed") {
+      if (result === "logged" || result === "unchanged") {
         pendingEntry = undefined;
         await clearPendingEntry(currentSession ?? getSessionIdentity(ctx));
       }

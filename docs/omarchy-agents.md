@@ -112,7 +112,16 @@ The shared proxy quota helper is available without downloading upstream tokens.
 Cloudflare MCP is work-only; personal Pi does not declare or require it. Remote MCP endpoints
 still require their own login or environment credentials; no Mac tokens are
 transferred. Session-capture's Obsidian journal integration requires a separately
-configured vault/CLI; this setup does not install Obsidian.
+configured local vault; this setup does not install Obsidian. The helper writes
+daily notes directly and does not require Obsidian to be running or its CLI.
+Without a configured vault, automatic capture defers quietly and retains summaries
+in `~/.local/state/pi-session-capture/pending` for later replay. Manual
+`/log-session` and `/log-issue` attempts explain the missing configuration; real
+note read/write failures still warn with the underlying error. Configure
+`PI_SESSION_CAPTURE_VAULT_PATH` with the local vault path, or register the vault
+in Obsidian's configuration (`Personal` by default, overridable with
+`PI_SESSION_CAPTURE_VAULT`). Existing Pi sessions need `/reload` or a new session
+to pick up the helper change.
 
 The shared `pi-headroom` extension **is** enabled for both Pi profiles. It
 installs and manages its own local proxy in `~/.pi/headroom-venv`, independently

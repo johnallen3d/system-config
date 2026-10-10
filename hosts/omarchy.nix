@@ -36,6 +36,16 @@ in {
     server.enable = true;
   };
 
+  # Host-local daemon; keep pairing and folder choices writable in Syncthing.
+  services.syncthing = {
+    enable = true;
+    guiAddress = "127.0.0.1:8384";
+    overrideDevices = false;
+    overrideFolders = false;
+    # Tailscale Serve forwards the tailnet hostname to this loopback-only GUI.
+    settings.gui.insecureSkipHostcheck = true;
+  };
+
   home = {
     username = "johna";
     homeDirectory = "/home/johna";
