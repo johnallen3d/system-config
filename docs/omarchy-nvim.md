@@ -26,6 +26,35 @@ nixpkgs (0.12+); Mac keeps its Bob installation.
 - Omarchy's Hyprland, terminal, desktop theme, Bash, and other native settings
   remain untouched. Its old LazyVim hot-reload plugin is not part of this editor.
 
+## Clipboard over SSH
+
+Tracked in [Fizzy #737](https://app.fizzy.do/6284043/cards/737).
+Both Omarchy editor profiles load a host-only clipboard plugin. With
+`SSH_CONNECTION` set and neither `WAYLAND_DISPLAY` nor `DISPLAY` available,
+it explicitly selects Neovim's built-in OSC 52 provider. Our shared
+`clipboard=unnamedplus` setting otherwise disables automatic OSC 52 detection,
+causing "clipboard: No provider" even though `wl-clipboard` is installed.
+Native Wayland/X11 sessions and explicit user/GUI providers are left alone;
+the Mac editor configuration is unchanged.
+
+SSH yanks target the **client terminal's clipboard**, not Omarchy's desktop
+clipboard. The terminal/UI must support forwarding OSC 52 and allow clipboard
+writes; paste queries additionally require clipboard-read support/permission.
+Do not synthesize a desktop display environment in an SSH session.
+Reopen the editor after activation to load the plugin. To repair an already-open
+SSH editor without restarting it, run:
+
+```vim
+:let g:clipboard = 'osc52'
+:unlet! g:loaded_clipboard_provider
+:runtime autoload/provider/clipboard.vim
+```
+
+Run `mise exec -- python3 tests/omarchy-clipboard.py` for selection regressions,
+and add `--installed` on Omarchy to exercise both real editor profiles in an
+isolated pseudo-terminal. The installed test captures explicit/unnamed OSC 52
+yanks and simulates a terminal paste response without changing a real clipboard.
+
 ## Deployment
 
 Follow the [shared deployment procedure](omarchy-agents.md#apply): inspect the

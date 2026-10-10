@@ -13,6 +13,10 @@
     VISUAL = lib.mkForce "nvim-editor";
   };
 
+  # Only Omarchy needs this SSH fallback; share it across both editor profiles.
+  xdg.configFile."nvim/plugin/clipboard.lua".source = ./omarchy-nvim/clipboard.lua;
+  xdg.configFile."nvim-editor/plugin/clipboard.lua".source = ./omarchy-nvim/clipboard.lua;
+
   xdg.configFile."markdownlint/.markdownlint-cli2.jsonc".source =
     ./dotfiles/config/markdownlint/.markdownlint-cli2.jsonc;
 }
