@@ -3,11 +3,11 @@
     "herdrProjectPicker": {
       "flake": false,
       "locked": {
-        "lastModified": 1791466155,
-        "narHash": "sha256-Sbh8+XJZUhmYE7fMPKlSSg0p59jBMYBwBgC4kmNsDVI=",
+        "lastModified": 1791551781,
+        "narHash": "sha256-bQ/Hk2GsilP1cUhjk+XWS/GiXxAhq1S3ZKt/v118Djg=",
         "owner": "johnallen3d",
         "repo": "herdr-project-picker",
-        "rev": "b547c800b882029d876bf94130e4fd6296459065",
+        "rev": "f2d109836dd58d016bb74c67b0e144ff880a858e",
         "type": "github"
       },
       "original": {
@@ -23,11 +23,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791484883,
-        "narHash": "sha256-iKxFHJrg7Sltwhq3ssCZYQ4CFEDVvReVVuVuO9dj3sE=",
+        "lastModified": 1791642191,
+        "narHash": "sha256-0bK0A59rVUn1SRZzo4cNi4VSqAe7vR1gL2/MZl53Frw=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "dfadbe5162d5e86bc0808badec8f346f81b4b3f0",
+        "rev": "c58f54c733a7894d84fa2fdff26cc12088c4b78c",
         "type": "github"
       },
       "original": {
@@ -44,11 +44,11 @@
       },
       "locked": {
         "lastModified": 1791551599,
+        "narHash": "sha256-zhZDqBYWrtpjhCGzYeglOQGCGx48OgxoKnG1XfpAGTc=",
         "owner": "johnallen3d",
         "repo": "lop",
         "rev": "41f53f520e92c3fbd37c455414e59d7ab41a0d62",
-        "type": "github",
-        "narHash": "sha256-zhZDqBYWrtpjhCGzYeglOQGCGx48OgxoKnG1XfpAGTc="
+        "type": "github"
       },
       "original": {
         "owner": "johnallen3d",
