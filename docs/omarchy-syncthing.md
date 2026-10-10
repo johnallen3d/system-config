@@ -22,9 +22,13 @@ tailscale serve --bg --http=8384 --yes http://127.0.0.1:8384
 `--bg` persists the mapping across Tailscale/node restarts. Never use Funnel or
 bind the Syncthing GUI to all interfaces. Home Manager allows the reverse proxy's
 Host header with `settings.gui.insecureSkipHostcheck = true`; the backend remains
-loopback-only, and remote access is controlled by Tailscale ACLs. Set a GUI password
-through Syncthing if additional application-level authentication is needed.
+loopback-only, and tailnet access is controlled by Tailscale ACLs. Preserve the
+existing GUI username/password; they are required for the restricted LAN endpoint.
 Other Tailscale Serve ports are left untouched.
+
+For the pi-01-only LAN forwarder, address/firewall prerequisites, verification,
+and rollback, see [restricted LAN access (#745)](omarchy-syncthing-lan.md).
+The Syncthing backend and Tailscale listeners remain unchanged.
 
 ## Pairing and vault capture
 
@@ -66,6 +70,6 @@ python3 tests/omarchy-session-capture.py --installed
 
 Run `python3 tests/omarchy-syncthing.py` for source evaluation without starting a
 service. `--installed` additionally checks the active service, the loopback-only
-listener, the authenticated local REST API, and the tailnet-only Serve mapping
-without modifying configuration. Verify the browser endpoint from the Mac with
+Syncthing listener, the restricted LAN forwarder, the authenticated local REST
+API, and the tailnet-only Serve mapping without modifying configuration. Verify the browser endpoint from the Mac with
 `curl --noproxy '*' http://omarchy.taila14c2.ts.net:8384/rest/noauth/health`.

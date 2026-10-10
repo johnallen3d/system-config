@@ -28,6 +28,7 @@ in {
     ../modules/home-manager/omarchy-fish.nix
     ../modules/home-manager/omarchy-herdr.nix
     ../modules/home-manager/omarchy-nvim.nix
+    ../modules/home-manager/omarchy-syncthing-lan.nix
     ../modules/home-manager/omarchy-vnc.nix
   ];
 
@@ -42,7 +43,7 @@ in {
     guiAddress = "127.0.0.1:8384";
     overrideDevices = false;
     overrideFolders = false;
-    # Tailscale Serve forwards the tailnet hostname to this loopback-only GUI.
+    # Tailscale Serve and the pi-01-only LAN forwarder use this loopback GUI.
     settings.gui.insecureSkipHostcheck = true;
   };
 

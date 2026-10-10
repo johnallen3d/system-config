@@ -55,7 +55,7 @@ def check_installed():
     assert "syncthing v" in run("syncthing", "--version")
     listeners = run("ss", "-ltnpH", "sport = :8384").splitlines()
     tailnet_ips = run("tailscale", "ip").splitlines()
-    allowed = {"127.0.0.1:8384"} | {
+    allowed = {"127.0.0.1:8384", "192.168.4.26:8384"} | {
         f"[{ip}]:8384" if ":" in ip else f"{ip}:8384" for ip in tailnet_ips
     }
     addresses = {line.split()[3] for line in listeners}
@@ -83,6 +83,9 @@ def check_installed():
     assert not any(serve.get("AllowFunnel", {}).values()), "Syncthing must not be public"
     assert run("loginctl", "show-user", "johna", "-p", "Linger", "--value") == "yes"
     print("PASS installed: active service, loopback backend, authenticated API, persistent tailnet-only Serve")
+    # The separate LAN regression verifies that the extra socket belongs to the
+    # source-restricted forwarder, not an exposed Syncthing backend.
+    print(run("python3", str(ROOT / "tests/omarchy-syncthing-lan.py"), "--installed"))
 
 
 def main():
