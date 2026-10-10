@@ -14,19 +14,21 @@
   pkgs,
   ...
 }: let
-  workStatusLine = pkgs.writeShellApplication {
-    name = "claude-work-statusline";
-    runtimeInputs = [pkgs.git pkgs.jq pkgs.nodejs_24];
-    text = builtins.readFile ./scripts/claude-work-statusline.sh;
+  # Standalone agent-kit presentation: no plugin, auth, or profile-state lookup.
+  # Both profiles use this renderer so plugin upgrades cannot split their UI.
+  claudeStatusLine = pkgs.writeShellApplication {
+    name = "claude-statusline";
+    runtimeInputs = [pkgs.git pkgs.nodejs_24];
+    text = ''exec node ${./claude-statusline/statusline.mjs}'';
   };
-  workSettings = {
-    outputStyle = "ELI5";
+  footerSettings = {
     statusLine = {
       type = "command";
-      command = "${workStatusLine}/bin/claude-work-statusline";
+      command = "${claudeStatusLine}/bin/claude-statusline";
       padding = 0;
     };
   };
+  workSettings = footerSettings // {outputStyle = "ELI5";};
 in {
   home.file = {
     # Personal prompts → ~/.config/claude-personal/commands/
@@ -105,19 +107,30 @@ in {
     ln -sfn "$HOME/.config/claude-personal/agents" "$HOME/.config/claude-gmatter/agents"
   '';
 
-  # Share the work UI on Mac/Linux; leave all other runtime/auth settings alone.
+  # Share only the footer with personal; ELI5 remains a work-only setting.
+  # Replace statusLine completely, preserving every unrelated user-owned key.
   home.activation.claudeGmatterSettings = lib.hm.dag.entryAfter ["writeBoundary" "claudeProfileDefaults"] ''
-    settings="$HOME/.config/claude-gmatter/settings.json"
     if [ -z "''${DRY_RUN_CMD:-}" ]; then
-      mkdir -p "$(dirname "$settings")"
-      if [ ! -e "$settings" ]; then
-        printf '%s\n' '{}' > "$settings"
-      fi
-      tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
-      ${pkgs.jq}/bin/jq --argjson managed ${lib.escapeShellArg (builtins.toJSON workSettings)} \
-        '. * $managed' "$settings" > "$tmp"
-      chmod 0600 "$tmp"
-      mv "$tmp" "$settings"
+      for profile in claude-personal claude-gmatter; do
+        settings="$HOME/.config/$profile/settings.json"
+        managed=${lib.escapeShellArg (builtins.toJSON footerSettings)}
+        if [ "$profile" = claude-gmatter ]; then
+          managed=${lib.escapeShellArg (builtins.toJSON workSettings)}
+        fi
+        mkdir -p "$(dirname "$settings")"
+        if [ ! -e "$settings" ]; then
+          printf '%s\n' '{}' > "$settings"
+        fi
+        tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
+        if ${pkgs.jq}/bin/jq --argjson managed "$managed" \
+          '. + $managed' "$settings" > "$tmp"; then
+          chmod 0600 "$tmp"
+          mv "$tmp" "$settings"
+        else
+          rm -f "$tmp"
+          exit 1
+        fi
+      done
     fi
   '';
 }

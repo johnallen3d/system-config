@@ -203,12 +203,25 @@ before port 8787 is usable again.
 Authentication files and sessions remain writable, machine-local, and outside
 Home Manager. Existing `~/.pi/agent` and `~/.claude` data are **not** migrated.
 Claude defaults are seeded without overwriting user-owned keys, except for the
-Nix-managed work UI: ELI5 output style and the same `agent-kit` status/footer as
-the Mac. The footer resolves the registered user plugin within the selected
-`CLAUDE_CONFIG_DIR`, using Nix-provided Node, jq, and Git. It remains blank if the
-plugin is not installed; no other profile's plugin or credentials are used.
+Nix-managed UI: work ELI5 output style and the shared personal/work status footer
+([#765](https://app.fizzy.do/6284043/cards/765)). Both profiles use one standalone
+renderer in `modules/home-manager/claude-statusline/statusline.mjs`, matching the
+agent-kit 0.59.0 presentation: context input tokens/window/percentage and model
+on line one, directory and Git branch on line two. Context turns yellow above
+70% and red above 90%; model/location are dimmed. Nix supplies Node and Git.
+The renderer reads only Claude's stdin payload and the current Git branch, not
+plugins, credentials, or another profile's state. Personal output style and all
+unrelated settings remain user-owned. Personal Claude does not need a work
+plugin or a login to render its footer; its dormant account remains intentional.
 This Claude footer is separate from the excluded cross-profile Pi usage footer.
 No personal credentials, cached plugins, or sessions are shared with work.
+
+After activation, start a new Claude session in the intended profile to load the
+footer setting; do not restart active agents automatically. Verify both profiles
+with `python3 tests/claude-work-statusline.py --installed`. The historical test
+filename is retained; `--evaluate` checks the actual Mac/Omarchy settings merge,
+and `--record-before PATH` / `--installed --before PATH` check preservation using
+hashes only. No model calls or account authentication are required.
 
 ## Claude startup context
 
