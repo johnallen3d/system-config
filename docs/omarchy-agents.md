@@ -70,13 +70,48 @@ started with explicit work variables. Existing agents keep their launch-time
 profile: restart in the intended directory rather than changing a running
 process's environment. This also applies to `PI_CODING_AGENT_DIR` in Pi sessions.
 
+### Shared delegation-first instructions
+
+[Fizzy #752](https://app.fizzy.do/6284043/cards/752) adds a single policy source at
+`modules/home-manager/agent-projects/delegation-instructions.md`. The shared
+`agent-projects.nix` module installs it in **both personal and work** global
+instructions on Mac and Omarchy: Pi's `<profile>/AGENTS.md` and Claude Code's
+`<profile>/CLAUDE.md`. Personal instructions do not inherit the worktree rules.
+Linux host guidance remains present in both profiles.
+
+When John explicitly requests a sub-agent, the parent must delegate before any
+substantive task work. Only minimal launch discovery is allowed first; the child
+reads applicable instructions/skills and handles investigation, authorized
+implementation, issue tracking, and validation. Preserve the inherited cwd,
+profile, and environment, including `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`.
+The child returns only a concise outcome, card link, blockers, and decisions.
+Unavailable or failed delegation is a stop/report blocker, not permission for
+parent fallback. Parent investigation needs John's explicit permission.
+
+This is **instruction-level policy**, not a hard guarantee or parent-tool guard.
+Sub-agent availability is tracked separately in
+[Fizzy #753](https://app.fizzy.do/6284043/cards/753); an enforced delegation mode
+would be separate work. The policy does not install sub-agent support or grant
+new authorization. Apply and verify shared changes on both hosts below. Pi can
+load changed context with `/reload`; start a new Claude session to load it. Do not
+restart active agents automatically.
+
+Run `python3 tests/agent-delegation-instructions.py --evaluate` to check both
+hosts' evaluated instruction files. On each activated host, run it with
+`--installed --pi-loader /absolute/path/to/pi-coding-agent/dist/core/resource-loader.js`
+(using `mise exec` for Node). This checks all four installed global files and
+Pi's native loader in both profiles outside Amfaro, without inference. It proves
+instruction delivery, not behavioral compliance. Existing profile-preservation
+checks remain in `tests/amfaro-mise.py` and `tests/coding-agent-profiles.py`.
+
 ### Shared work instructions
 
 Edit `modules/home-manager/agent-projects/work-instructions.md` in system-config
 for rules shared by all work repositories. `agent-projects.nix` installs the same
 content as `~/.config/pi-work/AGENTS.md` and
-`~/.config/claude-gmatter/CLAUDE.md`, with Linux-only Omarchy guidance appended.
-Neither personal profile receives these rules. Apply shared changes on both hosts
+`~/.config/claude-gmatter/CLAUDE.md`, with the shared delegation policy and
+Linux-only Omarchy guidance appended. Neither personal profile receives the
+work-specific rules. Apply shared changes on both hosts
 using the deployment procedure below.
 
 Pi reads profile-global and ancestor `AGENTS.md` context (and supports `CLAUDE.md`

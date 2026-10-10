@@ -27,13 +27,6 @@ in {
   home.file = {
     ".config/pi/prompts/pkg-install.md".source = lib.mkForce ./agent-prompts/pkg-install-linux.md;
     ".config/claude-personal/commands/pkg-install.md".source = lib.mkForce ./agent-prompts/pkg-install-linux.md;
-    ".config/claude-personal/CLAUDE.md".text = ''
-      ALWAYS RESPOND IN ENGLISH. The user's name is John.
-      This is standalone Home Manager on Arch/Omarchy, not macOS or NixOS.
-      Respect CLAUDE_CONFIG_DIR and PI_CODING_AGENT_DIR; keep profiles separate.
-      Never run macOS rebuild tasks here or change Omarchy shell/desktop settings.
-      See docs/omarchy-agents.md in system-config for application and authentication.
-    '';
     ".config/claude-personal/keybindings.json".source = ./dotfiles/config/claude-personal/keybindings.json;
     ".config/claude-gmatter/keybindings.json".source = ./dotfiles/config/claude-personal/keybindings.json;
     ".config/claude-personal/output-styles/ELI5.md".source = ./claude-output-styles/ELI5.md;
