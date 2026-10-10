@@ -2,7 +2,7 @@
 name: worker
 description: Implementer. Executes an approved plan: edits files, runs commands, applies fixes. Stays strictly within the plan's scope and surfaces any deviation before taking it.
 tools: Read, Grep, Glob, Bash, Edit, Write
-model: claude-opus-4-7
+model: opus
 ---
 
 # Worker

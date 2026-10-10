@@ -2,7 +2,7 @@
 name: planner
 description: Produces an explicit, step-by-step implementation plan from a scoped problem and prior scout/researcher findings. Reads code to ground the plan but writes no code and makes no edits.
 tools: Read, Grep, Glob
-model: claude-opus-4-7
+model: opus
 ---
 
 # Planner

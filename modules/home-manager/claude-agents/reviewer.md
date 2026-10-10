@@ -2,7 +2,7 @@
 name: reviewer
 description: Fresh-context code reviewer. Reads the current diff or implementation and judges it against a stated focus (correctness, tests, simplicity, requirement match). Returns evidence-backed findings with file:line refs. Never edits.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-4-7
+model: opus
 ---
 
 # Reviewer

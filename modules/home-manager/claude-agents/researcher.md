@@ -2,7 +2,7 @@
 name: researcher
 description: External docs/API/library lookup. Use when local code is not enough and the answer depends on third-party documentation, upstream source, release notes, or library behavior. Reads local files for context but never edits.
 tools: WebFetch, WebSearch, Read, Grep
-model: claude-haiku-4-5
+model: haiku
 ---
 
 # Researcher

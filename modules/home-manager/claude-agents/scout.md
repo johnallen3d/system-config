@@ -2,7 +2,7 @@
 name: scout
 description: Local-code surveyor. Reads files, greps, globs, and runs read-only shell commands to map the current state of a repo. Returns concrete file paths, symbols, and call sites — no analysis beyond what the code shows. Never edits.
 tools: Read, Grep, Glob, Bash
-model: claude-haiku-4-5
+model: haiku
 ---
 
 # Scout

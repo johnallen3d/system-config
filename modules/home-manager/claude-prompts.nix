@@ -5,9 +5,10 @@
 # and claude-gmatter/agents is a symlink to it (mirrors pi-work/themes → pi/themes in
 # pi-settings.nix). Split the symlink later if a profile needs to diverge.
 #
-# Model mapping (pi.dev → Claude Code), used when porting prompt frontmatter:
-#   gpt-5.6-terra       → opus    (Claude Opus 4.x family alias)
-#   gpt-5.6-luna  → haiku   (Claude Haiku 4.x family alias)
+# Roles select family aliases, never provider/version-specific model IDs.
+# In work, subscription-proxy.nix owns the ANTHROPIC_DEFAULT_*_MODEL targets;
+# these must be advertised by the live work gateway (verified by
+# tests/subscription-proxy-claude.py). Personal uses its own alias defaults.
 {
   lib,
   pkgs,

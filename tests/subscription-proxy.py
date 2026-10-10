@@ -17,6 +17,9 @@ sys.path.insert(0, str(ROOT / "modules/home-manager/subscription-proxy"))
 spec = importlib.util.spec_from_file_location("manager", ROOT / "modules/home-manager/subscription-proxy/manager.py")
 manager = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(manager)
+claude_spec = importlib.util.spec_from_file_location("claude_checks", ROOT / "tests/subscription-proxy-claude.py")
+claude_checks = importlib.util.module_from_spec(claude_spec)
+claude_spec.loader.exec_module(claude_checks)
 
 
 class ManagerTests(unittest.TestCase):
@@ -128,6 +131,29 @@ class ManagerTests(unittest.TestCase):
                 {"model": "gpt-6-astra", "label": "Codex 6 Astra"},
             ]},
         }
+
+    def test_claude_roles_follow_managed_aliases_not_version_ids(self):
+        directory = ROOT / "modules/home-manager/claude-agents"
+        self.assertEqual(claude_checks.role_models(directory), claude_checks.ROLES)
+        for role, alias in claude_checks.ROLES.items():
+            path = self.home / "agents" / f"{role}.md"
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(f"---\nname: {role}\nmodel: {alias}\n---\n")
+        claude_checks.role_models(self.home / "agents")
+        (self.home / "agents/scout.md").write_text("---\nmodel: claude-haiku-4-5\n---\n")
+        with self.assertRaisesRegex(AssertionError, "managed haiku alias"):
+            claude_checks.role_models(self.home / "agents")
+
+    def test_claude_catalog_check_covers_all_aliases_and_picker_routes(self):
+        settings = self.managed_claude_settings()
+        available = set(settings["env"].values()) | {row["model"] for row in settings["modelPicker"]["options"]}
+        claude_checks.validate_catalog(settings["env"], settings["modelPicker"], available)
+        for identifier in available:
+            with self.assertRaisesRegex(AssertionError, "does not advertise"):
+                claude_checks.validate_catalog(settings["env"], settings["modelPicker"], available - {identifier})
+        settings["env"]["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = "claude-haiku-4-5"
+        with self.assertRaisesRegex(AssertionError, "claude-haiku-4-5"):
+            claude_checks.validate_catalog(settings["env"], settings["modelPicker"], available | {"claude-haiku-4-5-20251001"})
 
     def test_managed_claude_is_default_offline_and_preserves_profiles_and_user_settings(self):
         work = self.home / ".config/claude-gmatter/settings.json"

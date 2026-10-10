@@ -242,7 +242,25 @@ are enabled (Mac and Omarchy). Activation writes only owned routing variables
 and `modelPicker` in `~/.config/claude-gmatter/settings.json`:
 `ANTHROPIC_BASE_URL` is the work server root, `ANTHROPIC_AUTH_TOKEN` is the work
 proxy client key, and `ANTHROPIC_API_KEY` is cleared. Opus/Sonnet/Haiku/Fable
-aliases are pinned to their work gateway IDs. The saved default model is
+aliases are pinned to their work gateway IDs. Shared agent roles select **family
+aliases**, not independent version IDs: Scout/Researcher use `haiku`, and
+Planner/Worker/Reviewer use `opus`. These resolve through the work profile's
+`ANTHROPIC_DEFAULT_*_MODEL` mappings, keeping role usage aligned with the same
+curated gateway lineup. Personal roles use their own profile's alias defaults.
+Do not pin an old/full model ID in agent frontmatter: that bypasses the managed
+mapping (the undated `claude-haiku-4-5` is not advertised by the gateway even
+though the dated `claude-haiku-4-5-20251001` is).
+
+The installed Claude test queries the live work `/v1/models` catalog using only
+the proxy client key and requires **all four alias targets and all six picker
+IDs** to be advertised. This is a read-only availability check, not an inference
+or quota guarantee. Model updates remain reviewed/pinned in
+`subscription-proxy.nix`; missing IDs fail verification instead of guessing a
+replacement or falling back to another provider. Per-invocation model overrides
+still take precedence over role aliases. Restart existing work Claude sessions
+when convenient after changing agent definitions; they may retain loaded roles.
+
+The saved default model is
 preserved; the existing `opus` selection resolves to Opus 5.5.
 
 The `/model` picker has six labeled entries, in this order:
@@ -332,8 +350,15 @@ Tests:
 - `subscription-proxy-installed.py`: installed Tailscale/auth/state checks and
   exact official-panel content hash; use `--server` on Omarchy.
 - `subscription-proxy-claude.py`: run with explicit work `mise exec` on each
-  host to verify installed profiles, client auth, aliases, six picker IDs, and
-  minimum Claude version. `--live` tests each model through actual Claude Code
+  host to verify installed profiles, client auth, source/installed role aliases,
+  four alias targets and six picker IDs against the live gateway catalog, and
+  minimum Claude version (network metadata only, no inference by default).
+  `--live-subagent scout --live-subagent researcher --live-subagent planner`
+  makes bounded actual Agent dispatches, checks child Read calls and exact
+  managed model usage without overriding the child's model. The parent uses a
+  different model family so child usage cannot be mistaken for parent usage.
+  Each dispatch has a timeout and $1 budget cap; it persists no session.
+  `--live` tests each picker model through actual Claude Code
   streaming and a read-only tool, verifies exact model usage, suppresses raw
   transcripts/errors, and disables session persistence; `--model <id>` limits
   the live checks. Each call has a timeout and $1 budget cap.
