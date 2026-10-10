@@ -35,9 +35,21 @@ path, wait for synchronization, and then configure Pi's
 empty directory merely to suppress warnings: its daily-note settings must match
 the existing vault. Device keys and API keys stay machine-local, not in Nix.
 
+The paired vault now lives at `/home/johna/notes`. `hosts/omarchy.nix` declares
+`PI_SESSION_CAPTURE_VAULT_PATH`, and the standalone Linux Pi launcher supplies it
+to personal and work profiles even for noninteractive SSH/mise launches. An
+explicitly inherited path overrides this default; Mac and Claude are unchanged.
+The synced `.obsidian/daily-notes.json` selects `journal/`. Existing Pi processes
+need a fresh launch to receive the new launcher environment; `/reload` alone
+does not change their inherited environment. Do not restart active agents
+automatically.
+
 Syncthing does not merge simultaneous edits to daily notes; avoid concurrent
 writes or review any `.sync-conflict-*` files. Until a local vault is configured,
-Pi summaries remain queued rather than reaching the journal.
+Pi summaries remain queued rather than reaching the journal. The initial retained
+backlog was backed up outside the synced vault and replayed onto its original
+local dates, preserving profile sections and existing note content. Normal Pi
+capture continues to write to the current daily note.
 
 ## Apply and verify
 
@@ -49,6 +61,7 @@ No Mac activation is needed for this host-only service.
 systemctl --user status syncthing.service
 syncthing --version
 python3 tests/omarchy-syncthing.py --installed
+python3 tests/omarchy-session-capture.py --installed
 ```
 
 Run `python3 tests/omarchy-syncthing.py` for source evaluation without starting a

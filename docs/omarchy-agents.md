@@ -120,8 +120,12 @@ in `~/.local/state/pi-session-capture/pending` for later replay. Manual
 note read/write failures still warn with the underlying error. Configure
 `PI_SESSION_CAPTURE_VAULT_PATH` with the local vault path, or register the vault
 in Obsidian's configuration (`Personal` by default, overridable with
-`PI_SESSION_CAPTURE_VAULT`). Existing Pi sessions need `/reload` or a new session
-to pick up the helper change.
+`PI_SESSION_CAPTURE_VAULT`). Omarchy now defaults to its Syncthing-paired
+`/home/johna/notes` vault through the host declaration and Pi launcher, including
+noninteractive launches; an explicitly inherited path still wins. See
+[the Syncthing guide](omarchy-syncthing.md#pairing-and-vault-capture). Existing Pi
+sessions need `/reload` or a new session to pick up helper changes, but must be
+relaunched to receive launcher environment changes.
 
 The shared `pi-headroom` extension **is** enabled for both Pi profiles. It
 installs and manages its own local proxy in `~/.pi/headroom-venv`, independently

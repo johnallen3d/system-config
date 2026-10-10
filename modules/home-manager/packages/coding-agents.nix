@@ -1,5 +1,5 @@
 # Small opt-in package set for standalone Linux agent hosts, not the desktop suite.
-{pkgs, ...}: let
+{config, pkgs, ...}: let
   pi = import ./pi.nix {inherit pkgs;};
   # Haiku 5.5 needs Claude Code >= 2.1.293. Pin the official release manifest
   # independently of Omarchy's older nixpkgs lock; retain Nix's native wrapper.
@@ -37,6 +37,12 @@
     # or Claude. Keep the extension's venv installation/lifecycle unchanged.
     export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [pkgs.stdenv.cc.cc.lib pkgs.zlib]}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PI_CODING_AGENT_DIR="''${PI_CODING_AGENT_DIR:-$HOME/.config/pi}"
+    # SSH/mise launches do not necessarily source Home Manager session variables.
+    # Keep the host-declared vault available to every Pi profile, but allow an
+    # explicitly inherited path to select a different vault.
+    ${pkgs.lib.optionalString (config.home.sessionVariables ? PI_SESSION_CAPTURE_VAULT_PATH) ''
+      export PI_SESSION_CAPTURE_VAULT_PATH="''${PI_SESSION_CAPTURE_VAULT_PATH:-${config.home.sessionVariables.PI_SESSION_CAPTURE_VAULT_PATH}}"
+    ''}
     if [ -z "''${CLAUDE_CONFIG_DIR:-}" ]; then
       if [ "$PI_CODING_AGENT_DIR" = "$HOME/.config/pi-work" ]; then
         export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"

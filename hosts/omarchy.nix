@@ -51,6 +51,8 @@ in {
     homeDirectory = "/home/johna";
     stateVersion = "26.05";
     packages = [lopPackage];
+    # The Syncthing-paired Obsidian vault is local to Omarchy.
+    sessionVariables.PI_SESSION_CAPTURE_VAULT_PATH = "${homeDir}/notes";
   };
 
   targets.genericLinux = {
