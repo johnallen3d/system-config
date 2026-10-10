@@ -48,13 +48,14 @@ See also: `:h news`, `:h lsp-quickstart`, and the [Neovim 0.11 release notes](ht
 ## Project Description
 
 - This project is a Neovim configuration, focused on using Neovim version 0.12 or newer.
-- Neovim is installed at: `~/.local/share/bob/nvim-bin/nvim` (nightly, v0.12)
+- Mac Neovim is installed at `~/.local/share/bob/nvim-bin/nvim`; Omarchy uses the locked Nix package. Both require Neovim 0.12+.
 - All configuration should be written in Lua (no Vimscript).
 
 ## Build/Test/Lint Commands
 
-- No build, lint, or test commands detected in this directory.
-- If you add Lua modules or configuration files, update this section with instructions for running tests, builds, or linters (e.g., stylua for formatting, luacheck for linting).
+- From the system-config repository: `mise exec -- python3 tests/omarchy-nvim.py` checks host wiring.
+- After activation and plugin/parser installation: `mise exec -- python3 tests/omarchy-nvim.py --installed` exercises both real editor profiles.
+- Format Lua with `mise exec -- stylua <changed-file.lua>`; see `docs/omarchy-nvim.md` for deployment and rollback.
 
 ## IMPORTANT: Plugin Management
 

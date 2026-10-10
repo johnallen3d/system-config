@@ -27,6 +27,7 @@ in {
     ../modules/home-manager/omarchy-beszel.nix
     ../modules/home-manager/omarchy-fish.nix
     ../modules/home-manager/omarchy-herdr.nix
+    ../modules/home-manager/omarchy-nvim.nix
     ../modules/home-manager/omarchy-vnc.nix
   ];
 

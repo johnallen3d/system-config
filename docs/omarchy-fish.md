@@ -41,7 +41,7 @@ our shared Fish and Starship modules without the shared desktop/package suite:
   `glow-watch`, and Linux-safe `ip` (arguments are forwarded to iproute2).
 - Worktrunk's cd-aware function and completions, zoxide, nix-your-shell,
   Television's Ctrl-T/Ctrl-R integration and shared picker config.
-- Omarchy's native mise activation and Neovim. Optional `leadr` integration
+- Omarchy's native mise activation and the [shared Nix-managed Neovim configuration](omarchy-nvim.md). Optional `leadr` integration
   runs only when installed; this module does not install it.
 - Nix/user tools retain PATH precedence across mise directory changes. Startup
   removes transient npx shims and preserves inherited `PI_CODING_AGENT_DIR` and

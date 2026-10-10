@@ -46,7 +46,11 @@ local theme = require("theme.managed")
 vim.pack.add({
   { src = "https://github.com/folke/snacks.nvim" },
   { src = "https://github.com/S1M0N38/pibuf.nvim", version = "v1.1.0" },
-  { src = "https://github.com/Saghen/blink.cmp", version = "v1.10.2", load = true },
+  {
+    src = "https://github.com/Saghen/blink.cmp",
+    version = "v1.10.2",
+    load = true,
+  },
   { src = "https://github.com/Kaiser-Yang/blink-cmp-dictionary" },
   { src = "https://github.com/moyiz/blink-emoji.nvim" },
   { src = "https://github.com/ribru17/blink-cmp-spell" },
@@ -71,7 +75,11 @@ require("blink.cmp").setup({
         name = "dictionary",
         min_keyword_length = 2,
         opts = {
-          dictionary_files = { "/usr/share/dict/words" },
+          dictionary_files = {
+            vim.fn.filereadable("/usr/share/dict/words") == 1
+                and "/usr/share/dict/words"
+              or (vim.fn.stdpath("config") .. "/words"),
+          },
           force_fallback = false,
         },
       },

@@ -41,6 +41,7 @@ in {
   xdg.configFile."nvim-editor/init.lua".source = ./editor/init.lua;
   xdg.configFile."nvim-editor/lua/theme/managed.lua".source = generatedTheme;
   xdg.configFile."nvim-editor/syntax/pi.vim".source = ./editor/syntax/pi.vim;
+  xdg.configFile."nvim-editor/words".source = "${pkgs.scowl.override {singleWordlist = "en-us 60";}}/share/dict/words.txt";
   xdg.configFile."nvim/after".source = ./after;
   xdg.configFile."nvim/AGENTS.md".source = ./AGENTS.md;
   xdg.configFile."nvim/init.lua".source = ./init.lua;
