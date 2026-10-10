@@ -46,6 +46,16 @@ Child project configs can override parent values: avoid overriding these profile
 variables unless intentional. Named `pi-personal`, `pi-work`, `claude-personal`,
 and `claude-work` launchers have been retired.
 
+[Fizzy #750](https://app.fizzy.do/6284043/cards/750) removes
+`CLAUDE_CODE_DISABLE_1M_CONTEXT` from Mac session variables and Omarchy's Claude
+launcher. Neither host sets it to `0` or `1`; eligible models use their normal
+context window. Existing shells and agents can retain an inherited value. Clear
+it in Fish with `set -eg CLAUDE_CODE_DISABLE_1M_CONTEXT` (and
+`set -eU CLAUDE_CODE_DISABLE_1M_CONTEXT` if a universal value exists), then start
+new agents in the intended profile. Do not restart active agents automatically.
+Verify with `python3 tests/claude-context-environment.py --installed`; it checks
+fresh personal/work environments without inference or touching credentials.
+
 Noninteractive shells, ordinary SSH commands, and automation must use mise
 explicitly; `cd` alone does not activate it there:
 
