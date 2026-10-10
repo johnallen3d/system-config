@@ -29,6 +29,9 @@
     done
   '';
 
+  repairHeadroom = pkgs.writeShellScript "repair-headroom" ''
+    exec ${pkgs.python3}/bin/python ${../pi/repair-headroom.py}
+  '';
   repairNotesTelegram = pkgs.writeShellScript "repair-notes-telegram" ''
         profile_dir="''${PI_CODING_AGENT_DIR:-$HOME/.config/pi}"
         # Telegram auto-connect is a notes-only integration. Do not patch retired
@@ -127,7 +130,10 @@ PY
       echo "$expected_stamp" > "$marker"
     fi
 
-    ${repairNotesTelegram}
+    # pi-headroom 0.1.0 pipes proxy logs without reading them. Repair the selected
+  # profile before extension loading; npm refreshes can replace this source.
+  ${repairHeadroom} || exit $?
+  ${repairNotesTelegram}
 
     exec ${runPi} "$@"
   ''

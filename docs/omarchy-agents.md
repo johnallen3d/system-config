@@ -138,6 +138,23 @@ After launcher changes, restart Pi in the intended directory (or retry
 Verify with `python3 tests/headroom-omarchy.py`; it tests both installed profiles
 on isolated ports without model calls or touching an active agent's proxy.
 
+[Fizzy #742](https://app.fizzy.do/6284043/cards/742) fixes a separate shared
+Mac/Omarchy problem in `pi-headroom` 0.1.0: its proxy child has piped stdout and
+stderr, but the manager only unreferences them, never draining them. Enough
+logging fills the pipe and blocks the proxy's event loop, including `/health`;
+new sessions then fail to start a replacement on the occupied port. The shared
+Pi launcher applies a version/source-guarded repair to the selected profile
+before extension loading (and reapplies it after npm refreshes). Both streams
+are drained and discarded, not accumulated or written to a request log. Newer
+upstream versions are left untouched; source drift within 0.1.0 fails visibly.
+Run `python3 tests/headroom-proxy.py --installed` on either host to verify both
+profiles and reproduce the baseline blockage with isolated fake proxies. Run
+`python3 tests/headroom-live.py` to check the managed launcher's real proxy health,
+native core and context compression in both profiles using synthetic tool results
+on isolated ports, without model calls. Existing Pi processes need a restart in their intended directory to load the repair; do
+not restart agents automatically. A wedged old proxy may need separate recovery
+before port 8787 is usable again.
+
 Authentication files and sessions remain writable, machine-local, and outside
 Home Manager. Existing `~/.pi/agent` and `~/.claude` data are **not** migrated.
 Claude defaults are seeded without overwriting user-owned keys, except for the
