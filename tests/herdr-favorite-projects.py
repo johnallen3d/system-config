@@ -31,6 +31,13 @@ def main():
     projects = [p for session in catalog["sessions"].values() for p in session["projects"]]
     assert projects, "The favorite catalog must not be empty"
     assert all(p["path"].startswith("~/dev/src/") and p["clone_url"] for p in projects)
+    work_projects = catalog["sessions"]["work"]["projects"]
+    personal_paths = {p["path"] for p in catalog["sessions"]["personal"]["projects"]}
+    for name in ("duckdb-embedded", "llm-usage"):
+        path = f"~/dev/src/amfaro/{name}"
+        entries = [p for p in work_projects if p["path"] == path]
+        assert entries == [{"path": path, "clone_url": f"https://github.com/amfaro/{name}.git"}]
+        assert path not in personal_paths, f"Work favorite leaked into personal session: {path}"
 
     with tempfile.TemporaryDirectory(prefix="herdr-favorites-") as tmp:
         root = Path(tmp)

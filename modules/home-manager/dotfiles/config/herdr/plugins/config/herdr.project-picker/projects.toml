@@ -24,6 +24,14 @@ path = "~/dev/src/amfaro/dataops"
 clone_url = "https://github.com/amfaro/dataops.git"
 
 [[sessions.work.projects]]
+path = "~/dev/src/amfaro/duckdb-embedded"
+clone_url = "https://github.com/amfaro/duckdb-embedded.git"
+
+[[sessions.work.projects]]
+path = "~/dev/src/amfaro/llm-usage"
+clone_url = "https://github.com/amfaro/llm-usage.git"
+
+[[sessions.work.projects]]
 path = "~/dev/src/amfaro/global-catalog"
 clone_url = "https://github.com/amfaro/global-catalog.git"
 
