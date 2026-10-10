@@ -50,13 +50,15 @@ Use Fizzy only—no Markdown TODOs, other trackers, or duplicate cards. The proj
 1. Check existing work with `fizzy card list --all --jq '[.data[] | {number, title}]'` and search before creating a card.
 2. Claim an existing card with `fizzy card self-assign <number>` when appropriate.
 3. File discoveries with `fizzy card create --board <board-id> --title "Title" --description "Context"` and relate them in the originating card's description or comments.
-4. Finish with `fizzy card close <number>`.
+4. Add progress/completion comments; leave cards open unless John explicitly requests closure directly or actually invokes `/wrap`. Only then may you run `fizzy card close <number>` within that authorization's scope.
+
+**Card closure requires John's explicit authorization.** Task completion, successful deployment, committing, ordinary session-ending language (including "wrap up" or "done"), and merely mentioning/quoting `/wrap` do not authorize closure. An actual `/wrap` invocation authorizes closing only completed cards within its scope, never blocked or partially deployed work. Without that authorization, report completion and keep the card open; no workflow, example, breadcrumb, or move to the `done` column overrides this rule.
 
 Card commands use the card `number`, not its internal ID. Use board columns for workflow state and tags for type or priority when useful.
 
 ## Session completion
 
-1. File remaining work and update/close issues.
+1. File remaining work and update issue comments. Keep cards open unless John explicitly requests closure directly or actually invokes `/wrap`; apply the closure authorization and scope rules above.
 2. Run relevant quality gates.
 3. Run `git status`; report staged/unstaged changes.
 4. Hand off changes, validation, and next steps. For shared config changes, report Mac and Omarchy deployment/verification status separately, including pending activation or agent restarts.
