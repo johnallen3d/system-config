@@ -46,7 +46,7 @@ refresh stays owned by the existing `harness-refresh` worker.
 | `context-inspection` | **Retain, adapt**. Native `/session` supplies usage but not this extension's detailed native/extension schema budget. Native MCP tools now come from the actual registry, not stale adapter cache files; native codemode/tool-search costs are identified as shared gateways. |
 | `runtime-model-info` | **Retain**. Supplies reliable runtime/provider metadata for issue reports. |
 | `session-capture` | **Retain**. Journals explicit session outcomes; not native session persistence. |
-| `telegram-context-clear` | **Retain**. Confirmation workflow for John's Telegram integration, not generic compaction. |
+| `telegram-context-clear` | **Retain, manual-only**. Telegram `/clear-context` session clearing remains available. Automatic context-full alerts and their threshold/cooldown state were removed (#754); context usage never sends unsolicited Telegram notifications. |
 | Mac `usage-footer` | **Retain**. Cross-provider subscription/quota display is different from native per-session usage. Existing Mac-only/cross-profile policy remains unchanged. |
 | Herdr state integration | **Retain**. External application state bridge; no native replacement. No running servers/agents restarted. |
 | Mac `supacode` bridge | **Retain**. External application integration, not core Pi functionality; remains Mac-only and externally installed. |
