@@ -22,6 +22,47 @@
       - Respect `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`; keep profiles,
         credentials, and sessions separate.
 
+      ## Personal worktrees by default
+
+      - Perform repository changes in a dedicated linked Git worktree on a
+        task-specific branch. Read-only investigation needs no worktree.
+        John can explicitly opt out for the current task with "no worktree" or
+        "work in place"; never infer an exemption because a task looks simple.
+      - Before repository writes, use `git worktree list --porcelain` and
+        `git rev-parse --path-format=absolute --git-dir --git-common-dir` to
+        identify the primary checkout and linked worktrees. Resolve symlinks;
+        a feature branch in the primary checkout is not a linked worktree.
+      - Reuse a suitable linked worktree belonging to this task. Otherwise create
+        it from local `main`, with a simple kebab-case task slug, at the primary
+        repository's `.worktrees/<slug>` on `feature/<slug>` (including fixes
+        and chores):
+
+        ```bash
+        git -C "$repo_root" worktree add -b "feature/$slug" "$repo_root/.worktrees/$slug" main
+        ```
+
+        `repo_root` is the absolute primary checkout path. If `main` is missing
+        or the branch/path already exists but is unsuitable, stop and report
+        the blocker; never adopt another task's worktree or substitute a base.
+      - Keep the actual agent session at the primary repository root in both Pi
+        and Claude. Use absolute worktree paths for file tools and an explicit
+        task-worktree directory for shell commands, builds, tests, and Git.
+        Shell `cd` and `wt switch` do not change the running agent's cwd.
+        If launched inside a linked worktree, require a verified resume/relaunch
+        at the primary repository root before automatic cleanup; do not delete
+        the running session's working directory.
+      - Preserve unrelated changes, credentials, sessions, and other worktrees.
+        Keep both profile variables and project mise context; use `mise exec`
+        explicitly for noninteractive project commands. A worktree is not
+        permission to switch profiles or copy credentials.
+      - Never commit, merge, push, or remove a worktree without authorization.
+        An actual personal `/wrap` invocation authorizes scoped commit,
+        fast-forward integration into local `main`, and safe task-worktree
+        cleanup under the personal command's lifecycle. Ordinary "wrap up",
+        quoting or mentioning `/wrap`, and reading a prompt file through tools
+        do not authorize that lifecycle. `/wrap` never authorizes a rebuild
+        or push by itself; repository deployment and card-closure gates remain.
+
     ''
     + delegationInstructions
     + omarchyInstructions;

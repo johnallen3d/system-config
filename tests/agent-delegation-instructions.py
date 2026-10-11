@@ -28,8 +28,14 @@ def check_contexts(contexts, linux):
         assert pi.count(policy) == 1, f"{profile}: shared delegation policy missing/duplicated"
         assert ("## Arch/Omarchy" in pi) == linux, profile
         assert ("## Git worktrees are required" in pi) == (profile == "work"), profile
+        assert ("## Personal worktrees by default" in pi) == (profile == "personal"), profile
         if profile == "work":
             assert pi.startswith(work), "Existing work instructions must remain intact"
+        else:
+            for fragment in ("explicitly opt out", '"no worktree"', '"work in place"',
+                             "Keep the actual agent session at the primary repository root",
+                             "absolute worktree paths", "verified resume/relaunch"):
+                assert fragment in pi, (profile, fragment)
     print(f"PASS {'Linux' if linux else 'Mac'}: all four global instruction files, profile isolation")
 
 

@@ -17,6 +17,7 @@ PROMPTS = {
         ".config/claude-personal/commands/wrap.md",
     ),
 }
+LIFECYCLE = ROOT / "modules/home-manager/agent-projects/personal-wrap.md"
 FORBIDDEN = (
     "Finish with `fizzy card close",
     "File remaining work and update/close issues",
@@ -64,6 +65,17 @@ def main():
         assert "On actual invocation" in text
         assert "completed Fizzy cards within this session's scope" in text
         assert "wrapping-up" in text and "Commit message:" in text
+        assert "appended personal completion lifecycle" in text
+        assert "skill: wrapping-up" not in text
+    lifecycle = LIFECYCLE.read_text()
+    for phrase in ("same personal workflow for Pi and Claude", "merge --ff-only",
+                   "separate plain `pwd -P`", "--foreground", "never blocked or partially deployed work",
+                   "MUST close completed, in-scope", "unknown contents require",
+                   "Stop subsequent integration/deletion steps"):
+        assert phrase in lifecycle, phrase
+    for module in ("pi-prompts.nix", "claude-prompts.nix"):
+        text = (ROOT / "modules/home-manager" / module).read_text()
+        assert "builtins.readFile ./agent-projects/personal-wrap.md" in text, module
 
     if args.installed:
         home = Path.home()
@@ -81,7 +93,8 @@ def main():
         for agent, (source, target) in PROMPTS.items():
             installed = home / target
             check_policy(installed)
-            assert installed.read_bytes() == (ROOT / source).read_bytes(), (agent, "stale installed prompt")
+            expected = (ROOT / source).read_text() + "\n" + lifecycle
+            assert installed.read_text() == expected, (agent, "stale installed prompt")
             assert installed.is_symlink() and str(installed.resolve()).startswith("/nix/store/"), installed
             print(f"PASS managed {agent} prompt matches source")
         claude_skills = home / ".config/claude-personal/skills"

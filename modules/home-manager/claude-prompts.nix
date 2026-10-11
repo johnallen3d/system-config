@@ -43,7 +43,10 @@ in {
 
     # Personal prompts → ~/.config/claude-personal/commands/
     ".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
-    ".config/claude-personal/commands/wrap.md".source = ./claude-prompts/wrap.md;
+    ".config/claude-personal/commands/wrap.md".text =
+      builtins.readFile ./claude-prompts/wrap.md
+      + "\n"
+      + builtins.readFile ./agent-projects/personal-wrap.md;
 
     # Work-local prompts not shipped by the agent-kit plugin.
     ".config/claude-gmatter/commands/implement.md".source = ./claude-prompts/implement.md;

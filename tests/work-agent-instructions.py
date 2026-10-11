@@ -65,7 +65,10 @@ def check_installed(loader):
     linux = os.uname().sysname == "Linux"
     assert ("## Arch/Omarchy" in pi.read_text()) == linux
     for file in (home / ".config/pi/AGENTS.md", home / ".config/claude-personal/CLAUDE.md"):
-        assert not file.exists() or "Git worktrees are required" not in file.read_text(), file
+        personal = file.read_text()
+        assert "## Personal worktrees by default" in personal, file
+        assert "explicitly opt out" in personal, file
+        assert "Git worktrees are required" not in personal, file
     assert os.environ.get("PI_CODING_AGENT_DIR") == str(pi.parent)
     assert os.environ.get("CLAUDE_CONFIG_DIR") == str(claude.parent)
     print("PASS installed policy: both agents identical, host guidance and profile isolation")

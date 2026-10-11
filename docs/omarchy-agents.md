@@ -76,8 +76,9 @@ process's environment. This also applies to `PI_CODING_AGENT_DIR` in Pi sessions
 `modules/home-manager/agent-projects/delegation-instructions.md`. The shared
 `agent-projects.nix` module installs it in **both personal and work** global
 instructions on Mac and Omarchy: Pi's `<profile>/AGENTS.md` and Claude Code's
-`<profile>/CLAUDE.md`. Personal instructions do not inherit the worktree rules.
-Linux host guidance remains present in both profiles.
+`<profile>/CLAUDE.md`. Personal instructions have their own opt-out worktree
+policy, separate from the work-specific rules. Linux host guidance remains
+present in both profiles.
 
 When John explicitly requests a sub-agent, the parent must delegate before any
 substantive task work. Only minimal launch discovery is allowed first; the child
@@ -103,6 +104,46 @@ hosts' evaluated instruction files. On each activated host, run it with
 Pi's native loader in both profiles outside Amfaro, without inference. It proves
 instruction delivery, not behavioral compliance. Existing profile-preservation
 checks remain in `tests/amfaro-mise.py` and `tests/coding-agent-profiles.py`.
+
+### Shared personal worktree workflow
+
+[Fizzy #768](https://app.fizzy.do/6284043/cards/768) adds a personal policy to
+`modules/home-manager/agent-projects.nix`, installed identically as personal Pi's
+`AGENTS.md` and Claude's `CLAUDE.md`. Repository changes use linked worktrees by
+default; read-only investigation does not need one. Say **“no worktree”** or
+**“work in place”** to opt out for the current task. Agents do not infer exemptions
+for small tasks.
+
+Both harnesses keep the actual session at the primary repository root and use
+absolute task-worktree paths for edits plus explicit task cwd for commands. New
+tasks use local `main`, `.worktrees/<slug>`, and `feature/<slug>`; suitable existing
+task worktrees can be reused. Profile variables and mise project context stay
+unchanged. Installed Pi has no supported same-session cwd switch, and a shell's
+`cd` or `wt switch` does not move either running agent session. If launched inside
+a worktree, resume/relaunch at the primary root before cleanup; do not delete the
+active cwd. This safety rule is the same for both harnesses.
+
+Both personal `/wrap` prompts compose the single Nix-owned workflow at
+`modules/home-manager/agent-projects/personal-wrap.md`. An actual invocation
+validates and commits scoped changes, fast-forwards clean local `main`, verifies
+the real primary-root session cwd, then synchronously removes only the clean,
+integrated task worktree and branch with Worktrunk. Divergence, unrelated changes,
+unknown ignored files, failed validation/deployment, or an unverifiable cwd block
+subsequent integration/cleanup. No rebase, squash, forced deletion, or automatic
+push is allowed. An opt-out task gets validation/tracking/commit without unrelated
+worktree integration or cleanup. The external shared `wrapping-up` skill and work
+PR workflow are unchanged. Plain “wrap up” or mentioning `/wrap` does not authorize
+its commit/integration/cleanup lifecycle; card-closure and deployment gates still
+apply.
+
+Run `python3 tests/personal-worktree-lifecycle.py --evaluate` for disposable
+Git/Worktrunk scenarios and both-host prompt composition, plus
+`python3 tests/agent-delegation-instructions.py --evaluate` for global instructions.
+After each host's activation, run `python3 tests/fizzy-closure-policy.py --installed`
+and the installed delegation/loader check above. These prove command safety and
+instruction delivery, not model compliance. Apply and verify both hosts; reload
+Pi with `/reload` and start new Claude sessions to load changed instructions and
+commands, without restarting active agents automatically.
 
 ### Shared work instructions
 
