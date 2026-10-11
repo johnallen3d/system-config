@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import shlex
 import subprocess
 import tempfile
 
@@ -48,6 +49,17 @@ def preservation():
         directory = Path.home() / '.config' / profile
         settings = json.loads((directory / 'settings.json').read_text())
         settings.pop('statusLine', None)
+        environment = settings.get('env', {})
+        plugin_path = str(Path.home() / '.local/share/claude-plugins/savvy-progress')
+        if 'CLAUDE_CODE_PLUGIN_DIRS' in environment:
+            paths = [p for p in environment['CLAUDE_CODE_PLUGIN_DIRS'].split(os.pathsep)
+                     if p and p != plugin_path]
+            if paths:
+                environment['CLAUDE_CODE_PLUGIN_DIRS'] = os.pathsep.join(paths)
+            else:
+                environment.pop('CLAUDE_CODE_PLUGIN_DIRS')
+        if not environment:
+            settings.pop('env', None)
         if profile == 'claude-gmatter':
             settings.pop('outputStyle', None)
         result[profile + '/settings'] = hashlib.sha256(
@@ -106,6 +118,9 @@ def evaluate():
         script = run(['nix', '--extra-experimental-features', 'nix-command flakes',
                       'eval', '--impure', '--raw', '--no-write-lock-file',
                       f'path:{ROOT}#{attribute}.home.activation.claudeGmatterSettings.data'])
+        plugin_argument = re.search(r'--arg plugin ([^\n]+)', script).group(1)
+        plugin_path = shlex.split(plugin_argument.rstrip().removesuffix('\\'))[0]
+        assert plugin_path.endswith('/.local/share/claude-plugins/savvy-progress')
         # Test the evaluated merge without building cross-platform runtime tools.
         native_path = os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep)
                                       if '/shims' not in p)
@@ -115,7 +130,11 @@ def evaluate():
         with tempfile.TemporaryDirectory(prefix='claude activation ') as tmp:
             home = Path(tmp)
             original = {'model': 'saved-personal-model', 'outputStyle': 'personal-style',
-                        'env': {'PRIVATE': 'preserved'}, 'hooks': {'custom': ['keep']},
+                        'env': {'PRIVATE': 'preserved',
+                                'CLAUDE_CODE_PLUGIN_DIRS': '/custom/first:/custom/second'},
+                        'enabledPlugins': {'agent-kit@amfaro': True},
+                        'pluginConfigs': {'unrelated': {'options': {'keep': True}}},
+                        'hooks': {'custom': ['keep']},
                         'statusLine': {'command': 'old', 'interval': 123}}
             for profile in PROFILES:
                 path = home / '.config' / profile / 'settings.json'
@@ -134,13 +153,31 @@ def evaluate():
                 assert value['statusLine']['padding'] == 0
                 assert 'interval' not in value['statusLine']
                 assert value['outputStyle'] == ('ELI5' if profile == 'claude-gmatter' else 'personal-style')
-                for key in ('model', 'env', 'hooks'):
+                for key in ('model', 'hooks', 'enabledPlugins', 'pluginConfigs'):
                     assert value[key] == original[key]
+                assert value['env'] == dict(original['env'], CLAUDE_CODE_PLUGIN_DIRS=
+                                            '/custom/first:/custom/second:' + plugin_path)
                 assert path.stat().st_mode & 0o777 == 0o600
                 once.append(path.read_bytes())
             run(['bash', '-eu', '-c', script], env)
             assert once == [(home / '.config' / p / 'settings.json').read_bytes() for p in PROFILES]
             personal = home / '.config/claude-personal/settings.json'
+            for initial in ({}, {'env': {}}, {'env': {'CLAUDE_CODE_PLUGIN_DIRS': ''}},
+                            {'env': {'CLAUDE_CODE_PLUGIN_DIRS':
+                                     f'{plugin_path}:/custom/first:{plugin_path}'}}):
+                personal.write_text(json.dumps(initial))
+                run(['bash', '-eu', '-c', script], env)
+                paths = json.loads(personal.read_text())['env']['CLAUDE_CODE_PLUGIN_DIRS']
+                expected = ('/custom/first:' if initial.get('env', {}).get(
+                    'CLAUDE_CODE_PLUGIN_DIRS') else '') + plugin_path
+                assert paths == expected, paths
+                once = personal.read_bytes()
+                run(['bash', '-eu', '-c', script], env)
+                assert personal.read_bytes() == once
+            personal.write_text(json.dumps({'env': {'CLAUDE_CODE_PLUGIN_DIRS': []}}))
+            invalid = personal.read_bytes()
+            result = subprocess.run(['bash', '-eu', '-c', script], env=env, capture_output=True)
+            assert result.returncode != 0 and personal.read_bytes() == invalid
             personal.write_text('broken JSON')
             result = subprocess.run(['bash', '-eu', '-c', script], env=env, capture_output=True)
             assert result.returncode != 0 and personal.read_text() == 'broken JSON'
@@ -149,11 +186,21 @@ def evaluate():
 
 
 def installed(before):
+    plugin = Path.home() / '.local/share/claude-plugins/savvy-progress'
+    assert plugin.is_symlink() and str(plugin.resolve()).startswith('/nix/store/')
+    manifest = json.loads((plugin / '.claude-plugin/plugin.json').read_text())
+    assert manifest['name'] == 'savvy-progress' and manifest['version'] == '1.2.0'
+    assert json.loads((plugin / 'hooks/hooks.json').read_text())['modules'] == ['./register.tsx']
+    assert (plugin / 'hooks/register.tsx').is_file() and (plugin / manifest['types']).is_file()
     statuses = []
     outputs = []
     for profile in PROFILES:
         path = Path.home() / '.config' / profile / 'settings.json'
         settings = json.loads(path.read_text())
+        paths = settings['env']['CLAUDE_CODE_PLUGIN_DIRS'].split(os.pathsep)
+        assert paths.count(str(plugin)) == 1
+        if profile == 'claude-gmatter':
+            assert settings['enabledPlugins']['agent-kit@amfaro'] is True
         status = settings['statusLine']
         assert status['type'] == 'command' and status['padding'] == 0
         assert status['command'].startswith('/nix/store/')

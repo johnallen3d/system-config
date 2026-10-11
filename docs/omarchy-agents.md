@@ -223,6 +223,36 @@ filename is retained; `--evaluate` checks the actual Mac/Omarchy settings merge,
 and `--record-before PATH` / `--installed --before PATH` check preservation using
 hashes only. No model calls or account authentication are required.
 
+### Nix-managed Claude agents panel
+
+[Fizzy #766](https://app.fizzy.do/6284043/cards/766) installs upstream
+`savvy-progress` 1.2.0 in both Claude profiles on Mac and Omarchy. The source is
+pinned in `claude-prompts.nix` at commit
+`272a877f39b6971690e087b16a7cc3951b811e39`, with a fixed source hash.
+Home Manager owns `~/.local/share/claude-plugins/savvy-progress` and appends this
+stable path to each profile's user-settings `env.CLAUDE_CODE_PLUGIN_DIRS`,
+preserving other plugin paths and environment settings. No marketplace install
+or mutable plugin-cache copy is required. Upgrades require changing the pin/hash
+and activating both hosts; `harness-refresh` does not update this source.
+
+Start a new Claude session and use `/agents-info` to toggle the agents panel.
+Ordinary subagents are shown but do not automatically open it. Upstream also
+provides two optional progress-reporting tools; `savvy-flow` is not installed.
+The existing footer and native agent rows remain unchanged. Placement and resize
+behavior follow the installed Claude runtime, not a custom sidebar override.
+Mods require Claude's runtime eligibility; do not bypass rollout flags or copy
+credentials if a profile cannot load one. Authentication and sessions remain
+independent of the shared immutable plugin source.
+
+`python3 tests/claude-work-statusline.py --evaluate` checks both hosts' settings
+merges, plugin-path preservation, idempotence, and invalid input.
+`--installed` verifies the Nix-backed plugin manifest/path in both profiles and
+the shared footer. Run `claude plugin validate
+~/.local/share/claude-plugins/savvy-progress` in each intended profile to check
+installed-version compatibility. These checks do not prove live terminal drawing;
+verify `/agents-info`, ordinary subagents, `/tasks`, and resize behavior in new
+sessions. Never restart active agents automatically.
+
 ## Claude startup context
 
 The [Mac/Omarchy context audit](claude-context-audit.md) (#726) found that the

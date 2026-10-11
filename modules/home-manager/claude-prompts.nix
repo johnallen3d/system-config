@@ -10,10 +10,18 @@
 # these must be advertised by the live work gateway (verified by
 # tests/subscription-proxy-claude.py). Personal uses its own alias defaults.
 {
+  config,
   lib,
   pkgs,
   ...
 }: let
+  claudeKit = pkgs.fetchFromGitHub {
+    owner = "johnnyvizz";
+    repo = "claude-kit";
+    rev = "272a877f39b6971690e087b16a7cc3951b811e39";
+    hash = "sha256-K+1MP18bP1NLkqQWu49IyKTbycng63sLdeLnMqDka/o=";
+  };
+  savvyProgressPath = "${config.home.homeDirectory}/.local/share/claude-plugins/savvy-progress";
   # Standalone agent-kit presentation: no plugin, auth, or profile-state lookup.
   # Both profiles use this renderer so plugin upgrades cannot split their UI.
   claudeStatusLine = pkgs.writeShellApplication {
@@ -31,6 +39,8 @@
   workSettings = footerSettings // {outputStyle = "ELI5";};
 in {
   home.file = {
+    ".local/share/claude-plugins/savvy-progress".source = "${claudeKit}/plugins/savvy-progress";
+
     # Personal prompts → ~/.config/claude-personal/commands/
     ".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
     ".config/claude-personal/commands/wrap.md".source = ./claude-prompts/wrap.md;
@@ -107,8 +117,8 @@ in {
     ln -sfn "$HOME/.config/claude-personal/agents" "$HOME/.config/claude-gmatter/agents"
   '';
 
-  # Share only the footer with personal; ELI5 remains a work-only setting.
-  # Replace statusLine completely, preserving every unrelated user-owned key.
+  # A stable plugin path avoids stale store paths after source upgrades.
+  # Replace statusLine completely; preserve unrelated settings and plugin paths.
   home.activation.claudeGmatterSettings = lib.hm.dag.entryAfter ["writeBoundary" "claudeProfileDefaults"] ''
     if [ -z "''${DRY_RUN_CMD:-}" ]; then
       for profile in claude-personal claude-gmatter; do
@@ -123,7 +133,12 @@ in {
         fi
         tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
         if ${pkgs.jq}/bin/jq --argjson managed "$managed" \
-          '. + $managed' "$settings" > "$tmp"; then
+          --arg plugin ${lib.escapeShellArg savvyProgressPath} \
+          '. + $managed |
+           (.env.CLAUDE_CODE_PLUGIN_DIRS // "" | split(":") |
+            map(select(length > 0 and . != $plugin))) as $dirs |
+           .env.CLAUDE_CODE_PLUGIN_DIRS = ($dirs + [$plugin] | join(":"))' \
+          "$settings" > "$tmp"; then
           chmod 0600 "$tmp"
           mv "$tmp" "$settings"
         else
