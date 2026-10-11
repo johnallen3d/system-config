@@ -27,10 +27,14 @@ in {
     ../modules/home-manager/omarchy-beszel.nix
     ../modules/home-manager/omarchy-fish.nix
     ../modules/home-manager/omarchy-herdr.nix
+    ../modules/home-manager/omarchy-hermes.nix
     ../modules/home-manager/omarchy-nvim.nix
     ../modules/home-manager/omarchy-syncthing-lan.nix
     ../modules/home-manager/omarchy-vnc.nix
   ];
+
+  # Isolated native foundation only. No production gateway, tokens, cron or vault.
+  nativeHermes.enable = true;
 
   subscriptionProxy = {
     enable = true;

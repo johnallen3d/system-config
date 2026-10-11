@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""Replace one structured food entry and recompute daily totals atomically."""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import math
+import os
+import re
+import subprocess
+import tempfile
+from datetime import date
+from pathlib import Path
+
+MEALS = {
+    "breakfast": "Breakfast",
+    "morning snack": "Morning snack",
+    "lunch": "Lunch",
+    "afternoon snack": "Afternoon snack",
+    "dinner": "Dinner",
+    "evening snack": "Evening snack",
+    "dessert": "Dessert",
+}
+METRICS = ("calories", "protein_g", "carbs_g", "fat_g", "fiber_g")
+TARGETS = {
+    "calories": 1900,
+    "protein_g": 125,
+    "carbs_g": 157,
+    "fat_g": 65,
+    "fiber_g": 30,
+}
+TOTAL_FIELDS = {
+    "calories": ("nutrition_calories", "nutrition_calories_delta"),
+    "protein_g": ("nutrition_protein_g", "nutrition_protein_delta_g"),
+    "carbs_g": ("nutrition_carbs_g", "nutrition_carbs_delta_g"),
+    "fat_g": ("nutrition_fat_g", "nutrition_fat_delta_g"),
+    "fiber_g": ("nutrition_fiber_g", "nutrition_fiber_delta_g"),
+}
+ENTRY_PREFIX = "> - [meal::"
+
+
+def fail(message: str) -> None:
+    raise SystemExit(f"ERROR: {message}")
+
+
+def numeric(value: str, option: str, *, positive: bool = False) -> str:
+    try:
+        parsed = float(value)
+    except ValueError:
+        fail(f"{option} must be numeric")
+    if not math.isfinite(parsed) or parsed < 0 or (positive and parsed == 0):
+        fail(f"{option} must be {'greater than zero' if positive else 'non-negative'}")
+    return value
+
+
+def escaped(value: str) -> str:
+    return value.replace("]", r"\]").strip()
+
+
+def field(line: str, name: str) -> str | None:
+    match = re.search(rf"\[{re.escape(name)}:: ((?:\\\]|[^\]])*)\]", line)
+    return match.group(1).replace(r"\]", "]") if match else None
+
+
+def heading_index(lines: list[str], heading: str, start: int = 0, end: int | None = None) -> int:
+    stop = len(lines) if end is None else end
+    for index in range(start, stop):
+        if lines[index].strip() == heading:
+            return index
+    return -1
+
+
+def heading_end(lines: list[str], start: int, prefix: str) -> int:
+    for index in range(start + 1, len(lines)):
+        if lines[index].startswith(prefix) and not lines[index].startswith(prefix + "#"):
+            return index
+    return len(lines)
+
+
+def formatted(value: float) -> str:
+    rounded = round(value, 1)
+    return str(int(rounded)) if rounded.is_integer() else f"{rounded:.1f}"
+
+
+def totals_block(totals: dict[str, float]) -> list[str]:
+    block = ["### Daily Totals", "", "> [!summary]- Daily totals vs target", ">"]
+    for metric in METRICS:
+        total_name, delta_name = TOTAL_FIELDS[metric]
+        block.append(f"> - {total_name}:: {formatted(totals[metric])}")
+        block.append(f"> - {delta_name}:: {formatted(totals[metric] - TARGETS[metric])}")
+    block.append("")
+    return block
+
+
+def build_entry(args: argparse.Namespace, meal: str) -> str:
+    parts = [f"[meal:: {escaped(meal)}]"]
+    if args.time:
+        parts.append(f"[time:: {escaped(args.time)}]")
+    if args.label:
+        parts.append(f"[label:: {escaped(args.label)}]")
+    parts.extend(
+        [
+            f"[food:: {escaped(args.food)}]",
+            f"[amount:: {escaped(args.amount)}]",
+            f"[unit:: {escaped(args.unit)}]",
+            f"[calories:: {escaped(args.calories)}]",
+            f"[protein_g:: {escaped(args.protein_g)}]",
+            f"[carbs_g:: {escaped(args.carbs_g)}]",
+            f"[fat_g:: {escaped(args.fat_g)}]",
+            f"[fiber_g:: {escaped(args.fiber_g)}]",
+        ]
+    )
+    if args.source:
+        parts.append(f"[source:: {escaped(args.source)}]")
+    if args.note:
+        parts.append(f"[note:: {escaped(args.note)}]")
+    return "> - " + " ".join(parts)
+
+
+def transform_note(
+    text: str,
+    meal: str,
+    match_food: str | None,
+    replacement: str | None,
+    remove: bool = False,
+) -> tuple[str, str]:
+    lines = text.splitlines()
+    had_newline = text.endswith("\n")
+    nutrition = heading_index(lines, "## Nutrition")
+    if nutrition < 0:
+        fail("target note has no Nutrition section")
+    nutrition_end = heading_end(lines, nutrition, "## ")
+    log = heading_index(lines, "### Nutrition Log", nutrition + 1, nutrition_end)
+    if log < 0:
+        fail("target note has no Nutrition Log")
+    log_end = min(nutrition_end, heading_end(lines, log, "### "))
+    entries = [index for index in range(log + 1, log_end) if lines[index].startswith(ENTRY_PREFIX)]
+    candidates = [
+        index
+        for index in entries
+        if field(lines[index], "meal") == meal
+        and (match_food is None or field(lines[index], "food") == match_food)
+    ]
+    if remove:
+        if not candidates:
+            return text, "already removed"
+        if len(candidates) != 1:
+            qualifier = f" and food {match_food!r}" if match_food else ""
+            fail(f"expected exactly one {meal} entry{qualifier}; found {len(candidates)}")
+        target = candidates[0]
+        del lines[target]
+        entries = [index if index < target else index - 1 for index in entries if index != target]
+        result = "removed"
+    else:
+        replacement_indexes = [index for index in entries if lines[index] == replacement]
+
+        if not candidates and len(replacement_indexes) == 1:
+            return text, "already adjusted"
+        if len(candidates) != 1:
+            qualifier = f" and food {match_food!r}" if match_food else ""
+            fail(f"expected exactly one {meal} entry{qualifier}; found {len(candidates)}")
+        target = candidates[0]
+        if lines[target] == replacement:
+            return text, "already adjusted"
+        if replacement_indexes:
+            fail("replacement entry already exists beside the target entry")
+
+        lines[target] = replacement
+        result = "adjusted"
+    totals = {metric: 0.0 for metric in METRICS}
+    for index in entries:
+        for metric in METRICS:
+            value = field(lines[index], metric)
+            if value is None:
+                fail(f"nutrition entry is missing {metric}")
+            try:
+                parsed = float(value)
+                if not math.isfinite(parsed) or parsed < 0:
+                    fail(f"nutrition entry has invalid {metric}")
+                totals[metric] += parsed
+            except ValueError:
+                fail(f"nutrition entry has non-numeric {metric}: {value!r}")
+
+    nutrition_end = heading_end(lines, nutrition, "## ")
+    totals_start = heading_index(lines, "### Daily Totals", nutrition + 1, nutrition_end)
+    if totals_start < 0:
+        fail("target note has no Daily Totals section")
+    # A top-level section ends Nutrition even when no later ### heading exists.
+    # The live helper could otherwise replace unrelated trailing Tasks content.
+    totals_end = min(nutrition_end, heading_end(lines, totals_start, "### "))
+    lines[totals_start:totals_end] = totals_block(totals)
+    result_text = "\n".join(lines) + ("\n" if had_newline else "")
+    return result_text, result
+
+
+def atomic_adjust(
+    path: Path,
+    meal: str,
+    match_food: str | None,
+    replacement: str | None,
+    remove: bool = False,
+) -> str:
+    if any(component.is_symlink() for component in [path, *path.parents]) or not path.is_file() or path.stat().st_nlink != 1:
+        fail("target must be a regular, single-link note without symlink parents")
+    lock_id = hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:24]
+    # Match the stable lock used by the vault's shared atomic helper so this
+    # adjustment serializes with write-food-log and every other daily writer.
+    lock_path = Path(tempfile.gettempdir()) / f"pi-vault-rmw-{lock_id}.lock"
+    with lock_path.open("a+", encoding="utf-8") as workflow_lock:
+        fcntl.flock(workflow_lock.fileno(), fcntl.LOCK_EX)
+        with path.open("r", encoding="utf-8") as source:
+            fcntl.flock(source.fileno(), fcntl.LOCK_EX)
+            old = source.read()
+        new, result = transform_note(old, meal, match_food, replacement, remove)
+        if new == old:
+            return result
+        descriptor, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as temp:
+                temp.write(new)
+                temp.flush()
+                os.fsync(temp.fileno())
+            os.chmod(temp_name, path.stat().st_mode)
+            os.replace(temp_name, path)
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        finally:
+            if os.path.exists(temp_name):
+                os.unlink(temp_name)
+        return result
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--date", required=True)
+    parser.add_argument("--meal", required=True)
+    parser.add_argument("--match-food")
+    parser.add_argument("--food")
+    parser.add_argument("--label")
+    parser.add_argument("--amount")
+    parser.add_argument("--unit")
+    parser.add_argument("--calories")
+    parser.add_argument("--protein-g", dest="protein_g")
+    parser.add_argument("--carbs-g", dest="carbs_g")
+    parser.add_argument("--fat-g", dest="fat_g")
+    parser.add_argument("--fiber-g", dest="fiber_g")
+    parser.add_argument("--time")
+    parser.add_argument("--source", choices=("common", "recipe", "external", "manual"))
+    parser.add_argument("--note")
+    parser.add_argument("--remove", action="store_true")
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
+        fail("--date must be YYYY-MM-DD")
+    if any(isinstance(value, str) and any(character in value for character in "\n\r\x00") for value in vars(args).values()):
+        fail("food fields must be single-line text")
+    try:
+        entry_date = date.fromisoformat(args.date)
+    except ValueError:
+        fail("--date must be a valid YYYY-MM-DD date")
+    if args.time and not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", args.time):
+        fail("--time must be HH:MM (24-hour)")
+    meal_key = " ".join(args.meal.lower().replace("-", " ").replace("_", " ").split())
+    if meal_key not in MEALS:
+        fail("--meal is not a supported meal")
+    if args.remove:
+        if not args.match_food:
+            fail("--remove requires --match-food")
+        replacement = None
+    else:
+        for option, value in (
+            ("--food", args.food),
+            ("--amount", args.amount),
+            ("--unit", args.unit),
+            ("--calories", args.calories),
+            ("--protein-g", args.protein_g),
+            ("--carbs-g", args.carbs_g),
+            ("--fat-g", args.fat_g),
+            ("--fiber-g", args.fiber_g),
+        ):
+            if value is None or value == "":
+                fail(f"missing required argument {option}")
+            if option in ("--amount", "--calories", "--protein-g", "--carbs-g", "--fat-g", "--fiber-g"):
+                numeric(value, option, positive=option == "--amount")
+        replacement = build_entry(args, MEALS[meal_key])
+    vault_root = os.environ.get("VAULT_DIR") or os.environ.get("VLT_VAULT_PATH")
+    if not vault_root:
+        fail("VAULT_DIR or VLT_VAULT_PATH is required")
+    vault_dir = Path(vault_root)
+    year = str(entry_date.year)
+    relative = (
+        Path("journal") / f"{args.date}.md"
+        if entry_date.year == date.today().year
+        else Path("journal") / year / f"{args.date}.md"
+    )
+    note_path = vault_dir / relative
+    if not note_path.is_file():
+        fail(f"target daily note does not exist: {relative}")
+    result = atomic_adjust(note_path, MEALS[meal_key], args.match_food, replacement, args.remove)
+
+    vault_name = os.environ.get("VLT_VAULT") or os.environ.get("VAULT_NAME") or "Personal"
+    readback = subprocess.run(
+        ["vlt", f"vault={vault_name}", "read", f"file={relative.as_posix()}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    if args.remove:
+        remaining = sum(
+            1
+            for line in readback.splitlines()
+            if line.startswith(ENTRY_PREFIX)
+            and field(line, "meal") == MEALS[meal_key]
+            and field(line, "food") == args.match_food
+        )
+        if remaining:
+            fail("readback still contained the removed entry")
+    elif readback.count(replacement) != 1:
+        fail("readback did not contain exactly one replacement entry")
+    print(f"{result.capitalize()} {MEALS[meal_key]} in {relative.as_posix()}")
+
+
+if __name__ == "__main__":
+    main()

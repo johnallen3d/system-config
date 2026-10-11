@@ -3,6 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    hermes = {
+      # Native staging foundation (#755); upstream owns its sealed Python/npm locks.
+      url = "github:NousResearch/hermes-agent/a19160bbf02dc37c57ff47cf0eaa4a3ab8ee43dc";
+      # Deliberately retain upstream's locked package inputs, independent of host locks.
+    };
     home-manager = {
       # Stay on Home Manager master while nixpkgs tracks nixos-unstable.
       url = "github:nix-community/home-manager";
@@ -30,6 +35,7 @@
   outputs = {
     home-manager,
     herdrProjectPicker,
+    hermes,
     lop,
     nix-darwin,
     nixpkgs,
@@ -75,7 +81,7 @@
           system = "x86_64-linux";
           overlays = [(import ./lib/worktrunk-overlay.nix)];
         };
-        extraSpecialArgs = {inherit herdrProjectPicker lop;};
+        extraSpecialArgs = {inherit herdrProjectPicker hermes lop;};
         modules = [./hosts/omarchy.nix];
       };
       "john.allen@xcel" = makeHomeManagerSystem {
