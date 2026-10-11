@@ -5,5 +5,8 @@ GEMINI.md
 
 .fizzy.yaml
 
+__pycache__/
+*.pyc
+
 # pi-lens runtime cache
 .pi-lens/
