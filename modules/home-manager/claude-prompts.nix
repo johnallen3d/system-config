@@ -21,7 +21,16 @@
     rev = "272a877f39b6971690e087b16a7cc3951b811e39";
     hash = "sha256-K+1MP18bP1NLkqQWu49IyKTbycng63sLdeLnMqDka/o=";
   };
-  savvyProgressPath = "${config.home.homeDirectory}/.local/share/claude-plugins/savvy-progress";
+  claudeSkins = pkgs.fetchFromGitHub {
+    owner = "hellosverre";
+    repo = "claude-skins";
+    rev = "dccf562424e4633c94e158978d467080c62c889d";
+    hash = "sha256-EedeCu3UPrzuzL/lj/8pzA8a803FE0D0dmodx150RAw=";
+  };
+  managedPluginPaths = map (name: "${config.home.homeDirectory}/.local/share/claude-plugins/${name}") [
+    "savvy-progress"
+    "skins"
+  ];
   # Standalone agent-kit presentation: no plugin, auth, or profile-state lookup.
   # Both profiles use this renderer so plugin upgrades cannot split their UI.
   claudeStatusLine = pkgs.writeShellApplication {
@@ -40,6 +49,7 @@
 in {
   home.file = {
     ".local/share/claude-plugins/savvy-progress".source = "${claudeKit}/plugins/savvy-progress";
+    ".local/share/claude-plugins/skins".source = claudeSkins;
 
     # Personal prompts → ~/.config/claude-personal/commands/
     ".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
@@ -136,11 +146,11 @@ in {
         fi
         tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
         if ${pkgs.jq}/bin/jq --argjson managed "$managed" \
-          --arg plugin ${lib.escapeShellArg savvyProgressPath} \
+          --argjson plugins ${lib.escapeShellArg (builtins.toJSON managedPluginPaths)} \
           '. + $managed |
            (.env.CLAUDE_CODE_PLUGIN_DIRS // "" | split(":") |
-            map(select(length > 0 and . != $plugin))) as $dirs |
-           .env.CLAUDE_CODE_PLUGIN_DIRS = ($dirs + [$plugin] | join(":"))' \
+            map(select(length > 0)) - $plugins) as $dirs |
+           .env.CLAUDE_CODE_PLUGIN_DIRS = ($dirs + $plugins | join(":"))' \
           "$settings" > "$tmp"; then
           chmod 0600 "$tmp"
           mv "$tmp" "$settings"

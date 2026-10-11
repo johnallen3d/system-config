@@ -21,6 +21,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 RENDERER = ROOT / 'modules/home-manager/claude-statusline/statusline.mjs'
 PROFILES = ('claude-personal', 'claude-gmatter')
+PLUGINS = {'savvy-progress': '1.2.0', 'skins': '0.5.2'}
 
 
 def run(command, env=None, data='{}'):
@@ -50,10 +51,11 @@ def preservation():
         settings = json.loads((directory / 'settings.json').read_text())
         settings.pop('statusLine', None)
         environment = settings.get('env', {})
-        plugin_path = str(Path.home() / '.local/share/claude-plugins/savvy-progress')
+        plugin_paths = {str(Path.home() / '.local/share/claude-plugins' / name)
+                        for name in PLUGINS}
         if 'CLAUDE_CODE_PLUGIN_DIRS' in environment:
             paths = [p for p in environment['CLAUDE_CODE_PLUGIN_DIRS'].split(os.pathsep)
-                     if p and p != plugin_path]
+                     if p and p not in plugin_paths]
             if paths:
                 environment['CLAUDE_CODE_PLUGIN_DIRS'] = os.pathsep.join(paths)
             else:
@@ -118,9 +120,12 @@ def evaluate():
         script = run(['nix', '--extra-experimental-features', 'nix-command flakes',
                       'eval', '--impure', '--raw', '--no-write-lock-file',
                       f'path:{ROOT}#{attribute}.home.activation.claudeGmatterSettings.data'])
-        plugin_argument = re.search(r'--arg plugin ([^\n]+)', script).group(1)
-        plugin_path = shlex.split(plugin_argument.rstrip().removesuffix('\\'))[0]
-        assert plugin_path.endswith('/.local/share/claude-plugins/savvy-progress')
+        plugin_argument = re.search(r'--argjson plugins ([^\n]+)', script).group(1)
+        plugin_paths = json.loads(shlex.split(plugin_argument.rstrip().removesuffix('\\'))[0])
+        assert [Path(path).name for path in plugin_paths] == list(PLUGINS)
+        assert all(path.endswith('/.local/share/claude-plugins/' + name)
+                   for path, name in zip(plugin_paths, PLUGINS))
+        plugin_path = os.pathsep.join(plugin_paths)
         # Test the evaluated merge without building cross-platform runtime tools.
         native_path = os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep)
                                       if '/shims' not in p)
@@ -164,7 +169,13 @@ def evaluate():
             personal = home / '.config/claude-personal/settings.json'
             for initial in ({}, {'env': {}}, {'env': {'CLAUDE_CODE_PLUGIN_DIRS': ''}},
                             {'env': {'CLAUDE_CODE_PLUGIN_DIRS':
-                                     f'{plugin_path}:/custom/first:{plugin_path}'}}):
+                                     f'{plugin_path}:/custom/first:{plugin_path}'}},
+                            {'env': {'CLAUDE_CODE_PLUGIN_DIRS':
+                                     f'{plugin_paths[0]}:/custom/first:{plugin_paths[0]}'}},
+                            {'env': {'CLAUDE_CODE_PLUGIN_DIRS':
+                                     f'{plugin_paths[1]}:/custom/first:{plugin_paths[1]}'}},
+                            {'env': {'CLAUDE_CODE_PLUGIN_DIRS':
+                                     f'{plugin_paths[1]}:/custom/first:{plugin_paths[0]}'}}):
                 personal.write_text(json.dumps(initial))
                 run(['bash', '-eu', '-c', script], env)
                 paths = json.loads(personal.read_text())['env']['CLAUDE_CODE_PLUGIN_DIRS']
@@ -186,19 +197,20 @@ def evaluate():
 
 
 def installed(before):
-    plugin = Path.home() / '.local/share/claude-plugins/savvy-progress'
-    assert plugin.is_symlink() and str(plugin.resolve()).startswith('/nix/store/')
-    manifest = json.loads((plugin / '.claude-plugin/plugin.json').read_text())
-    assert manifest['name'] == 'savvy-progress' and manifest['version'] == '1.2.0'
-    assert json.loads((plugin / 'hooks/hooks.json').read_text())['modules'] == ['./register.tsx']
-    assert (plugin / 'hooks/register.tsx').is_file() and (plugin / manifest['types']).is_file()
+    plugins = [Path.home() / '.local/share/claude-plugins' / name for name in PLUGINS]
+    for plugin, version in zip(plugins, PLUGINS.values()):
+        assert plugin.is_symlink() and str(plugin.resolve()).startswith('/nix/store/')
+        manifest = json.loads((plugin / '.claude-plugin/plugin.json').read_text())
+        assert manifest['name'] == plugin.name and manifest['version'] == version
+        assert json.loads((plugin / 'hooks/hooks.json').read_text())['modules'] == ['./register.tsx']
+        assert (plugin / 'hooks/register.tsx').is_file() and (plugin / manifest['types']).is_file()
     statuses = []
     outputs = []
     for profile in PROFILES:
         path = Path.home() / '.config' / profile / 'settings.json'
         settings = json.loads(path.read_text())
         paths = settings['env']['CLAUDE_CODE_PLUGIN_DIRS'].split(os.pathsep)
-        assert paths.count(str(plugin)) == 1
+        assert all(paths.count(str(plugin)) == 1 for plugin in plugins)
         if profile == 'claude-gmatter':
             assert settings['enabledPlugins']['agent-kit@amfaro'] is True
         status = settings['statusLine']
