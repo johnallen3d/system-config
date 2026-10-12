@@ -27,7 +27,8 @@ def main():
                    and os.environ.get('HERMES_NATIVE_STAGE') == 'capabilities-offline'
                    and state.startswith('/home/johna/.local/state/hermes-native/staging/'))
         production = (os.environ.get('HERMES_NATIVE_STAGE') == 'production'
-                      and os.environ.get('HERMES_PRODUCTION_WRITER_HELD') == '1'
+                      and (os.environ.get('HERMES_PRODUCTION_WRITER_HELD') == '1'
+                           or os.environ.get('HERMES_NATIVE_TASK_ACCESS') == 'original')
                       and state.endswith('/hermes-native/production/baseline-0.21.2'))
         if (not (staging or production)
                 or str(root) != state + '/workspace/notes'

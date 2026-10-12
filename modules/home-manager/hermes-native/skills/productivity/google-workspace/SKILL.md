@@ -16,6 +16,14 @@ Use the existing persistent `gog` authentication for Google Calendar work. This
 Hermes deployment does not use the upstream `google_api.py`, `gws`, or separate
 Hermes Google OAuth profile.
 
+## Runtime commands
+
+Use `mise tasks ls` for normal task discovery and `mise run gog -- ...` for the
+existing authenticated Calendar wrapper. General terminal access is restored;
+that does not authorize credential recovery, a different Google account/client,
+or additional Google services. The Calendar approval rules below are unchanged.
+A runtime-policy failure is not evidence that John's credentials need replacing.
+
 ## Non-negotiable rules
 
 - Run all `gog` commands from `$VAULT_DIR` through `mise run gog -- ...` so the

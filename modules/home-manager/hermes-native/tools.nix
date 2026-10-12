@@ -75,10 +75,11 @@ in {
     canonical="$(${runtimePkgs.coreutils}/bin/realpath -e -- "$script")"
     case "$canonical" in
       "''${VAULT_DIR:-/nonexistent}/.mise/tasks/common-foods-browser")
-        # This is a writer. Production must use the outer writer adapter; an
-        # ordinary read-only plugin invocation must never open this route.
+        # Staging stays closed. Accepted production also supports the original
+        # terminal task, whose own flock/atomic writes are unchanged.
         if [ "''${HERMES_NATIVE_OFFLINE:-}" != 1 ]; then
-          [ "''${HERMES_NATIVE_STAGE:-}" = production ] && [ "''${HERMES_PRODUCTION_WRITER_HELD:-}" = 1 ] || exit 64
+          [ "''${HERMES_NATIVE_STAGE:-}" = production ] || exit 64
+          [ "''${HERMES_PRODUCTION_WRITER_HELD:-}" = 1 ] || [ "''${HERMES_NATIVE_TASK_ACCESS:-}" = original ] || exit 64
         fi
         exec ${taskPython}/bin/python3 -I "$canonical" "$@"
         ;;

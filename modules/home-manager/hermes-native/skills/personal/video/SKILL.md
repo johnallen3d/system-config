@@ -15,6 +15,17 @@ Handle the complete `/video` request directly with the mounted Personal vault
 and the configured NotebookLM workflow. Preserve the YouTube URL and optional
 focus question. Do not invoke Pi or the workstation-only `log-video` wrapper.
 
+## Runtime commands
+
+Run from `$VAULT_DIR`. Normal terminal task discovery (`mise tasks ls`),
+`mise run nlm -- ...`, and the vault's flock/atomic helpers are available in
+accepted production; they are not limited to the migration's small broker
+allowlist. `nlm` is a mise task, not a standalone executable. Keep the original
+approval rules: do not log in again, replace cookies, or run legacy Pi wrappers.
+Use the existing NotebookLM context and restrict questions to the added source.
+Do not add `ask --new` merely to start this workflow: it deletes the current
+server-side conversation.
+
 ## Procedure
 
 1. Run `date '+%Y-%m-%d %H:%M:%S %Z (%z)'` to establish today's local date.

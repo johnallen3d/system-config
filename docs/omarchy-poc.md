@@ -154,7 +154,7 @@ history, and this source snapshot remain; this is not a Nix uninstaller.
 Native Omarchy became independently verified **NATIVE_LIVE at
 2026-10-11 13:22:55.731199 UTC** under
 [#763](https://app.fizzy.do/6284043/cards/763), parent
-[#756](https://app.fizzy.do/6284043/cards/756). Installed generation:
+[#756](https://app.fizzy.do/6284043/cards/756). Initial accepted generation:
 `/nix/store/gcsdvmj7dmi1d3kwpqi6z3xcl25w0hxg-home-manager-generation`.
 Production metadata is `/home/johna/.config/hermes-native/production.json`;
 `runtime.json` and `staging/baseline-0.21.2` remain separate inactive staging.
@@ -1004,3 +1004,63 @@ were observed; reboot/logout/suspend and 24×7 availability were not tested. No
 sleep/desktop/linger policy changed. No NAS modification, ownership-doc switch,
 final transfer, commits/pushes or card closure. #756 remains incomplete.
 Private evidence stays under `/home/johna/.cache/hermes-native/rehearsal-762-clQN01TW`.
+
+## Accepted production task access (#774)
+
+John accepted the native migration. Its temporary terminal allowlist and read-only
+vault mount are not the intended ongoing command policy. The accepted gateway
+uses the original Hermes terminal handler for ordinary commands, including its
+existing dangerous-command approval handling. Task discovery (`mise tasks ls`),
+`mise run get-weather`, the inline `weight` and `nlm` tasks, and `recipe-tables`
+are accessible again. There is no new per-feature approval or task-code hash gate
+on ordinary task access. The existing literal native vault/writer adapters and
+repaired Calendar routes remain available; failed/uncertain native operations
+never fall through to a second execution.
+
+The gateway's mounted Personal vault is writable for the original task helpers,
+which retain their own flock/atomic writes and existing conversational rules.
+The sealed namespace still excludes John's host agent profiles, SSH, and host
+credentials, and keeps the ownership controller read-only. Exclusive native
+ownership, poller/scheduler controls, no implicit login/recovery, privacy rules,
+and one-production-copy safeguards remain unchanged. `HERMES_NATIVE_TASK_ACCESS`
+marks accepted original task access; `HERMES_NATIVE_READONLY` remains the legacy
+read-only **plugin/adapter** marker, not a terminal task allowlist.
+
+Use `tests/hermes-native-command-access.py` for routing/approval/no-retry tests.
+On Omarchy, `HERMES774_METADATA` explicitly enables an isolated real-task fixture
+using installed tools, copies of task code, synthetic notes, no credentials, and
+a deterministic weather provider. It checks discovery, a real weight write,
+NotebookLM CLI help, and bulk recipe dry-run without touching production notes or
+calling legacy Pi wrappers. This is focused evidence, not a claim that every
+underlying task or live NotebookLM/video operation has been tested.
+
+Only Omarchy imports this module. Preserve its unrelated source-snapshot edits
+when transferring patches. A Home Manager build/activation is not proof that an
+already running gateway has adopted new code: verify the installed metadata and
+the running process separately, and report any pending controlled restart.
+
+### #774 deployment status
+
+Deployed on **2026-10-12** after John's explicit deployment authorization. Current
+generation: `/nix/store/22j7j05ahc8kbscig3czy5smwlxjd76r-home-manager-generation`.
+The running gateway has original task access and a writable Personal vault, while
+its ownership controller remains read-only. Both production skill copies match
+the reviewed managed assets. Actual production-namespace task discovery and
+NotebookLM help pass; ordinary write coverage remains confined to disposable
+fixtures. Four regression suites ran 85 tests with one explicit optional skip.
+
+The controlled same-owner restart preserved historical arming/acceptance,
+credentials, the sole enabled no-agent brief, and the inactive staging namespace;
+no NAS resume, state reimport, note restore, or acceptance replay occurred. NAS
+was independently verified stopped/PID0/restart-disabled before and after the
+restart. Deployment records retain the investigated systemd/monitor verification
+corrections; no new sessions, messages, or uncertain writes occurred during those
+contained startup attempts.
+
+The current ownership receipt points to the private `currentNativeTaskAccessReview`
+and startup-continuation evidence under `controller/task-access-deployments/`.
+Retain that evidence and existing recovery assets for at least 14 days. This is
+not new automatic resumption authority or a claim that every underlying task/live
+provider flow has been tested. The separate frontmatter-tag recipe discovery is
+tracked in [#776](https://app.fizzy.do/6284043/cards/776), not silently treated as
+fixed by removing command restrictions.

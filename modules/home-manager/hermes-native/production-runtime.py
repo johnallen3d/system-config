@@ -615,6 +615,7 @@ def terminal_request(arguments):
         p.require(len(argv)>=3,'named reviewed task required')
         task=argv[2]; args=argv[3:]
         if args[:1]==['--']: args=args[1:]
+        if task=='weight': task='log-weight'
         if task in {'gog','get-calendar'}: return calendar_request(task,args)
         if task in WRITE_TASKS:
             task_targets(task,args); return {'operation':'write','task':task,'args':args}
@@ -896,6 +897,38 @@ def telegram_send_once(m, chat, text, reply_to=None):
     return json.loads(raw)
 
 
+def dispatch_terminal(arguments, request, original, **kwargs):
+    """Keep native adapters; ordinary commands use the original approval-aware tool.
+
+    Parsing is not execution: an unsupported command may use the original tool,
+    but a failed/uncertain broker operation must NEVER fall through and retry.
+    """
+    command = arguments.get('command', '') if isinstance(arguments, dict) else ''
+    try:
+        argv = shlex.split(command)
+    except (ValueError, TypeError):
+        return original(arguments, **kwargs)
+    protected = {'gog', 'get-calendar', 'gog-auth-bootstrap', 'save-recipe', 'save-common-food'}
+    named_adapter = argv[:2] == ['mise', 'run'] and len(argv) >= 3 and argv[2] in protected
+    adjust_adapter = argv[:3] == ['bash', 'skills/health/food/scripts/adjust-food-log', '--']
+    # Do not impose migration code hashes/target allowlists on normal mise tasks.
+    # Keep only native replacement adapters and the repaired Calendar boundary.
+    if not (named_adapter or adjust_adapter or argv[:1] in [['vlt'], ['date']]):
+        return original(arguments, **kwargs)
+    try:
+        route = terminal_request(arguments)
+    except ValueError:
+        # Calendar's repaired credential/account boundary and synthetic native
+        # adapters are not alternate routes to general execution on parse failure.
+        if named_adapter or adjust_adapter:
+            return json.dumps({'output': 'Invalid native Calendar/adapter request; no execution or retry.', 'exit_code': 64})
+        return original(arguments, **kwargs)
+    try:
+        return json.dumps({'output': request(route), 'exit_code': 0})
+    except (ValueError, OSError, EOFError, KeyError, TypeError):
+        return json.dumps({'output': 'Native command refused or failed; no fallback or automatic retry.', 'exit_code': 64})
+
+
 def install_gateway_hooks(m,request):
     """Exact pinned integration, callable offline without starting a gateway."""
     state=Path(m['paths']['state'])
@@ -903,12 +936,16 @@ def install_gateway_hooks(m,request):
     install_acceptance_ingress(m,request)
     import tools.terminal_tool as terminal
     from tools.registry import registry
-    def guarded_terminal(arguments,**kwargs):
+    original_terminal = terminal._handle_terminal
+    def accepted_terminal(arguments, **kwargs):
         try:
-            output=request(terminal_request(arguments))
-            return json.dumps({'output':output,'exit_code':0})
-        except (ValueError,OSError,EOFError,KeyError,TypeError):
-            return json.dumps({'output':'Command refused or failed. Vault note editing is available directly: vlt vault=Personal create/write/append/prepend/patch/property:set/property:remove, with explicit content= where needed. Read/search/uri and existing task/Calendar commands are also supported. Use one literal command, not a shell wrapper or pipe.','exit_code':64})
+            owner = live_owner(m, 'vaultWrites')
+            p.require(owner['phase'] == 'NATIVE_LIVE', 'ordinary tasks require accepted native production')
+        except (ValueError, OSError, KeyError):
+            return json.dumps({'output': 'Ordinary tasks unavailable before accepted native ownership.', 'exit_code': 64})
+        return original_terminal(arguments, **kwargs)
+    def guarded_terminal(arguments,**kwargs):
+        return dispatch_terminal(arguments, request, accepted_terminal, **kwargs)
     registry.register(name='terminal',toolset='terminal',schema=terminal.TERMINAL_SCHEMA,
                       handler=guarded_terminal,check_fn=lambda:True,override=True)
     import cron.scheduler_script as scheduler_script
@@ -952,7 +989,7 @@ def install_gateway_hooks(m,request):
     # This is an invocation-time guard, not a config list admins can bypass.
     import gateway.slash_access as access
     original_can_run=access.SlashAccessPolicy.can_run
-    denied={'restart','update','login','logout','rollback','yolo','terminal','shell','cron',
+    denied={'restart','update','login','logout','rollback','yolo','cron',
             'skills','skills-add','skills-remove','reload','reload-mcp','reload-skills',
             'model','codex-runtime','approvals','debug','learn','init','curator','blueprint',
             'suggestions','heartbeat','loop','goal','subgoal','moa','review','refine','browser',
@@ -962,6 +999,11 @@ def install_gateway_hooks(m,request):
         definition=resolve_command(canonical_cmd)
         name=definition.name if definition else canonical_cmd
         if name in denied: return False
+        if name in {'terminal', 'shell'}:
+            try:
+                if live_owner(m, 'vaultWrites')['phase'] != 'NATIVE_LIVE': return False
+            except (ValueError, OSError, KeyError):
+                return False
         return original_can_run(policy,user_id,canonical_cmd)
     access.SlashAccessPolicy.can_run=can_run
     # Pinned dispatch short-circuits can_run when policy.enabled is false. Keep
@@ -991,6 +1033,7 @@ def gateway_command(m):
     metadata=t.PRODUCTION_METADATA.resolve(strict=True)
     p.require(str(metadata).startswith('/nix/store/') and json.loads(metadata.read_bytes())==m,
               'fixed actual immutable production metadata')
+    vault_mode = '--bind' if live_owner(m, 'vaultWrites')['phase'] == 'NATIVE_LIVE' else '--ro-bind'
     return [m['bubblewrap'],'--unshare-all','--share-net','--die-with-parent','--new-session',
         '--ro-bind','/nix/store','/nix/store','--proc','/proc','--dev','/dev',
         '--tmpfs','/tmp','--tmpfs','/home','--dir','/etc','--ro-bind','/etc/resolv.conf','/etc/resolv.conf',
@@ -1001,7 +1044,9 @@ def gateway_command(m):
         '--ro-bind',str(state/'controller'),str(state/'controller'),
         '--ro-bind',m['paths']['config'],m['paths']['config'],'--bind',m['paths']['cache'],m['paths']['cache'],
         '--symlink',str(metadata),str(t.PRODUCTION_METADATA),
-        '--ro-bind',m['vault'],str(state/'workspace/notes'),'--chdir',str(state),
+        # Migration accepted: normal tasks retain their original flock/atomic
+        # vault writes. The controller remains RO and host profiles stay absent.
+        vault_mode,m['vault'],str(state/'workspace/notes'),'--chdir',str(state),
         m['python'],'-I','-B',str(Path(m['managedAssets'])/'production-runtime.py'),'gateway-child']
 
 
@@ -1025,8 +1070,9 @@ def _gateway_owned(m):
               'actual stopped-source/transfer arming receipt')
     observer,scan=local_writer_callbacks(m)
     env=dict(m['environment']); env.update(t.load(state/'.secrets.json'))
-    # The only home mounted is the dedicated production HOME. No real notes RW,
-    # no workstation CLI grants, SSH agent, user bus, Mac/NAS observer or tunnel.
+    # The only home mounted is the dedicated production HOME. Normal tasks have
+    # original vault access, but no workstation profiles, SSH agent, user bus,
+    # Mac/NAS observer or tunnel. Ownership controller is still read-only.
     command=gateway_command(m)
     parent,child=socket.socketpair()
     env.update(HERMES_PRODUCTION_BROKER_FD=str(child.fileno()),HERMES_NATIVE_READONLY='1')

@@ -61,14 +61,14 @@
     {
       "path": "skills/personal/video/SKILL.md",
       "origin": "pi-cielo@72f979a:skills/personal/video/SKILL.md",
-      "source_sha256": "588de90d67265fb8732b636f44049d70b2a75bae3bf9262e954068791fd2734f",
-      "adoption": "reviewed"
+      "source_sha256": "75fcc1f6e27532faebcafb882575b4f4d19f0ca1c9987c685010430b70da81ed",
+      "adoption": "reviewed-native-adaptation"
     },
     {
       "path": "skills/productivity/google-workspace/SKILL.md",
       "origin": "pi-cielo@72f979a:skills/productivity/google-workspace/SKILL.md",
-      "source_sha256": "2f86272b3d789a06a3e1619ef6bad2ec3bc9a3f22e4409f261426a5fcf4c493a",
-      "adoption": "reviewed"
+      "source_sha256": "73d7dc5324f5848679eabf2523e6612c06fc9116c8f58831d3ffdf4fbb8b1a54",
+      "adoption": "reviewed-native-adaptation"
     },
     {
       "path": "skills/productivity/imessage-search/SKILL.md",

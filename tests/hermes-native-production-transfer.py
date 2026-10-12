@@ -1235,14 +1235,17 @@ class ActualTaskAdapter(unittest.TestCase):
             polling=mock.AsyncMock(return_value=None)
             import cron.scheduler as dispatch
             tick=mock.Mock(return_value=1)
-            with mock.patch.object(codex,'resolve_codex_runtime_credentials',resolver),mock.patch.object(Updater,'start_polling',polling),mock.patch.object(dispatch,'tick',tick):
+            import tools.terminal_tool as terminal
+            original_terminal=mock.Mock(return_value=json.dumps({'output':'SYNTHETIC original approval-aware tool','exit_code':0}))
+            with mock.patch.object(codex,'resolve_codex_runtime_credentials',resolver),mock.patch.object(Updater,'start_polling',polling),mock.patch.object(dispatch,'tick',tick),mock.patch.object(terminal,'_handle_terminal',original_terminal):
                 r.install_gateway_hooks(self.m,request)
                 from tools.registry import registry
-                result=json.loads(registry.get_entry('terminal').handler({'command':'mise run macros -- '+self.today}))
+                result=json.loads(registry.get_entry('terminal').handler({'command':'vlt vault=Personal read file=health/common-foods.yaml'}))
                 self.assertEqual(result['exit_code'],0); self.assertEqual(calls[-1]['operation'],'read')
                 count=len(calls)
-                for command in ['touch /home/johna/notes/BAD','bash -c echo','mise run unknown','echo x > note','python3 arbitrary.py']:
-                    self.assertEqual(json.loads(registry.get_entry('terminal').handler({'command':command}))['exit_code'],64)
+                for command in ['mise tasks ls','mise run get-weather','mise run nlm -- --help','mise run recipe-tables -- --dry-run','mise run macros -- '+self.today,'bash -c echo']:
+                    self.assertEqual(json.loads(registry.get_entry('terminal').handler({'command':command}))['exit_code'],0)
+                    original_terminal.assert_called_with({'command':command})
                 self.assertEqual(len(calls),count)
                 import cron.scheduler_script as scheduler
                 ok,text=scheduler._run_job_script_with_claim_heartbeat({'schedule':{'kind':'cron'}},'morning-brief.sh',
@@ -1261,6 +1264,17 @@ class ActualTaskAdapter(unittest.TestCase):
                                 'usage','kanban','platform','sethome','set-home','voice','topup']:
                     self.assertFalse(actual.can_run('SYNTHETIC',command))
                 self.assertTrue(actual.can_run('SYNTHETIC','help'))
+                self.assertTrue(actual.can_run('SYNTHETIC','terminal'))
+                self.assertTrue(actual.can_run('SYNTHETIC','shell'))
+                original_count=original_terminal.call_count
+                owner.update(phase='NATIVE_ARMED')
+                p.stage.atomic(self.state/'controller/ownership.json',p.stage.encoded(owner))
+                self.assertEqual(json.loads(registry.get_entry('terminal').handler({'command':'mise tasks ls'}))['exit_code'],64)
+                self.assertEqual(original_terminal.call_count,original_count)
+                self.assertFalse(actual.can_run('SYNTHETIC','terminal'))
+                self.assertFalse(actual.can_run('SYNTHETIC','shell'))
+                owner.update(phase='NATIVE_LIVE')
+                p.stage.atomic(self.state/'controller/ownership.json',p.stage.encoded(owner))
                 from gateway.run_startup import GatewayStartupMixin
                 resume=SimpleNamespace(_resume_pending_candidates=mock.Mock(side_effect=AssertionError('private replay')))
                 self.assertEqual(GatewayStartupMixin._schedule_resume_pending_sessions(resume),0)

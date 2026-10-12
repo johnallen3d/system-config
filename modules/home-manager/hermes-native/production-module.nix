@@ -15,7 +15,9 @@ let
     HOME = paths.home;
     HERMES_HOME = paths.state;
     HERMES_NATIVE_STAGE = "production";
+    # Legacy read-only plugin marker; normal terminal tasks have original access.
     HERMES_NATIVE_READONLY = "1";
+    HERMES_NATIVE_TASK_ACCESS = "original";
     HERMES_GATEWAY_EXTERNAL_SUPERVISOR = "1";
     XDG_CONFIG_HOME = paths.config;
     XDG_CACHE_HOME = paths.cache;
@@ -26,6 +28,12 @@ let
     VAULT_DIR = "${workspace}/notes";
     VLT_VAULT_PATH = "${workspace}/notes";
     MISE_TRUSTED_CONFIG_PATHS = "${workspace}/notes";
+    MISE_CONFIG_DIR = "${paths.config}/mise";
+    MISE_DATA_DIR = "${paths.home}/.local/share/mise";
+    MISE_CACHE_DIR = "${paths.cache}/mise";
+    # These vault tools are already pinned on the Nix task PATH. Do not resolve
+    # its legacy 'latest' declarations online or install a second tool closure.
+    MISE_DISABLE_TOOLS = "uv,sd,yq,npm:defuddle";
     TERMINAL_CWD = workspace;
     GOG_HOME = "${paths.state}/gogcli";
     GOG_READONLY = "1";
