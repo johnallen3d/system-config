@@ -1,13 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/llm-usage"
-cache="$cache_dir/usage.json"
-lock="$cache_dir/refresh.lock"
-bin="@llmUsageBin@"
-timeout_bin="@timeoutBin@"
-stat_bin="@statBin@"
-fish_bin="@fishBin@"
+cache="@usageJson@"
 
 color_for_severity() {
   case "$1" in
@@ -59,19 +53,6 @@ if [ "${1:-}" = "--test" ]; then
   exit 0
 fi
 
-refresh() {
-  mkdir -p "$cache_dir"
-  if [ -d "$lock" ] && [ $(( $(date +%s) - $("$stat_bin" -c %Y "$lock") )) -gt 120 ]; then
-    rmdir "$lock"
-  fi
-  mkdir "$lock" 2>/dev/null || return
-  trap 'rmdir "$lock"' EXIT
-  local tmp="$cache.$$"
-  PI_CODING_AGENT_DIR="$HOME/.config/pi-work" "$timeout_bin" 30 "$fish_bin" -c 'exec "$argv[1]" json' -- "$bin" >"$tmp" && mv "$tmp" "$cache"
-  rm -f "$tmp"
-}
-
-refresh &
 [ -r "$cache" ] || exit 0
 
 summary=$(jq -r '.presentation.summary' "$cache")

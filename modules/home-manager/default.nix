@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -7,6 +8,22 @@
   musicDir = common.commonVariables.MUSIC_DIR;
   managedTheme = import ./managed-theme.nix {inherit lib;};
   llmUsage = import ./packages/llm-usage.nix {inherit pkgs;};
+  llmUsageJson = "${config.xdg.cacheHome}/llm-usage/usage.json";
+  llmUsageState = "${config.home.homeDirectory}/.local/state/llm-usage";
+  llmUsageAgent = pkgs.writeShellApplication {
+    name = "llm-usage-agent";
+    text = ''
+      umask 077
+      if ! key=$(/usr/bin/security find-generic-password \
+        -s llm-usage-cliproxy-work -a ${lib.escapeShellArg config.home.username} -w); then
+        echo "llm-usage-agent: cannot read Keychain item llm-usage-cliproxy-work" >&2
+        exit 1
+      fi
+      export LLM_USAGE_CLIPROXY_MANAGEMENT_KEY="$key"
+      exec ${llmUsage}/bin/llm-usage json --source cliproxy --interval 60 \
+        --output ${lib.escapeShellArg llmUsageJson}
+    '';
+  };
   solidWallpaper = pkgs.runCommand "solid-wallpaper.png" {
     nativeBuildInputs = [pkgs.imagemagick];
   } ''
@@ -35,10 +52,7 @@ EOF'') managedTheme.variantNames}
     substituteInPlace "$out/sketchybar/sketchybarrc.sh" \
       --replace-fail 'source "$HOME/.local/share/theme/tokyo-night-sketchybar.sh"' 'source "$HOME/.local/share/theme/${managedTheme.activeTheme.hyphenName}-sketchybar.sh"'
     substituteInPlace "$out/sketchybar/plugins/llm-usage.sh" \
-      --replace-fail '@llmUsageBin@' '${llmUsage}/bin/llm-usage' \
-      --replace-fail '@timeoutBin@' '${pkgs.coreutils}/bin/timeout' \
-      --replace-fail '@statBin@' '${pkgs.coreutils}/bin/stat' \
-      --replace-fail '@fishBin@' '${pkgs.fish}/bin/fish'
+      --replace-fail '@usageJson@' '${llmUsageJson}'
     cat > "$out/sketchybar/colors.lua" <<'EOF'
 ${managedTheme.sketchybarColorsLua}
 EOF
@@ -59,6 +73,38 @@ in {
   ];
 
   subscriptionProxy.enable = pkgs.stdenv.hostPlatform.isDarwin;
+
+  home.activation.llmUsageState = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
+    (lib.hm.dag.entryAfter ["writeBoundary"] ''
+      if [ -z "''${DRY_RUN:-}" ]; then
+        ${pkgs.coreutils}/bin/install -d -m 0700 \
+          ${lib.escapeShellArg llmUsageState} \
+          ${lib.escapeShellArg (builtins.dirOf llmUsageJson)}
+        # launchd opens its log files before applying the job's umask.
+        ${pkgs.coreutils}/bin/touch \
+          ${lib.escapeShellArg "${llmUsageState}/agent.log"} \
+          ${lib.escapeShellArg "${llmUsageState}/agent.err.log"}
+        ${pkgs.coreutils}/bin/chmod 0600 \
+          ${lib.escapeShellArg "${llmUsageState}/agent.log"} \
+          ${lib.escapeShellArg "${llmUsageState}/agent.err.log"}
+      fi
+    '');
+
+  launchd.agents.llm-usage = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+    enable = true;
+    config = {
+      Label = "org.nix-community.home.llm-usage";
+      ProgramArguments = ["${llmUsageAgent}/bin/llm-usage-agent"];
+      EnvironmentVariables.LLM_USAGE_CLIPROXY_URL = "http://${config.subscriptionProxy.address}:8318";
+      RunAtLoad = true;
+      KeepAlive = true;
+      ThrottleInterval = 60;
+      ProcessType = "Background";
+      Umask = 63;
+      StandardOutPath = "${llmUsageState}/agent.log";
+      StandardErrorPath = "${llmUsageState}/agent.err.log";
+    };
+  };
 
   home.sessionVariables = {
     CLAUDE_CONFIG_DIR = "$HOME/.config/claude-personal";
