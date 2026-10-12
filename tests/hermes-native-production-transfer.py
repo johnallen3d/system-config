@@ -866,6 +866,134 @@ class Transfer(unittest.TestCase):
         self.assertFalse((self.root/'reverse').exists())
 
 
+class CalendarBroker(unittest.TestCase):
+    ACCOUNT='jallen7usa@gmail.com'
+
+    def request(self, text):
+        return r.terminal_request({'command':'mise run '+text})
+
+    def test_original_calendar_reads_aliases_and_approved_write_routes(self):
+        for action in ['events','list','ls','event','get','info','show','raw','freebusy','conflicts','search','calendars','colors','time']:
+            tail=' primary event-id' if action in {'event','get','info','show','raw'} else ''
+            value=self.request('gog -- cal '+action+tail+' -a '+self.ACCOUNT+' -j --wrap-untrusted')
+            self.assertEqual(value['operation'],'read')
+            self.assertEqual(value['args'][0],'calendar')
+        for action in ['create','add','new','update','edit','set','delete','rm','del','remove','respond','rsvp','reply']:
+            tail=' primary' if action in {'create','add','new'} else ' primary event-id'
+            self.assertEqual(self.request('gog -- calendar '+action+tail+' --account='+self.ACCOUNT)['operation'],'calendar-write')
+        for command in ['get-calendar -- --format=plain','get-calendar -- --format=json','gog -- auth list --check --json',
+                        'gog -- config get keyring_backend']:
+            self.assertEqual(self.request(command)['operation'],'read')
+        value=self.request('gog -- -a '+self.ACCOUNT+' cal events --today')
+        self.assertEqual(value['args'],['--account='+self.ACCOUNT,'calendar','events','--today'])
+
+    def test_no_blanket_tasks_non_calendar_administration_or_policy_escapes(self):
+        rejected=['gog -- gmail labels list','gog -- drive search query','gog -- api calendar events',
+                  'gog -- auth add '+self.ACCOUNT,'gog -- auth export','gog -- config get token',
+                  'gog -- cal acl primary','gog -- cal subscribe primary','gog -- cal move primary id target',
+                  'gog -- cal events','gog -- cal events -a auto','gog -- cal events -a other@example.com',
+                  'gog -- cal events -a '+self.ACCOUNT+' --home=/tmp/alternate',
+                  'gog -- cal events -a '+self.ACCOUNT+' --access-token=secret',
+                  'gog -- cal events -a '+self.ACCOUNT+' --client=alternate',
+                  'gog -- cal events -a '+self.ACCOUNT+' --enable-commands-exact=gmail.send',
+                  'gog -- cal events -a '+self.ACCOUNT+' --readonly=false',
+                  'gog -- cal events -a '+self.ACCOUNT+' --account='+self.ACCOUNT,
+                  'gog -- cal create -a '+self.ACCOUNT,'gog -- cal delete primary -a '+self.ACCOUNT,
+                  'get-calendar -- --input-file=/tmp/injected','get-calendar -- --format=telegram',
+                  'gog-auth-bootstrap','morning-brief','update-system','gog -- auth list --check && env']
+        for command in rejected:
+            with self.subTest(command=command), self.assertRaises(ValueError): self.request(command)
+        with self.assertRaises(ValueError):
+            r.terminal_request({'command':'mise run gog -- auth list','background':True})
+
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory(); self.root=Path(self.tmp.name).resolve(); self.root.chmod(0o700)
+        self.state=self.root/'state'; self.vault=self.root/'vault'
+        for path in [self.state/'controller',self.state/'gogcli/data/keyring',self.vault/'.mise/tasks']:
+            p.stage.mkdir(path)
+        self.wrapper=b'#!/usr/bin/env bash\nset -eu\ntest "$GOG_KEYRING_BACKEND" = file\ntest "$GOG_KEYRING_PASSWORD" = SYNTHETIC\ntest -z "${PI_CODING_AGENT_DIR:-}"\ntest -z "${TELEGRAM_BOT_TOKEN:-}"\ncase "$GOG_READONLY" in 0) [[ "$GOG_ENABLE_COMMANDS_EXACT" == *calendar.create* ]] ;; 1) [[ "$GOG_ENABLE_COMMANDS_EXACT" != *calendar.create* ]] ;; *) exit 64 ;; esac\nif touch "$VAULT_DIR/must-not-write" 2>/dev/null; then exit 64; fi\nprintf \'{"fixture":"calendar-only","readonly":"%s"}\\n\' "$GOG_READONLY"\n'
+        p.stage.atomic(self.vault/'.mise/tasks/gog',self.wrapper); (self.vault/'.mise/tasks/gog').chmod(0o700)
+        p.stage.atomic(self.vault/'.mise/tasks/get-calendar',self.wrapper); (self.vault/'.mise/tasks/get-calendar').chmod(0o700)
+        p.stage.atomic(self.state/'gogcli/config.json',b'{"synthetic":true}\n')
+        p.stage.atomic(self.state/'gogcli/data/keyring/.lock',b'SYNTHETIC LOCK\n')
+        p.stage.atomic(self.state/'.secrets.json',p.stage.encoded({'GOG_KEYRING_PASSWORD':'SYNTHETIC'}))
+        p.stage.atomic(self.state/'controller/ownership.json',p.stage.encoded({'schemaVersion':1,'namespace':t.NAMESPACE,
+            'owner':'native','phase':'NATIVE_LIVE','poller':'ENABLED'}))
+        p.stage.atomic(self.state/'controller/task-code.json',p.stage.encoded({'kind':'REVIEWED_USER_OWNED_VAULT_TASK_CODE',
+            'namespace':t.NAMESPACE,'files':{'.mise/tasks/get-calendar':p.stage.digest(self.wrapper)}}))
+        self.patch=mock.patch.object(r,'CALENDAR_WRAPPER_SHA256',p.stage.digest(self.wrapper)); self.patch.start()
+        self.m={'paths':{'state':str(self.state)},'vault':str(self.vault),'environment':{
+            'PATH':'/synthetic','HERMES_NATIVE_MISE':'/synthetic/mise','PI_CODING_AGENT_DIR':'/never-mounted',
+            'TELEGRAM_BOT_TOKEN':'SYNTHETIC_FORBIDDEN','GOG_ACCESS_TOKEN':'SYNTHETIC_FORBIDDEN'},
+            'bubblewrap':'/synthetic/bwrap','envBinary':'/synthetic/env','bashBinary':'/synthetic/bash'}
+
+    def tearDown(self):
+        self.patch.stop(); self.tmp.cleanup()
+
+    def test_runner_readonly_private_keyring_and_foreground_write_boundary(self):
+        before={str(q):p.signature(q) for q in (self.state/'gogcli').rglob('*') if q.is_file()}
+        args=['cal','create','primary','-a',self.ACCOUNT,'--summary','Synthetic fixture','--from','2030-01-01T10:00:00-05:00',
+              '--to','2030-01-01T11:00:00-05:00']
+        with mock.patch.object(r.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=b'{}\n',stderr=b'')) as run:
+            r.read_task(self.m,'get-calendar',['--format=plain'])
+            call=run.call_args; self.assertEqual(call.kwargs['env']['GOG_READONLY'],'1')
+            self.assertNotIn('calendar.create',call.kwargs['env']['GOG_ENABLE_COMMANDS_EXACT'])
+            self.assertNotIn('GOG_ACCESS_TOKEN',call.kwargs['env']); self.assertNotIn('TELEGRAM_BOT_TOKEN',call.kwargs['env'])
+            argv=call.args[0]; self.assertIn('--ro-bind',argv); self.assertIn('--share-net',argv)
+            private=Path(argv[argv.index('--bind')+1]); self.assertNotEqual(private,self.state/'gogcli')
+            self.assertFalse((private/'data/keyring/.lock').exists())
+            with self.assertRaisesRegex(ValueError,'background'): r.read_task(self.m,'gog',args)
+            r.calendar_task(self.m,'gog',args,allow_write=True)
+            self.assertEqual(run.call_args.kwargs['env']['GOG_READONLY'],'0')
+            self.assertEqual(t.load(self.state/'controller/calendar-write.json')['status'],'COMPLETE')
+        self.assertEqual(before,{str(q):p.signature(q) for q in (self.state/'gogcli').rglob('*') if q.is_file()})
+
+    def test_actual_supervisor_broker_dispatches_reads_and_foreground_writes_only(self):
+        self.m.update(runtimeEngineeringReady=True)
+        self.m['paths']['home']=str(self.root/'home')
+        owner=t.load(self.state/'controller/ownership.json'); owner['providerRefresh']='ENABLED'
+        p.stage.atomic(self.state/'controller/ownership.json',p.stage.encoded(owner))
+        p.stage.atomic(self.state/'controller/arming.json',p.stage.encoded({'namespace':t.NAMESPACE,'status':'ARMED','sourceBundleSha256':'SYNTHETIC'}))
+        p.stage.atomic(self.state/'controller/import.json',p.stage.encoded({'sourceBundleSha256':'SYNTHETIC'}))
+        for text in ['get-calendar -- --format=plain','gog -- cal events -a '+self.ACCOUNT,
+                     'gog -- cal create primary -a '+self.ACCOUNT+' --summary Synthetic']:
+            request=self.request(text); replies=[]
+            def frame(connection,value=None):
+                if value is None: return request
+                replies.append(value)
+            process=mock.Mock(); process.poll.side_effect=[None,0,0]; process.wait.return_value=0
+            with mock.patch.object(r,'gateway_command',return_value=['/synthetic/gateway']), \
+                 mock.patch.object(r,'local_writer_callbacks',return_value=(mock.Mock(),mock.Mock())), \
+                 mock.patch.object(r,'broker_frame',side_effect=frame), \
+                 mock.patch.object(r.subprocess,'Popen',return_value=process), \
+                 mock.patch.object(r,'calendar_task',return_value=b'SYNTHETIC') as task:
+                r._gateway_owned(self.m)
+                self.assertEqual(replies,[{'status':'OK','output':'SYNTHETIC'}])
+                self.assertEqual(task.call_args.kwargs.get('allow_write',False),request['operation']=='calendar-write')
+
+    def test_failed_external_write_is_retained_and_never_retried(self):
+        args=['calendar','delete','primary','synthetic-id','-a',self.ACCOUNT]
+        with mock.patch.object(r.subprocess,'run',side_effect=subprocess.TimeoutExpired('SYNTHETIC',1)) as run:
+            with self.assertRaises(subprocess.TimeoutExpired): r.calendar_task(self.m,'gog',args,allow_write=True)
+            self.assertEqual(t.load(self.state/'controller/calendar-write.json')['status'],'CLAIMED')
+            with self.assertRaisesRegex(ValueError,'uncertain'): r.calendar_task(self.m,'gog',args,allow_write=True)
+            self.assertEqual(run.call_count,1)
+        (self.vault/'.mise/tasks/gog').write_bytes(b'UNREVIEWED')
+        with self.assertRaisesRegex(ValueError,'unchanged'): r.read_task(self.m,'gog',['auth','list'])
+
+    @unittest.skipUnless(os.environ.get('HERMES_CALENDAR_FIXTURE_METADATA'),'installed Linux bubblewrap fixture only')
+    def test_actual_bubblewrap_runner_synthetic_reads_and_writes_no_api(self):
+        installed=json.loads(Path(os.environ['HERMES_CALENDAR_FIXTURE_METADATA']).read_bytes())
+        self.m.update({k:installed[k] for k in ['bubblewrap','envBinary','bashBinary']})
+        self.m['environment']=dict(installed['environment'])
+        for task,args,write in [('get-calendar',['--format=plain'],False),
+            ('gog',['cal','events','-a',self.ACCOUNT,'--today'],False),
+            ('gog',['cal','create','primary','-a',self.ACCOUNT,'--summary','Synthetic'],True)]:
+            output=r.calendar_task(self.m,task,args,allow_write=write)
+            self.assertEqual(json.loads(output),{'fixture':'calendar-only','readonly':'0' if write else '1'})
+        self.assertFalse((self.vault/'must-not-write').exists())
+
+
 @unittest.skipUnless(os.environ.get('HERMES763_TASK_SOURCES') and sys.platform=='linux',
                      'operator-provided reviewed code + pinned Linux sandbox fixture')
 class ActualTaskAdapter(unittest.TestCase):

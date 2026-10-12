@@ -397,6 +397,154 @@ def local_writer_callbacks(m):
     return observe,scan
 
 
+# Original NAS-deployed file-keyring wrapper, reviewed unchanged on native.
+CALENDAR_WRAPPER_SHA256='5b1cf7693b02f3231f756b2e7f89afd12128c3e49998f8710d6d0185663f36c8'
+CALENDAR_ACCOUNTS={'jallen7usa@gmail.com','john.allen@gmatter.co'}
+CALENDAR_READS={'calendars','events','event','raw','freebusy','conflicts','search','colors','time'}
+CALENDAR_WRITES={'create','update','delete','respond'}
+CALENDAR_ALIASES={'list':'events','ls':'events','get':'event','info':'event','show':'event',
+                  'add':'create','new':'create','edit':'update','set':'update',
+                  'rm':'delete','del':'delete','remove':'delete','rsvp':'respond','reply':'respond'}
+CALENDAR_FLAGS={
+    'calendars':'all fail-empty max page',
+    'events':'all all-pages cal calendars days event-types fail-empty fields from location max order page private-prop-filter query shared-prop-filter sort timezone to today tomorrow week week-start weekday',
+    'event':'timezone','raw':'pretty','freebusy':'all cal from to',
+    'conflicts':'all cal calendars days from to today week week-start',
+    'search':'calendar days from max to today tomorrow week week-start','colors':'','time':'calendar timezone',
+    'create':'all-day attendees description end-timezone event-color event-type focus-auto-decline focus-chat-status focus-decline-message from guests-can-invite guests-can-modify guests-can-see-others location no-reminders ooo-auto-decline ooo-decline-message private-prop reminder rrule send-updates shared-prop source-title source-url start-timezone summary timezone to transparency visibility with-meet working-building-id working-custom-label working-desk-id working-floor-id working-location-type working-office-label',
+    'update':'add-attendee all-day attendees description end-timezone event-color event-type focus-auto-decline focus-chat-status focus-decline-message from guests-can-invite guests-can-modify guests-can-see-others location no-reminders ooo-auto-decline ooo-decline-message original-start private-prop regenerate-meet reminder rrule scope send-updates shared-prop start-timezone summary to transparency visibility with-meet working-building-id working-custom-label working-desk-id working-floor-id working-location-type working-office-label',
+    'delete':'original-start scope send-updates','respond':'comment status',
+    'auth.list':'check timeout','config.get':''}
+CALENDAR_BOOLS=set('json plain results-only wrap-untrusted no-input dry-run force help readonly all all-pages fail-empty today tomorrow week weekday pretty all-day guests-can-invite guests-can-modify guests-can-see-others no-reminders with-meet regenerate-meet check'.split())
+
+
+def calendar_request(task, args):
+    """Literal Calendar argv only; no auth/profile/allowlist override or other service.
+
+    Mutation consent remains the original installed skill's conversation policy,
+    not a new exact-shell-command confirmation. Scheduler/default callers cannot
+    enable writes; only the foreground terminal broker has that route.
+    """
+    p.require(isinstance(args,list) and len(args)<=128 and all(isinstance(a,str) and len(a)<=8192
+              and not any(q in a for q in '\x00\r\n') for a in args),'bounded Calendar argv')
+    if task=='get-calendar':
+        p.require(args in [[],['--format=plain'],['--format','plain'],['--format=json'],['--format','json']],
+                  'combined schedule format only')
+        return {'operation':'read','task':task,'args':args}
+    p.require(task=='gog','Calendar wrapper only')
+    # Find the command path without interpreting flag values as command names.
+    short={'-a':'--account','-j':'--json','-p':'--plain','-n':'--dry-run','-y':'--force','-h':'--help'}
+    common=set('account json plain results-only select wrap-untrusted no-input dry-run force help readonly color'.split())
+    tokens=[]; positionals=[]; flags=[]; account=None; i=0
+    all_flags=common|set(' '.join(CALENDAR_FLAGS.values()).split())
+    while i<len(args):
+        arg=short.get(args[i],args[i]); i+=1
+        if arg.startswith('-'):
+            flag,sep,value=arg.partition('='); name=flag[2:] if flag.startswith('--') else ''
+            p.require(name in all_flags,'unreviewed Calendar flag; no credential/policy override')
+            if name not in CALENDAR_BOOLS and not sep:
+                p.require(i<len(args) and not args[i].startswith('-'),'Calendar flag value required')
+                value=args[i]; i+=1; sep='='
+            if name in CALENDAR_BOOLS and sep:
+                p.require(value in {'true','false'} and (name!='readonly' or value=='true'),'literal boolean flag')
+            if name=='account':
+                p.require(account is None and value in CALENDAR_ACCOUNTS,'one explicit canonical native account')
+                account=value
+            flags.append(name); tokens.append(flag+('='+value if sep else ''))
+        else:
+            positionals.append(arg); tokens.append(arg)
+    p.require(len(positionals)>=2,'Calendar command path required')
+    service,action=positionals[:2]
+    service='calendar' if service=='cal' else service
+    action=CALENDAR_ALIASES.get(action,action) if service=='calendar' else action
+    path=action if service=='calendar' else service+'.'+action
+    p.require(path in CALENDAR_FLAGS,'Calendar-only command authority')
+    p.require(set(flags)<=common|set(CALENDAR_FLAGS[path].split()),'flags must match exact Calendar command')
+    if service=='calendar':
+        p.require(account is not None,'Calendar queries/mutations require explicit canonical account')
+        count=len(positionals)-2
+        if action in {'event','raw','update','delete','respond'}: p.require(count==2,'specific calendar/event required')
+        if action=='create': p.require(count==1,'specific calendar required')
+    elif path=='config.get':
+        p.require(positionals==['config','get','keyring_backend'],'minimal keyring backend inspection only')
+    else: p.require(positionals==['auth','list'],'minimal auth list only')
+    operation='calendar-write' if service=='calendar' and action in CALENDAR_WRITES else 'read'
+    # Canonicalize command aliases while retaining literal argument order.
+    seen=0
+    for i,arg in enumerate(tokens):
+        if not arg.startswith('-'):
+            if seen==0: tokens[i]=service
+            elif seen==1: tokens[i]=action
+            seen+=1
+    return {'operation':operation,'task':task,'args':tokens}
+
+
+def calendar_task(m, task, args, *, allow_write=False):
+    """Original mise wrapper, private file-keyring copy, RO vault, no new OAuth.
+
+    The canonical Google context is never writable in the child. Failed external
+    writes remain uncertain and block later writes; they are never auto-retried.
+    """
+    request=calendar_request(task,args); writing=request['operation']=='calendar-write'
+    p.require(not writing or allow_write,'default/background Calendar reads only')
+    state=Path(m['paths']['state']); vault=Path(m['vault']); control=state/'controller'
+    if writing:
+        owner=live_owner(m,'poller'); p.require(owner['phase']=='NATIVE_LIVE','Calendar mutations require live foreground ownership')
+    ledger=t.load(control/'task-code.json')
+    dependencies=['.mise/tasks/gog']+(['.mise/tasks/get-calendar'] if task=='get-calendar' else [])
+    for name in dependencies:
+        expected=CALENDAR_WRAPPER_SHA256 if name=='.mise/tasks/gog' else ledger['files'].get(name)
+        p.require(ledger.get('kind')=='REVIEWED_USER_OWNED_VAULT_TASK_CODE' and ledger.get('namespace')==t.NAMESPACE
+                  and expected is not None and p.stage.digest(p.stage.read_private(vault/name,owner=os.getuid()))==expected,
+                  'reviewed original Calendar task unchanged')
+    runs=control/'calendar-runs'; p.stage.mkdir(runs)
+    run=Path(tempfile.mkdtemp(prefix='calendar-',dir=runs)); run.chmod(0o700)
+    with writer_module().held_lock(control/'calendar.lock'):
+        journal=control/'calendar-write.json'
+        if writing:
+            p.require(not journal.exists() or t.load(journal).get('status')=='COMPLETE',
+                      'uncertain Calendar mutation retained; no retry or replay')
+        source=state/'gogcli'; p.stage.safe(source,directory=True,owner=os.getuid())
+        p.require(all(not q.is_symlink() for q in source.rglob('*')),'canonical Google context without symlinks')
+        before={q.relative_to(source).as_posix():p.signature(q) for q in sorted(source.rglob('*')) if q.is_file()}
+        private=run/'gogcli'; p.stage.mkdir(private)
+        for name,signature in before.items():
+            if name=='data/keyring/.lock': continue
+            data=p.stage.read_private(source/name,owner=os.getuid())
+            p.require(p.stage.digest(data)==signature['sha256'],'Google private-copy CAS')
+            p.stage.atomic(private/name,data)
+        alias=str(state/'workspace/notes')
+        env={k:v for k,v in m['environment'].items() if not k.startswith(('PI_','CLAUDE_','HERMES_PRODUCTION_','GOG_'))
+             and not k.endswith(('TOKEN','API_KEY'))}
+        enabled=CALENDAR_READS|(CALENDAR_WRITES if writing else set())
+        env.update(HOME='/tmp/calendar-home',XDG_CONFIG_HOME='/tmp/calendar-config',XDG_CACHE_HOME='/tmp/calendar-cache',
+            XDG_DATA_HOME='/tmp/calendar-data',XDG_STATE_HOME='/tmp/calendar-state',
+            HERMES_NATIVE_READONLY='1',HERMES_NATIVE_STAGE='production',VAULT_DIR=alias,VLT_VAULT_PATH=alias,
+            MISE_TRUSTED_CONFIG_PATHS=alias,GOG_HOME=str(source),GOG_KEYRING_BACKEND='file',
+            GOG_KEYRING_PASSWORD=t.load(state/'.secrets.json')['GOG_KEYRING_PASSWORD'],
+            GOG_READONLY='0' if writing else '1',
+            GOG_ENABLE_COMMANDS_EXACT=','.join(['calendar.'+n for n in sorted(enabled)]+['auth.list','config.get']))
+        command=[m['bubblewrap'],'--unshare-all','--share-net','--die-with-parent','--new-session',
+            '--ro-bind','/nix/store','/nix/store','--proc','/proc','--dev','/dev','--tmpfs','/tmp','--tmpfs','/home',
+            '--dir','/etc','--ro-bind','/etc/resolv.conf','/etc/resolv.conf','--dir','/usr','--dir','/usr/bin','--dir','/bin',
+            '--symlink',m['envBinary'],'/usr/bin/env','--symlink',m['bashBinary'],'/bin/bash','--symlink',m['bashBinary'],'/bin/sh',
+            '--ro-bind',str(vault),alias,'--bind',str(private),str(source),'--chdir',alias,
+            m['environment']['HERMES_NATIVE_MISE'],'run',task,'--',*request['args']]
+        if writing:
+            p.stage.atomic(run/'request.json',p.stage.encoded(request))
+            p.stage.atomic(journal,p.stage.encoded({'status':'CLAIMED','run':str(run),'claimedAt':time.time(),
+                'approvalPolicy':'ORIGINAL_GOOGLE_WORKSPACE_CURRENT_CONVERSATION','automaticRetry':False}))
+        result=subprocess.run(command,env=env,capture_output=True,timeout=270,cwd='/')
+        p.stage.atomic(run/'stdout',result.stdout); p.stage.atomic(run/'stderr',result.stderr)
+        p.require(before=={q.relative_to(source).as_posix():p.signature(q) for q in sorted(source.rglob('*')) if q.is_file()},
+                  'canonical Google context changed; preserve all evidence')
+        p.require(result.returncode==0 and len(result.stdout)<=65536,'Calendar task failed; private diagnostics retained, no automatic retry')
+        if writing:
+            p.stage.atomic(journal,p.stage.encoded({'status':'COMPLETE','run':str(run),'completedAt':time.time(),
+                'approvalPolicy':'ORIGINAL_GOOGLE_WORKSPACE_CURRENT_CONVERSATION','automaticRetry':False}))
+        return result.stdout
+
+
 def read_task(m, task, args):
     """No generic shell, profile mount, provider credentials or writable content."""
     state=Path(m['paths']['state']); vault=Path(m['vault']); alias=str(state/'workspace/notes')
@@ -413,6 +561,7 @@ def read_task(m, task, args):
         p.stage.safe(vault/name,owner=os.getuid())
         # Exact local note bytes; no vlt write/cache/acknowledge operation.
         return p.stage.read_private(vault/name,owner=os.getuid())
+    if task in {'gog','get-calendar'}: return calendar_task(m,task,args)
     allowed={'common-food','macros','macros-details'}
     p.require(task in allowed,'unreviewed read command')
     if task=='common-food': p.require(args and args[0] in {'search','show','validate'},'common-food read only')
@@ -453,6 +602,7 @@ def terminal_request(arguments):
         p.require(len(argv)>=3,'named reviewed task required')
         task=argv[2]; args=argv[3:]
         if args[:1]==['--']: args=args[1:]
+        if task in {'gog','get-calendar'}: return calendar_request(task,args)
         if task in WRITE_TASKS:
             task_targets(task,args); return {'operation':'write','task':task,'args':args}
         p.require(task in {'common-food','macros','macros-details'},'named read authority required')
@@ -898,6 +1048,10 @@ def _gateway_owned(m):
                         current=live_owner(m,'poller')
                         p.require(current['phase']=='NATIVE_LIVE','no private reads before actual acceptance')
                         output=read_task(m,request['task'],request['args'])
+                    elif operation=='calendar-write':
+                        current=live_owner(m,'poller')
+                        p.require(current['phase']=='NATIVE_LIVE','no Calendar mutations before acceptance')
+                        output=calendar_task(m,request['task'],request['args'],allow_write=True)
                     elif operation in {'write','brief'}:
                         current=live_owner(m,'vaultWrites')
                         p.require(current['phase']=='NATIVE_LIVE','normal writes closed during cutover acceptance')
