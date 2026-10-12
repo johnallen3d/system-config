@@ -127,10 +127,15 @@ Both personal `/wrap` prompts compose the single Nix-owned workflow at
 `modules/home-manager/agent-projects/personal-wrap.md`. An actual invocation
 validates and commits scoped changes, fast-forwards clean local `main`, verifies
 the real primary-root session cwd, then synchronously removes only the clean,
-integrated task worktree and branch with Worktrunk. Divergence, unrelated changes,
-unknown ignored files, failed validation/deployment, or an unverifiable cwd block
-subsequent integration/cleanup. No rebase, squash, forced deletion, or automatic
-push is allowed. An opt-out task gets validation/tracking/commit without unrelated
+integrated task worktree and branch with Worktrunk. [#779](https://app.fizzy.do/6284043/cards/779)
+permits a guarded rebase of this task's own clearly unpublished local commits
+onto existing local `main` when needed, preserving attribution and signing/hooks.
+Uncertain ownership/publication, conflicts, signing/hook failures, unrelated
+changes, unknown ignored files, failed validation/deployment, or an unverifiable
+cwd block subsequent integration/cleanup. After rewriting, rerun relevant gates
+and recheck source/deployment compatibility; unchanged deployed content does not
+require an unconditional rebuild. No fetch, push, shared-history rewrite, squash,
+forced deletion, or merge fallback is authorized. An opt-out task gets validation/tracking/commit without unrelated
 worktree integration or cleanup. The external shared `wrapping-up` skill and work
 PR workflow are unchanged. Plain “wrap up” or mentioning `/wrap` does not authorize
 its commit/integration/cleanup lifecycle; card-closure and deployment gates still

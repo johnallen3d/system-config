@@ -13,6 +13,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 LIFECYCLE = ROOT / "modules/home-manager/agent-projects/personal-wrap.md"
 MERGE, REMOVE = re.findall(r"```bash\n(.*?)\n\s*```", LIFECYCLE.read_text(), re.S)
+REBASE = re.search(r'Use `(git .*? rebase .*?)`\.', LIFECYCLE.read_text()).group(1)
 
 
 class LifecycleTests(unittest.TestCase):
@@ -99,6 +100,52 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.git(self.task, "rev-parse", "HEAD"), self.tip)
         self.assertNotEqual(self.run_block(REMOVE).returncode, 0)
         self.assert_retained()
+
+    def test_reviewed_unpublished_task_rebases_after_main_advances(self):
+        before = self.git(self.task, "show", "-s", "--format=%an <%ae>%n%aI%n%B")
+        self.commit(self.primary, "main-change", "independent main change\n")
+        main_tip = self.git(self.primary, "rev-parse", "main")
+        # This disposable fixture has known task ownership/non-publication.
+        result = self.run_block(REBASE, main_tip=main_tip, base=self.base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.git(self.primary, "rev-parse", "main"), main_tip)
+        self.assertNotEqual(self.git(self.task, "rev-parse", "HEAD"), self.tip)
+        self.assertEqual(self.git(self.task, "show", "-s", "--format=%an <%ae>%n%aI%n%B"), before)
+        self.assertEqual(self.run_block(MERGE).returncode, 0)
+        self.assertEqual(self.run_block(REMOVE).returncode, 0)
+
+    def test_rebase_conflict_and_signing_failure_preserve_task(self):
+        self.commit(self.primary, "task", "conflicting main content\n")
+        main_tip = self.git(self.primary, "rev-parse", "main")
+        result = self.run_block(REBASE, main_tip=main_tip, base=self.base)
+        self.assertNotEqual(result.returncode, 0)
+        git_dir = Path(self.git(self.task, "rev-parse", "--absolute-git-dir"))
+        self.assertTrue((git_dir / "rebase-merge").is_dir())
+        self.assertNotEqual(self.run_block(MERGE).returncode, 0)
+        self.assertNotEqual(self.run_block(REMOVE).returncode, 0)
+        # Explicit fixture teardown only; the lifecycle leaves failures intact.
+        self.git(self.task, "rebase", "--abort")
+        self.git(self.task, "config", "commit.gpgsign", "true")
+        self.git(self.task, "config", "gpg.program", "/nonexistent-fixture-signer")
+        self.git(self.task, "config", "rerere.enabled", "false")
+        # Rebase onto the base avoids conflict and exercises required signing.
+        result = self.run_block(REBASE.replace(" rebase ", " rebase --force-rebase "),
+                                main_tip=self.base, base=self.base)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((git_dir / "rebase-merge").is_dir())
+        self.assertEqual(self.git(self.primary, "rev-parse", "main"), main_tip)
+        self.assertTrue(self.task.is_dir())
+        self.assertEqual(self.git(self.primary, "rev-parse", self.branch), self.tip)
+
+    def test_guarded_rebase_instruction_boundaries(self):
+        policy = LIFECYCLE.read_text()
+        for clause in ("only this task's own unpublished local commits", "not\n   proof",
+                       "Uncertain ownership/publication", "Do not fetch or push",
+                       "required signatures on rewritten commits", "never bypass signing or hooks",
+                       "no existing\n   Git operation", "unchanged tips immediately",
+                       "No\n   automatic resolution, abort, skip", "rerun relevant gates",
+                       "not an unconditional rebuild/redeploy", "validated main/task tips"):
+            self.assertIn(clause, policy)
 
     def test_dirty_primary_and_task_block_merge(self):
         for cwd in (self.primary, self.task):

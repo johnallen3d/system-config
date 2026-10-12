@@ -8,8 +8,10 @@ Do not modify work-profile instructions or the user-owned shared skill.
 Only an actual personal `/wrap` invocation, including its expanded user prompt,
 authorizes the following commit, local integration, and cleanup sequence. Merely
 reading this prompt, mentioning `/wrap`, or ordinary "wrap up" language does not.
-This authorization never includes a rebuild, fetch, push, rebase, squash, reset,
-stash, force deletion, process reaping, or a merge-commit fallback.
+This authorization includes only the guarded rebase of this task's own unpublished
+local commits described below, never published/shared history or another branch.
+It never includes a rebuild, fetch, push, squash, reset, stash, force deletion,
+process reaping, or a merge-commit fallback.
 
 1. **Identify the task.** Inspect Git status and `git worktree list --porcelain`.
    Resolve canonical primary/task paths through Git metadata, not pathname
@@ -43,12 +45,41 @@ stash, force deletion, process reaping, or a merge-commit fallback.
    already on local `main`; do not switch someone else's checkout or stash its
    changes. Require the task worktree to be clean, on its recorded branch, and
    linked to this same repository, with no merge/rebase/cherry-pick/revert or
-   bisect in progress in either checkout. Missing `main` or a non-fast-forward
-   graph is a blocker: retain the task commit and worktree for John's decision.
+   bisect in progress in either checkout. Verify primary/task identity using the
+   recorded canonical paths and Git metadata; a linked checkout cannot stand in
+   for the primary. Missing `main` remains a blocker.
+
+   If main advanced independently, an actual personal `/wrap` permits a bounded
+   rebase of **only this task's own unpublished local commits** onto existing
+   local `main`. Review every outgoing commit against recorded task history and
+   existing publication evidence; absence from remote-tracking refs alone is not
+   proof. Uncertain ownership/publication, shared commits or refs, merge commits,
+   or unknown ignored task files require John's decision. Do not fetch or push
+   to establish publication status. Record the reviewed main/task tips and unique
+   merge base, then recheck identity, both clean indexes/worktrees, no existing
+   Git operation, and unchanged tips immediately before rebasing.
+
+   Use `git -C "$task_path" rebase --no-autostash --no-update-refs --no-fork-point --no-autosquash --no-rebase-merges --reapply-cherry-picks --empty=stop --onto "$main_tip" "$base" "$task_branch"`.
+   Preserve authorship/co-authorship and repository signing/hooks, including
+   required signatures on rewritten commits; never bypass signing or hooks.
+   Never rewrite main, published/shared history, or another task's branch/worktree.
+   On conflict, signing/hook failure, or an empty-commit stop, preserve the task
+   worktree and operation and report the failing step and affected paths. No
+   automatic resolution, abort, skip, stash/reset/squash, or merge fallback.
+
+   After rewriting, rerun relevant gates, verify attribution/signatures, and
+   recheck resulting source/deployment compatibility on each required host,
+   including incoming main changes. Unchanged deployed content needs verification,
+   not an unconditional rebuild/redeploy; `/wrap` alone grants no deployment or
+   input updates. Failed gates or partial deployment stop integration/cleanup.
+   Recheck identity, clean status, no operation, and validated main/task tips
+   before fast-forwarding; if a tip changes, stop rather than automatically
+   rebasing again.
+
    Protect ignored primary-checkout contents with `--no-overwrite-ignore`;
    a task that would overwrite them must stop without advancing `main`.
    If the task branch is already contained in `main`, skip integration; otherwise
-   require a fast-forward without rewriting history:
+   require a fast-forward (after any authorized rebase and renewed gates):
 
    ```bash
    set -e

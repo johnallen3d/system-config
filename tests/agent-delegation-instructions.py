@@ -34,7 +34,9 @@ def check_contexts(contexts, linux):
         else:
             for fragment in ("explicitly opt out", '"no worktree"', '"work in place"',
                              "Keep the actual agent session at the primary repository root",
-                             "absolute worktree paths", "verified resume/relaunch"):
+                             "absolute worktree paths", "verified resume/relaunch",
+                             "guarded rebase of this task's own unpublished local commits",
+                             "Uncertain publication or", "signing/hook failures stop"):
                 assert fragment in pi, (profile, fragment)
     print(f"PASS {'Linux' if linux else 'Mac'}: all four global instruction files, profile isolation")
 
