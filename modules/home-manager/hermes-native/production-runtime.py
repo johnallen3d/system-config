@@ -10,6 +10,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 import subprocess
 import sys
 import time
@@ -587,17 +588,29 @@ WRITE_TASKS={'write-food-log','activity-log','log-weight','add-list-item','recip
              'save-recipe','save-common-food'}
 
 
+def vlt_adapter():
+    spec = importlib.util.spec_from_file_location('hermes_vlt_adapter', Path(__file__).with_name('vlt-adapter.py'))
+    adapter = importlib.util.module_from_spec(spec); spec.loader.exec_module(adapter)
+    return adapter
+
+
 def terminal_request(arguments):
     """Parse model argv, never evaluate shell substitutions/operators or env assignments."""
     p.require(isinstance(arguments,dict) and isinstance(arguments.get('command'),str),'terminal command required')
     p.require(not any(arguments.get(k) for k in ['background','pty','force','workdir','notify_on_complete','watch_patterns']),
               'no general execution/background/environment override')
     command=arguments['command']
-    p.require(len(command)<=32768 and not any(x in command for x in ['\x00','\n','\r','`']), 'bounded literal command')
+    p.require(len(command)<=262144 and '\x00' not in command, 'bounded literal command')
     argv=shlex.split(command)
     p.require(argv and not any(q in {';','&&','||','|','>','>>','<','&'} for q in argv),'single literal command; no shell operators')
     if argv[0]=='date': return {'operation':'read','task':'date','args':argv[1:]}
-    if argv[0]=='vlt': return {'operation':'read','task':'vlt','args':argv[1:]}
+    if argv[0]=='vlt':
+        # Preserve existing exact raw YAML/JSON reads used by managed skills;
+        # upstream vlt's note resolver only understands Markdown notes.
+        if len(argv)==4 and argv[1:3]==['vault=Personal','read'] and argv[3].startswith('file=') and argv[3].endswith(('.yaml','.yml','.json')):
+            return {'operation':'read','task':'vlt','args':argv[1:]}
+        vlt_adapter().parse(SimpleNamespace(**globals()), argv[1:])
+        return {'operation':'vault','task':'vlt','args':argv[1:]}
     if argv[:2]==['mise','run']:
         p.require(len(argv)>=3,'named reviewed task required')
         task=argv[2]; args=argv[3:]
@@ -895,7 +908,7 @@ def install_gateway_hooks(m,request):
             output=request(terminal_request(arguments))
             return json.dumps({'output':output,'exit_code':0})
         except (ValueError,OSError,EOFError,KeyError,TypeError):
-            return json.dumps({'output':'Refused: only reviewed guarded task/read commands; no shell fallback.','exit_code':64})
+            return json.dumps({'output':'Command refused or failed. Vault note editing is available directly: vlt vault=Personal create/write/append/prepend/patch/property:set/property:remove, with explicit content= where needed. Read/search/uri and existing task/Calendar commands are also supported. Use one literal command, not a shell wrapper or pipe.','exit_code':64})
     registry.register(name='terminal',toolset='terminal',schema=terminal.TERMINAL_SCHEMA,
                       handler=guarded_terminal,check_fn=lambda:True,override=True)
     import cron.scheduler_script as scheduler_script
@@ -1048,6 +1061,9 @@ def _gateway_owned(m):
                         current=live_owner(m,'poller')
                         p.require(current['phase']=='NATIVE_LIVE','no private reads before actual acceptance')
                         output=read_task(m,request['task'],request['args'])
+                    elif operation=='vault':
+                        p.require(request['task']=='vlt', 'fixed vault CLI adapter')
+                        output=vlt_adapter().run(SimpleNamespace(**globals()), m, request['args'], observer=observer, scan=scan)
                     elif operation=='calendar-write':
                         current=live_owner(m,'poller')
                         p.require(current['phase']=='NATIVE_LIVE','no Calendar mutations before acceptance')
