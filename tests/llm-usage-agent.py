@@ -99,10 +99,12 @@ def check_evaluated():
     assert job["config"]["Label"] == "org.nix-community.home.llm-usage"
     assert job["config"]["RunAtLoad"] and job["config"]["KeepAlive"]
     assert set(job["config"]["EnvironmentVariables"]) == {"LLM_USAGE_CLIPROXY_URL"}
-    source = json.loads(subprocess.check_output(
-        flags + [target + '.home.file.".config".source'], text=True))
-    subprocess.run(["nix", "build", "--no-link", str(source)], check=True)
-    plugin = (Path(source) / "sketchybar/plugins/llm-usage.sh").read_text()
+    source_target = target + '.home.file.".config".source'
+    source = Path(subprocess.check_output(
+        ["nix", "build", "--no-link", "--print-out-paths",
+         "--no-write-lock-file", "--no-update-lock-file", source_target],
+        text=True).strip())
+    plugin = (source / "sketchybar/plugins/llm-usage.sh").read_text()
     assert "refresh()" not in plugin and "@usageJson@" not in plugin
     assert 'cache="/Users/john.allen/.cache/llm-usage/usage.json"' in plugin
     print("PASS evaluated Mac configuration: persistent job and substituted read-only plugin")
