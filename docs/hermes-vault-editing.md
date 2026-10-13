@@ -56,7 +56,7 @@ and the installed metadata's Python interpreter. The fixtures contain synthetic
 notes only. Existing production transfer/writer regressions remain relevant.
 
 This module is imported only by Omarchy, so no Mac activation is needed. Deploy
-only intended source changes to Omarchy's active snapshot after checking for
+only intended source changes to Omarchy's verified Git task worktree after checking for
 divergence, build without changing its lock, and qualify the actual built assets.
 For a real code update, wait for active turns and uncertain deliveries to clear,
 perform a scoped reviewed stop/activation/resumption, and retain code-review and

@@ -6,6 +6,7 @@ set -uo pipefail
 
 # Apply the invoking checkout, including linked worktrees, not unrelated main edits.
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo" || exit
 
 if [[ "${usage_switch_only:-false}" == "true" && "${usage_picker_only:-false}" == "true" ]]; then
   echo "--switch-only and --picker-only are mutually exclusive" >&2

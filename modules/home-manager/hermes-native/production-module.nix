@@ -1,7 +1,7 @@
 # #763 distinct production foundation. This does not reinterpret staging or
 # install a network service. All runtime/poller/scheduler/write entrypoints stay
 # refused until the complete cutover controller is validated and armed.
-{ config, lib, pkgs, runtime, runtimePkgs, environment, assets, version, revision }:
+{ config, lib, pkgs, runtime, runtimePkgs, environment, assets, hermesSource, version, revision }:
 let
   homeDir = config.home.homeDirectory;
   paths = {
@@ -78,8 +78,9 @@ let
     # receipt, installed fixture evidence and fresh stopped-source arming are
     # mandatory independent gates before the controller can start this unit.
     runtimeEngineeringReady = true;
-    productionFixture = toString ../../../tests/hermes-native-production-transfer.py;
-    writerFixture = toString ../../../tests/hermes-native-production-writers.py;
+    # Retain sibling state fixture and relative imports of the installed assets.
+    productionFixture = "${hermesSource}/tests/hermes-native-production-transfer.py";
+    writerFixture = "${hermesSource}/tests/hermes-native-production-writers.py";
     morningBrief = "CLOSED";
     productionWrites = "CLOSED";
     providerRefresh = "CLOSED_UNTIL_EXCLUSIVE_TRANSFER";

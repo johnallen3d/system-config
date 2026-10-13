@@ -196,6 +196,60 @@
         "type": "github"
       }
     },
+    "omarchyHerdrProjectPicker": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790785629,
+        "narHash": "sha256-HZZ73HkU2xewQ4acjLy3tIF574hGZX93OsO8P2RRY8c=",
+        "owner": "johnallen3d",
+        "repo": "herdr-project-picker",
+        "rev": "70219b8e1157f85dab8a8b9cf3b67907e6ca969d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "johnallen3d",
+        "repo": "herdr-project-picker",
+        "rev": "70219b8e1157f85dab8a8b9cf3b67907e6ca969d",
+        "type": "github"
+      }
+    },
+    "omarchyHomeManager": {
+      "inputs": {
+        "nixpkgs": [
+          "omarchyNixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791306979,
+        "narHash": "sha256-KuLePuhwJM9NLt/gTLHzXaOoSZKGoB3m7NfXjiQ98HY=",
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "rev": "fae6e9e42c3b762ab47635cddcfaf6f52374a61b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "rev": "fae6e9e42c3b762ab47635cddcfaf6f52374a61b",
+        "type": "github"
+      }
+    },
+    "omarchyNixpkgs": {
+      "locked": {
+        "lastModified": 1791260994,
+        "narHash": "sha256-Miqqk/ammqnTUxaoCyvtwoPeLbI1ksFyLxi/CazZpWY=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4",
+        "type": "github"
+      }
+    },
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
@@ -254,6 +308,9 @@
         "lop": "lop",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_2",
+        "omarchyHerdrProjectPicker": "omarchyHerdrProjectPicker",
+        "omarchyHomeManager": "omarchyHomeManager",
+        "omarchyNixpkgs": "omarchyNixpkgs",
         "yem": "yem"
       }
     },

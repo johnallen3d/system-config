@@ -12,6 +12,8 @@ There is no custom OAuth/login/key editor: use the upstream panel.
 - Personal Pi: personal Codex only.
 - Work Pi: work Codex and curated non-Claude Go models.
 - Work Claude Code: the work proxy's Anthropic endpoint. Claude is not used in Pi.
+- Personal Claude Code: personal proxy's Messages endpoint translated to Codex;
+  no Claude subscription or Claude OAuth login is required.
 
 CLIProxyAPI is pinned to source **8.0.23** and official Management Center to
 **1.26.0**, independently of either host's nixpkgs lock. The official HTML asset
@@ -99,8 +101,8 @@ sessions are short-lived; retry an expired flow from the panel. Do not paste
 callbacks, provider keys, or management keys into agent chat/cards.
 
 ALL upstream credentials, including Claude, are stored only on Omarchy. Native
-Claude Code on either host uses the work proxy's client key for its selected
-route, not independently managed upstream Claude OAuth credentials.
+Claude Code on either host uses its selected personal/work proxy's client key,
+not independently managed upstream Claude OAuth credentials.
 
 Go is API-key authentication, not OAuth. The endpoint is
 `https://opencode.ai/zen/go/v1`, not pay-as-you-go Zen. Leave OpenCode Console's
@@ -213,8 +215,9 @@ by this automation.
 
 Pi providers remain opt-in: once account identities and minimal live provider
 calls have been verified, the operator selects Pi routes on BOTH client hosts.
-Work Claude Code instead uses the proxy as its **managed default**, reapplied
-by Home Manager on both hosts; no separate Claude activation command is needed.
+Both personal and work Claude Code use their isolated proxies as **managed
+defaults**, reapplied by Home Manager on both hosts; no separate Claude
+activation command is needed.
 This changes installed settings, never an already-running agent's environment.
 
 ```bash
@@ -291,13 +294,58 @@ but makes no inference/readiness calls, so offline client activation does not
 revert routing. Server activation separately verifies its live catalog reload.
 
 Permissions/hooks/plugins/sessions and unrelated settings are preserved. No
-upstream example's permission-bypass settings are copied. Personal Claude is
-untouched. Existing native auth files remain untouched, not copied or deleted.
+upstream example's permission-bypass settings are copied. Personal Claude has its own Codex-only routing described below. Existing native
+auth files remain untouched, not copied or deleted.
 The legacy `activate work --claude` command remains available but is unnecessary
 for managed clients.
 
 Private `selected.json` records host-local selections for future Home Manager
 activation. Configuration/credential runtime data never belongs in Git.
+
+### Personal Claude Code without a Claude subscription
+
+Tracked in [Fizzy #764](https://app.fizzy.do/6284043/cards/764).
+`subscriptionProxy.personalClaude.enable` defaults true wherever proxy clients
+are enabled (Mac and Omarchy). Home Manager manages only owned routing variables
+and the model picker in `~/.config/claude-personal/settings.json`, preserving
+permissions, hooks, plugins, sessions and unrelated settings. The personal
+client key authenticates only against port **8317**; work keys/accounts are never
+used. `ANTHROPIC_API_KEY` is cleared, and upstream Codex OAuth credentials stay on
+Omarchy. No Claude account/login or Claude subscription is needed for inference.
+
+Use plain `claude` outside the Amfaro work context. The default is **Codex 6 Luna**
+(`gpt-6-luna`); `/model` offers Luna, **Codex 6.1 Sol** (`gpt-6.1-sol`) and
+**Codex 6 Astra** (`gpt-6-astra`). Explicit `claude --model <id>` also works.
+`ANTHROPIC_DEFAULT_MODEL` supplies Luna only as a fallback; a choice saved with
+`/model` takes precedence on new sessions. Activation removes the old managed
+`ANTHROPIC_MODEL` forcing Luna only if it still matches the previous managed
+value, preserving operator changes and the saved `model` field.
+`ANTHROPIC_SMALL_FAST_MODEL` uses Luna; `sonnet`/`haiku` aliases use Luna, `opus`
+uses Sol, and `fable` uses Astra, including managed agent roles. These are
+compatibility aliases, not calls to Claude models. This does not change personal
+Pi selection or work Claude routing.
+
+Each personal picker entry sets `behavesAs = "claude-sonnet-4-6"` for Claude Code's
+client-side capability catalog. The displayed label and outgoing model ID remain
+Codex. This removes the unknown-model startup warning and retains a conservative
+**200K** context/compaction window, below the pinned gateway Codex catalog's
+**272K** window. No 1M window is claimed, and neither context enforcement nor
+compaction is disabled. Client effort/capability defaults come from this
+compatibility profile, not a declaration that Codex is a Claude model. See the
+[official picker reference](https://code.claude.com/docs/en/settings-reference#fields-for-modelpicker)
+and [fallback-default precedence](https://code.claude.com/docs/en/model-config#set-a-default-model-for-new-sessions).
+
+CLIProxyAPI translates Claude Code's Messages/streaming/tools to Codex Responses.
+This is not an Anthropic-supported non-Claude backend; compatibility and
+provider policies can change. It uses the personal Codex account's access/quota,
+not a free Claude entitlement. Tailscale and the Omarchy gateway must be online;
+there is no silent work-account or native-Claude fallback. Start a new personal
+Claude session to load routing; active agents are never restarted automatically.
+Verify each host in its personal profile with
+`python3 tests/subscription-proxy-claude.py --profile personal --live-default --live` (bounded
+real streaming/read-tool calls, no persisted sessions), or omit `--live` for
+configuration/catalog-only checks. `--live-subagent scout` checks alias routing
+through a real Agent dispatch.
 
 ## Runtime ownership and operations
 
@@ -331,9 +379,10 @@ lockfile. A Mac rebuild is not an Omarchy deployment.
 ```bash
 subscription-proxy deactivate personal
 subscription-proxy deactivate work
-# Work Claude: first set subscriptionProxy.workClaude.enable = false and apply
-# on BOTH hosts, then restore each host's previous owned routing/picker:
+# For Claude rollback, first disable the corresponding workClaude/personalClaude
+# option and apply on BOTH hosts, then restore each host's owned routing/picker:
 subscription-proxy deactivate work --claude
+subscription-proxy deactivate personal --claude
 ```
 
 This restores only owned client settings from a private host-local rollback
@@ -350,9 +399,14 @@ Tests:
 - `subscription-proxy-installed.py`: installed Tailscale/auth/state checks and
   exact official-panel content hash; use `--server` on Omarchy.
 - `subscription-proxy-claude.py`: run with explicit work `mise exec` on each
-  host to verify installed profiles, client auth, source/installed role aliases,
-  four alias targets and six picker IDs against the live gateway catalog, and
-  minimum Claude version (network metadata only, no inference by default).
+  host for work, or `--profile personal` in personal context. Verifies installed
+  profiles, client auth, source/installed role aliases, all configured alias
+  targets and picker IDs against the live gateway catalog, and minimum Claude
+  version (network metadata only, no inference by default).
+  Personal `--live-default` also checks actual routing without a `--model`
+  override, respecting the saved picker choice. Personal live checks reject the
+  unknown-catalog warning and require the safe 200K client window; installed
+  checks verify that the central Codex catalog supports at least that window.
   `--live-subagent scout --live-subagent researcher --live-subagent planner`
   makes bounded actual Agent dispatches, checks child Read calls and exact
   managed model usage without overriding the child's model. The parent uses a

@@ -51,11 +51,12 @@ universal token unnecessarily. This setup's original pairing used the existing
 dashboard user on pi-02; credentials stayed in process memory and were not
 copied to Omarchy. Preserve existing files rather than overwriting them.
 
-Before activation, check the actual Omarchy snapshot for divergence and transfer
-only intended changes. Keep its existing lockfile and unrelated edits. Follow
+Before activation, check the verified Omarchy Git task worktree for divergence
+and transfer only intended changes. Preserve unrelated edits and host-specific
+locked revisions. Follow
 [the Omarchy activation procedure](omarchy-agents.md#apply); never run macOS
 rebuild tasks on this machine. The current source is
-`/home/johna/dev/src/system-config-amfaro`.
+`/home/johna/dev/src/system-config/.worktrees/consolidate-omarchy-config`.
 
 The unit skips startup if pairing files are absent. Once provisioned:
 
@@ -80,7 +81,7 @@ python3 tests/omarchy-beszel.py
 On Omarchy after activation:
 
 ```bash
-python3 /home/johna/dev/src/system-config-amfaro/tests/omarchy-beszel.py --installed
+python3 /home/johna/dev/src/system-config/.worktrees/consolidate-omarchy-config/tests/omarchy-beszel.py --installed
 ```
 
 The test checks evaluated host-only ownership, file-based credentials, disabled

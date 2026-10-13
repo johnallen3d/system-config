@@ -1357,9 +1357,49 @@ def engineering_providers(m, request):
             'productionReady':False,'retained':str(root)}
 
 
+def engineering_source(m, value):
+    """Resolve an explicit ordinary-repository source; never fall back to a snapshot.
+
+    The source is an input to fresh engineering evidence, not permission to
+    rewrite historical receipts or accept different code/lock bytes.
+    """
+    p.require(isinstance(value,str) and value and Path(value).is_absolute()
+              and '..' not in Path(value).parts,'explicit absolute engineering sourceRoot required')
+    source=Path(value)
+    home=Path(m['vault']).parent
+    repository=(home/'dev/src/system-config').resolve(strict=True)
+    p.require(source.resolve(strict=True)==source and source.is_dir()
+              and source.stat().st_uid==os.getuid(),'canonical user-owned engineering source required')
+    p.require(source==repository or (source.parent==repository/'.worktrees'
+              and re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*',source.name)),
+              'engineering source must be the ordinary system-config checkout or its task worktree')
+    path=m['environment'].get('PATH','')
+    git=shutil.which('git',path=path)
+    p.require(git is not None,'pinned engineering Git executable required')
+    result=subprocess.run([git,'-c','core.fsmonitor=false','rev-parse',
+                           '--path-format=absolute','--show-toplevel','--git-common-dir'],
+                          cwd=source,env={'HOME':str(home),'PATH':path,'LC_ALL':'C',
+                          'GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null'},
+                          capture_output=True,text=True,timeout=5)
+    p.require(result.returncode==0 and result.stdout.splitlines()==[
+              str(source),str(repository/'.git')],
+              'verified ordinary system-config Git checkout/worktree required')
+    registered=subprocess.run([git,'-c','core.fsmonitor=false','worktree','list','--porcelain','-z'],
+                              cwd=source,env={'HOME':str(home),'PATH':path,'LC_ALL':'C',
+                              'GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null'},
+                              capture_output=True,text=True,timeout=5)
+    records=registered.stdout.split('\0\0')
+    matching=[record.split('\0') for record in records
+              if 'worktree '+str(source) in record.split('\0')]
+    p.require(registered.returncode==0 and len(matching)==1
+              and not any(field.startswith('prunable') or field=='bare' for field in matching[0]),
+              'registered non-prunable system-config worktree required')
+    return source
+
+
 def engineering_ready(m, request):
     """Join actual installed, provider, retained NAS and live metadata evidence."""
-    p.require(isinstance(request,dict) and set(request)=={'operatorEvidence','sourceBaseline','peers','packet'},
+    p.require(isinstance(request,dict) and set(request)=={'operatorEvidence','sourceBaseline','peers','packet','sourceRoot'},
               'fixed actual integration evidence, never caller PASS flags')
     check(m)
     state=Path(m['paths']['state']); control=state/'controller'
@@ -1431,7 +1471,7 @@ def engineering_ready(m, request):
     for name,sha in tasks.items():
         p.relative(name);p.require(name.startswith(('.mise/tasks/','scripts/'))
             and p.stage.digest(p.stage.read_private(Path(m['vault'])/name,owner=os.getuid()))==sha,'reviewed live task code CAS')
-    source=Path('/home/johna/dev/src/system-config-amfaro')
+    source=engineering_source(m,request['sourceRoot'])
     source_hashes={name:p.stage.digest(p.stage.read_private(source/'modules/home-manager/hermes-native'/name,owner=os.getuid()))
                    for name in code if not name.startswith('@')}
     p.require(all(source_hashes[name]==code[name] for name in source_hashes),'actual active source matches immutable assets')
@@ -1446,7 +1486,7 @@ def engineering_ready(m, request):
              'providerEvidenceSha256':p.signature(control/'engineering-providers.json')['sha256'],
              'operatorEvidence':operator,'nasPacketSha256':packet_sha,'sourceBaseline':baseline,
              'sourceCheckpoint':'LIVE_PRESTOP' if live else 'STOPPED_CONTINUATION',
-             'sourceHashes':source_hashes,'taskCode':tasks,'peers':request['peers'],'recordedAt':time.time(),
+             'sourceRoot':str(source),'sourceHashes':source_hashes,'taskCode':tasks,'peers':request['peers'],'recordedAt':time.time(),
              'runtimeGuard':'PASS','coldImport':'PASS','reverseRecovery':'PASS','writerGate':'PASS',
              'nasRedeployGuard':'PASS','sourceProfileCAS':'PASS','syncthingConvergence':'PASS',
              'scope':'READY_FOR_FRESH_HUMAN_WINDOW_NOT_PRODUCTION_TRANSFER_OR_ACCEPTANCE','retentionDaysMinimum':14}
@@ -1478,7 +1518,7 @@ def engineering_evidence(m):
     p.require(p.signature(providers)['sha256']==receipt.get('providerEvidenceSha256')
               and all(0<=time.time()-row.get('observedAt',0)<=600 for row in t.load(providers)['reports'].values()),
               'actual provider receipt remains current before source stop')
-    source=Path('/home/johna/dev/src/system-config-amfaro')
+    source=engineering_source(m,receipt.get('sourceRoot'))
     for name,sha in receipt['sourceHashes'].items():
         path=source/'flake.lock' if name=='@flake.lock' else source/'modules/home-manager/hermes-native'/name
         p.require(p.stage.digest(p.stage.read_private(path,owner=os.getuid()))==sha,'source/independent lock CAS moved; review before source stop')
@@ -1991,10 +2031,10 @@ def final_gate_evidence(m):
               and all(v.get('status')=='PASS' and 0<=time.time()-v.get('observedAt',0)<=600
                       and p.stage.digest(p.stage.read_private(Path(provider['retained'])/(n+'.stdout')))==v.get('outputSha256')
                       for n,v in provider['reports'].items()),'fresh actual read-only Calendar/weather evidence')
-    source=Path('/home/johna/dev/src/system-config-amfaro')
+    prior=t.load(control/'engineering.json')
+    source=engineering_source(m,prior.get('sourceRoot'))
     p.require(all(p.stage.digest(p.stage.read_private(source/'modules/home-manager/hermes-native'/n,owner=os.getuid()))==sha
                   for n,sha in code.items() if not n.startswith('@')),'current scoped source/immutable code CAS')
-    prior=t.load(control/'engineering.json')
     p.require(p.stage.digest(p.stage.read_private(source/'flake.lock',owner=os.getuid()))==prior['sourceHashes']['@flake.lock'],
               'independent source lock unchanged')
     ledger=t.load(control/'task-code.json')

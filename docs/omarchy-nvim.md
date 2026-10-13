@@ -58,9 +58,9 @@ yanks and simulates a terminal paste response without changing a real clipboard.
 ## Deployment
 
 Follow the [shared deployment procedure](omarchy-agents.md#apply): inspect the
-actual `~/dev/src/system-config-amfaro` snapshot, compare affected files, transfer
-only intended changes, and preserve its separate lockfile and unrelated edits.
-A local Mac change or commit does not synchronize that snapshot.
+verified Git task worktree under `~/dev/src/system-config/.worktrees/`, compare
+affected files, and transfer only intended changes, preserving unrelated edits.
+A local Mac change or commit does not synchronize that Omarchy worktree.
 
 For the initial migration, move the **unmanaged** `~/.config/nvim` directory to
 `~/.local/state/nvim-migration/<timestamp>/config` after reviewing its contents.
@@ -71,7 +71,7 @@ Do not force Home Manager links or use blanket automatic backups. Leave existing
 Build and activate as `johna` with Bash explicitly over SSH:
 
 ```bash
-cd ~/dev/src/system-config-amfaro
+cd ~/dev/src/system-config/.worktrees/consolidate-omarchy-config
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
 nix build --no-write-lock-file \

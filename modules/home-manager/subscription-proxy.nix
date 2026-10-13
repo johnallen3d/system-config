@@ -78,6 +78,41 @@
       ];
     };
   });
+  # Personal Claude Code needs no Anthropic account: all aliases use Codex.
+  personalClaudeSettings = pkgs.writeText "subscription-proxy-personal-claude.json" (builtins.toJSON {
+    env = {
+      # A fallback, not a forced selection: /model choices survive new sessions.
+      ANTHROPIC_DEFAULT_MODEL = "gpt-6-luna";
+      ANTHROPIC_SMALL_FAST_MODEL = "gpt-6-luna";
+      ANTHROPIC_DEFAULT_OPUS_MODEL = "gpt-6.1-sol";
+      ANTHROPIC_DEFAULT_SONNET_MODEL = "gpt-6-luna";
+      ANTHROPIC_DEFAULT_HAIKU_MODEL = "gpt-6-luna";
+      ANTHROPIC_DEFAULT_FABLE_MODEL = "gpt-6-astra";
+    };
+    modelPicker = {
+      replaceBuiltInOptions = true;
+      # Client capability compatibility only; outgoing IDs remain Codex.
+      # Sonnet 4.6 (without [1m]) keeps a safe 200k window, below the
+      # gateway's 272k Codex catalog limit. Never claim a 1M Codex window.
+      options = [
+        {
+          model = "gpt-6-luna";
+          label = "Codex 6 Luna";
+          behavesAs = "claude-sonnet-4-6";
+        }
+        {
+          model = "gpt-6.1-sol";
+          label = "Codex 6.1 Sol";
+          behavesAs = "claude-sonnet-4-6";
+        }
+        {
+          model = "gpt-6-astra";
+          label = "Codex 6 Astra";
+          behavesAs = "claude-sonnet-4-6";
+        }
+      ];
+    };
+  });
   refreshArgs = ["${lib.getExe manager}" "refresh-go" "--command" "${lib.getExe manager}"] ++ lib.optional cfg.server.enable "--server";
   refreshEnv = {
     HOME = homeDir;
@@ -118,6 +153,11 @@ in {
       default = true;
       description = "Manage work Claude Code proxy routing and its curated model picker on every activation.";
     };
+    personalClaude.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Manage personal Claude Code through the isolated Codex gateway, without Claude subscription routes.";
+    };
     address = lib.mkOption {
       type = lib.types.str;
       default = "100.97.112.40";
@@ -137,7 +177,8 @@ in {
       ] ''
         if [ -z "''${DRY_RUN:-}" ]; then
           ${lib.getExe manager} configure-client --command ${lib.getExe manager} \
-            ${lib.optionalString cfg.workClaude.enable "--claude-settings ${workClaudeSettings}"}
+            ${lib.optionalString cfg.workClaude.enable "--claude-settings ${workClaudeSettings}"} \
+            ${lib.optionalString cfg.personalClaude.enable "--personal-claude-settings ${personalClaudeSettings}"}
         fi
       '';
     home.activation.subscriptionProxyServer =

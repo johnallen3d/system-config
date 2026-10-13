@@ -205,6 +205,100 @@ class ManagerTests(unittest.TestCase):
             manager.configure_work_claude(settings)
         self.assertFalse((manager.ROOT / "selected.json").exists())
 
+    @staticmethod
+    def personal_claude_settings():
+        return {
+            "env": {"ANTHROPIC_DEFAULT_MODEL": "gpt-6-luna", "ANTHROPIC_SMALL_FAST_MODEL": "gpt-6-luna",
+                    **{"ANTHROPIC_DEFAULT_" + alias.upper() + "_MODEL": model
+                       for alias, model in claude_checks.PERSONAL_ALIASES.items()}},
+            "modelPicker": {"replaceBuiltInOptions": True, "options": [
+                {"model": model, "label": label, "behavesAs": "claude-sonnet-4-6"}
+                for model, label in claude_checks.PERSONAL_MODELS.items()]}}
+
+    def test_personal_claude_codex_routing_is_offline_isolated_and_reversible(self):
+        personal = self.home / ".config/claude-personal/settings.json"
+        work = self.home / ".config/claude-gmatter/settings.json"
+        original = {"permissions": {"defaultMode": "default"}, "hooks": {"existing": []},
+                    "env": {"CUSTOM": "keep", "ANTHROPIC_AUTH_TOKEN": "old-personal-test-token"},
+                    "modelPicker": {"options": [{"model": "old-model"}]}}
+        manager.private_json(personal, original)
+        manager.private_json(work, {"sentinel": "work-untouched"})
+        auth = personal.parent / ".credentials.json"
+        manager.private_json(auth, {"sentinel": "native-auth-untouched"})
+        settings = self.personal_claude_settings()
+        with patch.object(manager, "request", side_effect=AssertionError("activation must work offline")):
+            manager.client_config("/bin/subscription-proxy", personal_claude_settings=settings)
+        first = manager.load_json(personal)
+        self.assertEqual(first["env"]["ANTHROPIC_BASE_URL"], "http://100.97.112.40:8317")
+        self.assertEqual(first["env"]["ANTHROPIC_AUTH_TOKEN"], "personal-test-client")
+        self.assertEqual(first["env"]["ANTHROPIC_API_KEY"], "")
+        self.assertEqual(first["env"]["ANTHROPIC_DEFAULT_MODEL"], "gpt-6-luna")
+        self.assertNotIn("ANTHROPIC_MODEL", first["env"])
+        self.assertEqual(first["permissions"], original["permissions"])
+        self.assertEqual(first["hooks"], original["hooks"])
+        self.assertEqual(first["env"]["CUSTOM"], "keep")
+        self.assertEqual(first["modelPicker"], settings["modelPicker"])
+        self.assertEqual(manager.load_json(work), {"sentinel": "work-untouched"})
+        self.assertEqual(manager.load_json(auth), {"sentinel": "native-auth-untouched"})
+        self.assertNotIn("claude", manager.load_json(manager.ROOT / "selected.json"))
+        manager.client_config("/bin/subscription-proxy", self.managed_claude_settings(), settings)
+        work_routed = manager.load_json(work)
+        self.assertEqual(work_routed["env"]["ANTHROPIC_AUTH_TOKEN"], "work-test-client")
+        manager.deactivate("personal", claude=True)
+        self.assertEqual(manager.load_json(personal), original)
+        self.assertEqual(manager.load_json(work), work_routed)
+        self.assertTrue(manager.load_json(manager.ROOT / "selected.json")["claude"])
+        manager.client_config("/bin/subscription-proxy", personal_claude_settings=settings)
+        self.assertEqual(manager.load_json(personal), first)
+        manager.deactivate("work", claude=True)
+        self.assertEqual(manager.load_json(personal), first)
+        self.assertEqual(manager.load_json(work)["sentinel"], "work-untouched")
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", manager.load_json(work)["env"])
+
+    def test_personal_claude_retires_forced_model_and_keeps_saved_choice_and_rollback(self):
+        path = self.home / ".config/claude-personal/settings.json"
+        original = {"model": "gpt-6.1-sol", "env": {"CUSTOM": "keep"}}
+        manager.private_json(path, original)
+        settings = self.personal_claude_settings()
+        previous = dict(settings["env"])
+        previous.pop("ANTHROPIC_DEFAULT_MODEL")
+        previous["ANTHROPIC_MODEL"] = "gpt-6-luna"
+        manager.save_rollback("personal", True, previous)
+        manager.private_json(path, {**original, "env": {**original["env"], **previous}})
+        manager.private_json(manager.ROOT / "selected.json", {"personalClaude": True, "personalClaudeModels": previous})
+        # The original picker was absent before the old managed installation.
+        backup = manager.load_json(manager.ROOT / "rollback.json")
+        backup["personalClaudePicker"] = {"present": False, "value": None}
+        manager.private_json(manager.ROOT / "rollback.json", backup)
+        manager.client_config("/bin/subscription-proxy", personal_claude_settings=settings)
+        current = manager.load_json(path)
+        self.assertEqual(current["model"], "gpt-6.1-sol")
+        self.assertNotIn("ANTHROPIC_MODEL", current["env"])
+        self.assertEqual(current["env"]["ANTHROPIC_DEFAULT_MODEL"], "gpt-6-luna")
+        manager.client_config("/bin/subscription-proxy", personal_claude_settings=settings)
+        self.assertEqual(manager.load_json(path), current)
+        manager.deactivate("personal", claude=True)
+        self.assertEqual(manager.load_json(path), original)
+
+    def test_retired_claude_environment_preserves_operator_changes(self):
+        path = self.home / ".config/claude-personal/settings.json"
+        manager.private_json(path, {"env": {"ANTHROPIC_MODEL": "operator-choice"}})
+        manager.private_json(manager.ROOT / "selected.json", {
+            "personalClaude": True, "personalClaudeModels": {"ANTHROPIC_MODEL": "gpt-6-luna"}})
+        manager.configure_claude("personal", self.personal_claude_settings())
+        self.assertEqual(manager.load_json(path)["env"]["ANTHROPIC_MODEL"], "operator-choice")
+
+    def test_personal_claude_rejects_claude_targets_and_permission_changes(self):
+        settings = self.personal_claude_settings()
+        settings["modelPicker"]["options"][0]["model"] = "claude-opus-5-5"
+        with self.assertRaisesRegex(ValueError, "only curated Codex"):
+            manager.configure_claude("personal", settings)
+        settings["modelPicker"]["options"][0]["model"] = "gpt-6-luna"
+        settings["permissions"] = {"defaultMode": "bypassPermissions"}
+        with self.assertRaisesRegex(ValueError, "unrelated settings"):
+            manager.configure_claude("personal", settings)
+        self.assertFalse((manager.ROOT / "selected.json").exists())
+
     def test_scope_and_activation_are_guarded(self):
         with patch.object(manager, "provider_ready", return_value=False):
             with self.assertRaises(ValueError):

@@ -328,11 +328,28 @@ Start a new work Claude session to load the full policy; do not restart active a
 
 For agent configuration shared by Mac and Omarchy, apply and verify both hosts
 unless the request explicitly targets only one. The Mac's
-`mise update-system --switch-only` does not activate Omarchy. A commit or push
-also does not refresh Omarchy's current `~/dev/src/system-config-amfaro`
-working-tree snapshot. Before building there, inspect its source and installed
-state, check for divergence, and transfer only the intended changed files;
-preserve unrelated edits and all machine-local credentials.
+`mise update-system --switch-only` does not activate Omarchy. Source belongs to
+Omarchy's `~/dev/src/system-config` Git repository and task-linked worktrees; a
+commit or push does not synchronize its source or installed configuration. Inspect
+the actual worktree, lock and installed state, check for divergence, and transfer
+only intended changes; preserve unrelated edits and machine-local credentials.
+
+The former `system-config-poc` and `system-config-amfaro` directories were retired
+in [#781](https://app.fizzy.do/6284043/cards/781). The deployed source was recovered
+into `~/dev/src/system-config/.worktrees/consolidate-omarchy-config` on
+`feature/consolidate-omarchy-config`; the primary checkout's independent dirty
+changes remain untouched. The reconciled branch retains local main's shared lock nodes and isolates
+Omarchy's three deployed revisions in explicit host-only inputs; approved asset
+bytes remain unchanged. See [source reconciliation](omarchy-source-consolidation.md). The pre-transition reconciliation build reproduced exact installed Hermes
+metadata and unit bytes. The #781 source-path repair was then deployed within
+John's explicitly authorized native-only update, preserving original receipts
+and recording a separate exact code approval. The [#780](https://app.fizzy.do/6284043/cards/780) guard repair was
+activated and pending #779 personal instructions were verified without restarting
+Hermes or changing receipts, credentials or jobs. Ordinary activation is permitted
+only when the read-only guard approves the unchanged live identity; this is not
+restart, rearming or code-change approval. The installed engineering
+checks now use explicitly bound, registered Git source paths. Recovery archives are preservation
+evidence, not activation targets.
 
 Ordinary SSH commands use Omarchy's Fish login shell. Execute Bash scripts with
 `ssh johna@omarchy 'bash -s'` and pass the script on stdin. For noninteractive
@@ -340,7 +357,7 @@ work commands use `mise -C ~/dev/src/amfaro exec -- ...`. Give test scripts
 absolute paths because `mise -C` changes the command's working directory, e.g.:
 
 ```bash
-mise -C ~/dev/src/amfaro exec -- python3 /home/johna/dev/src/system-config-amfaro/tests/amfaro-mise.py --installed
+mise -C ~/dev/src/amfaro exec -- python3 /home/johna/dev/src/system-config/.worktrees/consolidate-omarchy-config/tests/amfaro-mise.py --installed
 ```
 
 Verify installed config and effective profile behavior on each host after
@@ -350,12 +367,13 @@ agents or Herdr servers. An unreachable or unverified host means a partial
 deployment: keep its Fizzy card open and hand off the missing host/action.
 Documentation-only changes need no activation.
 
-On Omarchy as `johna`, from the system-config checkout (currently the staged
-working-tree snapshot at `~/dev/src/system-config-amfaro`):
+For an unchanged-identity activation that passes the guard, use the verified
+task worktree as `johna` (not the stale dirty primary checkout):
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
+cd ~/dev/src/system-config/.worktrees/consolidate-omarchy-config
 nix build --no-write-lock-file \
   'path:.#homeConfigurations."johna@omarchy".activationPackage' --out-link result-agents
 ./result-agents/activate
@@ -465,7 +483,8 @@ an unreachable Omarchy or any package/plugin failure returns nonzero and means
 the shared refresh is partial. No agents or servers are restarted automatically.
 
 Use `mise run harness-refresh --local-only` for an explicitly Mac-only refresh.
-On Omarchy, run `mise run harness-refresh` from `~/dev/src/system-config-amfaro`;
+On Omarchy, run `mise run harness-refresh` from the verified Git task worktree
+(currently `~/dev/src/system-config/.worktrees/consolidate-omarchy-config`);
 Linux always refreshes only itself and never connects back to the Mac.
 
 Validate orchestration offline with `mise exec -- python3 tests/harness-refresh.py`

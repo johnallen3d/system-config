@@ -3,6 +3,17 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # #781: retain Omarchy's deployed inputs without downgrading other hosts.
+    # Updating these pins is a separate, reviewed deployment/identity change.
+    omarchyNixpkgs.url = "github:NixOS/nixpkgs/151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4";
+    omarchyHomeManager = {
+      url = "github:nix-community/home-manager/fae6e9e42c3b762ab47635cddcfaf6f52374a61b";
+      inputs.nixpkgs.follows = "omarchyNixpkgs";
+    };
+    omarchyHerdrProjectPicker = {
+      url = "github:johnallen3d/herdr-project-picker/70219b8e1157f85dab8a8b9cf3b67907e6ca969d";
+      flake = false;
+    };
     hermes = {
       # Native staging foundation (#755); upstream owns its sealed Python/npm locks.
       url = "github:NousResearch/hermes-agent/a19160bbf02dc37c57ff47cf0eaa4a3ab8ee43dc";
@@ -40,6 +51,9 @@
     nix-darwin,
     nixpkgs,
     yem,
+    omarchyNixpkgs,
+    omarchyHomeManager,
+    omarchyHerdrProjectPicker,
     ...
   }: let
     user = "john.allen";
@@ -76,12 +90,15 @@
 
     homeConfigurations = {
       # Keep Omarchy isolated from the shared dotfiles and desktop setup.
-      "johna@omarchy" = home-manager.lib.homeManagerConfiguration {
-        pkgs = import nixpkgs {
+      "johna@omarchy" = omarchyHomeManager.lib.homeManagerConfiguration {
+        pkgs = import omarchyNixpkgs {
           system = "x86_64-linux";
           overlays = [(import ./lib/worktrunk-overlay.nix)];
         };
-        extraSpecialArgs = {inherit herdrProjectPicker hermes lop;};
+        extraSpecialArgs = {
+          inherit hermes lop;
+          herdrProjectPicker = omarchyHerdrProjectPicker;
+        };
         modules = [./hosts/omarchy.nix];
       };
       "john.allen@xcel" = makeHomeManagerSystem {

@@ -55,21 +55,46 @@ a guarantee against global `/etc` changes; the Home Manager POC itself does
 not manage shell startup files. Review the installer's plan before confirming.
 Do not grant passwordless sudo just for this POC.
 
-The original experiment's working-tree snapshot remains at
-`~/dev/src/system-config-poc`, and its pre-install shell/desktop fingerprint is
-stored at `~/.cache/nix-home-manager-poc/baseline.sha256`. That snapshot is retained
-untouched. The current applied snapshot is `~/dev/src/system-config-amfaro`,
-including shared directory-selected agent profiles (Fizzy #708); use it rather
-than reactivating the older POC.
+The original experiment's working-tree snapshot was retired on 2026-10-12;
+`~/dev/src/system-config-poc` no longer exists. Its unchanged recovery copy is at
+`~/.local/state/system-config-retired/20261012T191329Z/system-config-poc`, with
+verified file hashes and separately retained Nix result roots alongside it.
+Do not activate this historical copy. The pre-install shell/desktop fingerprint
+remains at `~/.cache/nix-home-manager-poc/baseline.sha256`.
+
+The later non-Git deployment snapshot was also retired on 2026-10-12 at John's
+explicit request. `~/dev/src/system-config-amfaro` no longer exists and has no
+compatibility symlink. Its unchanged recovery copy is at
+`~/.local/state/system-config-retired/20261012T192019Z/system-config-amfaro`, with
+verified file hashes and separately retained Nix result roots alongside it.
+Neither archive is an active deployment source; do not activate either archive.
+
+Source consolidation is tracked in [Fizzy #781](https://app.fizzy.do/6284043/cards/781).
+Deployment source now belongs to the normal `~/dev/src/system-config` Git
+repository. The recovered deployed version is in its linked worktree
+`.worktrees/consolidate-omarchy-config` on `feature/consolidate-omarchy-config`;
+the stale primary checkout's independent uncommitted changes remain untouched.
+The recovered build preserves exact installed Hermes metadata and unit bytes,
+including the three historical bytecode artifacts in its approved fileset.
+
+The installed Hermes service was not restarted or changed by recovery, but its
+approved runtime still hard-codes the removed source path in engineering/final-gate
+checks. Those source-dependent operations remain blocked, not bypassed.
+[The #780 guard repair](https://app.fizzy.do/6284043/cards/780) was activated from
+the recovered Git worktree and the pending personal instructions were verified;
+Hermes remained on the same PID/invocation and protected state stayed unchanged.
+Unchanged-identity activations may pass that guard; changed Hermes code, restart
+or engineering operations require the reviewed lifecycle. See the
+[current Git-based deployment procedure](omarchy-agents.md#apply).
 
 ## Build and apply on Omarchy (no sudo)
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
-cd ~/dev/src/system-config-amfaro
+cd ~/dev/src/system-config/.worktrees/consolidate-omarchy-config
 
-# path: includes the staged working tree without needing a git commit.
+# Activate only when the guard approves unchanged live identity; no restart permission.
 nix build --no-write-lock-file \
   'path:.#homeConfigurations."johna@omarchy".activationPackage' \
   --out-link result
@@ -175,6 +200,9 @@ runbook is pi-cielo's `docs/hermes-native-operations.md`.
 
 The #755–#762 sections below are **historical preparation checkpoints**, not
 current NAS ownership or instructions to repeat completed cutover/acceptance.
+For the later Home Manager stop, approved recovery, and activation guard, see
+[Hermes activation lifecycle](hermes-activation-lifecycle.md) (#771). Never use
+historical generations as automatic rollback or restart targets.
 
 ## Native Hermes foundation (#755)
 

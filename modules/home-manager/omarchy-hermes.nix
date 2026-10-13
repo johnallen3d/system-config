@@ -32,7 +32,19 @@
     cache = "${homeDir}/.cache/hermes-native/staging/baseline-0.21.2";
   };
   workspace = "${paths.state}/workspace";
-  assets = ./hermes-native;
+  # Content-address only the approved runtime/fixtures, not the whole flake.
+  # Preserve the real modules/... + tests/... layout used by installed fixtures.
+  # Keep every runtime asset in the approval identity; no hash normalization.
+  hermesSource = lib.fileset.toSource {
+    root = ../..;
+    fileset = lib.fileset.unions [
+      ./hermes-native
+      ../../tests/hermes-native-production-state.py
+      ../../tests/hermes-native-production-transfer.py
+      ../../tests/hermes-native-production-writers.py
+    ];
+  };
+  assets = "${hermesSource}/modules/home-manager/hermes-native";
   tools = import ./hermes-native/tools.nix { inherit pkgs runtimePkgs; };
   taskPath = lib.makeBinPath ((builtins.attrValues tools) ++ [
     runtimePkgs.bash runtimePkgs.coreutils runtimePkgs.gnugrep runtimePkgs.gnused
@@ -107,7 +119,7 @@
     TERMINAL_CWD = workspace;
   };
   production = import ./hermes-native/production-module.nix {
-    inherit config lib pkgs runtime runtimePkgs environment assets version;
+    inherit config lib pkgs runtime runtimePkgs environment assets hermesSource version;
     revision = hermes.rev;
   };
   envArgs = lib.escapeShellArgs (lib.mapAttrsToList (key: value: "${key}=${value}") environment);
@@ -260,9 +272,20 @@ in {
   options.nativeHermes.enable = lib.mkEnableOption "isolated native Hermes foundation on Omarchy";
 
   config = lib.mkIf cfg.enable {
-    home.packages = [launcher production.launcher];
+    home.packages = [launcher production.launcher (pkgs.writeShellScriptBin "hermes-native-lifecycle" ''
+      exec ${pkgs.python3}/bin/python3 -I -B ${./hermes-activation-check.py} \
+        --home ${lib.escapeShellArg homeDir} --status "$@"
+    '')];
     home.file.".local/bin/hermes-production".source = "${production.launcher}/bin/hermes-production";
     xdg.configFile."hermes-native/production.json".text = builtins.toJSON production.metadata;
+    # Passive operational guidance is deliberately outside the runtime identity.
+    xdg.configFile."hermes-native/activation-lifecycle.md".source = ../../docs/hermes-activation-lifecycle.md;
+    # Refuse a live identity/unit replacement BEFORE any activation writes.
+    # The first migration to content-addressed assets also needs a controlled stop.
+    home.activation.hermesNativeLifecycleCheck = lib.hm.dag.entryBefore ["writeBoundary"] ''
+      ${pkgs.python3}/bin/python3 -I -B ${./hermes-activation-check.py} \
+        --home ${lib.escapeShellArg homeDir} --candidate-generation "$newGenPath"
+    '';
     home.activation.hermesNativeProduction = production.activation;
     systemd.user.services.hermes-production = production.service;
     # Preserve Omarchy's user-owned ~/.local/bin/hermes and its mise installer.

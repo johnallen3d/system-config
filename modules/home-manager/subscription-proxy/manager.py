@@ -308,24 +308,58 @@ def refresh_go(command, server=False, cached=False, allow_shrink=False):
         print("No inference calls, profile/default changes, or agent restarts. See private go-catalog.json for exclusions.")
 
 
-def configure_work_claude(settings):
+def claude_profile(profile):
+    """Keep existing work state keys compatible; personal state is disjoint."""
+    if profile not in PROFILES:
+        raise ValueError("Unknown Claude profile.")
+    dirname = "claude-personal" if profile == "personal" else "claude-gmatter"
+    prefix = "personalClaude" if profile == "personal" else "claude"
+    return Path.home() / ".config" / dirname / "settings.json", prefix
+
+
+def configure_claude(profile, settings):
     """Apply Nix-owned routing/picker offline; central login is provisioned separately."""
     mapped = settings["env"]
     allowed = {"ANTHROPIC_DEFAULT_" + kind + "_MODEL" for kind in ("OPUS", "SONNET", "HAIKU", "FABLE")}
+    if profile == "personal":
+        allowed.update({"ANTHROPIC_DEFAULT_MODEL", "ANTHROPIC_SMALL_FAST_MODEL"})
     if set(settings) != {"env", "modelPicker"} or set(mapped) != allowed:
-        raise ValueError("Invalid managed work Claude settings; refusing unrelated settings changes.")
-    save_rollback("work", True, mapped)
+        raise ValueError(f"Invalid managed {profile} Claude settings; refusing unrelated settings changes.")
+    if profile == "personal":
+        targets = set(mapped.values()) | {row["model"] for row in settings["modelPicker"]["options"]}
+        if not targets or not targets <= set(CODEX_MODELS):
+            raise ValueError("Personal Claude must use only curated Codex routes.")
+    path, prefix = claude_profile(profile)
+    save_rollback(profile, True, mapped)
     backup = load_json(ROOT / "rollback.json")
-    if "claudePicker" not in backup:
-        data = load_json(Path.home() / ".config/claude-gmatter/settings.json")
-        backup["claudePicker"] = {"present": "modelPicker" in data, "value": data.get("modelPicker")}
+    if prefix + "Picker" not in backup:
+        data = load_json(path)
+        backup[prefix + "Picker"] = {"present": "modelPicker" in data, "value": data.get("modelPicker")}
         private_json(ROOT / "rollback.json", backup)
     selected = load_json(ROOT / "selected.json")
-    selected.update(claude=True, claudeModels=mapped, claudePicker=settings["modelPicker"])
+    # Retire previously owned variables only while they still match our last
+    # write. In particular, drop the old forced personal ANTHROPIC_MODEL while
+    # preserving saved /model choices, operator edits and the original rollback.
+    previous = selected.get(prefix + "Models", {})
+    retired = set(previous) - set(mapped)
+    data = load_json(path)
+    env = data.get("env", {})
+    changed = False
+    for name in retired:
+        if name in env and env[name] == previous[name]:
+            env.pop(name)
+            changed = True
+    if changed:
+        private_json(path, data)
+    selected.update({prefix: True, prefix + "Models": mapped, prefix + "Picker": settings["modelPicker"]})
     private_json(ROOT / "selected.json", selected)
 
 
-def client_config(command, claude_settings=None):
+def configure_work_claude(settings):
+    configure_claude("work", settings)
+
+
+def client_config(command, claude_settings=None, personal_claude_settings=None):
     def model(identifier):
         return {"id": identifier, "reasoning": True, "input": ["text"],
                 "contextWindow": 128000, "maxTokens": 32000,
@@ -348,6 +382,8 @@ def client_config(command, claude_settings=None):
         private_json(path, data)
     if claude_settings is not None:
         configure_work_claude(claude_settings)
+    if personal_claude_settings is not None:
+        configure_claude("personal", personal_claude_settings)
     apply_selection()
 
 
@@ -365,16 +401,18 @@ def apply_selection():
             if old.startswith("opencode-go/"):
                 entry["model"] = "subscription-go/go/" + old.split("/", 1)[1]
         private_json(path, data)
-    if ready.get("claude"):
-        path = Path.home() / ".config/claude-gmatter/settings.json"
+    for profile in PROFILES:
+        path, prefix = claude_profile(profile)
+        if not ready.get(prefix):
+            continue
         data = load_json(path)
         env = data.setdefault("env", {})
-        env["ANTHROPIC_BASE_URL"] = load_json(ROOT / "endpoints.json")["work"]
-        env["ANTHROPIC_AUTH_TOKEN"] = credentials()["work"]["client"]
+        env["ANTHROPIC_BASE_URL"] = load_json(ROOT / "endpoints.json")[profile]
+        env["ANTHROPIC_AUTH_TOKEN"] = credentials()[profile]["client"]
         env["ANTHROPIC_API_KEY"] = ""
-        env.update(ready.get("claudeModels", {}))
-        if "claudePicker" in ready:
-            data["modelPicker"] = ready["claudePicker"]
+        env.update(ready.get(prefix + "Models", {}))
+        if prefix + "Picker" in ready:
+            data["modelPicker"] = ready[prefix + "Picker"]
         private_json(path, data)
 
 
@@ -382,10 +420,11 @@ def save_rollback(profile, claude, mapped=None):
     backup = load_json(ROOT / "rollback.json")
     selected = load_json(ROOT / "selected.json")
     if claude:
-        data = load_json(Path.home() / ".config/claude-gmatter/settings.json")
+        path, prefix = claude_profile(profile)
+        data = load_json(path)
         env = data.get("env", {})
         names = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", *(mapped or {})]
-        owned = backup.setdefault("claudeEnv", {})
+        owned = backup.setdefault(prefix + "Env", {})
         for name in names:
             if name not in owned:
                 owned[name] = env.get(name)
@@ -400,27 +439,25 @@ def deactivate(profile, claude=False):
     selected = load_json(ROOT / "selected.json")
     backup = load_json(ROOT / "rollback.json")
     if claude:
-        if profile != "work":
-            raise ValueError("Claude is work-only.")
-        if selected.get("claude"):
-            path = Path.home() / ".config/claude-gmatter/settings.json"
+        path, prefix = claude_profile(profile)
+        if selected.get(prefix):
             data = load_json(path)
             env = data.setdefault("env", {})
-            for name, value in backup.get("claudeEnv", {}).items():
+            for name, value in backup.get(prefix + "Env", {}).items():
                 if value is None:
                     env.pop(name, None)
                 else:
                     env[name] = value
-            if "claudePicker" in backup:
-                picker = backup["claudePicker"]
+            if prefix + "Picker" in backup:
+                picker = backup[prefix + "Picker"]
                 if picker["present"]:
                     data["modelPicker"] = picker["value"]
                 else:
                     data.pop("modelPicker", None)
             private_json(path, data)
-        selected.pop("claude", None)
-        selected.pop("claudeModels", None)
-        selected.pop("claudePicker", None)
+        selected.pop(prefix, None)
+        selected.pop(prefix + "Models", None)
+        selected.pop(prefix + "Picker", None)
     else:
         if selected.get(profile):
             dirname = "pi" if profile == "personal" else "pi-work"
@@ -440,7 +477,9 @@ def deactivate(profile, claude=False):
 
 def activate(profile, claude=False):
     if claude:
-        if profile != "work" or not provider_ready("work", "claude"):
+        if profile != "work":
+            raise ValueError("Personal Claude routing is managed by Home Manager; no Claude login is needed.")
+        if not provider_ready("work", "claude"):
             raise ValueError("The work proxy needs an active Claude login before client selection.")
         models = request("work", "/routing/model-definitions/claude").get("models", [])
         mapped = {}
@@ -559,6 +598,7 @@ def main():
     p = sub.add_parser("configure-client", help=argparse.SUPPRESS)
     p.add_argument("--command", required=True)
     p.add_argument("--claude-settings", type=Path, help=argparse.SUPPRESS)
+    p.add_argument("--personal-claude-settings", type=Path, help=argparse.SUPPRESS)
     p = sub.add_parser("refresh-go", help="Reconcile validated non-Claude Go models; no inference or agent restart")
     p.add_argument("--command", default=str(Path.home() / ".local/bin/subscription-proxy"), help=argparse.SUPPRESS)
     p.add_argument("--server", action="store_true", help="Reconcile central upstream routing on Omarchy too")
@@ -587,7 +627,8 @@ def main():
             # A persistent timer can fire during systemd activation. Wait for
             # its bounded refresh instead of failing the Home Manager switch.
             with catalog_lock(wait=True):
-                client_config(args.command, load_json(args.claude_settings) if args.claude_settings else None)
+                client_config(args.command, load_json(args.claude_settings) if args.claude_settings else None,
+                          load_json(args.personal_claude_settings) if args.personal_claude_settings else None)
         elif args.action == "refresh-go":
             refresh_go(args.command, args.server, args.cached, args.allow_shrink)
         elif args.action == "seed-server":

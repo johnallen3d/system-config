@@ -75,7 +75,7 @@ close #748 while integration is pending. Never merge or commit without permissio
 - Mac: from the checkout/worktree containing the changes, use the repository-local
   `mise update-system --switch-only`, then `sketchybar --reload`. The rebuild task
   resolves its flake root from its own script location, including task worktrees.
-- Omarchy: compare the actual `~/dev/src/system-config-amfaro` snapshot before
+- Omarchy: compare the actual task worktree under `~/dev/src/system-config/.worktrees/` before
   transferring intended source changes. Preserve unrelated edits and credentials;
   do not run Mac rebuild tasks there. These edits do not change its active Home
   Manager module/package closure, so no activation is needed. If a later change

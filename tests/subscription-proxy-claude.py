@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Verify installed work Claude proxy/picker; --live makes bounded streaming/tool calls.
+"""Verify installed Claude proxy/picker; --live makes bounded streaming/tool calls.
 
-Run through the work mise context on each host. Never emits keys, request bodies,
+Use --profile personal in personal context, or work (default) through work mise on each host. Never emits keys, request bodies,
 provider errors, or raw Claude transcripts; no sessions are persisted.
 """
 import argparse
@@ -27,6 +27,17 @@ MODELS = {
     "gpt-6-astra": "Codex 6 Astra",
 }
 
+PERSONAL_ALIASES = {"haiku": "gpt-6-luna", "opus": "gpt-6.1-sol",
+                    "sonnet": "gpt-6-luna", "fable": "gpt-6-astra"}
+PERSONAL_MODELS = {model: label for model, label in MODELS.items() if model.startswith("gpt-")}
+PROFILE = "work"
+PERSONAL_BEHAVES_AS = "claude-sonnet-4-6"
+PERSONAL_CONTEXT_WINDOW = 200000
+
+
+def assert_no_catalog_warning(output):
+    assert "isn't described by this version's model catalog" not in output, "Unknown-model catalog startup warning"
+
 
 def role_models(directory):
     models = {}
@@ -43,19 +54,23 @@ def role_models(directory):
 def validate_catalog(env, picker, available):
     required = {env[f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"] for alias in ALIASES}
     required.update(row["model"] for row in picker["options"])
+    required.update(env[key] for key in ("ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_MODEL", "ANTHROPIC_SMALL_FAST_MODEL") if key in env)
     missing = required - set(available)
-    assert not missing, "Work gateway does not advertise configured Claude models: " + ", ".join(sorted(missing))
+    assert not missing, "Gateway does not advertise configured Claude Code models: " + ", ".join(sorted(missing))
 
 
 def installed():
     home = Path.home()
-    assert os.environ.get("PI_CODING_AGENT_DIR") == str(home / ".config/pi-work"), "Wrong Pi profile context"
-    assert os.environ.get("CLAUDE_CONFIG_DIR") == str(home / ".config/claude-gmatter"), "Wrong Claude profile context"
+    pi_dir = "pi" if PROFILE == "personal" else "pi-work"
+    claude_dir = "claude-personal" if PROFILE == "personal" else "claude-gmatter"
+    prefix = "personalClaude" if PROFILE == "personal" else "claude"
+    assert os.environ.get("PI_CODING_AGENT_DIR") == str(home / ".config" / pi_dir), "Wrong Pi profile context"
+    assert os.environ.get("CLAUDE_CONFIG_DIR") == str(home / ".config" / claude_dir), "Wrong Claude profile context"
     root = home / ".config/subscription-proxy"
-    settings = json.loads((home / ".config/claude-gmatter/settings.json").read_text())
+    settings = json.loads((home / ".config" / claude_dir / "settings.json").read_text())
     selected = json.loads((root / "selected.json").read_text())
-    credentials = json.loads((root / "credentials.json").read_text())["profiles"]["work"]
-    endpoint = json.loads((root / "endpoints.json").read_text())["work"]
+    credentials = json.loads((root / "credentials.json").read_text())["profiles"][PROFILE]
+    endpoint = json.loads((root / "endpoints.json").read_text())[PROFILE]
     env = settings["env"]
     assert env["ANTHROPIC_BASE_URL"] == endpoint
     assert env["ANTHROPIC_AUTH_TOKEN"] == credentials["client"]
@@ -67,28 +82,41 @@ def installed():
     assert not os.environ.get("CLAUDE_CODE_SUBAGENT_MODEL"), "Inherited subagent model override needs review"
     assert not env.get("CLAUDE_CODE_SUBAGENT_MODEL"), "Settings subagent model override needs review"
     role_models(ROOT / "modules/home-manager/claude-agents")
-    role_models(home / ".config/claude-gmatter/agents")
+    role_models(home / ".config" / claude_dir / "agents")
     picker = settings["modelPicker"]
     assert picker["replaceBuiltInOptions"] is True
     assert {row["model"]: row["label"] for row in picker["options"]} == MODELS
-    assert selected["claude"] is True and selected["claudePicker"] == picker
+    assert selected[prefix] is True and selected[prefix + "Picker"] == picker
+    if PROFILE == "personal":
+        assert "ANTHROPIC_MODEL" not in env and not os.environ.get("ANTHROPIC_MODEL"), "Forced model overrides saved /model choice"
+        assert env["ANTHROPIC_DEFAULT_MODEL"] == env["ANTHROPIC_SMALL_FAST_MODEL"] == "gpt-6-luna"
+        for key in ("ANTHROPIC_DEFAULT_MODEL", "ANTHROPIC_SMALL_FAST_MODEL"):
+            assert os.environ.get(key, env[key]) == env[key], f"Inherited {key} overrides personal Codex routing"
+        assert all(row.get("behavesAs") == PERSONAL_BEHAVES_AS for row in picker["options"])
+        for key in ("DISABLE_COMPACT", "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT", "CLAUDE_CODE_DISABLE_1M_CONTEXT", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"):
+            assert not env.get(key) and not os.environ.get(key), f"Unexpected context/compaction override: {key}"
     version = subprocess.check_output(["claude", "--version"], text=True).split()[0]
     assert tuple(map(int, version.split("."))) >= (2, 1, 293), "Claude too old for Haiku 5.5"
     sys.path.insert(0, str(ROOT / "modules/home-manager/subscription-proxy"))
     import manager
-    available = {row["id"] for row in manager.request("work", "/v1/models", management=False).get("data", [])}
+    available = {row["id"] for row in manager.request(PROFILE, "/v1/models", management=False).get("data", [])}
     validate_catalog(env, picker, available)
-    print(f"PASS installed: work profiles/auth, five role aliases, four alias targets and six picker IDs advertised by live CLIProxyAPI (Claude {version}); no inference")
+    if PROFILE == "personal":
+        definitions = manager.request(PROFILE, "/routing/model-definitions/codex").get("models", [])
+        windows = {row["id"]: row.get("context_length", 0) for row in definitions}
+        assert all(windows.get(model, 0) >= PERSONAL_CONTEXT_WINDOW for model in MODELS), "Compatibility window exceeds gateway catalog limit"
+    print(f"PASS installed: {PROFILE} profiles/auth, five role aliases, all alias targets and {len(MODELS)} picker IDs advertised by live CLIProxyAPI (Claude {version}); no inference")
 
 
-def live(model):
+def live(model, use_default=False):
     with tempfile.TemporaryDirectory(prefix="claude-proxy-smoke-") as directory:
         marker = "PROXY_TOOL_" + secrets.token_hex(8)
         Path(directory, "marker.txt").write_text(marker + "\n")
         command = [
             "claude", "--print", "--verbose", "--output-format", "stream-json",
             "--include-partial-messages", "--no-session-persistence",
-            "--model", model, "--tools", "Read", "--allowedTools", "Read",
+            *([] if use_default else ["--model", model]),
+            "--tools", "Read", "--allowedTools", "Read",
             "--disable-slash-commands", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
             "--setting-sources", "user", "--max-budget-usd", "1",
             "Use the Read tool to read marker.txt in the current directory. "
@@ -98,6 +126,8 @@ def live(model):
             result = subprocess.run(command, cwd=directory, capture_output=True, text=True, timeout=240)
         except subprocess.TimeoutExpired:
             raise AssertionError(f"{model}: Claude Code timeout (transcript withheld)") from None
+        if PROFILE == "personal":
+            assert_no_catalog_warning(result.stderr + result.stdout)
         events = []
         for line in result.stdout.splitlines():
             try:
@@ -114,6 +144,8 @@ def live(model):
         assert tool and streaming, f"{model}: missing actual Read tool call or streaming"
         assert marker in outcome.get("result", ""), f"{model}: tool result was not returned"
         assert model in used, f"{model}: requested model not reported in usage; refusing fallback"
+        if PROFILE == "personal":
+            assert used[model].get("contextWindow") == PERSONAL_CONTEXT_WINDOW, f"{model}: unsafe or unexpected client context window"
         print(f"PASS live {model}: actual Claude Code streaming, Read tool execution, exact model usage, no persisted session")
 
 
@@ -140,6 +172,8 @@ def live_subagent(role):
             result = subprocess.run(command, cwd=directory, capture_output=True, text=True, timeout=240)
         except subprocess.TimeoutExpired:
             raise AssertionError(f"{role}: subagent timeout (transcript withheld)") from None
+        if PROFILE == "personal":
+            assert_no_catalog_warning(result.stderr + result.stdout)
         events = []
         for line in result.stdout.splitlines():
             try:
@@ -169,17 +203,33 @@ def live_subagent(role):
         assert child_result, f"{role}: child did not receive the actual Read marker"
         assert all(not event.get("is_error") for event in events if event.get("type") == "result"), f"{role}: a parent/child result failed"
         assert expected in outcome.get("modelUsage", {}), f"{role}: managed {expected} absent from usage; refusing fallback"
-        print(f"PASS live subagent {role}: actual Agent dispatch and child Read, {expected} usage through work proxy, no persisted session")
+        print(f"PASS live subagent {role}: actual Agent dispatch and child Read, {expected} usage through {PROFILE} proxy, no persisted session")
 
 
 def main():
+    global PROFILE, ALIASES, MODELS
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", choices=("personal", "work"), default="work")
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--live-default", action="store_true", help="Test personal default without --model")
     parser.add_argument("--model", choices=MODELS, action="append")
     parser.add_argument("--live-subagent", choices=ROLES, action="append",
                         help="Make a bounded actual Agent dispatch with the installed role (repeatable)")
     args = parser.parse_args()
+    PROFILE = args.profile
+    if PROFILE == "personal":
+        ALIASES, MODELS = PERSONAL_ALIASES, PERSONAL_MODELS
+        if any(model not in MODELS for model in args.model or []):
+            parser.error("Personal live checks accept only Codex models")
     installed()
+    if args.live_default:
+        if PROFILE != "personal":
+            parser.error("--live-default is scoped to personal Codex routing")
+        settings = json.loads((Path.home() / ".config/claude-personal/settings.json").read_text())
+        saved = settings.get("model")
+        expected = PERSONAL_ALIASES.get(saved, saved) if saved and saved != "default" else "gpt-6-luna"
+        assert expected in PERSONAL_MODELS, "Saved personal model needs an explicit Codex-only review"
+        live(expected, use_default=True)
     if args.live:
         for model in args.model or MODELS:
             live(model)
