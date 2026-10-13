@@ -6,6 +6,7 @@
 }: let
   amfaroConfig = "${config.home.homeDirectory}/dev/src/amfaro/mise.toml";
   delegationInstructions = builtins.readFile ./agent-projects/delegation-instructions.md;
+  taskScopeInstructions = builtins.readFile ./agent-projects/task-scope-instructions.md;
   omarchyInstructions = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
 
     ## Arch/Omarchy
@@ -66,11 +67,13 @@
         or push by itself; repository deployment and card-closure gates remain.
 
     ''
+    + taskScopeInstructions
     + delegationInstructions
     + omarchyInstructions;
   workInstructions =
     builtins.readFile ./agent-projects/work-instructions.md
     + "\n"
+    + taskScopeInstructions
     + delegationInstructions
     + omarchyInstructions;
 in {

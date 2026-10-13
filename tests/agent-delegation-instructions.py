@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check delegation policy wiring and installed Pi context without model calls.
+"""Check delegation/task-scope policy wiring and installed Pi context without model calls.
 
 These checks prove instruction delivery, not model compliance or tool enforcement.
 """
@@ -13,6 +13,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "modules/home-manager/agent-projects/delegation-instructions.md"
+TASK_SCOPE = ROOT / "modules/home-manager/agent-projects/task-scope-instructions.md"
 TARGETS = {
     "personal": (".config/pi/AGENTS.md", ".config/claude-personal/CLAUDE.md"),
     "work": (".config/pi-work/AGENTS.md", ".config/claude-gmatter/CLAUDE.md"),
@@ -21,11 +22,13 @@ TARGETS = {
 
 def check_contexts(contexts, linux):
     policy = POLICY.read_text()
+    task_scope = TASK_SCOPE.read_text()
     work = (ROOT / "modules/home-manager/agent-projects/work-instructions.md").read_text()
     for profile, paths in TARGETS.items():
         pi, claude = (contexts[path] for path in paths)
         assert pi == claude, f"{profile}: Pi and Claude instructions differ"
         assert pi.count(policy) == 1, f"{profile}: shared delegation policy missing/duplicated"
+        assert pi.count(task_scope) == 1, f"{profile}: task-scope policy missing/duplicated"
         assert ("## Arch/Omarchy" in pi) == linux, profile
         assert ("## Git worktrees are required" in pi) == (profile == "work"), profile
         assert ("## Personal worktrees by default" in pi) == (profile == "personal"), profile
@@ -123,6 +126,19 @@ def main():
         assert fragment in policy, fragment
     module = (ROOT / "modules/home-manager/agent-projects.nix").read_text()
     assert "builtins.readFile ./agent-projects/delegation-instructions.md" in module
+    assert "builtins.readFile ./agent-projects/task-scope-instructions.md" in module
+    assert module.count("+ taskScopeInstructions") == 2
+    task_scope = TASK_SCOPE.read_text()
+    for fragment in (
+        "Workflow rules constrain", "do not authorize extra deliverables",
+        "ask before expanding scope", "ownership of the exact target",
+        "needs no repository edits or worktree", "smallest verification",
+        "failed optional check is not a blocker", "proportionality to bypass them",
+    ):
+        assert fragment in task_scope, fragment
+    repo_policy = (ROOT / "AGENTS.md").read_text()
+    assert "## Task scope" in repo_policy
+    assert "Direct changes to user-owned external files do not require a Nix rebuild" in repo_policy
     for profile, paths in TARGETS.items():
         for target in paths:
             assert f'"{target}".text = {profile}Instructions;' in module, target

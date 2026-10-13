@@ -2,6 +2,13 @@
 
 Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
+## Task scope
+
+- These repository workflows govern repository and Nix-managed changes. They do not require turning a direct operation on a user-owned external file into repository edits or a worktree.
+- Keep John's requested outcome as the scope boundary. Do not add documentation, tests, or source changes merely to make a broader workflow consistent; ask before adding optional work.
+- Verify the requested outcome directly. Unrelated or optional checks must not become blockers for an otherwise independent operation.
+- All applicable safety, authorization, issue-tracking, and both-host verification requirements still apply to the actual task.
+
 ## Omarchy is already Nix-managed
 
 - John's Omarchy machine **already uses this repository's standalone Home Manager setup** on Arch Linux. Do not assume Omarchy is outside Nix or ask whether it uses Home Manager.
@@ -28,7 +35,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Apply macOS only with the repo-local commands above; never run `darwin-rebuild` or `nix flake update` directly.
 - Rebuild tasks print `nix-rebuild log: <path>` and return the rebuild status. Inspect logs only on failure/request with targeted `rg` (for example `rg -i 'error|fail|warning' "$log"`); never stream a whole log.
 - Prefer Nix to Homebrew. Search first, then add alphabetically to `modules/home-manager/packages/default.nix` (all), `darwin.nix` (macOS), or `linux.nix` (Linux).
-- Apply executable script/config/package changes immediately; use `--switch-only` when inputs are unchanged. A rebuild alone does not reload application config.
+- Apply Nix-managed executable script/config/package changes immediately; use `--switch-only` when inputs are unchanged. Direct changes to user-owned external files do not require a Nix rebuild. A rebuild alone does not reload application config.
 - After applying Herdr config changes, run `herdr server reload-config`.
 - After applying Ghostty config changes, reload each running instance with its `reload_config` action (AppleScript on macOS, `SIGUSR2` on Linux); use the guarded platform behavior in `.mise/tasks/theme-switch` and skip when Ghostty is not running.
 - Never commit unless explicitly requested.
@@ -36,7 +43,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 ## Shared Mac/Omarchy deployment
 
 - Before changing shared agent, project-context, or user-automation config, identify which hosts import it. Unless John explicitly requests a single-host change, changes shared by Mac and Omarchy must be applied and verified on **both**; a Mac rebuild is not an Omarchy deployment.
-- Use the repo-local macOS apply command and Omarchy's standalone Home Manager activation from `docs/omarchy-agents.md`, without updating inputs when unchanged. Do not run macOS tasks on Omarchy.
+- For Nix-managed configuration changes, use the repo-local macOS apply command and Omarchy's standalone Home Manager activation from `docs/omarchy-agents.md`, without updating inputs when unchanged. Do not run macOS tasks on Omarchy.
 - Omarchy deployment source belongs to its `~/dev/src/system-config` Git repository and task-linked worktrees, not standalone snapshots. The former `system-config-poc` and `system-config-amfaro` paths were retired; recovery archives are not deployment sources. The recovered deployment is currently in `.worktrees/consolidate-omarchy-config` on `feature/consolidate-omarchy-config` (#781), while the primary checkout has independent dirty changes. Inspect the actual source, lock, worktree ownership, and installed state before applying; transfer only intended changes after checking divergence. Preserve unrelated remote edits and credentials; stop and report conflicts rather than overwriting them. The deployed #780 guard permits only the exact already-approved live identity. The #781 source-path repair is deployed with a separate exact one-off approval; future code changes still require review and source recovery is never restart permission.
 - SSH connects as `johna@omarchy`; its login shell is Fish. Run Bash scripts explicitly with `bash -s`, and use `mise -C ~/dev/src/amfaro exec -- ...` for noninteractive work-profile commands. Use absolute script paths when `mise -C` changes the working directory.
 - Verify installed config and effective profile/runtime behavior independently on each host, not just source files or build success. Do not restart active agents or Herdr servers merely to refresh environment; report any required agent restart explicitly.
