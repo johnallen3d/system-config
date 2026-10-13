@@ -20,7 +20,8 @@ def main():
         probe.write_text(
             "import json, os, sys\n"
             "print(json.dumps({'pi': os.environ.get('PI_CODING_AGENT_DIR'), "
-            "'claude': os.environ.get('CLAUDE_CONFIG_DIR'), 'args': sys.argv[1:]}))\n"
+            "'claude': os.environ.get('CLAUDE_CONFIG_DIR'), "
+            "'osc52': os.environ.get('PI_CLIPBOARD_OSC52'), 'args': sys.argv[1:]}))\n"
         )
         for agent in ("pi", "claude"):
             source = (home / ".local/bin" / agent).read_text()
@@ -34,21 +35,36 @@ def main():
                 ("personal", "pi", "claude-personal"),
                 ("work", "pi-work", "claude-gmatter"),
             ):
-                env = dict(os.environ)
-                env.update(PI_CODING_AGENT_DIR=str(home / ".config" / pi_dir),
-                           CLAUDE_CONFIG_DIR=str(home / ".config" / claude_dir))
-                args = ["--test", "argument with spaces"]
-                result = subprocess.run(
-                    ["bash", str(script), *args], env=env, check=True,
-                    capture_output=True, text=True,
-                )
-                actual = json.loads(result.stdout)
-                assert actual == {
-                    "pi": str(home / ".config" / pi_dir),
-                    "claude": str(home / ".config" / claude_dir),
-                    "args": args,
-                }, (agent, profile, actual)
-                print(f"PASS {agent}: selected {profile} profile preserved; arguments intact")
+                for herdr, inherited in (
+                    (None, None), ("0", None), ("1", None),
+                    ("1", "0"), ("1", ""), (None, "1"),
+                ):
+                    env = dict(os.environ)
+                    for key in ("HERDR_ENV", "PI_CLIPBOARD_OSC52"):
+                        env.pop(key, None)
+                    if herdr is not None:
+                        env["HERDR_ENV"] = herdr
+                    if inherited is not None:
+                        env["PI_CLIPBOARD_OSC52"] = inherited
+                    env.update(PI_CODING_AGENT_DIR=str(home / ".config" / pi_dir),
+                               CLAUDE_CONFIG_DIR=str(home / ".config" / claude_dir))
+                    args = ["--test", "argument with spaces"]
+                    result = subprocess.run(
+                        ["bash", str(script), *args], env=env, check=True,
+                        capture_output=True, text=True,
+                    )
+                    actual = json.loads(result.stdout)
+                    expected = inherited
+                    if agent == "pi" and herdr == "1" and inherited is None:
+                        expected = "1"
+                    assert actual == {
+                        "pi": str(home / ".config" / pi_dir),
+                        "claude": str(home / ".config" / claude_dir),
+                        "osc52": expected,
+                        "args": args,
+                    }, (agent, profile, herdr, inherited, actual)
+                print(f"PASS {agent}: {profile} profile and arguments preserved; "
+                      "Herdr clipboard default and explicit overrides verified")
             for profile in ("personal", "work"):
                 assert not (home / ".local/bin" / f"{agent}-{profile}").exists()
 

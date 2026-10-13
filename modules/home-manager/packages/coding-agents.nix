@@ -36,6 +36,11 @@
     # or Claude. Keep the extension's venv installation/lifecycle unchanged.
     export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [pkgs.stdenv.cc.cc.lib pkgs.zlib]}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PI_CODING_AGENT_DIR="''${PI_CODING_AGENT_DIR:-$HOME/.config/pi}"
+    # Persistent Herdr panes may lack SSH markers even when viewed remotely.
+    # Also send copies to the client clipboard; explicit overrides still win.
+    if [ "''${HERDR_ENV:-}" = "1" ]; then
+      export PI_CLIPBOARD_OSC52="''${PI_CLIPBOARD_OSC52-1}"
+    fi
     # SSH/mise launches do not necessarily source Home Manager session variables.
     # Keep the host-declared vault available to every Pi profile, but allow an
     # explicitly inherited path to select a different vault.
