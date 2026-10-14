@@ -63,6 +63,29 @@ class Transfer(unittest.TestCase):
     def cold(self):
         return t.cold_bundle(self.source,source_proof=self.proof,secrets=self.secrets,exclusive_owner=True)
 
+    def test_food_label_nutrition_matches_existing_canonical_vault_fields(self):
+        food={'id':'synthetic-label','name':'Synthetic label',
+              'serving':{'amount':32,'unit':'g'},
+              'nutrition':{'calories':120,'protein_g':24,'carbs_g':3,'fat_g':2,
+                           'saturated_fat_g':1,'cholesterol_mg':55,'sodium_mg':130,
+                           'sugars_g':2,'calcium_mg':130,'iron_mg':0.9,'potassium_mg':200}}
+        self.assertEqual(r.canonical_food([json.dumps(food)]),food)
+        for bad in ({'unknown_field':1}, {'sugars_g':-1}, {'sugars_g':True}, {'sugars_g':float('nan')}):
+            with self.assertRaisesRegex(ValueError,'finite nonnegative'):
+                r.canonical_food([json.dumps({**food,'nutrition':{**food['nutrition'],**bad}})])
+
+    def test_invalid_food_record_refuses_before_writer_reservation_or_process(self):
+        m={**self.m,'vault':str(self.root/'vault')}
+        before=(self.root/'state/controller/ownership.json').read_bytes()
+        food={'id':'synthetic-label','name':'Synthetic label','serving':{'amount':1,'unit':'g'},
+              'nutrition':{'calories':120,'protein_g':24,'carbs_g':3,'fat_g':-2}}
+        with mock.patch.object(r,'writer_module') as writers, mock.patch.object(r.subprocess,'run') as process:
+            with self.assertRaisesRegex(ValueError,'finite nonnegative'):
+                r.sandboxed_task(m,'save-common-food',[json.dumps(food)],observer=None,scan=None)
+            writers.return_value.normal_reserve.assert_not_called(); process.assert_not_called()
+        self.assertFalse((self.root/'state/writer-reservation.json').exists())
+        self.assertEqual((self.root/'state/controller/ownership.json').read_bytes(),before)
+
     def test_canonical_empty_keyring_coordination_is_retained_not_transported(self):
         lock=self.source/t.KEYRING_LOCK
         self.write(self.source,t.KEYRING_LOCK,b'')
@@ -1150,7 +1173,9 @@ class ActualTaskAdapter(unittest.TestCase):
         self.assertFalse((self.vault/'recipes/recipe-plan.json').exists())
         food={'id':'synthetic-food','name':'Synthetic Greek yogurt','category':'main-dishes',
               'serving':{'amount':1,'unit':'serving'},
-              'nutrition':{'calories':250,'protein_g':20,'carbs_g':30,'fat_g':8},
+              'nutrition':{'calories':250,'protein_g':20,'carbs_g':30,'fat_g':8,
+                           'saturated_fat_g':1,'cholesterol_mg':5,'sugars_g':2,
+                           'calcium_mg':130,'iron_mg':0.9,'potassium_mg':200},
               'recipe':note,'notes':'Synthetic disclosed estimate'}
         unrelated={'id':'keep','name':'Keep unrelated','nutrition':{'calories':12}}
         p.stage.atomic(self.vault/'health/common-foods.yaml',p.stage.encoded({
@@ -1343,6 +1368,37 @@ s.close(); sys.exit(int(sys.argv[1]))
             self.assertTrue(all(owner[k]=='DISABLED' for k in ['poller','providerRefresh','scheduler','vaultWrites']))
             self.assertEqual(previous,{sig:signal.getsignal(sig) for sig in previous})
             with r.writer_module().held_lock(self.state/'controller/runtime.lock'): pass
+
+    def test_rejected_food_record_does_not_terminate_supervisor_or_block_next_read(self):
+        self.supervisor_fixture()
+        owner=t.load(self.state/'controller/ownership.json')
+        owner.update(phase='NATIVE_LIVE',scheduler='ENABLED')
+        p.stage.atomic(self.state/'controller/ownership.json',p.stage.encoded(owner))
+        food={'id':'synthetic-invalid','name':'Synthetic invalid','serving':{'amount':1,'unit':'g'},
+              'nutrition':{'calories':120,'protein_g':24,'carbs_g':3,'fat_g':-1}}
+        code='''import json,os,socket,struct,sys
+s=socket.socket(fileno=int(os.environ['HERMES_PRODUCTION_BROKER_FD']))
+def exchange(value):
+ b=json.dumps(value).encode(); s.sendall(struct.pack('!I',len(b))+b)
+ def exact(n):
+  b=b''
+  while len(b)<n:
+   chunk=s.recv(n-len(b)); assert chunk; b+=chunk
+  return b
+ return json.loads(exact(struct.unpack('!I',exact(4))[0]))
+assert exchange({'operation':'write','task':'save-common-food','args':[sys.argv[1]]})['status']=='REFUSED'
+assert exchange({'operation':'read','task':'date','args':['+%F']})=={'status':'OK','output':'SYNTHETIC STILL SERVING'}
+s.close()
+'''
+        command=[self.m['bubblewrap'],'--unshare-all','--die-with-parent',
+                 '--ro-bind','/nix/store','/nix/store','--proc','/proc','--dev','/dev','--tmpfs','/tmp',
+                 self.m['python'],'-I','-B','-c',code,json.dumps(food)]
+        with mock.patch.object(r,'gateway_command',return_value=command), \
+             mock.patch.object(r,'local_writer_callbacks',return_value=(self.observation,lambda names:None)), \
+             mock.patch.object(r,'read_task',return_value=b'SYNTHETIC STILL SERVING') as read:
+            r.gateway(self.m)
+            read.assert_called_once()
+        self.assertFalse((self.state/'writer-reservation.json').exists())
 
     def test_owned_supervisor_setup_failure_revokes_before_any_spawn(self):
         self.supervisor_fixture()

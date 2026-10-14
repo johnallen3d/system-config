@@ -150,25 +150,44 @@ def task_targets(task, args, today=None):
     raise ValueError('unreviewed writer/task authority; no generic shell or fallback')
 
 
-def canonical_overlay(task, args, run):
-    """Two exact canonical note/data adapters; never generic filesystem editing."""
-    if task=='save-recipe':
-        note,raw_markdown,raw_plan=args
-        markdown=json.loads(raw_markdown)
-        p.require(isinstance(markdown,str) and markdown and len(markdown.encode())<=32768
-                  and re.search(r'^## Ingredients\s*$',markdown,re.M)
-                  and re.search(r'^## (?:Steps|Instructions|Method)\s*$',markdown,re.M),
-                  'canonical recipe ingredient/step sections required')
-        plan=json.loads(raw_plan)
-        p.require(isinstance(plan,dict) and set(plan)=={'row_order','columns'}
-                  and isinstance(plan['row_order'],list) and isinstance(plan['columns'],list)
-                  and 0<len(plan['columns'])<=8,'explicit bounded recipe renderer plan; no model subprocess')
-        p.stage.atomic(run/'overlays'/note,markdown.encode())
-        p.stage.atomic(run/'recipe-plan.json',p.stage.encoded(plan))
-        return
-    p.require(task=='save-common-food','fixed canonical adapter')
+FOOD_NUTRITION_FIELDS = frozenset({
+    'added_sugars_g',
+    'calcium_mg',
+    'calories',
+    'carbs_g',
+    'chloride_mg',
+    'cholesterol_mg',
+    'collagen_peptides_g',
+    'fat_g',
+    'fiber_g',
+    'insoluble_fiber_g',
+    'iron_mg',
+    'magnesium_mg',
+    'monounsaturated_fat_g',
+    'phosphorus_mg',
+    'polyunsaturated_fat_g',
+    'potassium_mg',
+    'protein_g',
+    'riboflavin_mg',
+    'saturated_fat_g',
+    'selenium_mcg',
+    'sodium_mg',
+    'soluble_fiber_g',
+    'sugar_alcohol_g',
+    'sugar_g',
+    'sugars_g',
+    'trans_fat_g',
+    'vitamin_a_mcg',
+    'vitamin_b12_mcg',
+    'vitamin_c_mg',
+    'vitamin_d_mcg',
+    'zinc_mg',
+})
+
+def canonical_food(args):
+    """Validate label data before reserving writer authority; no filesystem writes."""
+    p.require(len(args)==1,'one explicit canonical food record required')
     import math
-    import yaml
     food=json.loads(args[0])
     p.require(isinstance(food,dict) and set(food)<={'id','name','aliases','category','serving','nutrition','recipe','notes','source'}
               and {'id','name','serving','nutrition'}<=set(food), 'explicit canonical food record fields')
@@ -190,10 +209,32 @@ def canonical_overlay(task, args, run):
               and isinstance(serving['unit'],str) and 0<len(serving['unit'])<=64
               and ('label' not in serving or isinstance(serving['label'],str) and len(serving['label'])<=256),
               'explicit positive food serving amount/unit')
-    p.require(isinstance(nutrition,dict) and set(nutrition)<={'calories','protein_g','carbs_g','fat_g','fiber_g','sodium_mg','sugar_g'}
+    p.require(isinstance(nutrition,dict) and set(nutrition)<=FOOD_NUTRITION_FIELDS
               and {'calories','protein_g','carbs_g','fat_g'}<=set(nutrition)
               and all(isinstance(q,(int,float)) and not isinstance(q,bool) and math.isfinite(q) and q>=0 for q in nutrition.values()),
               'explicit finite nonnegative reusable nutrition')
+    return food
+
+
+def canonical_overlay(task, args, run):
+    """Two exact canonical note/data adapters; never generic filesystem editing."""
+    if task=='save-recipe':
+        note,raw_markdown,raw_plan=args
+        markdown=json.loads(raw_markdown)
+        p.require(isinstance(markdown,str) and markdown and len(markdown.encode())<=32768
+                  and re.search(r'^## Ingredients\s*$',markdown,re.M)
+                  and re.search(r'^## (?:Steps|Instructions|Method)\s*$',markdown,re.M),
+                  'canonical recipe ingredient/step sections required')
+        plan=json.loads(raw_plan)
+        p.require(isinstance(plan,dict) and set(plan)=={'row_order','columns'}
+                  and isinstance(plan['row_order'],list) and isinstance(plan['columns'],list)
+                  and 0<len(plan['columns'])<=8,'explicit bounded recipe renderer plan; no model subprocess')
+        p.stage.atomic(run/'overlays'/note,markdown.encode())
+        p.stage.atomic(run/'recipe-plan.json',p.stage.encoded(plan))
+        return
+    p.require(task=='save-common-food','fixed canonical adapter')
+    food=canonical_food(args)
+    import yaml
     path=run/'overlays/health/common-foods.yaml'
     current=yaml.safe_load(p.stage.read_private(path))
     p.require(isinstance(current,dict) and isinstance(current.get('foods'),list)
@@ -203,8 +244,8 @@ def canonical_overlay(task, args, run):
     if matches:
         old=current['foods'][matches[0]]
         current['foods'][matches[0]]={**old,**food,
-            'serving':{**(old.get('serving') or {}),**serving},
-            'nutrition':{**(old.get('nutrition') or {}),**nutrition}}
+            'serving':{**(old.get('serving') or {}),**food['serving']},
+            'nutrition':{**(old.get('nutrition') or {}),**food['nutrition']}}
     else: current['foods'].append(food)
     p.stage.atomic(path,yaml.safe_dump(current,sort_keys=False,allow_unicode=True).encode())
 
@@ -219,6 +260,9 @@ def sandboxed_task(m, task, args, *, scope=None, observer, scan, today=None):
     """
     w=writer_module(); state=Path(m['paths']['state']); vault=Path(m['vault'])
     files=task_targets(task,args,today)
+    # Invalid labels must never create an unfinished writer reservation. The
+    # canonical overlay repeats validation defensively before preparing output.
+    if task=='save-common-food': canonical_food(args)
     owner=t.load(state/'controller/ownership.json')
     p.require(owner.get('namespace')==t.NAMESPACE and owner.get('owner')=='native'
               and owner.get('phase') in {'NATIVE_ARMED','NATIVE_LIVE'} and owner.get('vaultWrites')=='ENABLED',

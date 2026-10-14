@@ -29,6 +29,9 @@ OLD_SOURCE_RUNTIME_SHA = 'acfcb5ff27a2c6e44485993de9133ec45d8e22fa5ec039881ca29c
 NEW_SOURCE_RUNTIME_SHA = '9d2ac9a6fb154907508992845c75bcd48b683822178319b1b5b31082ff59206b'
 SOURCE_AUTHORIZATION = 'JOHN_FINISH_781_CONTROLLED_NATIVE_UPDATE'
 SOURCE_USER_APPROVAL = 'JOHN_AUTHORIZED_FINISHING_781_AFTER_NATIVE_STOP_UPDATE_RESUME_PROPOSAL'
+FOOD_RUNTIME_SHA = '6c216b70e6968a1fde28a31fad09cf7f0f157e6979856a3ef914c3cea2128c03'
+FOOD_FIXTURE_SHA = '80248b1c9b0aea218cb96904b5e0b31ca5135ce31014e0599ab523ae20db3409'
+FOOD_AUTHORIZATION = 'JOHN_FIX_THE_BUG_AND_DEPLOY_IT_786'
 SYSTEMD_ENV = {'PATH': '/usr/bin:/bin', 'LANG': 'C',
                'XDG_RUNTIME_DIR': f'/run/user/{os.getuid()}',
                'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{os.getuid()}/bus'}
@@ -216,6 +219,68 @@ def reviewed_source_path_binding(state, owner, arming, metadata, code):
                 == protected.get('controller/' + name), 'source-path historical receipt changed')
 
 
+def food_validation_diff(previous, current):
+    changed = {k for k in set(previous) | set(current) if previous.get(k) != current.get(k)}
+    require(set(previous) == set(current) and changed == {'@metadata', 'production-runtime.py'}
+            and previous.get('production-runtime.py') == NEW_SOURCE_RUNTIME_SHA
+            and current.get('production-runtime.py') == FOOD_RUNTIME_SHA,
+            'only exact reviewed #786 food-validation runtime change permitted')
+
+
+def reviewed_food_validation_binding(state, owner, arming, metadata, code):
+    """Recognize only this reviewed bugfix; preserve and recheck the prior chain."""
+    path = Path(owner['currentFoodValidationReview'])
+    require(owner.get('phase') == 'NATIVE_LIVE'
+            and path.parent.parent == state / 'controller/food-validation-deployments'
+            and path.parent.name.startswith('review-786-') and path.name == 'qualification.json',
+            'fixed retained food-validation review required')
+    raw = private_bytes(path)
+    require(hashlib.sha256(raw).hexdigest() == owner.get('currentFoodValidationReviewSha256'),
+            'retained food-validation review digest mismatch')
+    review = json.loads(raw)
+    require(isinstance(review, dict) and review.get('schemaVersion') == 1
+            and review.get('kind') == 'HERMES786_AUTHORIZED_SAME_NATIVE_OWNER_FOOD_VALIDATION_DEPLOYMENT'
+            and review.get('namespace') == NAMESPACE and review.get('card') == 786
+            and review.get('authorization') == FOOD_AUTHORIZATION
+            and review.get('scope') == 'FOOD_VALIDATION_BEFORE_WRITER_RESERVATION'
+            and review.get('futureAutomaticResume') is False
+            and review.get('historicalArmingAndAcceptance') == 'UNCHANGED'
+            and review.get('canonicalStateAndCredentials') == 'COLD_PRESERVED_NO_REIMPORT_OR_REPLAY'
+            and review.get('sourceBundleSha256') == owner['sourceBundleSha256']
+            and review.get('code') == code, 'retained food-validation review does not approve this exact identity')
+    approval_raw = private_bytes(path.with_name('authorization.json'))
+    approval = json.loads(approval_raw)
+    require(hashlib.sha256(approval_raw).hexdigest() == review.get('approvalSha256')
+            and approval.get('authorization') == FOOD_AUTHORIZATION
+            and approval.get('userRequest') == 'i retried and it crashed again. open a card; fix the bug and deploy it'
+            and approval.get('approvedAction') == 'NATIVE_ONLY_FIX_DEPLOY_SAME_OWNER_RESUME',
+            'retained explicit food-validation authorization mismatch')
+    previous_generation = Path(review.get('previousGeneration', '/nonexistent'))
+    generation = Path(review.get('generation', '/nonexistent'))
+    require(previous_generation.is_relative_to(STORE) and previous_generation.is_dir()
+            and generation.is_relative_to(STORE) and generation.is_dir(), 'immutable bugfix generations required')
+    previous = immutable_json(previous_generation / 'home-files/.config/hermes-native/production.json')
+    previous_code = identity(previous)
+    require(review.get('previousCode') == previous_code
+            and immutable_json(generation / 'home-files/.config/hermes-native/production.json') == metadata,
+            'food-validation immutable generation binding mismatch')
+    food_validation_diff(previous_code, code)
+    expected = json.loads(json.dumps(previous))
+    for key in ('managedAssets', 'launcher', 'operator', 'transferOperator', 'productionFixture', 'writerFixture'):
+        if key in previous: expected[key] = metadata.get(key)
+    for key in ('HERMES_NATIVE_ASSETS', 'HERMES_PRODUCTION_OPERATOR'):
+        if key in previous.get('environment', {}): expected['environment'][key] = metadata['environment'].get(key)
+    require(expected == metadata, 'food-validation metadata semantics changed')
+    if metadata.get('productionFixture'):
+        require(hashlib.sha256(Path(metadata['productionFixture']).read_bytes()).hexdigest() == FOOD_FIXTURE_SHA,
+                'unreviewed food-validation fixture change')
+    reviewed_source_path_binding(state, owner, arming, previous, previous_code)
+    protected = review.get('protectedRecords', {})
+    for name in ('arming.json', *ACCEPTANCE_RECEIPTS):
+        require(hashlib.sha256(private_bytes(state / 'controller' / name)).hexdigest()
+                == protected.get('controller/' + name), 'food-validation historical receipt changed')
+
+
 def authority(home, metadata, unit):
     state = Path(metadata['paths']['state'])
     require(state == home / '.local/state/hermes-native/production/baseline-0.21.2',
@@ -246,7 +311,9 @@ def authority(home, metadata, unit):
             and arming.get('sourceBundleSha256') == owner.get('sourceBundleSha256'),
             'installed arming/owner binding mismatch')
     code = identity(metadata)
-    if arming.get('code') != code and owner.get('currentSourcePathReview'):
+    if arming.get('code') != code and owner.get('currentFoodValidationReview'):
+        reviewed_food_validation_binding(state, owner, arming, metadata, code)
+    elif arming.get('code') != code and owner.get('currentSourcePathReview'):
         reviewed_source_path_binding(state, owner, arming, metadata, code)
     elif arming.get('code') != code and owner.get('currentNativeTaskAccessReview'):
         reviewed_task_binding(state, owner, arming, metadata, code)
