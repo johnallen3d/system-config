@@ -64,6 +64,7 @@ in {
     ./packages
     ./agent-projects.nix
     ./claude-prompts.nix
+    ./doppler.nix
     ./herdr.nix
     ./obsidian.nix
     ./pi-extensions.nix

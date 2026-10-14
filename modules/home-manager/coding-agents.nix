@@ -13,6 +13,7 @@ in {
     ./packages/coding-agents.nix
     ./agent-projects.nix
     ./claude-prompts.nix
+    ./doppler.nix
     ./pi-extensions.nix
     ./pi-prompts.nix
     ./pi-settings.nix
