@@ -28,7 +28,7 @@ Do not invoke Pi or the workstation-only `log-recipe` wrapper.
    linked content needed for the recipe; otherwise ask before web research.
 3. Read before writing with `vlt vault=Personal read file=recipes/NAME.md`.
    Native production does not expose generic `vlt` mutations or shell writes.
-   Create/update through the single guarded command
+   Create/update through the recipe task
    `mise run save-recipe -- recipes/NAME.md MARKDOWN_JSON PLAN_JSON`, with each
    JSON argument individually shell-quoted as one literal argument. The second
    argument is a JSON string (encode newlines as `\n`, not literal command
@@ -40,7 +40,7 @@ Do not invoke Pi or the workstation-only `log-recipe` wrapper.
    zero-based index exactly once; `columns` contains 1–8 objects with `label`
    and `cells`. Each cell has inclusive `start`/`end` positions in `row_order`,
    `title`, optional `detail`, and one-based source `steps`. Every step must
-   appear, and cells within a column cannot overlap. The guarded adapter runs
+   appear, and cells within a column cannot overlap. The task runs
    the existing deterministic renderer with this private plan, validates it,
    and commits/readbacks only the canonical recipe postimage. Never hand-write
    generated HTML, invoke Pi, or fall back to an implicit planner. A renderer

@@ -334,22 +334,14 @@ commit or push does not synchronize its source or installed configuration. Inspe
 the actual worktree, lock and installed state, check for divergence, and transfer
 only intended changes; preserve unrelated edits and machine-local credentials.
 
-The former `system-config-poc` and `system-config-amfaro` directories were retired
-in [#781](https://app.fizzy.do/6284043/cards/781). The deployed source was recovered
-into `~/dev/src/system-config/.worktrees/consolidate-omarchy-config` on
-`feature/consolidate-omarchy-config`; the primary checkout's independent dirty
-changes remain untouched. The reconciled branch retains local main's shared lock nodes and isolates
-Omarchy's three deployed revisions in explicit host-only inputs; approved asset
-bytes remain unchanged. See [source reconciliation](omarchy-source-consolidation.md). The pre-transition reconciliation build reproduced exact installed Hermes
-metadata and unit bytes. The #781 source-path repair was then deployed within
-John's explicitly authorized native-only update, preserving original receipts
-and recording a separate exact code approval. The [#780](https://app.fizzy.do/6284043/cards/780) guard repair was
-activated and pending #779 personal instructions were verified without restarting
-Hermes or changing receipts, credentials or jobs. Ordinary activation is permitted
-only when the read-only guard approves the unchanged live identity; this is not
-restart, rearming or code-change approval. The installed engineering
-checks now use explicitly bound, registered Git source paths. Recovery archives are preservation
-evidence, not activation targets.
+The former snapshot paths were retired in #781; recovery archives are not
+deployment targets. Hermes guard removal (#787) is deployed from
+`~/dev/src/system-config/.worktrees/remove-hermes-guards` on
+`feature/remove-hermes-guards`. Preserve the primary checkout and other task
+worktrees' independent changes. The Omarchy-only input pins remain unchanged.
+Hermes runs its upstream gateway as an ordinary systemd user service; no
+bespoke approval receipts, restart gates, or activation preflight apply.
+See [source reconciliation](omarchy-source-consolidation.md).
 
 Ordinary SSH commands use Omarchy's Fish login shell. Execute Bash scripts with
 `ssh johna@omarchy 'bash -s'` and pass the script on stdin. For noninteractive
@@ -367,13 +359,13 @@ agents or Herdr servers. An unreachable or unverified host means a partial
 deployment: keep its Fizzy card open and hand off the missing host/action.
 Documentation-only changes need no activation.
 
-For an unchanged-identity activation that passes the guard, use the verified
+For activation, use the verified
 task worktree as `johna` (not the stale dirty primary checkout):
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
-cd ~/dev/src/system-config/.worktrees/consolidate-omarchy-config
+cd ~/dev/src/system-config/.worktrees/remove-hermes-guards
 nix build --no-write-lock-file \
   'path:.#homeConfigurations."johna@omarchy".activationPackage' --out-link result-agents
 ./result-agents/activate

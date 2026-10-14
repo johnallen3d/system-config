@@ -8,14 +8,6 @@ GEMINI.md
 __pycache__/
 *.pyc
 
-# Recovery of the exact currently approved Hermes fileset includes these three
-# historical bytecode artifacts. Do not regenerate/remove them outside a reviewed
-# identity transition; all other Python caches remain ignored.
-!modules/home-manager/hermes-native/__pycache__/
-!modules/home-manager/hermes-native/__pycache__/state-stage.cpython-313.pyc
-!modules/home-manager/hermes-native/__pycache__/vault-fixture.cpython-313.pyc
-!modules/home-manager/hermes-native/__pycache__/vault-safety.cpython-313.pyc
-
 .worktrees/
 /result
 /result-*

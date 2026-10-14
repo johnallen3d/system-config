@@ -41,12 +41,11 @@ do not invoke Pi or the workstation-only `log-food` wrapper.
    `vlt vault="Personal" read file="journal/PATH.md"` before any correction.
 4. Resolve food locally first with `mise run common-food -- search QUERY`,
    `mise run common-food -- show FOOD_ID`, and recipe notes read through the
-   fixed `vlt` read route. Native production does not expose an arbitrary
-   `scripts/food-pick` or workstation shell fallback. Preserve the
+   `vlt` read command. Preserve the
    supplied serving description; do not invent a portion. When the local vault
    has no defensible match, use a reputable external source for a best-effort
    nutrition estimate, record the assumptions and source URL, and report it as
-   an estimate. External lookups remain unavailable in offline native staging.
+   an estimate.
 5. For a normal entry, call `mise run write-food-log --` with normalized meal,
    food ID, amount, unit, all five nutrition values, resolved date/time, and
    source. Never call `mise run log-food`.
@@ -87,8 +86,6 @@ placeholder literally.
 - Do not write when the meal, amount, food identity, or date is missing. If
   nutrition is unavailable, proceed with a transparent best-effort estimate and
   label the source and assumptions.
-- Native staging does not expose a terminal writer or production vault. This
-  policy document and disposable checks do not grant real-vault write authority.
 
 ## Verification
 

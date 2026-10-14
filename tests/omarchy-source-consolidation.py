@@ -42,18 +42,7 @@ class SourceConsolidation(unittest.TestCase):
         self.assertIn("pkgs = import omarchyNixpkgs", host)
         self.assertIn("herdrProjectPicker = omarchyHerdrProjectPicker;", host)
 
-    def test_recovered_source_and_exact_cache_assets_are_present(self):
-        for name in ("modules/home-manager/hermes-activation-check.py",
-                     "modules/home-manager/hermes-packaging-adopt.py",
-                     "tests/fixtures/hermes771/production-module.nix",
-                     "tests/hermes-activation-lifecycle.py", "tests/hermes-activation-nix.py",
-                     "tests/hermes-packaging-adopt.py"):
-            self.assertTrue((ROOT / name).is_file(), name)
-        ignore = (ROOT / ".gitignore").read_text()
-        for name in ("state-stage", "vault-fixture", "vault-safety"):
-            path = f"modules/home-manager/hermes-native/__pycache__/{name}.cpython-313.pyc"
-            self.assertTrue((ROOT / path).is_file(), path)
-            self.assertIn("!" + path, ignore)
+    def test_recovered_proxy_source_is_present(self):
         manager = (ROOT / "modules/home-manager/subscription-proxy/manager.py").read_text()
         self.assertIn("def configure_claude(profile, settings):", manager)
         self.assertIn('prefix = "personalClaude" if profile == "personal"', manager)

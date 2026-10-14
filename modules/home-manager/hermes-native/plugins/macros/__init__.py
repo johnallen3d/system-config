@@ -78,9 +78,6 @@ def _subprocess_environment(vault_dir: Path, isolated_home: Path) -> dict[str, s
         "SSL_CERT_FILE": os.environ.get("SSL_CERT_FILE", ""),
         "TZ": os.environ.get("TZ", "America/New_York"),
         "TZDIR": os.environ.get("TZDIR", ""),
-        "HERMES_NATIVE_OFFLINE": os.environ.get("HERMES_NATIVE_OFFLINE", "0"),
-        "HERMES_NATIVE_STAGE": os.environ.get("HERMES_NATIVE_STAGE", "capabilities-offline"),
-        "HERMES_NATIVE_READONLY": os.environ.get("HERMES_NATIVE_READONLY", "0"),
         "VAULT_DIR": str(vault_dir),
         "VAULT_NAME": os.environ.get("VAULT_NAME", "Personal"),
         "VLT_VAULT": os.environ.get("VLT_VAULT", os.environ.get("VAULT_NAME", "Personal")),
@@ -125,12 +122,7 @@ async def _handle_macros(raw_args: str) -> str:
 
     command, report_kind = request
     vault_dir = Path(os.environ.get("VAULT_DIR", "")).expanduser()
-    if (os.environ.get("HERMES_NATIVE_OFFLINE") != "1"
-            or not os.environ.get("VAULT_DIR")
-            or not MISE.startswith("/nix/store/")
-            or str(vault_dir) != os.environ.get("HERMES_HOME", "") + "/workspace/notes"
-            or vault_dir.resolve() != vault_dir
-            or not vault_dir.is_dir()):
+    if not os.environ.get("VAULT_DIR") or not vault_dir.is_dir():
         return "Macros are unavailable because the vault is not mounted."
 
     try:

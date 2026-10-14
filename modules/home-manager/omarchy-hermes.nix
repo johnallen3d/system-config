@@ -1,4 +1,4 @@
-# Native, opt-in staging only (#755). NAS remains production until #763.
+# Omarchy's native Hermes gateway. Runtime policy belongs to upstream Hermes.
 {
   config,
   hermes,
@@ -8,66 +8,52 @@
 }: let
   cfg = config.nativeHermes;
   homeDir = config.home.homeDirectory;
-  version = "0.21.2";
   runtimePkgs = hermes.inputs.nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-  # The baseline constructor names its Python argument python312 and uses a
-  # nested callPackage for the sealed venv. Override both in a private scope,
-  # not host nixpkgs, to keep wrapper/site-packages/venv on supported Python 3.13.
-  runtimeScope =
-    runtimePkgs
-    // {
-      python312 = runtimePkgs.python313;
-      callPackage = runtimePkgs.lib.callPackageWith runtimeScope;
-    };
+  # Upstream's constructor calls this argument python312; this revision needs 3.13.
+  runtimeScope = runtimePkgs // {
+    python312 = runtimePkgs.python313;
+    callPackage = runtimePkgs.lib.callPackageWith runtimeScope;
+  };
   runtime = runtimeScope.callPackage "${hermes.outPath}/nix/hermes-agent.nix" {
     inherit (hermes.inputs) uv2nix pyproject-nix pyproject-build-systems;
     npm-lockfile-fix = hermes.inputs.npm-lockfile-fix.packages.${pkgs.stdenv.hostPlatform.system}.default;
     extraDependencyGroups = ["messaging"];
     rev = hermes.rev;
   };
+  # Keep the existing production state and isolated home; never re-import NAS data.
   paths = {
-    state = "${homeDir}/.local/state/hermes-native/staging/baseline-0.21.2";
-    home = "${homeDir}/.local/share/hermes-native/staging/baseline-0.21.2/home";
-    config = "${homeDir}/.config/hermes-native/staging/baseline-0.21.2";
-    cache = "${homeDir}/.cache/hermes-native/staging/baseline-0.21.2";
+    state = "${homeDir}/.local/state/hermes-native/production/baseline-0.21.2";
+    home = "${homeDir}/.local/share/hermes-native/production/baseline-0.21.2/home";
+    config = "${homeDir}/.config/hermes-native/production/baseline-0.21.2";
+    cache = "${homeDir}/.cache/hermes-native/production/baseline-0.21.2";
   };
-  workspace = "${paths.state}/workspace";
-  # Content-address only the approved runtime/fixtures, not the whole flake.
-  # Preserve the real modules/... + tests/... layout used by installed fixtures.
-  # Keep every runtime asset in the approval identity; no hash normalization.
-  hermesSource = lib.fileset.toSource {
-    root = ../..;
-    fileset = lib.fileset.unions [
-      ./hermes-native
-      ../../tests/hermes-native-production-state.py
-      ../../tests/hermes-native-production-transfer.py
-      ../../tests/hermes-native-production-writers.py
-    ];
-  };
-  assets = "${hermesSource}/modules/home-manager/hermes-native";
-  tools = import ./hermes-native/tools.nix { inherit pkgs runtimePkgs; };
+  vault = "${homeDir}/notes";
+  # Match upstream's service name for a non-default HERMES_HOME.
+  serviceName = "hermes-gateway-${builtins.substring 0 8 (builtins.hashString "sha256" paths.state)}";
+  tools = import ./hermes-native/tools.nix {inherit pkgs runtimePkgs;};
   taskPath = lib.makeBinPath ((builtins.attrValues tools) ++ [
-    runtimePkgs.bash runtimePkgs.coreutils runtimePkgs.gnugrep runtimePkgs.gnused
-    runtimePkgs.gawk runtimePkgs.findutils runtimePkgs.time runtimePkgs.python313
-    runtimePkgs.uv runtime.hermesNpmLib.nodejs pkgs.usage
+    runtimePkgs.bash
+    runtimePkgs.coreutils
+    runtimePkgs.gnugrep
+    runtimePkgs.gnused
+    runtimePkgs.gawk
+    runtimePkgs.findutils
+    runtimePkgs.time
+    runtimePkgs.python313
+    runtimePkgs.uv
+    runtime.hermesNpmLib.nodejs
+    pkgs.usage
   ]);
   environment = {
     HOME = paths.home;
     HERMES_HOME = paths.state;
     HERMES_MANAGED = "home-manager";
+    HERMES_GATEWAY_EXTERNAL_SUPERVISOR = "1";
     XDG_CONFIG_HOME = paths.config;
     XDG_CACHE_HOME = paths.cache;
     XDG_DATA_HOME = "${paths.home}/.local/share";
     XDG_STATE_HOME = "${paths.home}/.local/state";
-    # Private child/service PATH only; the unrestricted package is not installed
-    # in the workstation profile. Doctor can resolve its Nix-owned command.
     PATH = taskPath + ":" + lib.makeBinPath [
-      runtime
-      runtimePkgs.python313
-      runtimePkgs.uv
-      runtime.hermesNpmLib.nodejs
-      runtimePkgs.bash
-      runtimePkgs.coreutils
       runtimePkgs.git
       runtimePkgs.ripgrep
       runtimePkgs.openssh
@@ -83,312 +69,97 @@
     NIX_SSL_CERT_FILE = "${runtimePkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
     LANG = "C.UTF-8";
     TZ = "America/New_York";
-    # Sealed namespaces have no host /usr/share/zoneinfo. libc/GNU date needs
-    # the pinned data explicitly; otherwise TZ silently falls back to UTC.
     TZDIR = "${runtimePkgs.tzdata}/share/zoneinfo";
-    TERM = "dumb";
+    TERM = "xterm-256color";
     NO_COLOR = "1";
-    HERMES_NATIVE_STAGE = "capabilities-offline";
-    HERMES_NATIVE_ASSETS = toString assets;
     HERMES_NATIVE_MISE = "${tools.mise}/bin/mise";
     HERMES_NATIVE_TASK_PATH = taskPath;
     HERMES_NATIVE_TASK_PYTHON = "${tools.task-python}/bin/python3";
     HERMES_NATIVE_FONT = "${runtimePkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf";
-    FONTCONFIG_FILE = runtimePkgs.makeFontsConf { fontDirectories = [runtimePkgs.dejavu_fonts]; };
-    PLAYWRIGHT_BROWSERS_PATH = toString runtimePkgs.playwright-driver.browsers;
-    # #760: integration HOME is distinct from HERMES_HOME; use the contract's
-    # minimal default profile, not the old empty state/notebooklm seed path.
+    FONTCONFIG_FILE = runtimePkgs.makeFontsConf {fontDirectories = [runtimePkgs.dejavu_fonts];};
+    PLAYWRIGHT_BROWSERS_PATH = runtimePkgs.playwright-driver.browsers;
     NOTEBOOKLM_HOME = "${paths.home}/.notebooklm";
-    HERMES_NATIVE_GOG = "${tools.gog}/bin/gog";
-    HERMES_NATIVE_NOTEBOOKLM = "${tools.notebooklm}/bin/notebooklm";
-    HERMES_NATIVE_CLI = "${runtime}/bin/hermes";
     MISE_AUTO_INSTALL = "0";
-    MISE_TRUSTED_CONFIG_PATHS = "${workspace}/notes";
-    VAULT_DIR = "${workspace}/notes";
-    VLT_VAULT_PATH = "${workspace}/notes";
+    MISE_TRUSTED_CONFIG_PATHS = vault;
+    MISE_CONFIG_DIR = "${paths.config}/mise";
+    MISE_DATA_DIR = "${paths.home}/.local/share/mise";
+    MISE_CACHE_DIR = "${paths.cache}/mise";
+    MISE_DISABLE_TOOLS = "uv,sd,yq,npm:defuddle";
+    VAULT_DIR = vault;
+    VLT_VAULT_PATH = vault;
     VLT_VAULT = "Personal";
     GOG_HOME = "${paths.state}/gogcli";
-    GOG_READONLY = "0";
-    GOG_ENABLE_COMMANDS_EXACT = "calendar.calendars,calendar.events,calendar.event,calendar.raw,calendar.freebusy,calendar.conflicts,calendar.search,calendar.colors,calendar.time,calendar.create,calendar.update,calendar.delete,calendar.respond,config.get,auth.list";
     HERMES_TIMEZONE = "America/New_York";
     HERMES_EXEC_ASK = "true";
     HERMES_REDACT_SECRETS = "true";
     TELEGRAM_REACTIONS = "true";
-    # Never inherit a real-vault cwd or container terminal backend.
     TERMINAL_ENV = "local";
-    TERMINAL_CWD = workspace;
+    TERMINAL_CWD = vault;
   };
-  production = import ./hermes-native/production-module.nix {
-    inherit config lib pkgs runtime runtimePkgs environment assets hermesSource version;
-    revision = hermes.rev;
-  };
-  envArgs = lib.escapeShellArgs (lib.mapAttrsToList (key: value: "${key}=${value}") environment);
-  # #759: closed public routes, no generic shell/task/writable-vault argument.
-  vaultEnvArgs = lib.escapeShellArgs (lib.mapAttrsToList (key: value: "${key}=${value}") (environment // {
-    HOME = "/tmp/vault-home";
-    HERMES_HOME = "/tmp/vault-state";
-    XDG_CONFIG_HOME = "/tmp/vault-config";
-    XDG_CACHE_HOME = "/tmp/vault-cache";
-    XDG_DATA_HOME = "/tmp/vault-data";
-    XDG_STATE_HOME = "/tmp/vault-state";
-    VAULT_DIR = "/vault-readonly";
-    VLT_VAULT_PATH = "/vault-readonly";
-    MISE_TRUSTED_CONFIG_PATHS = "/nonexistent";
-    HERMES_NATIVE_SYNCTHING = "${config.services.syncthing.package}/bin/syncthing";
-  }));
-  launcher = pkgs.writeShellApplication {
-    name = "hermes-native";
-    text = ''
-      # The only new operation is a fixed, Nix-owned offline self-check. No arbitrary
-      # command, plugin arguments, interpreter, task, or script can be selected.
-      if [ "$#" = 1 ] && [ "$1" = capability-check ]; then
-        umask 077
-        exec ${pkgs.coreutils}/bin/env -i ${envArgs} HERMES_NATIVE_OFFLINE=1 \
-          ${pkgs.bubblewrap}/bin/bwrap --unshare-all --die-with-parent --new-session \
-          --ro-bind /nix/store /nix/store --proc /proc --dev /dev --tmpfs /dev/shm --tmpfs /tmp \
-          --tmpfs /home --dir /etc --dir /usr --dir /usr/bin --dir /bin \
-          --symlink ${runtimePkgs.coreutils}/bin/env /usr/bin/env \
-          --symlink ${runtimePkgs.bash}/bin/bash /bin/bash \
-          --symlink ${runtimePkgs.bash}/bin/sh /bin/sh --chdir /tmp \
-          ${runtime.hermesVenv}/bin/python3 -I ${assets}/check.py ${assets}
-      fi
-      if [ "$#" = 1 ] && [ "$1" = vault-check ]; then
-        umask 077
-        # Same-UID production access exists ONLY under a read-only mount, with
-        # the rest of host home, proc PIDs, profiles, sockets and network absent.
-        [ -d ${lib.escapeShellArg "${homeDir}/notes"} ] && [ ! -L ${lib.escapeShellArg "${homeDir}/notes"} ] || exit 64
-        exec ${pkgs.coreutils}/bin/env -i ${vaultEnvArgs} HERMES_VAULT_MODE=read-only \
-          ${pkgs.bubblewrap}/bin/bwrap --unshare-all --die-with-parent --new-session \
-          --ro-bind /nix/store /nix/store --proc /proc --dev /dev --tmpfs /dev/shm --tmpfs /tmp \
-          --tmpfs /home --ro-bind ${lib.escapeShellArg "${homeDir}/notes"} /vault-readonly \
-          --dir /tmp/vault-home --dir /etc --dir /usr --dir /usr/bin --dir /bin \
-          --symlink ${runtimePkgs.coreutils}/bin/env /usr/bin/env \
-          --symlink ${runtimePkgs.bash}/bin/bash /bin/bash --chdir /tmp \
-          ${runtime.hermesVenv}/bin/python3 -I ${assets}/vault-safety.py read-check
-      fi
-      if [ "$#" = 1 ] && [ "$1" = vault-safety-check ]; then
-        umask 077
-        fixture="$(${pkgs.coreutils}/bin/mktemp -d ${lib.escapeShellArg "${workspace}/vault-fixture-759.XXXXXXXX"})"
-        printf '%s\\n' 'SYNTHETIC READ ONLY' > "$fixture/note.md"
-        ${pkgs.coreutils}/bin/ln -s note.md "$fixture/alias.md"
-        ${pkgs.coreutils}/bin/ln -s ${lib.escapeShellArg "${homeDir}/notes"} "$fixture/external"
-        exec ${pkgs.coreutils}/bin/env -i ${vaultEnvArgs} HERMES_VAULT_MODE=disposable \
-          ${pkgs.bubblewrap}/bin/bwrap --unshare-all --die-with-parent --new-session \
-          --ro-bind /nix/store /nix/store --proc /proc --dev /dev --tmpfs /dev/shm --tmpfs /tmp \
-          --tmpfs /home --ro-bind "$fixture" /fixture-ro --dir /etc --dir /usr --dir /usr/bin --dir /bin \
-          --symlink ${runtimePkgs.coreutils}/bin/env /usr/bin/env \
-          --symlink ${runtimePkgs.bash}/bin/bash /bin/bash --chdir /tmp \
-          ${runtime.hermesVenv}/bin/python3 -I ${assets}/vault-fixture.py
-      fi
-      if [ "$#" = 1 ] && { [ "$1" = state-check ] || [ "$1" = integration-check ]; }; then
-        umask 077
-        network=()
-        operation=state-check
-        if [ "$1" = integration-check ]; then
-          # Fixed read-only provider/Calendar/passive NotebookLM checks ONLY.
-          # No arbitrary interpreter/task/URL, refresh-token rotation, polling,
-          # inference, sends, note content or write API is exposed by this route.
-          network=(--share-net --ro-bind /etc/resolv.conf /etc/resolv.conf)
-          operation=integrations
-        fi
-        exec ${pkgs.coreutils}/bin/env -i ${envArgs} \
-          ${pkgs.bubblewrap}/bin/bwrap --unshare-all --die-with-parent --new-session \
-          --ro-bind /nix/store /nix/store --proc /proc --dev /dev --tmpfs /dev/shm --tmpfs /tmp --tmpfs /home \
-          --ro-bind ${lib.escapeShellArg paths.state} ${lib.escapeShellArg paths.state} \
-          --ro-bind ${lib.escapeShellArg paths.home} ${lib.escapeShellArg paths.home} \
-          --ro-bind ${lib.escapeShellArg paths.config} ${lib.escapeShellArg paths.config} \
-          --ro-bind ${lib.escapeShellArg paths.cache} ${lib.escapeShellArg paths.cache} \
-          --dir /etc --dir /usr --dir /usr/bin --dir /bin \
-          --symlink ${runtimePkgs.coreutils}/bin/env /usr/bin/env \
-          --symlink ${runtimePkgs.bash}/bin/bash /bin/bash --symlink ${runtimePkgs.bash}/bin/sh /bin/sh \
-          "''${network[@]}" --chdir ${lib.escapeShellArg workspace} \
-          ${runtime.hermesVenv}/bin/python3 -I ${assets}/state-stage.py "$operation"
-      fi
-      case "$*" in
-        --version) operation=cli-version ;;
-        --help) operation=cli-help ;;
-        doctor) operation=cli-doctor ;;
-        *)
-          printf '%s\n' 'Native Hermes is isolated staging: only --version, --help, doctor, capability-check, vault-check, vault-safety-check, state-check and fixed integration-check are enabled. Gateway, inference, schedules and production vault writes remain blocked (#756/#763).' >&2
-          exit 64
-          ;;
-      esac
-      umask 077
-      cd ${lib.escapeShellArg workspace}
-      exec ${pkgs.coreutils}/bin/env -i ${envArgs} \
-        ${pkgs.bubblewrap}/bin/bwrap --unshare-all --die-with-parent --new-session \
-        --ro-bind /nix/store /nix/store --proc /proc --dev /dev --tmpfs /dev/shm --tmpfs /tmp --tmpfs /home \
-        --ro-bind ${lib.escapeShellArg paths.state} ${lib.escapeShellArg paths.state} \
-        --ro-bind ${lib.escapeShellArg paths.home} ${lib.escapeShellArg paths.home} \
-        --ro-bind ${lib.escapeShellArg paths.config} ${lib.escapeShellArg paths.config} \
-        --ro-bind ${lib.escapeShellArg paths.cache} ${lib.escapeShellArg paths.cache} \
-        --dir /etc --dir /usr --dir /usr/bin --dir /bin \
-        --symlink ${runtimePkgs.coreutils}/bin/env /usr/bin/env \
-        --symlink ${runtimePkgs.bash}/bin/bash /bin/bash --chdir ${lib.escapeShellArg workspace} \
-        ${runtime.hermesVenv}/bin/python3 -I ${assets}/state-stage.py "$operation"
-    '';
-  };
-  # This is a seed, not a managed symlink: later state migration owns updates.
-  seed = pkgs.writeText "hermes-native-staging-seed.json" (builtins.toJSON {
-    terminal = {
-      backend = "local";
-      cwd = workspace;
-    };
-    platform_toolsets = {
-      cli = [];
-      telegram = [];
-    };
-    platforms.telegram.enabled = false;
-    mcp_servers = {};
-    plugins.enabled = [];
-  });
-  initializeDirectories = pkgs.writeText "hermes-native-staging-directories.py" ''
-    import os
-    from pathlib import Path
-    from hermes_cli.config import _HERMES_HOME_SUBDIRS
-
-    root = Path(os.environ["HERMES_HOME"])
-    for relative in _HERMES_HOME_SUBDIRS:
-        path = root / relative
-        if path.is_symlink():
-            raise SystemExit("hermes-native: refusing symlink state directory " + str(path))
-        path.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path.chmod(0o700)
+  launcher = pkgs.writeShellScriptBin "hermes-production" ''
+    exec ${pkgs.coreutils}/bin/env -i \
+      XDG_RUNTIME_DIR="''${XDG_RUNTIME_DIR:-/run/user/$(${pkgs.coreutils}/bin/id -u)}" \
+      ${lib.escapeShellArgs (lib.mapAttrsToList (key: value: "${key}=${value}") environment)} \
+      ${runtime}/bin/hermes "$@"
   '';
-  initializeConfig = pkgs.writeText "hermes-native-staging-config.py" ''
-    import json
-    import os
-    from pathlib import Path
-    from hermes_cli.config import DEFAULT_CONFIG
-
-    seed = json.loads(Path("${seed}").read_text())
-    seed["_config_version"] = DEFAULT_CONFIG["_config_version"]
-    path = Path(os.environ["HERMES_HOME"]) / "config.yaml"
-    with path.open("x") as stream:
-        json.dump(seed, stream, indent=2)
-        stream.write("\n")
+  nativeLauncher = pkgs.writeShellScriptBin "hermes-native" ''
+    exec ${launcher}/bin/hermes-production "$@"
+  '';
+  stateRelative = ".local/state/hermes-native/production/baseline-0.21.2";
+  morningBrief = pkgs.writeShellScript "hermes-morning-brief" ''
+    set -euo pipefail
+    cd ${lib.escapeShellArg vault}
+    export MORNING_BRIEF_DELIVERY=stdout
+    exec ${tools.mise}/bin/mise run morning-brief
   '';
 in {
-  options.nativeHermes.enable = lib.mkEnableOption "isolated native Hermes foundation on Omarchy";
+  options.nativeHermes.enable = lib.mkEnableOption "the native Hermes gateway on Omarchy";
 
   config = lib.mkIf cfg.enable {
-    home.packages = [launcher production.launcher (pkgs.writeShellScriptBin "hermes-native-lifecycle" ''
-      exec ${pkgs.python3}/bin/python3 -I -B ${./hermes-activation-check.py} \
-        --home ${lib.escapeShellArg homeDir} --status "$@"
-    '')];
-    home.file.".local/bin/hermes-production".source = "${production.launcher}/bin/hermes-production";
-    xdg.configFile."hermes-native/production.json".text = builtins.toJSON production.metadata;
-    # Passive operational guidance is deliberately outside the runtime identity.
-    xdg.configFile."hermes-native/activation-lifecycle.md".source = ../../docs/hermes-activation-lifecycle.md;
-    # Refuse a live identity/unit replacement BEFORE any activation writes.
-    # The first migration to content-addressed assets also needs a controlled stop.
-    home.activation.hermesNativeLifecycleCheck = lib.hm.dag.entryBefore ["writeBoundary"] ''
-      ${pkgs.python3}/bin/python3 -I -B ${./hermes-activation-check.py} \
-        --home ${lib.escapeShellArg homeDir} --candidate-generation "$newGenPath"
-    '';
-    home.activation.hermesNativeProduction = production.activation;
-    systemd.user.services.hermes-production = production.service;
-    # Preserve Omarchy's user-owned ~/.local/bin/hermes and its mise installer.
-    home.file.".local/bin/hermes-native".source = "${launcher}/bin/hermes-native";
-    xdg.configFile."hermes-native/runtime.json".text = builtins.toJSON {
+    home.packages = [launcher nativeLauncher];
+    home.file = {
+      ".local/bin/hermes-production".source = "${launcher}/bin/hermes-production";
+      ".local/bin/hermes-native".source = "${nativeLauncher}/bin/hermes-native";
+      # Expose the user unit to Hermes's isolated HOME so its own gateway
+      # status/restart commands can find the upstream-named service.
+      ".local/share/hermes-native/production/baseline-0.21.2/home/.config/systemd/user/${serviceName}.service".source =
+        config.lib.file.mkOutOfStoreSymlink "${homeDir}/.config/systemd/user/${serviceName}.service";
+      "${stateRelative}/plugins/search".source = ./hermes-native/plugins/search;
+      "${stateRelative}/plugins/macros".source = ./hermes-native/plugins/macros;
+    };
+    # Non-secret inspection metadata only; not an approval or execution gate.
+    xdg.configFile."hermes-native/production.json".text = builtins.toJSON {
       schemaVersion = 1;
-      stage = "capabilities-offline";
-      assetOwner = "system-config";
-      managedAssets = toString assets;
-      reconciler = "${assets}/reconcile.py";
-      offlineCheck = "${assets}/check.py";
-      toolVersions = lib.mapAttrs (_: package: package.version) tools;
-      tools = lib.mapAttrs (_: package: toString package) tools;
-      vaultSafety = {
-        productionWrites = "DISABLED";
-        productionPath = "${homeDir}/notes";
-        readOnlyView = "/vault-readonly";
-        readCheck = "vault-check";
-        disposableCheck = "vault-safety-check";
-        operator = "${assets}/vault-safety.py";
-        snapshots = "${homeDir}/.local/state/hermes-native/vault-snapshots";
-        syncthing = "${config.services.syncthing.package}/bin/syncthing";
-        approval = "No production enable/restore route; exact mutation and all-peer exclusion/restore authority required at #762/#763";
-      };
-      stateStaging = {
-        operator = "${assets}/state-stage.py";
-        archives = "${homeDir}/.local/state/hermes-native/state-imports/baseline-0.21.2";
-        kind = "NON_AUTHORITATIVE_STAGING";
-        consistency = "PER_DATABASE_ONLINE_BACKUP_NOT_GLOBAL";
-        readCheck = "state-check";
-        integrationCheck = "integration-check";
-        gogPasswordSource = "Doppler notes/prd GOG_KEYRING_PASSWORD -> private stdin -> GOG_HOME/keyring-password";
-        telegramProvisioning = "NOT_STAGED; #763-only canonical NANOBOT_TELEGRAM_TOKEN; no executable staging secret";
-        codexRefresh = "FORBIDDEN_WHILE_NAS_OWNS_ROTATING_GRANT; expiry requires fresh export, never auto-refresh";
-      };
-      morningBrief = "INACTIVE";
-      privateSkillAdoption = "six-skills/nine-files fully reviewed; privately staged outside discovery; per-skill enabling gates pending";
-      privateSkillsStaging = "${homeDir}/.local/state/hermes-native/private-skills-staged/baseline-0.21.2";
-      foodPolicyDrift = "resolved-preserve-live-disclosed-estimates";
-      notebooklm = "notebooklm-py[browser]==0.8.2; Nix-owned offline closure; auth/integration remains #760";
-      inherit version paths workspace environment;
+      inherit paths environment vault;
+      version = "0.21.2";
       revision = hermes.rev;
       package = toString runtime;
       python = "${runtime.hermesVenv}/bin/python3";
-      uv = "${runtimePkgs.uv}/bin/uv";
-      node = "${runtime.hermesNpmLib.nodejs}/bin/node";
-      npm = "${runtime.hermesNpmLib.nodejs}/bin/npm";
-      pythonVersion = runtimePkgs.python313.version;
-      source = toString hermes.outPath;
-      launcher = "${launcher}/bin/hermes-native";
-      gatewayEnabled = false;
-      productionStateTransferred = false;
+      launcher = "${launcher}/bin/hermes-production";
+      service = "${serviceName}.service";
     };
-
-    home.activation.hermesNativeStaging = lib.hm.dag.entryAfter ["writeBoundary"] ''
-      (
-        set -eu
-        umask 077
-        for directory in ${lib.escapeShellArgs (["${homeDir}/.local/state/hermes-native" "${homeDir}/.local/share/hermes-native" "${homeDir}/.config/hermes-native" "${homeDir}/.cache/hermes-native"] ++ (builtins.attrValues paths) ++ [workspace "${paths.state}/logs" "${homeDir}/.local/state/hermes-native/state-imports/baseline-0.21.2"])}; do
-          if [ -L "$directory" ]; then
-            printf 'hermes-native: refusing symlink state directory %s\n' "$directory" >&2
-            exit 1
-          fi
-          run ${pkgs.coreutils}/bin/install -d -m 0700 "$directory"
-        done
-        # Managed mode will not create its missing skeleton at runtime. Obtain
-        # the exact required directories from the pinned installed Python code.
-        run ${pkgs.coreutils}/bin/env -i ${envArgs} ${runtime.hermesVenv}/bin/python3 -I ${initializeDirectories}
-        for file in ${lib.escapeShellArgs ["${paths.state}/config.yaml" "${paths.state}/.env"]}; do
-          if [ -L "$file" ]; then
-            printf 'hermes-native: refusing symlink config/credential file %s\n' "$file" >&2
-            exit 1
-          fi
-        done
-        if [ ! -e ${lib.escapeShellArg "${paths.state}/config.yaml"} ]; then
-          run ${pkgs.coreutils}/bin/env -i ${envArgs} ${runtime.hermesVenv}/bin/python3 -I ${initializeConfig}
-        fi
-        if [ ! -e ${lib.escapeShellArg "${paths.state}/.env"} ]; then
-          run ${pkgs.coreutils}/bin/install -m 0600 /dev/null ${lib.escapeShellArg "${paths.state}/.env"}
-        fi
-        run ${pkgs.coreutils}/bin/env -i ${envArgs} ${runtime.hermesVenv}/bin/python3 -I ${assets}/reconcile.py \
-          --state ${lib.escapeShellArg paths.state} --assets ${assets}
-      )
+    home.activation.hermesNativeDirectories = lib.hm.dag.entryBetween ["reloadSystemd"] ["linkGeneration"] ''
+      run ${pkgs.coreutils}/bin/install -d -m 0700 ${lib.escapeShellArgs ((builtins.attrValues paths) ++ ["${paths.state}/scripts"])}
+      # Upstream cron requires a real file within HERMES_HOME/scripts, not a
+      # symlink escaping to the Nix store. Install the managed script normally.
+      run ${pkgs.coreutils}/bin/install -m 0700 ${morningBrief} ${lib.escapeShellArg "${paths.state}/scripts/morning-brief.sh"}
     '';
-
-    # Deliberately static/unstartable, even via `systemctl --user start`.
-    # No WantedBy, timer, credential file or startup/linger policy changes.
-    systemd.user.services.hermes-native = {
-      Unit = {
-        Description = "Native Hermes gateway (blocked staging; NAS remains production)";
-        RefuseManualStart = true;
-      };
+    systemd.user.services.${serviceName} = {
+      Unit.Description = "Hermes gateway";
       Service = {
         Type = "simple";
-        ExecStart = "${launcher}/bin/hermes-native gateway run";
-        WorkingDirectory = workspace;
+        ExecStart = "${launcher}/bin/hermes-production gateway run";
+        WorkingDirectory = vault;
         Environment = lib.mapAttrsToList (key: value: "${key}=${value}") environment;
         UMask = "0077";
+        Restart = "on-failure";
+        RestartSec = 5;
+        TimeoutStopSec = 90;
+        NoNewPrivileges = true;
         StandardOutput = "journal";
         StandardError = "journal";
-        Restart = "no";
-        NoNewPrivileges = true;
       };
+      Install.WantedBy = ["default.target"];
     };
   };
 }

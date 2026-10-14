@@ -43,7 +43,7 @@ not invoke Pi or the workstation-only `import-food-label` wrapper.
    Optional nutrition fields are `fiber_g`, `sodium_mg`, and `sugar_g`. Put the
    package-photo source and transparent division/rounding in `notes` or `source`.
 6. Invoke `mise run save-common-food -- FOOD_JSON` with the complete JSON object
-   as one individually shell-quoted argument. This fixed guarded adapter upserts
+   as one individually shell-quoted argument. This task upserts
    by exact ID, preserves unrelated records/metadata, validates the private YAML,
    renders the browser, and commits only `health/common-foods.yaml` and
    `health/common-foods-browser.html` with shared locking, preimages, atomic CAS,

@@ -1,4 +1,4 @@
-# #758 capability tools, private PATH only. No workstation/profile installation.
+# Pinned dependencies for Hermes's existing vault tasks, private to its PATH.
 { pkgs, runtimePkgs }: let
   py = runtimePkgs.python313Packages;
   taskYaml = py.pyyaml.overridePythonAttrs (_: {
@@ -22,7 +22,7 @@
     };
     build-system = [ py.hatchling py.hatch-fancy-pypi-readme ];
     dependencies = [ py.click py.filelock py.httpx py.rich py.playwright ];
-    doCheck = false; # Auth/network tests are #760; fixed offline checks test imports/CLI.
+    doCheck = false;
     pythonImportsCheck = [ "notebooklm" ];
   };
   # autoPatchelfHook's mutation of this Rust release crashes before --version.
@@ -58,8 +58,7 @@ in {
   task-python = taskPython;
   browser-driver = runtimePkgs.playwright-driver;
   pdf = runtimePkgs.poppler-utils;
-  # Prebuilt exact PEP723 dependency closure for the two reviewed task scripts.
-  # All other uv invocations retain frozen/offline behavior and cannot download.
+  # Run the existing PEP723 tasks with their prebuilt Nix dependencies.
   uv-task = (pkgs.writeShellScriptBin "uv" ''
     export UV_OFFLINE=1 UV_PYTHON_DOWNLOADS=never UV_NO_MANAGED_PYTHON=1
     if [ "$#" -ge 3 ] && [ "$1" = run ] && [ "$2" = --quiet ] && [ "$3" = --script ]; then
@@ -75,19 +74,9 @@ in {
     canonical="$(${runtimePkgs.coreutils}/bin/realpath -e -- "$script")"
     case "$canonical" in
       "''${VAULT_DIR:-/nonexistent}/.mise/tasks/common-foods-browser")
-        # Staging stays closed. Accepted production also supports the original
-        # terminal task, whose own flock/atomic writes are unchanged.
-        if [ "''${HERMES_NATIVE_OFFLINE:-}" != 1 ]; then
-          [ "''${HERMES_NATIVE_STAGE:-}" = production ] || exit 64
-          [ "''${HERMES_PRODUCTION_WRITER_HELD:-}" = 1 ] || [ "''${HERMES_NATIVE_TASK_ACCESS:-}" = original ] || exit 64
-        fi
         exec ${taskPython}/bin/python3 -I "$canonical" "$@"
         ;;
       "''${VAULT_DIR:-/nonexistent}/scripts/macros-details")
-        # Read-only deterministic report; no provider credentials or download.
-        if [ "''${HERMES_NATIVE_OFFLINE:-}" != 1 ]; then
-          [ "''${HERMES_NATIVE_STAGE:-}" = production ] && [ "''${HERMES_NATIVE_READONLY:-}" = 1 ] || exit 64
-        fi
         exec ${taskPython}/bin/python3 -I "$canonical" "$@"
         ;;
       *) exec ${runtimePkgs.uv}/bin/uv run --script "$script" "$@" ;;
@@ -102,10 +91,9 @@ in {
     exec ${runtimePkgs.uv}/bin/uvx "$@"
   '').overrideAttrs (_: { version = runtimePkgs.uv.version; });
   mise = (pkgs.writeShellScriptBin "mise" ''
-    exec ${taskPython}/bin/python3 -I ${./task-compat.py} \
-      ${pkgs.stdenv.cc.bintools.dynamicLinker} \
-      ${pkgs.lib.makeLibraryPath [ pkgs.glibc pkgs.stdenv.cc.cc.lib ]} \
-      ${miseRelease} "$@"
+    exec ${pkgs.stdenv.cc.bintools.dynamicLinker} \
+      --library-path ${pkgs.lib.makeLibraryPath [ pkgs.glibc pkgs.stdenv.cc.cc.lib ]} \
+      --argv0 mise ${miseRelease} "$@"
   '').overrideAttrs (_: {
     name = "hermes-native-mise-2026.9.7";
     version = "2026.9.7";
@@ -125,7 +113,6 @@ in {
     url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64";
     sha256 = "c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385";
   };
-  # Lock-resolved native replacements are explicit in runtime.json. Do not pretend
-  # Debian build identifiers or a transitive Node closure are byte-identical.
+  # Native replacements for the existing task dependencies.
   inherit (pkgs) jq defuddle tesseract libheif util-linux curl cacert sd;
 }
