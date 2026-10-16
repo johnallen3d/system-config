@@ -49,7 +49,7 @@ class SourceConsolidation(unittest.TestCase):
 
     def test_current_deployment_guides_do_not_target_retired_directories(self):
         for name in ("docs/omarchy-nvim.md", "docs/omarchy-beszel.md",
-                     "docs/llm-usage-agent.md"):
+                     "docs/llm-usage-agent.md", ".agents/skills/pi-nix-integration/SKILL.md"):
             text = (ROOT / name).read_text()
             self.assertNotIn("system-config-amfaro", text, name)
             self.assertNotIn("system-config-poc", text, name)

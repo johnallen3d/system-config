@@ -9,12 +9,19 @@ them records past deployments, not current activation instructions.
 
 ## One reconciled source
 
-The original source recovery used `feature/consolidate-omarchy-config`. The
-current Hermes deployment (#787) uses `feature/remove-hermes-guards`, in the linked
-worktree `.worktrees/remove-hermes-guards` below the normal
-`~/dev/src/system-config` repository. Changes remain uncommitted until John
-authorizes committing/integrating them. The dirty Omarchy primary checkout and
-other task worktrees are not activation targets for this change; preserve them.
+The original recovery and later deployments copied newer source into linked
+worktrees without advancing Omarchy's old Git branches. Cleanup under #792/#781
+reconciles those overlays against the recorded Mac history, preserves the two
+remote-only documentation/test corrections, and fast-forwards Omarchy's local
+`main`. Complete, verified source archives and the original Git bundle are retained
+under `~/.local/state/system-config-recovery/20261016-wrap-cleanup/`; these are
+recovery copies, never deployment inputs. No credentials or sessions are included.
+
+Use the synchronized `~/dev/src/system-config` repository as the primary checkout.
+Create each deployment's task worktree from its local `main`, transfer reviewed
+commits/files, then integrate completed work and retire that task worktree. Do not
+reuse a historical deployment worktree or copy a newer tree over stale recorded
+history. Inspect and preserve any independent changes before synchronization.
 
 Reconciliation keeps current local `main` as the baseline, including its newer
 Pi wrapper formatting, worktree policy, rebuild routing, and stronger tests.

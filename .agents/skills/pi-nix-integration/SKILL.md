@@ -23,7 +23,7 @@ Pi stores npm packages under the selected profile's `npm/node_modules`, not the 
 1. Inspect the active profile with `pi --version` and `pi list`.
 2. Add/remove the appropriate `npm:<name>` or `git:<source>` declaration in `modules/home-manager/pi/packages.nix`. Keep shared packages in `sharedPackageSpecs` only when both personal and work need them.
 3. Apply unchanged inputs on Mac with `mise update-system --switch-only`.
-4. For shared changes, inspect Omarchy's actual `~/dev/src/system-config-amfaro` snapshot, check divergence, transfer only intended files, then build/activate its standalone Home Manager configuration as documented in `docs/omarchy-agents.md`. A Mac rebuild does not deploy Omarchy.
+4. For shared changes, inspect Omarchy's actual verified task worktree under `~/dev/src/system-config/.worktrees/`, check divergence, transfer only intended files, then build/activate its standalone Home Manager configuration as documented in `docs/omarchy-agents.md`. A Mac rebuild does not deploy Omarchy.
 5. Use `mise run harness-refresh` to refresh both hosts' Pi packages and work Claude plugin. `--local-only` explicitly skips Omarchy; Linux always runs host-local. This updates neither Claude's binary nor Omarchy's Home Manager configuration.
 6. Verify installed config and runtime discovery independently on each host. Do not restart active agents automatically. Restart Claude after plugin updates and start a new Pi session to load changed extensions.
 

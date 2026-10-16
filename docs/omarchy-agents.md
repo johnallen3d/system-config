@@ -335,10 +335,10 @@ the actual worktree, lock and installed state, check for divergence, and transfe
 only intended changes; preserve unrelated edits and machine-local credentials.
 
 The former snapshot paths were retired in #781; recovery archives are not
-deployment targets. Hermes guard removal (#787) is deployed from
-`~/dev/src/system-config/.worktrees/remove-hermes-guards` on
-`feature/remove-hermes-guards`. Preserve the primary checkout and other task
-worktrees' independent changes. The Omarchy-only input pins remain unchanged.
+deployment targets. Synchronize Omarchy's local `main` with reviewed, integrated history before creating
+its task worktree. Do not copy newer source over an old Git baseline or reuse a
+historical deployment worktree. Preserve independent changes before reconciliation;
+see #781/#792 for the archived overlay cleanup. The Omarchy-only input pins remain unchanged.
 Hermes runs its upstream gateway as an ordinary systemd user service; no
 bespoke approval receipts, restart gates, or activation preflight apply.
 See [source reconciliation](omarchy-source-consolidation.md).
@@ -349,7 +349,7 @@ work commands use `mise -C ~/dev/src/amfaro exec -- ...`. Give test scripts
 absolute paths because `mise -C` changes the command's working directory, e.g.:
 
 ```bash
-mise -C ~/dev/src/amfaro exec -- python3 /home/johna/dev/src/system-config/.worktrees/consolidate-omarchy-config/tests/amfaro-mise.py --installed
+mise -C ~/dev/src/amfaro exec -- python3 "$task_path/tests/amfaro-mise.py" --installed
 ```
 
 Verify installed config and effective profile behavior on each host after
@@ -365,7 +365,8 @@ task worktree as `johna` (not the stale dirty primary checkout):
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
-cd ~/dev/src/system-config/.worktrees/remove-hermes-guards
+# Set task_path to this deployment's verified task worktree first.
+cd "$task_path"
 nix build --no-write-lock-file \
   'path:.#homeConfigurations."johna@omarchy".activationPackage' --out-link result-agents
 ./result-agents/activate
@@ -476,7 +477,7 @@ the shared refresh is partial. No agents or servers are restarted automatically.
 
 Use `mise run harness-refresh --local-only` for an explicitly Mac-only refresh.
 On Omarchy, run `mise run harness-refresh` from the verified Git task worktree
-(currently `~/dev/src/system-config/.worktrees/consolidate-omarchy-config`);
+(set `task_path` to this deployment's worktree);
 Linux always refreshes only itself and never connects back to the Mac.
 
 Validate orchestration offline with `mise exec -- python3 tests/harness-refresh.py`
