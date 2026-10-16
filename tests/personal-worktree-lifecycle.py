@@ -138,12 +138,12 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.git(self.primary, "rev-parse", self.branch), self.tip)
 
     def test_guarded_rebase_instruction_boundaries(self):
-        policy = LIFECYCLE.read_text()
-        for clause in ("only this task's own unpublished local commits", "not\n   proof",
+        policy = " ".join(LIFECYCLE.read_text().split())
+        for clause in ("only this task's own unpublished local commits", "not proof",
                        "Uncertain ownership/publication", "Do not fetch or push",
                        "required signatures on rewritten commits", "never bypass signing or hooks",
-                       "no existing\n   Git operation", "unchanged tips immediately",
-                       "No\n   automatic resolution, abort, skip", "rerun relevant gates",
+                       "no existing Git operation", "unchanged tips immediately",
+                       "No automatic resolution, abort, skip", "rerun relevant gates",
                        "not an unconditional rebuild/redeploy", "validated main/task tips"):
             self.assertIn(clause, policy)
 

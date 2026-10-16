@@ -28,8 +28,8 @@ FORBIDDEN = (
 )
 
 
-def check_policy(path):
-    text = path.read_text()
+def check_policy(path, text=None):
+    text = " ".join((path.read_text() if text is None else text).split())
     for phrase in (
         "successful deployment",
         "committing",
@@ -60,14 +60,17 @@ def main():
     agents = check_policy(ROOT / "AGENTS.md")
     assert "update issue comments" in agents
     assert "`done` column" in agents
+    lifecycle = LIFECYCLE.read_text()
     for source, _ in PROMPTS.values():
-        text = check_policy(ROOT / source)
+        expanded = (ROOT / source).read_text() + "\n" + lifecycle
+        # Bound the actual expanded prompt, not just the small harness wrapper.
+        assert len(expanded.encode()) <= 6000, (source, "wrap prompt byte budget")
+        text = check_policy(ROOT / source, expanded)
         assert "On actual invocation" in text
         assert "completed Fizzy cards within this session's scope" in text
         assert "wrapping-up" in text and "Commit message:" in text
         assert "appended personal completion lifecycle" in text
         assert "skill: wrapping-up" not in text
-    lifecycle = LIFECYCLE.read_text()
     for phrase in ("same personal workflow for Pi and Claude", "merge --ff-only",
                    "separate plain `pwd -P`", "--foreground", "never blocked or partially deployed work",
                    "MUST close completed, in-scope", "unknown contents require",
