@@ -50,18 +50,14 @@ else
   payload="$(mktemp -d)"
   trap 'rm -rf "$payload"' EXIT
   python3 "$worker" prepare "$repo" "$payload"
-  # Authenticate in the foreground, not in a background job/log file.
-  # Without a controlling terminal, fail promptly instead of leaving a PAM/
-  # Touch ID prompt waiting after the invoking agent has timed out.
-  if ( : < /dev/tty ) 2>/dev/null; then
-    sudo -v
-  else
-    sudo -n -v || {
-      auth_status=$?
-      echo 'Mac sudo authentication required; run this task from an interactive Mac terminal.' >&2
-      exit "$auth_status"
-    }
-  fi
+  # The installed sudoers rule permits this exact command without a password.
+  # A generic sudo -v would incorrectly demand unrelated authentication.
+  sudo -n -l -- /run/current-system/sw/bin/darwin-rebuild switch --impure \
+    --no-update-lock-file --no-write-lock-file --flake "path:$repo" >/dev/null || {
+    auth_status=$?
+    echo 'Command-specific darwin-rebuild sudo authorization is unavailable; no deployments started.' >&2
+    exit "$auth_status"
+  }
   echo '[Mac + Omarchy] Starting parallel deployments'
   mise run nix-rebuild --switch-only &
   mac_pid=$!

@@ -59,7 +59,7 @@ if os.path.basename(sys.argv[0]) == "nix":
             should_build = variables.get("usage_update_only") != "true" and not variables.get("UPDATE_STATUS")
             assert len(rebuilds) == (1 if should_build else 0)
             if should_build:
-                assert rebuilds[0]["args"][:-1] == ["darwin-rebuild", "switch", "--impure", "--no-update-lock-file", "--no-write-lock-file", "--flake"]
+                assert rebuilds[0]["args"][:-1] == ["-n", "/run/current-system/sw/bin/darwin-rebuild", "switch", "--impure", "--no-update-lock-file", "--no-write-lock-file", "--flake"]
                 assert rebuilds[0]["args"][-1].startswith("path:")
                 assert Path(rebuilds[0]["args"][-1].removeprefix("path:")).resolve() == repo.resolve()
             restarts = [call for call in calls if call["command"] == "launchctl"]

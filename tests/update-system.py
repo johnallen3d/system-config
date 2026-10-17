@@ -95,7 +95,10 @@ sys.exit(int(os.environ.get(mode.upper() + '_RC', '0')))
         self.assertEqual([e for e in events if e[0] == "mise"], [
             ["mise", ["run", "nix-rebuild", "--update-only"]],
             ["mise", ["run", "nix-rebuild", "--switch-only"]]])
-        self.assertTrue(any(e[0] == "sudo" and e[1] in (["-v"], ["-n", "-v"]) for e in events))
+        checks = [e[1] for e in events if e[0] == "sudo"]
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0][:4], ["-n", "-l", "--", "/run/current-system/sw/bin/darwin-rebuild"])
+        self.assertNotIn("-v", checks[0])
         self.assertIn(["worker", ["deploy"]], events)
         self.assertEqual(events[-1], ["worker", ["check"]])
         self.assertIn("[Mac] SUCCESS", result.stdout)

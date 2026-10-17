@@ -40,7 +40,7 @@ printf 'nix-rebuild log: %s\n' "$log" >&2
     nix flake update
   fi
   if [[ "${usage_update_only:-false}" != "true" ]]; then
-    sudo darwin-rebuild switch --impure --no-update-lock-file --no-write-lock-file --flake "path:$repo"
+    sudo -n /run/current-system/sw/bin/darwin-rebuild switch --impure --no-update-lock-file --no-write-lock-file --flake "path:$repo"
   fi
 ) >"$log" 2>&1
 rc=$?
