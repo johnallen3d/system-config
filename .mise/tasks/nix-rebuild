@@ -2,14 +2,15 @@
 #MISE description="Apply darwin-rebuild (updates flake by default); logs to temp file"
 #USAGE flag "--switch-only" help="Skip nix flake update"
 #USAGE flag "--picker-only" help="Update only the Herdr project picker input"
+#USAGE flag "--update-only" help="Resolve inputs without building/applying (update-system preparation)"
 set -uo pipefail
 
 # Apply the invoking checkout, including linked worktrees, not unrelated main edits.
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo" || exit
 
-if [[ "${usage_switch_only:-false}" == "true" && "${usage_picker_only:-false}" == "true" ]]; then
-  echo "--switch-only and --picker-only are mutually exclusive" >&2
+if [[ "${usage_switch_only:-false}" == "true" && ( "${usage_picker_only:-false}" == "true" || "${usage_update_only:-false}" == "true" ) ]]; then
+  echo "--switch-only cannot be combined with --picker-only or --update-only" >&2
   exit 2
 fi
 
@@ -27,7 +28,8 @@ restart_service() {
 log="$(mktemp -t nix-rebuild.XXXXXX.log)"
 printf 'nix-rebuild log: %s\n' "$log" >&2
 
-{
+(
+  set -e
   # macOS launchd can leave GUI shells at maxfiles soft=256.
   # Raise to hard limit so flake input fetches do not hit tarball-cache EMFILE.
   raise_nofile_limit
@@ -37,11 +39,13 @@ printf 'nix-rebuild log: %s\n' "$log" >&2
   elif [[ "${usage_switch_only:-false}" != "true" ]]; then
     nix flake update
   fi
-  sudo darwin-rebuild switch --impure --flake "path:$repo"
-} >"$log" 2>&1
+  if [[ "${usage_update_only:-false}" != "true" ]]; then
+    sudo darwin-rebuild switch --impure --no-update-lock-file --no-write-lock-file --flake "path:$repo"
+  fi
+) >"$log" 2>&1
 rc=$?
 
-if [[ "$rc" -eq 0 ]]; then
+if [[ "$rc" -eq 0 && "${usage_update_only:-false}" != "true" ]]; then
   restart_service borders
 fi
 

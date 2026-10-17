@@ -327,12 +327,36 @@ Start a new work Claude session to load the full policy; do not restart active a
 ### Shared changes require two deployments
 
 For agent configuration shared by Mac and Omarchy, apply and verify both hosts
-unless the request explicitly targets only one. The Mac's
-`mise update-system --switch-only` does not activate Omarchy. Source belongs to
-Omarchy's `~/dev/src/system-config` Git repository and task-linked worktrees; a
-commit or push does not synchronize its source or installed configuration. Inspect
-the actual worktree, lock and installed state, check for divergence, and transfer
-only intended changes; preserve unrelated edits and machine-local credentials.
+unless the request explicitly targets only one. From the verified Mac task worktree,
+`mise update-system --switch-only` now deploys **both hosts in parallel**. Without
+`--switch-only`, inputs are updated once on Mac before either build starts.
+`--picker-only` updates only the shared Herdr picker; `--local-only` explicitly
+skips Omarchy. `--harness-refresh` runs after both requested deployments succeed;
+`--harness-only` still refreshes agent packages/plugins without activation.
+
+The updater sends integrated local `main` history and a binary patch representing
+the invoking checkout's source, including nonignored untracked files. It uses a
+private Git index without changing the user's staging area. Ignored files and host
+profiles/credentials are not transported. Omarchy's primary checkout must be clean
+and on `main`; it is synchronized only when fast-forwardable. Divergence, dirty
+source, conflicting deployment worktrees, or SSH failure stop that host rather
+than overwriting changes. The Mac deployment can still succeed: either host's
+failure returns nonzero and is explicitly reported as partial.
+
+Omarchy builds and activates standalone Home Manager from a source-verified linked
+worktree at `~/dev/src/system-config/.worktrees/update-system-<source-id>`, created
+from its synchronized `main`. An identical source can reuse its matching worktree;
+changed or unrelated worktrees are never reset/deleted. Deployment worktrees are
+retained for inspection and normal authorized cleanup. Build/activation log paths
+are printed; inspect failure logs with targeted searches, not a full log dump.
+The active generation and installed managed entries are verified after activation.
+No agent or Herdr restart is explicitly requested by the updater; Home Manager
+retains its ordinary changed-service activation behavior.
+
+Source belongs to Omarchy's `~/dev/src/system-config` Git repository and linked
+worktrees. A commit or push alone does not synchronize or activate it. Plain
+`mise run nix-rebuild` remains Mac-only. For Linux-only deployment or recovery,
+the manual Home Manager procedure below remains available.
 
 The former snapshot paths were retired in #781; recovery archives are not
 deployment targets. Synchronize Omarchy's local `main` with reviewed, integrated history before creating
@@ -359,8 +383,8 @@ agents or Herdr servers. An unreachable or unverified host means a partial
 deployment: keep its Fizzy card open and hand off the missing host/action.
 Documentation-only changes need no activation.
 
-For activation, use the verified
-task worktree as `johna` (not the stale dirty primary checkout):
+For manual activation, use the verified
+task worktree as `johna` (not a dirty or unverified primary checkout):
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh

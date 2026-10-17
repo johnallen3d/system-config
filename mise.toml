@@ -10,7 +10,7 @@ description = "Refresh Pi packages and work Claude plugin on Mac and Omarchy"
 file = "./.mise/tasks/harness-refresh"
 
 [tasks.update-system]
-description = "Apply macOS config and optionally refresh Mac and Omarchy harnesses"
+description = "Apply Mac and Omarchy config in parallel; optionally refresh harnesses"
 file = "./.mise/tasks/update-system"
 
 [tasks.pi-model-usage]

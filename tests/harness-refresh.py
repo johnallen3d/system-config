@@ -308,17 +308,18 @@ with open(os.environ['TEST_LOG'], 'a') as log:
         self.assertEqual(result.returncode, 2)
         self.assertEqual(self.calls('mise'), [])
 
-    def test_update_system_refresh_after_successful_mac_rebuild(self):
-        result = self.run_task(script=UPDATE, usage_switch_only='true', usage_harness_refresh='true')
+    def test_update_system_local_only_refresh_after_successful_mac_rebuild(self):
+        result = self.run_task(script=UPDATE, usage_switch_only='true', usage_harness_refresh='true',
+                               usage_local_only='true')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls('mise'), [
             ['mise', ['run', 'nix-rebuild', '--switch-only']],
-            ['mise', ['run', 'harness-refresh']]])
+            ['mise', ['run', 'harness-refresh', '--local-only']]])
 
-    def test_update_system_failed_rebuild_does_not_refresh(self):
+    def test_update_system_failed_input_update_does_not_refresh(self):
         result = self.run_task(script=UPDATE, usage_harness_refresh='true', MOCK_REBUILD_RC='1')
         self.assertEqual(result.returncode, 1)
-        self.assertEqual(self.calls('mise'), [['mise', ['run', 'nix-rebuild']]])
+        self.assertEqual(self.calls('mise'), [['mise', ['run', 'nix-rebuild', '--update-only']]])
 
 
 if __name__ == '__main__':

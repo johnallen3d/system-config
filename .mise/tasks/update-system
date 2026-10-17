@@ -1,33 +1,98 @@
 #!/usr/bin/env bash
-#MISE description="Apply macOS config; optionally refresh Mac and Omarchy harnesses"
-#USAGE flag "--switch-only" help="Skip nix flake update"
+#MISE description="Apply Mac and Omarchy config in parallel; optionally refresh harnesses"
+#USAGE flag "--switch-only" help="Skip flake input updates on both hosts"
 #USAGE flag "--picker-only" help="Update only the Herdr project picker input"
-#USAGE flag "--harness-refresh" help="Refresh Mac and Omarchy Pi packages and work Claude plugin after rebuild"
+#USAGE flag "--local-only" help="Apply/refresh only the Mac; explicitly skip Omarchy"
+#USAGE flag "--harness-refresh" help="Refresh Mac and Omarchy harness packages after both deployments succeed"
 #USAGE flag "--harness-only" help="Refresh harness packages without rebuilding (Mac + Omarchy from macOS)"
 set -euo pipefail
 
-if [[ "${usage_harness_only:-false}" == "true" ]]; then
-  exec mise run harness-refresh
+refresh_harnesses() {
+  if [[ "${usage_local_only:-false}" == true ]]; then
+    mise run harness-refresh --local-only
+  else
+    mise run harness-refresh
+  fi
+}
+
+if [[ "${usage_harness_only:-false}" == true ]]; then
+  refresh_harnesses
+  exit
 fi
 
 if [[ "$(uname -s)" != Darwin ]]; then
-  echo "System rebuilds are macOS-only; use harness-refresh for host-local Linux refreshes" >&2
+  echo "System deployments must start on macOS (Mac -> Omarchy); use harness-refresh for host-local Linux refreshes" >&2
   exit 2
 fi
 
-if [[ "${usage_switch_only:-false}" == "true" && "${usage_picker_only:-false}" == "true" ]]; then
+if [[ "${usage_switch_only:-false}" == true && "${usage_picker_only:-false}" == true ]]; then
   echo "--switch-only and --picker-only are mutually exclusive" >&2
   exit 2
 fi
 
-if [[ "${usage_switch_only:-false}" == "true" ]]; then
-  mise run nix-rebuild --switch-only
-elif [[ "${usage_picker_only:-false}" == "true" ]]; then
-  mise run nix-rebuild --picker-only
-else
-  mise run nix-rebuild
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo"
+
+# Resolve inputs exactly once, before either host starts building.
+if [[ "${usage_switch_only:-false}" != true ]]; then
+  update_args=(--update-only)
+  if [[ "${usage_picker_only:-false}" == true ]]; then
+    update_args+=(--picker-only)
+  fi
+  mise run nix-rebuild "${update_args[@]}"
 fi
 
-if [[ "${usage_harness_refresh:-false}" == "true" ]]; then
-  mise run harness-refresh
+if [[ "${usage_local_only:-false}" == true ]]; then
+  mise run nix-rebuild --switch-only
+  echo '[Mac] SUCCESS (Omarchy explicitly skipped)'
+else
+  worker="$repo/.mise/scripts/update-system-omarchy"
+  payload="$(mktemp -d)"
+  trap 'rm -rf "$payload"' EXIT
+  python3 "$worker" prepare "$repo" "$payload"
+  # Authenticate in the foreground, not in a background job/log file.
+  # Without a controlling terminal, fail promptly instead of leaving a PAM/
+  # Touch ID prompt waiting after the invoking agent has timed out.
+  if ( : < /dev/tty ) 2>/dev/null; then
+    sudo -v
+  else
+    sudo -n -v || {
+      auth_status=$?
+      echo 'Mac sudo authentication required; run this task from an interactive Mac terminal.' >&2
+      exit "$auth_status"
+    }
+  fi
+  echo '[Mac + Omarchy] Starting parallel deployments'
+  mise run nix-rebuild --switch-only &
+  mac_pid=$!
+  python3 "$worker" deploy "$payload" &
+  omarchy_pid=$!
+  status=0
+  if wait "$mac_pid"; then
+    echo '[Mac] SUCCESS'
+  else
+    mac_status=$?
+    echo "[Mac] FAILED (exit $mac_status)" >&2
+    status=1
+  fi
+  # Always collect both outcomes, even when the Mac fails first.
+  if wait "$omarchy_pid"; then
+    echo '[Omarchy] SUCCESS'
+  else
+    omarchy_status=$?
+    echo "[Omarchy] FAILED (exit $omarchy_status)" >&2
+    status=1
+  fi
+  if ! python3 "$worker" check "$repo" "$payload"; then
+    status=1
+  fi
+  if [[ "$status" != 0 ]]; then
+    echo 'Shared deployment is incomplete/partial; see per-host status and log paths above.' >&2
+    exit "$status"
+  fi
+  echo 'Mac and Omarchy configurations applied and deployment source unchanged.'
+fi
+
+if [[ "${usage_harness_refresh:-false}" == true ]]; then
+  refresh_harnesses
 fi

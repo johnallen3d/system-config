@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+"""Transport a Git-based deployment to Omarchy; never transport host profiles."""
+
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+
+SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+       "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
+       "johna@omarchy", "bash -s"]
+
+
+def run(*args, cwd=None, env=None):
+    return subprocess.check_output(args, cwd=cwd, env=env, text=True).strip()
+
+
+def git(repo, *args):
+    return run("git", "-C", str(repo), *args)
+
+
+def source_tree(repo):
+    # A private index includes new, nonignored source without staging anything
+    # in the user's real index. Ignored files, profiles, and .git stay behind.
+    with tempfile.TemporaryDirectory(prefix="update-system-index-") as directory:
+        env = dict(os.environ, GIT_INDEX_FILE=str(Path(directory) / "index"))
+        run("git", "-C", str(repo), "read-tree", "HEAD", env=env)
+        run("git", "-C", str(repo), "add", "-A", "--", ".", env=env)
+        return run("git", "-C", str(repo), "write-tree", env=env)
+
+
+def prepare(repo, directory):
+    repo = repo.resolve()
+    main = git(repo, "rev-parse", "refs/heads/main")
+    if subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", main, "HEAD"]).returncode:
+        raise RuntimeError("Invoking checkout is not based on current local main; reconcile it before deployment")
+    if git(repo, "ls-files", "--unmerged"):
+        raise RuntimeError("Resolve local Git conflicts before deploying")
+    tree = source_tree(repo)
+    manifest = {"main": main, "tree": tree}
+    manifest["slug"] = "update-system-" + hashlib.sha256(f"{main}:{tree}".encode()).hexdigest()[:12]
+    (directory / "manifest.json").write_text(json.dumps(manifest))
+    subprocess.run(["git", "-C", str(repo), "bundle", "create", str(directory / "main.bundle"),
+                    "refs/heads/main"], check=True)
+    with (directory / "source.patch").open("wb") as output:
+        subprocess.run(["git", "-C", str(repo), "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-relative",
+                        "--src-prefix=a/", "--dst-prefix=b/", "--binary", "--full-index", main, tree, "--"],
+                       stdout=output, check=True)
+    shutil.copyfile(__file__, directory / "worker.py")
+    print(f"[Omarchy] Prepared source {tree[:12]} on main {main[:12]}", flush=True)
+
+
+def deploy(directory):
+    archive = directory / "payload.tar.gz"
+    with tarfile.open(archive, "w:gz") as output:
+        for name in ("main.bundle", "source.patch", "manifest.json", "worker.py"):
+            output.add(directory / name, arcname=name)
+    # Fish is the login shell. Run Bash explicitly, with no local profile/env
+    # variables or credentials serialized into the remote command.
+    script = """set -euo pipefail
+[ "$(uname -s)" = Linux ] && [ "$HOME" = /home/johna ]
+directory=$(mktemp -d)
+trap 'rm -rf "$directory"' EXIT
+base64 --decode <<'UPDATE_SYSTEM_PAYLOAD' | tar -xzf - -C "$directory"
+""" + base64.b64encode(archive.read_bytes()).decode() + "\nUPDATE_SYSTEM_PAYLOAD\n" + \
+        'python3 "$directory/worker.py" remote "$directory"\n'
+    subprocess.run(SSH, input=script, text=True, check=True)
+
+
+def verify_files(generation):
+    root = (generation / "home-files").resolve()
+    checked = 0
+    for parent, dirs, files in os.walk(root, followlinks=False):
+        links = [name for name in dirs if (Path(parent) / name).is_symlink()]
+        dirs[:] = [name for name in dirs if name not in links]
+        for name in files + links:
+            expected = Path(parent) / name
+            relative = expected.relative_to(root)
+            actual = Path.home() / relative
+            if not actual.exists():
+                raise RuntimeError(f"Installed managed file is missing/broken: {relative}")
+            if actual.resolve() != expected.resolve():
+                if not (actual.is_file() and expected.is_file() and actual.read_bytes() == expected.read_bytes()):
+                    raise RuntimeError(f"Installed managed file differs: {relative}")
+            checked += 1
+    print(f"[Omarchy] Verified {checked} installed managed entries", flush=True)
+
+
+def receive(directory, repo):
+    manifest = json.loads((directory / "manifest.json").read_text())
+    main, tree, slug = (manifest[key] for key in ("main", "tree", "slug"))
+    expected_slug = "update-system-" + hashlib.sha256(f"{main}:{tree}".encode()).hexdigest()[:12]
+    if slug != expected_slug or any(len(value) != 40 or any(c not in "0123456789abcdef" for c in value)
+                                    for value in (main, tree)):
+        raise RuntimeError("Invalid source manifest")
+    worktrees = git(repo, "worktree", "list", "--porcelain")
+    if worktrees.splitlines()[0] != f"worktree {repo.resolve()}":
+        raise RuntimeError("Omarchy deployment repository must be its primary checkout")
+    if git(repo, "symbolic-ref", "--short", "HEAD") != "main":
+        raise RuntimeError("Omarchy primary checkout is not on main; refusing to switch it")
+    if git(repo, "status", "--porcelain", "--untracked-files=all"):
+        raise RuntimeError("Omarchy primary checkout has changes; preserve/reconcile them first")
+    git(repo, "bundle", "verify", str(directory / "main.bundle"))
+    bundled = git(repo, "bundle", "list-heads", str(directory / "main.bundle"), "refs/heads/main")
+    if bundled != f"{main} refs/heads/main":
+        raise RuntimeError("Bundle does not match the declared main")
+    git(repo, "bundle", "unbundle", str(directory / "main.bundle"))
+    old_main = git(repo, "rev-parse", "refs/heads/main")
+    if subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", old_main, main]).returncode:
+        raise RuntimeError("Omarchy main is ahead or diverged; reconcile history before deployment")
+    if old_main != main:
+        # Only integrated local main is synchronized, never a task branch.
+        git(repo, "merge", "--ff-only", "--no-overwrite-ignore", main)
+        print(f"[Omarchy] Fast-forwarded main {old_main[:12]} -> {main[:12]}", flush=True)
+    task = repo / ".worktrees" / slug
+    branch = "feature/" + slug
+    if task.exists():
+        if f"worktree {task.resolve()}\n" not in worktrees + "\n":
+            raise RuntimeError(f"Unregistered deployment path exists: {task}")
+        if git(task, "symbolic-ref", "--short", "HEAD") != branch or git(task, "rev-parse", "HEAD") != main:
+            raise RuntimeError(f"Deployment worktree ownership/base mismatch: {task}")
+    else:
+        subprocess.run(["git", "-C", str(repo), "worktree", "add", "-b", branch, str(task), "main"], check=True)
+        if (directory / "source.patch").stat().st_size:
+            git(task, "apply", "--binary", str(directory / "source.patch"))
+    if git(task, "ls-files", "--others", "--ignored", "--exclude-standard"):
+        raise RuntimeError(f"Unexpected ignored files in deployment worktree; preserve/reconcile them: {task}")
+    if source_tree(task) != tree:
+        raise RuntimeError(f"Deployment source differs; refusing to overwrite changes in {task}")
+    print(f"[Omarchy] Deployment source: {task}", flush=True)
+    return task, tree
+
+
+def remote(directory):
+    if sys.platform != "linux" or str(Path.home()) != "/home/johna":
+        raise RuntimeError("Unexpected remote host/user")
+    task, tree = receive(directory, Path.home() / "dev/src/system-config")
+    logs = Path.home() / ".local/state/system-config/logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    log = logs / f"update-system-{time.time_ns()}.log"
+    print(f"[Omarchy] Home Manager log: {log}", flush=True)
+    context = ["mise", "-C", str(Path.home() / "dev/src/amfaro"), "exec", "--"]
+    env = dict(os.environ, NIX_CONFIG=os.environ.get("NIX_CONFIG", "") +
+               "\nextra-experimental-features = nix-command flakes")
+    with log.open("w") as output:
+        result = subprocess.run(context + ["nix", "--extra-experimental-features", "nix-command flakes",
+                                          "build", "--no-update-lock-file", "--no-write-lock-file", "--no-link", "--print-out-paths",
+                                          f'path:{task}#homeConfigurations."johna@omarchy".activationPackage'],
+                                stdout=subprocess.PIPE, stderr=output, text=True, env=env)
+        if result.returncode:
+            raise RuntimeError(f"Omarchy build failed (exit {result.returncode}); inspect {log}")
+        generation = Path(result.stdout.strip())
+        if generation.parent != Path("/nix/store") or not generation.name.endswith("-home-manager-generation"):
+            raise RuntimeError(f"Unexpected build output; inspect {log}")
+        subprocess.run(context + [str(generation / "activate")], stdout=output, stderr=output, env=env, check=True)
+    active = (Path.home() / ".local/state/nix/profiles/home-manager").resolve()
+    if active != generation:
+        raise RuntimeError(f"Activation did not select the built generation; inspect {log}")
+    if source_tree(task) != tree:
+        raise RuntimeError(f"Source changed during deployment: {task}")
+    verify_files(generation)
+    print(f"[Omarchy] Active generation: {generation}", flush=True)
+
+
+def main():
+    mode = sys.argv[1]
+    if mode == "prepare":
+        prepare(Path(sys.argv[2]), Path(sys.argv[3]))
+    elif mode == "deploy":
+        deploy(Path(sys.argv[2]))
+    elif mode == "remote":
+        remote(Path(sys.argv[2]))
+    elif mode == "check":
+        manifest = json.loads((Path(sys.argv[3]) / "manifest.json").read_text())
+        if source_tree(Path(sys.argv[2])) != manifest["tree"]:
+            raise RuntimeError("Local source changed during deployment; hosts may differ")
+    else:
+        raise RuntimeError(f"Unknown mode: {mode}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (RuntimeError, subprocess.CalledProcessError, OSError) as error:
+        print(f"[Omarchy] {error}", file=sys.stderr, flush=True)
+        sys.exit(1)
