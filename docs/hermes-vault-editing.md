@@ -4,10 +4,13 @@ Hermes uses its upstream gateway, terminal tools, approvals, credential handling
 and scheduler. There is no bespoke Python supervisor, broker, migration controller,
 writer gate, approval-receipt chain, or Hermes activation preflight.
 
-Home Manager owns the pinned package, launchers, systemd user service, and the
-existing `/search` and `/macros` integration plugins. Their task dependencies are
-provided through a private Nix PATH. Ordinary argument validation and subprocess
-timeouts in those integrations are not migration or runtime authorization gates.
+Home Manager owns the pinned package, launchers, systemd user service, and private
+Nix PATH for task dependencies. The `/search` and `/macros` integration plugins
+belong to the notes repository at `~/notes/.hermes/plugins/{search,macros}`.
+Hermes discovers them natively as project plugins (`HERMES_ENABLE_PROJECT_PLUGINS=1`)
+from the gateway's `~/notes` working directory; Nix does not own their files or links.
+Ordinary argument validation and subprocess timeouts in those integrations are not
+migration or runtime authorization gates.
 
 ## Normal operations
 
@@ -26,6 +29,11 @@ rewrite the service file, which is read-only because Home Manager owns it.
 `hermes-production` and
 `hermes-native` both expose the upstream CLI with the production environment;
 bare `hermes` and `~/.hermes` remain user-owned and are not changed.
+
+Edit command plugins in notes, alongside their mise tasks. Plugin Python changes
+require a gateway restart using systemd from outside Hermes, but no Nix rebuild;
+changes to the mise task scripts take effect on the next invocation. Run plugin
+inspection commands from `~/notes` so native project discovery sees that directory.
 
 ## Existing state and integrations
 

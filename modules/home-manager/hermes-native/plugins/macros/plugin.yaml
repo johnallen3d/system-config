@@ -1,7 +1,0 @@
-name: macros
-version: 1.0.0
-description: "Read-only deterministic nutrition reports that bypass the Hermes agent loop."
-author: "John Allen, Hermes Agent"
-kind: standalone
-requires_env:
-  - VAULT_DIR

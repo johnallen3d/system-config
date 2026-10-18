@@ -49,6 +49,8 @@
     HERMES_HOME = paths.state;
     HERMES_MANAGED = "home-manager";
     HERMES_GATEWAY_EXTERNAL_SUPERVISOR = "1";
+    # Command plugins belong to the trusted notes project, not the Nix store.
+    HERMES_ENABLE_PROJECT_PLUGINS = "1";
     XDG_CONFIG_HOME = paths.config;
     XDG_CACHE_HOME = paths.cache;
     XDG_DATA_HOME = "${paths.home}/.local/share";
@@ -124,8 +126,6 @@ in {
       # status/restart commands can find the upstream-named service.
       ".local/share/hermes-native/production/baseline-0.21.2/home/.config/systemd/user/${serviceName}.service".source =
         config.lib.file.mkOutOfStoreSymlink "${homeDir}/.config/systemd/user/${serviceName}.service";
-      "${stateRelative}/plugins/search".source = ./hermes-native/plugins/search;
-      "${stateRelative}/plugins/macros".source = ./hermes-native/plugins/macros;
     };
     # Non-secret inspection metadata only; not an approval or execution gate.
     xdg.configFile."hermes-native/production.json".text = builtins.toJSON {
