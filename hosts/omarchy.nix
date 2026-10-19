@@ -29,12 +29,16 @@ in {
     ../modules/home-manager/omarchy-herdr.nix
     ../modules/home-manager/omarchy-hermes.nix
     ../modules/home-manager/omarchy-nvim.nix
+    ../modules/home-manager/omarchy-pi-pocket.nix
     ../modules/home-manager/omarchy-syncthing-lan.nix
     ../modules/home-manager/omarchy-vnc.nix
   ];
 
   # Isolated native foundation only. No production gateway, tokens, cron or vault.
   nativeHermes.enable = true;
+
+  # Parallel Durable/browser experiment; production Hermes/Telegram stays unchanged.
+  piPocketTrial.enable = true;
 
   subscriptionProxy = {
     enable = true;
