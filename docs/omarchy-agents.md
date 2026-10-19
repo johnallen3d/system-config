@@ -218,10 +218,18 @@ noninteractive launches; an explicitly inherited path still wins. See
 sessions need `/reload` or a new session to pick up helper changes, but must be
 relaunched to receive launcher environment changes.
 
-The shared `pi-headroom` extension **is** enabled for both Pi profiles. It
-installs and manages its own local proxy in `~/.pi/headroom-venv`, independently
-of MCP configuration. Omarchy's Pi launcher supplies Nix C++ and zlib runtime
-libraries through process-scoped `LD_LIBRARY_PATH`; otherwise native Python
+The shared `pi-headroom` package remains installed in both Pi profiles, but
+its extension is **disabled** through `extensions = []` in the managed package
+settings (`modules/home-manager/pi-settings.nix`). New Pi sessions do not load
+its proxy startup or context-compression hooks. To re-enable it, remove that
+package filter and apply the shared configuration on both hosts. Existing Pi
+sessions need `/reload` or a restart; active agents and proxies are not stopped
+automatically. The separate Mac-local Headroom MCP configuration is unchanged.
+
+When enabled, the extension manages its own local proxy in
+`~/.pi/headroom-venv`, independently of MCP configuration. Omarchy's Pi launcher
+supplies Nix C++ and zlib runtime libraries through process-scoped
+`LD_LIBRARY_PATH`; otherwise native Python
 wheels can fail with `libstdc++.so.6` missing and the extension only reports
 “proxy offline.” This does not change the login shell or Claude environment.
 After launcher changes, restart Pi in the intended directory (or retry

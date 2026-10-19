@@ -28,6 +28,10 @@ const loader=new DefaultResourceLoader({cwd:process.cwd(),agentDir:profile,setti
 await loader.reload();
 assert.deepEqual(loader.getExtensions().errors, []);
 const paths=loader.getExtensions().extensions.map(e=>e.path);
+assert(!paths.some(p=>p.includes('/pi-headroom/')),'Disabled Headroom must not load startup or compression hooks');
+assert.deepEqual(settings.getGlobalSettings().packages.find(p=>p?.source==='npm:pi-headroom'),{source:'npm:pi-headroom',extensions:[]});
+await access(join(profile,'npm/node_modules/pi-headroom/package.json'));
+console.log('PASS Headroom remains installed but its extension is disabled');
 const hasWorkKit=paths.some(p=>p.includes('/agent-kit/'));
 if(personal){
  assert(paths.includes('builtin:mcp'),JSON.stringify(paths));
@@ -37,9 +41,9 @@ if(personal){
  assert(loader.getAppendSystemPrompt().some(p=>p.includes('$PI_CODING_AGENT_DIR')));
  await assert.rejects(access(join(profile,'mcp-adapter.json')));
  const packages=settings.getGlobalSettings().packages;
- assert.deepEqual(packages,['npm:pi-headroom','npm:pi-prompt-template-model','npm:pi-web-search']);
+ assert.deepEqual(packages,[{source:'npm:pi-headroom',extensions:[]},'npm:pi-prompt-template-model','npm:pi-web-search']);
  const deps=JSON.parse(await readFile(join(profile,'npm/package.json'),'utf8')).dependencies;
- assert.deepEqual(Object.keys(deps).sort(),packages.map(p=>p.slice(4)).sort(),'Stale direct dependencies remain');
+ assert.deepEqual(Object.keys(deps).sort(),packages.map(p=>(typeof p==='string'?p:p.source).slice(4)).sort(),'Stale direct dependencies remain');
  assert(loader.getPrompts().prompts.some(p=>p.name==='wrap'));
  assert(paths.some(p=>p.includes('/pi-prompt-template-model/')));
  const manager=new DefaultPackageManager({cwd:process.cwd(),agentDir:profile,settingsManager:settings});

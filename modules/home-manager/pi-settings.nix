@@ -19,6 +19,17 @@
   ...
 }: let
   piPackages = import ./pi/packages.nix {inherit lib;};
+  # Keep Headroom installed, but do not load its startup or compression hooks.
+  # Installation specs stay unchanged so disabling it does not trigger bootstrap.
+  mkPiPackageSettings = packages:
+    map (source:
+      if source == "npm:pi-headroom"
+      then {
+        inherit source;
+        extensions = [];
+      }
+      else source)
+    packages;
   managedTheme = import ./managed-theme.nix {inherit lib;};
   jq = "${pkgs.jq}/bin/jq";
 
@@ -171,7 +182,7 @@
     // piPersonalUiSettings
     // {
       defaultThinkingLevel = "high";
-      packages = piPackages.personalPackageSpecs;
+      packages = mkPiPackageSettings piPackages.personalPackageSpecs;
     };
 
   piWorkSettings =
@@ -179,7 +190,7 @@
     // {
       defaultThinkingLevel = "high";
       defaultProjectTrust = "always";
-      packages = piPackages.workPackageSpecs;
+      packages = mkPiPackageSettings piPackages.workPackageSpecs;
       subagents.agentOverrides = {
         context-builder = {
           model = "opencode-go/glm-5.2";
