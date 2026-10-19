@@ -26,6 +26,7 @@ import go_catalog
 PROFILES = ("personal", "work")
 GO_MODELS = ("glm-5.2", "kimi-k2.6", "deepseek-v4-flash")
 CODEX_MODELS = ("gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna")
+CLAUDE_MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1")
 ROOT = Path.home() / ".config/subscription-proxy"
 
 
@@ -327,8 +328,8 @@ def configure_claude(profile, settings):
         raise ValueError(f"Invalid managed {profile} Claude settings; refusing unrelated settings changes.")
     if profile == "personal":
         targets = set(mapped.values()) | {row["model"] for row in settings["modelPicker"]["options"]}
-        if not targets or not targets <= set(CODEX_MODELS):
-            raise ValueError("Personal Claude must use only curated Codex routes.")
+        if not targets or not targets <= set(CODEX_MODELS + CLAUDE_MODELS):
+            raise ValueError("Personal Claude must use only curated personal Claude/Codex routes.")
     path, prefix = claude_profile(profile)
     save_rollback(profile, True, mapped)
     backup = load_json(ROOT / "rollback.json")
@@ -478,7 +479,7 @@ def deactivate(profile, claude=False):
 def activate(profile, claude=False):
     if claude:
         if profile != "work":
-            raise ValueError("Personal Claude routing is managed by Home Manager; no Claude login is needed.")
+            raise ValueError("Personal Claude routing is managed by Home Manager; provision logins in the personal gateway.")
         if not provider_ready("work", "claude"):
             raise ValueError("The work proxy needs an active Claude login before client selection.")
         models = request("work", "/routing/model-definitions/claude").get("models", [])

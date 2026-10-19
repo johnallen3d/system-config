@@ -27,9 +27,8 @@ MODELS = {
     "gpt-6-astra": "Codex 6 Astra",
 }
 
-PERSONAL_ALIASES = {"haiku": "gpt-6-luna", "opus": "gpt-6.1-sol",
-                    "sonnet": "gpt-6-luna", "fable": "gpt-6-astra"}
-PERSONAL_MODELS = {model: label for model, label in MODELS.items() if model.startswith("gpt-")}
+PERSONAL_ALIASES = dict(ALIASES)
+PERSONAL_MODELS = {**MODELS, "claude-sonnet-5-5": "Claude Sonnet 5.5"}
 PROFILE = "work"
 PERSONAL_BEHAVES_AS = "claude-sonnet-4-6"
 PERSONAL_CONTEXT_WINDOW = 200000
@@ -91,8 +90,9 @@ def installed():
         assert "ANTHROPIC_MODEL" not in env and not os.environ.get("ANTHROPIC_MODEL"), "Forced model overrides saved /model choice"
         assert env["ANTHROPIC_DEFAULT_MODEL"] == env["ANTHROPIC_SMALL_FAST_MODEL"] == "gpt-6-luna"
         for key in ("ANTHROPIC_DEFAULT_MODEL", "ANTHROPIC_SMALL_FAST_MODEL"):
-            assert os.environ.get(key, env[key]) == env[key], f"Inherited {key} overrides personal Codex routing"
-        assert all(row.get("behavesAs") == PERSONAL_BEHAVES_AS for row in picker["options"])
+            assert os.environ.get(key, env[key]) == env[key], f"Inherited {key} overrides personal routing"
+        assert all(row.get("behavesAs") == PERSONAL_BEHAVES_AS if row["model"].startswith("gpt-")
+                   else "behavesAs" not in row for row in picker["options"])
         for key in ("DISABLE_COMPACT", "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT", "CLAUDE_CODE_DISABLE_1M_CONTEXT", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"):
             assert not env.get(key) and not os.environ.get(key), f"Unexpected context/compaction override: {key}"
     version = subprocess.check_output(["claude", "--version"], text=True).split()[0]
@@ -104,7 +104,7 @@ def installed():
     if PROFILE == "personal":
         definitions = manager.request(PROFILE, "/routing/model-definitions/codex").get("models", [])
         windows = {row["id"]: row.get("context_length", 0) for row in definitions}
-        assert all(windows.get(model, 0) >= PERSONAL_CONTEXT_WINDOW for model in MODELS), "Compatibility window exceeds gateway catalog limit"
+        assert all(windows.get(model, 0) >= PERSONAL_CONTEXT_WINDOW for model in MODELS if model.startswith("gpt-")), "Compatibility window exceeds gateway catalog limit"
     print(f"PASS installed: {PROFILE} profiles/auth, five role aliases, all alias targets and {len(MODELS)} picker IDs advertised by live CLIProxyAPI (Claude {version}); no inference")
 
 
@@ -144,7 +144,7 @@ def live(model, use_default=False):
         assert tool and streaming, f"{model}: missing actual Read tool call or streaming"
         assert marker in outcome.get("result", ""), f"{model}: tool result was not returned"
         assert model in used, f"{model}: requested model not reported in usage; refusing fallback"
-        if PROFILE == "personal":
+        if PROFILE == "personal" and model.startswith("gpt-"):
             assert used[model].get("contextWindow") == PERSONAL_CONTEXT_WINDOW, f"{model}: unsafe or unexpected client context window"
         print(f"PASS live {model}: actual Claude Code streaming, Read tool execution, exact model usage, no persisted session")
 
@@ -212,23 +212,23 @@ def main():
     parser.add_argument("--profile", choices=("personal", "work"), default="work")
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--live-default", action="store_true", help="Test personal default without --model")
-    parser.add_argument("--model", choices=MODELS, action="append")
+    parser.add_argument("--model", choices=PERSONAL_MODELS, action="append")
     parser.add_argument("--live-subagent", choices=ROLES, action="append",
                         help="Make a bounded actual Agent dispatch with the installed role (repeatable)")
     args = parser.parse_args()
     PROFILE = args.profile
     if PROFILE == "personal":
         ALIASES, MODELS = PERSONAL_ALIASES, PERSONAL_MODELS
-        if any(model not in MODELS for model in args.model or []):
-            parser.error("Personal live checks accept only Codex models")
+    if any(model not in MODELS for model in args.model or []):
+        parser.error("Live checks accept only the selected profile's curated models")
     installed()
     if args.live_default:
         if PROFILE != "personal":
-            parser.error("--live-default is scoped to personal Codex routing")
+            parser.error("--live-default is scoped to personal routing")
         settings = json.loads((Path.home() / ".config/claude-personal/settings.json").read_text())
         saved = settings.get("model")
         expected = PERSONAL_ALIASES.get(saved, saved) if saved and saved != "default" else "gpt-6-luna"
-        assert expected in PERSONAL_MODELS, "Saved personal model needs an explicit Codex-only review"
+        assert expected in PERSONAL_MODELS, "Saved personal model needs an explicit curated-route review"
         live(expected, use_default=True)
     if args.live:
         for model in args.model or MODELS:

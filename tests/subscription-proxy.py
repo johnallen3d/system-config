@@ -212,10 +212,11 @@ class ManagerTests(unittest.TestCase):
                     **{"ANTHROPIC_DEFAULT_" + alias.upper() + "_MODEL": model
                        for alias, model in claude_checks.PERSONAL_ALIASES.items()}},
             "modelPicker": {"replaceBuiltInOptions": True, "options": [
-                {"model": model, "label": label, "behavesAs": "claude-sonnet-4-6"}
+                {"model": model, "label": label,
+                 **({"behavesAs": "claude-sonnet-4-6"} if model.startswith("gpt-") else {})}
                 for model, label in claude_checks.PERSONAL_MODELS.items()]}}
 
-    def test_personal_claude_codex_routing_is_offline_isolated_and_reversible(self):
+    def test_personal_claude_routing_is_offline_isolated_and_reversible(self):
         personal = self.home / ".config/claude-personal/settings.json"
         work = self.home / ".config/claude-gmatter/settings.json"
         original = {"permissions": {"defaultMode": "default"}, "hooks": {"existing": []},
@@ -233,6 +234,10 @@ class ManagerTests(unittest.TestCase):
         self.assertEqual(first["env"]["ANTHROPIC_AUTH_TOKEN"], "personal-test-client")
         self.assertEqual(first["env"]["ANTHROPIC_API_KEY"], "")
         self.assertEqual(first["env"]["ANTHROPIC_DEFAULT_MODEL"], "gpt-6-luna")
+        self.assertEqual(first["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"], "claude-opus-5-5")
+        self.assertEqual(first["env"]["ANTHROPIC_DEFAULT_SONNET_MODEL"], "claude-sonnet-5-5")
+        self.assertEqual(first["env"]["ANTHROPIC_DEFAULT_HAIKU_MODEL"], "claude-haiku-5-5")
+        self.assertEqual(first["env"]["ANTHROPIC_DEFAULT_FABLE_MODEL"], "claude-fable-5-1")
         self.assertNotIn("ANTHROPIC_MODEL", first["env"])
         self.assertEqual(first["permissions"], original["permissions"])
         self.assertEqual(first["hooks"], original["hooks"])
@@ -260,7 +265,11 @@ class ManagerTests(unittest.TestCase):
         original = {"model": "gpt-6.1-sol", "env": {"CUSTOM": "keep"}}
         manager.private_json(path, original)
         settings = self.personal_claude_settings()
-        previous = dict(settings["env"])
+        previous = {**settings["env"],
+                    "ANTHROPIC_DEFAULT_OPUS_MODEL": "gpt-6.1-sol",
+                    "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-6-luna",
+                    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-6-luna",
+                    "ANTHROPIC_DEFAULT_FABLE_MODEL": "gpt-6-astra"}
         previous.pop("ANTHROPIC_DEFAULT_MODEL")
         previous["ANTHROPIC_MODEL"] = "gpt-6-luna"
         manager.save_rollback("personal", True, previous)
@@ -275,6 +284,8 @@ class ManagerTests(unittest.TestCase):
         self.assertEqual(current["model"], "gpt-6.1-sol")
         self.assertNotIn("ANTHROPIC_MODEL", current["env"])
         self.assertEqual(current["env"]["ANTHROPIC_DEFAULT_MODEL"], "gpt-6-luna")
+        for alias, model in claude_checks.PERSONAL_ALIASES.items():
+            self.assertEqual(current["env"][f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"], model)
         manager.client_config("/bin/subscription-proxy", personal_claude_settings=settings)
         self.assertEqual(manager.load_json(path), current)
         manager.deactivate("personal", claude=True)
@@ -288,12 +299,17 @@ class ManagerTests(unittest.TestCase):
         manager.configure_claude("personal", self.personal_claude_settings())
         self.assertEqual(manager.load_json(path)["env"]["ANTHROPIC_MODEL"], "operator-choice")
 
-    def test_personal_claude_rejects_claude_targets_and_permission_changes(self):
+    def test_personal_claude_rejects_uncurated_targets_and_permission_changes(self):
+        for target in ("claude-opus-unreviewed", "go/glm-5.2"):
+            for location in ("picker", "alias"):
+                settings = self.personal_claude_settings()
+                if location == "picker":
+                    settings["modelPicker"]["options"][0]["model"] = target
+                else:
+                    settings["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"] = target
+                with self.assertRaisesRegex(ValueError, "only curated personal Claude/Codex"):
+                    manager.configure_claude("personal", settings)
         settings = self.personal_claude_settings()
-        settings["modelPicker"]["options"][0]["model"] = "claude-opus-5-5"
-        with self.assertRaisesRegex(ValueError, "only curated Codex"):
-            manager.configure_claude("personal", settings)
-        settings["modelPicker"]["options"][0]["model"] = "gpt-6-luna"
         settings["permissions"] = {"defaultMode": "bypassPermissions"}
         with self.assertRaisesRegex(ValueError, "unrelated settings"):
             manager.configure_claude("personal", settings)

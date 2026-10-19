@@ -78,23 +78,39 @@
       ];
     };
   });
-  # Personal Claude Code needs no Anthropic account: all aliases use Codex.
+  # Personal Claude and Codex use only the personal gateway/account.
   personalClaudeSettings = pkgs.writeText "subscription-proxy-personal-claude.json" (builtins.toJSON {
     env = {
       # A fallback, not a forced selection: /model choices survive new sessions.
       ANTHROPIC_DEFAULT_MODEL = "gpt-6-luna";
       ANTHROPIC_SMALL_FAST_MODEL = "gpt-6-luna";
-      ANTHROPIC_DEFAULT_OPUS_MODEL = "gpt-6.1-sol";
-      ANTHROPIC_DEFAULT_SONNET_MODEL = "gpt-6-luna";
-      ANTHROPIC_DEFAULT_HAIKU_MODEL = "gpt-6-luna";
-      ANTHROPIC_DEFAULT_FABLE_MODEL = "gpt-6-astra";
+      ANTHROPIC_DEFAULT_OPUS_MODEL = "claude-opus-5-5";
+      ANTHROPIC_DEFAULT_SONNET_MODEL = "claude-sonnet-5-5";
+      ANTHROPIC_DEFAULT_HAIKU_MODEL = "claude-haiku-5-5";
+      ANTHROPIC_DEFAULT_FABLE_MODEL = "claude-fable-5-1";
     };
     modelPicker = {
       replaceBuiltInOptions = true;
-      # Client capability compatibility only; outgoing IDs remain Codex.
-      # Sonnet 4.6 (without [1m]) keeps a safe 200k window, below the
-      # gateway's 272k Codex catalog limit. Never claim a 1M Codex window.
+      # Only Codex entries need client capability compatibility. Sonnet 4.6
+      # keeps their safe 200k window below the gateway's 272k Codex limit.
+      # Claude entries use their own native capability/context catalog.
       options = [
+        {
+          model = "claude-haiku-5-5";
+          label = "Claude Haiku 5.5";
+        }
+        {
+          model = "claude-sonnet-5-5";
+          label = "Claude Sonnet 5.5";
+        }
+        {
+          model = "claude-opus-5-5";
+          label = "Claude Opus 5.5";
+        }
+        {
+          model = "claude-fable-5-1";
+          label = "Claude Fable 5.1";
+        }
         {
           model = "gpt-6-luna";
           label = "Codex 6 Luna";
@@ -156,7 +172,7 @@ in {
     personalClaude.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Manage personal Claude Code through the isolated Codex gateway, without Claude subscription routes.";
+      description = "Manage personal Claude Code through the isolated personal Claude/Codex gateway.";
     };
     address = lib.mkOption {
       type = lib.types.str;
