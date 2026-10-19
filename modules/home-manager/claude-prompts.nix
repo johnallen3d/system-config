@@ -46,6 +46,19 @@
     };
   };
   workSettings = footerSettings // {outputStyle = "ELI5";};
+  # Public OAuth client configuration published by Slack for Claude Code:
+  # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
+  # Tokens remain in Claude's machine-local credential store, never in Nix.
+  workMcpServers = {
+    slack = {
+      type = "http";
+      url = "https://mcp.slack.com/mcp";
+      oauth = {
+        clientId = "1601185624273.8899143856786";
+        callbackPort = 3118;
+      };
+    };
+  };
 in {
   home.file = {
     ".local/share/claude-plugins/savvy-progress".source = "${claudeKit}/plugins/savvy-progress";
@@ -128,6 +141,37 @@ in {
   # Mirrors pi-settings.nix:131-132 (pi-work/themes → pi/themes).
   home.activation.claudeGmatterAgentsLink = lib.hm.dag.entryAfter ["linkGeneration"] ''
     ln -sfn "$HOME/.config/claude-personal/agents" "$HOME/.config/claude-gmatter/agents"
+  '';
+
+  # Own only the Slack registration, not Claude's writable runtime/config file.
+  # Run after plugin bootstrap, which can also update the profile's .claude.json.
+  home.activation.claudeGmatterMcp = lib.hm.dag.entryAfter ["writeBoundary" "claudeGmatterAgentKit"] ''
+    if [ -z "''${DRY_RUN_CMD:-}" ]; then
+      (
+        config="$HOME/.config/claude-gmatter/.claude.json"
+        if [ -L "$config" ]; then
+          echo "Refusing to replace symlinked Claude work MCP config" >&2
+          exit 1
+        fi
+        mkdir -p "$(dirname "$config")"
+        input="$config"
+        if [ ! -e "$config" ]; then
+          input=${pkgs.writeText "claude-empty-config.json" "{}"}
+        fi
+        tmp="$(${pkgs.coreutils}/bin/mktemp "$config.mcp-XXXXXX")"
+        trap 'rm -f "$tmp"' EXIT
+        if ! ${pkgs.jq}/bin/jq -e --argjson servers ${lib.escapeShellArg (builtins.toJSON workMcpServers)} \
+          'if type != "object" then error("Claude config must be an object")
+           elif has("mcpServers") and (.mcpServers | type) != "object"
+           then error("Claude mcpServers must be an object")
+           else .mcpServers = ((.mcpServers // {}) + $servers) end' \
+          "$input" > "$tmp"; then
+          exit 1
+        fi
+        chmod 0600 "$tmp"
+        mv "$tmp" "$config"
+      )
+    fi
   '';
 
   # A stable plugin path avoids stale store paths after source upgrades.
