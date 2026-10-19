@@ -8,6 +8,10 @@ path = "~/dev/src/system-config"
 clone_url = "https://github.com/johnallen3d/system-config.git"
 
 [[sessions.personal.projects]]
+path = "~/dev/src/playground/credits"
+clone_url = "https://github.com/johnallen3d/credits.git"
+
+[[sessions.personal.projects]]
 path = "~/dev/src/playground/pi-cielo"
 clone_url = "~/.local/share/herdr/project-seeds/pi-cielo.bundle"
 
