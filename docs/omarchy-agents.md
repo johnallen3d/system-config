@@ -86,8 +86,17 @@ reads applicable instructions/skills and handles investigation, authorized
 implementation, issue tracking, and validation. Preserve the inherited cwd,
 profile, and environment, including `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`.
 The child returns only a concise outcome, card link, blockers, and decisions.
-Unavailable or failed delegation is a stop/report blocker, not permission for
-parent fallback. Parent investigation needs John's explicit permission.
+[Fizzy #798](https://app.fizzy.do/6284043/cards/798) adds bounded recovery from
+unavailable or failed delegation. The parent first inspects partial results and
+checkpoints and reconciles possible side effects using narrowly scoped read-only
+recovery inspection, without independently executing the underlying task. Reuse
+completed work; never blindly replay writes. Allow one corrective delegated
+attempt within the original scope, permissions, budget, and inherited profile
+and environment. Correcting an agent-created timeout or launch mistake within
+those boundaries does not need fresh approval. Stop, report, and ask John when
+safe recovery is blocked, the corrective attempt fails, or new authorization is
+needed. Never override user cancellation, deliberate deadlines, or permission
+denials. Delegation-first and no silent parent fallback remain unchanged.
 
 This is **instruction-level policy**, not a hard guarantee or parent-tool guard.
 Sub-agent availability is tracked separately in

@@ -120,10 +120,25 @@ def main():
         "PI_CODING_AGENT_DIR", "CLAUDE_CONFIG_DIR", "read applicable instructions and skills itself",
         "authorized implementation, issue tracking", "concise outcome, card link",
         "blockers", "decisions", "transcripts, raw logs, or file dumps",
-        "unavailable or fails", "report the blocker and stop", "Do not\n  execute the task in the parent",
+        "parent owns recovery", "unavailable or failed delegation",
+        "First inspect partial results/checkpoints", "reconcile\n  possible side effects",
+        "narrowly scoped read-only parent inspection", "not independent execution",
+        "Reuse\n  completed work; never blindly replay writes",
+        "one corrective delegated attempt", "original scope, permissions",
+        "budget, and inherited profile/environment", "agent-created timeout or launch mistake",
+        "not require fresh approval within those boundaries", "Do not execute the task\n  in the parent",
+        "silently fall back", "retry by changing the inherited profile",
+        "Stop, report the blocker, and ask John when safe recovery is blocked",
+        "corrective attempt fails", "continuation needs new authorization",
+        "Never\n  override user cancellation, deliberate deadlines, or permission denials",
         "John's explicit permission", "instruction-level policy, not a hard guarantee",
     ):
         assert fragment in policy, fragment
+    for obsolete in (
+        "If delegation is unavailable or fails, report the blocker and stop",
+        "Parent investigation requires John's explicit permission",
+    ):
+        assert obsolete not in policy, obsolete
     module = (ROOT / "modules/home-manager/agent-projects.nix").read_text()
     assert "builtins.readFile ./agent-projects/delegation-instructions.md" in module
     assert "builtins.readFile ./agent-projects/task-scope-instructions.md" in module
