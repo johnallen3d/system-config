@@ -18,7 +18,7 @@
   port = 8796;
   # Reuse the pinned vlt binary, not Hermes's gateway, credentials or state.
   vaultTools = import ./hermes-native/tools.nix {inherit pkgs; runtimePkgs = pkgs;};
-  taskPython = pkgs.python313.withPackages (ps: [ps.pyyaml]);
+  taskPython = pkgs.python313.withPackages (ps: [ps.pillow ps.pyyaml]);
   helperPi = pkgs.writeShellScriptBin "pi" ''
     exec ${pkgs.nodejs_24}/bin/node ${app}/node_modules/@earendil-works/pi-coding-agent/dist/cli.js "$@"
   '';
@@ -34,7 +34,8 @@
     fi
     script="$1"; shift
     canonical="$(${pkgs.coreutils}/bin/realpath -e -- "$script")"
-    if [ "$canonical" = "''${VAULT_DIR:-/nonexistent}/scripts/food-pick" ]; then
+    if [ "$canonical" = "''${VAULT_DIR:-/nonexistent}/scripts/food-pick" ] \
+      || [ "$canonical" = "''${VAULT_DIR:-/nonexistent}/.mise/tasks/common-foods-browser" ]; then
       exec ${taskPython}/bin/python3 -I "$canonical" "$@"
     fi
     exec ${pkgs.uv}/bin/uv run --script "$script" "$@"
@@ -44,6 +45,8 @@
     helperUv
     taskPython
     vaultTools.vlt
+    vaultTools.heif-convert
+    pkgs.tesseract
     pkgs.nodejs_24
     pkgs.bash
     pkgs.coreutils
@@ -76,6 +79,8 @@
       PI_POCKET_DIR=${data} PI_POCKET_SUPERVISED=1 \
       VAULT_DIR=${workspace} VAULT_NAME=${workspace} VLT_VAULT=${workspace} \
       FOOD_LOG_PROVIDER=subscription-codex FOOD_LOG_MODEL=gpt-6-luna \
+      NOTES_HELPER_PROVIDER=subscription-codex NOTES_HELPER_MODEL=gpt-6-luna \
+      NOTES_LABEL_TEXT_ONLY=1 \
       MISE_AUTO_INSTALL=0 MISE_TRUSTED_CONFIG_PATHS=${workspace} \
       MISE_DISABLE_TOOLS=uv,sd,yq,npm:defuddle \
       UV_OFFLINE=1 UV_PYTHON_DOWNLOADS=never PI_TELEMETRY=0 \
@@ -207,6 +212,12 @@ in {
         using the trial's subscription-codex/gpt-6-luna model. Do not log it twice
         or invoke /food recursively. A stopped/interrupted command may already
         have written: inspect the daily note before a retry, never blindly replay.
+        For package-label uploads, run mise run import-food-label -- <exact image paths>.
+        That helper uses the same isolated proxy through NOTES_HELPER_PROVIDER /
+        NOTES_HELPER_MODEL and authoritative OCR (NOTES_LABEL_TEXT_ONLY=1), not
+        image attachments: these models are text-only. Incomplete or ambiguous
+        product/serving/nutrition evidence must not write. Never log a meal merely
+        because a label was uploaded.
         VAULT_DIR, VAULT_NAME and VLT_VAULT all name /home/pi-pocket/notes.
         Use vlt vault="$VAULT_NAME" rather than vault="Personal" in this sandbox;
         there is no host Obsidian registry. Existing tasks use VAULT_NAME.

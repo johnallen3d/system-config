@@ -149,6 +149,9 @@ def main():
         "ask before expanding scope", "ownership of the exact target",
         "needs no repository edits or worktree", "smallest verification",
         "failed optional check is not a blocker", "proportionality to bypass them",
+        "An authorized deployment includes clean, guarded fast-forward synchronization",
+        "Do not ask for separate merge permission", "already-integrated local `main`",
+        "Stop on dirty source", "does not authorize task", "branch integration",
     ):
         assert fragment in task_scope, fragment
     repo_policy = (ROOT / "AGENTS.md").read_text()

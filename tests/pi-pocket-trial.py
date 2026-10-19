@@ -54,8 +54,11 @@ while read -r id parent device root mountpoint options rest; do
 done < /proc/self/mountinfo
 [[ "$notes_rw" == 1 ]]
 [[ "$VAULT_DIR" == "$HOME/notes" && "$VAULT_NAME" == "$VAULT_DIR" ]]
-command -v vlt python3 pi uv >/dev/null
-python3 -c 'import yaml'
+[[ "$NOTES_HELPER_PROVIDER" == subscription-codex && "$NOTES_HELPER_MODEL" == gpt-6-luna ]]
+[[ "$NOTES_LABEL_TEXT_ONLY" == 1 ]]
+command -v vlt python3 pi uv tesseract heif-convert >/dev/null
+[[ "$(tesseract --list-langs 2>/dev/null)" == *eng* ]]
+python3 -c 'import yaml; from PIL import Image, ImageOps'
 pi --version >/dev/null
 vlt vault="$VAULT_NAME" read file="templates/journal.md" >/dev/null
 [[ "$(</proc/1/comm)" != systemd ]]
