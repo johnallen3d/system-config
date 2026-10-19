@@ -25,6 +25,7 @@ in {
   imports = [
     ../modules/home-manager/coding-agents.nix
     ../modules/home-manager/omarchy-beszel.nix
+    ../modules/home-manager/omarchy-credits.nix
     ../modules/home-manager/omarchy-fish.nix
     ../modules/home-manager/omarchy-herdr.nix
     ../modules/home-manager/omarchy-hermes.nix
