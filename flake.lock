@@ -3,11 +3,11 @@
     "credits": {
       "flake": false,
       "locked": {
-        "lastModified": 1792508335,
-        "narHash": "sha256-kQn9xsTGzKsLGgVibfdXMKJHaYB9hXwekkaxxCAn9xk=",
+        "lastModified": 1792514085,
+        "narHash": "sha256-fKN00TwZBAH5FBsZiYX4hqzLDcfqTDplffwzikfMX6c=",
         "owner": "johnallen3d",
         "repo": "credits",
-        "rev": "3bc26588c05691363629f72dfc81708d975fea56",
+        "rev": "047fdf78c6d128eb43c53858e0904e62ad5c2766",
         "type": "github"
       },
       "original": {
