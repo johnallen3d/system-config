@@ -99,6 +99,21 @@ def verify_files(generation):
     print(f"[Omarchy] Verified {checked} installed managed entries", flush=True)
 
 
+def check_nix_system(task):
+    # Root-owned daemon settings sit outside Home Manager; report drift without
+    # failing an otherwise verified activation (fix: sudo bash SCRIPT apply).
+    script = task / ".mise/scripts/omarchy-nix-system"
+    if not script.exists():
+        return
+    result = subprocess.run(["bash", str(script), "check"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if result.returncode:
+        for line in result.stdout.splitlines():
+            print(f"[Omarchy] WARNING: Nix system drift: {line}", flush=True)
+        print(f"[Omarchy] WARNING: run: sudo bash {script} apply", flush=True)
+    else:
+        print("[Omarchy] Verified Nix system settings", flush=True)
+
+
 def receive(directory, repo):
     manifest = json.loads((directory / "manifest.json").read_text())
     main, tree, slug = (manifest[key] for key in ("main", "tree", "slug"))
@@ -196,6 +211,7 @@ def activate_omarchy(record):
     if source_tree(task) != tree:
         raise RuntimeError(f"Source changed during deployment: {task}")
     verify_files(generation)
+    check_nix_system(task)
     coordination.finish(task, coordination.state_dir())
     print(f"[Omarchy] Active generation: {generation}", flush=True)
 

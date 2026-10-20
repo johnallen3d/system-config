@@ -35,6 +35,27 @@ class SSHSelection(unittest.TestCase):
                                           "-o", "ServerAliveCountMax=3", "johna@omarchy", "bash -s"])
 
 
+class NixSystemDrift(unittest.TestCase):
+    def check(self, script):
+        with tempfile.TemporaryDirectory() as directory:
+            task = Path(directory)
+            if script is not None:
+                (task / ".mise/scripts").mkdir(parents=True)
+                (task / ".mise/scripts/omarchy-nix-system").write_text(script)
+            with mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+                worker.check_nix_system(task)
+            return output.getvalue()
+
+    def test_drift_warns_without_failing_activation(self):
+        output = self.check('echo "missing from /etc/nix/nix.conf: x"; exit 1\n')
+        self.assertIn("WARNING: Nix system drift: missing from /etc/nix/nix.conf: x", output)
+        self.assertIn("sudo bash", output)
+
+    def test_matching_settings_and_older_sources(self):
+        self.assertIn("Verified Nix system settings", self.check("exit 0\n"))
+        self.assertEqual(self.check(None), "")
+
+
 class Routing(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="update-system-test-")

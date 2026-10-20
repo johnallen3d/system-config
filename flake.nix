@@ -2,10 +2,8 @@
   description = "nix-darwin and home-manager configuration";
 
   inputs = {
-    credits = {
-      url = "github:johnallen3d/credits/main";
-      flake = false;
-    };
+    # Deliberately not following nixpkgs: the derivation must match what CI pushed to Cachix.
+    credits.url = "github:johnallen3d/credits/main";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # #781: retain Omarchy's deployed inputs without downgrading other hosts.
     # Updating these pins is a separate, reviewed deployment/identity change.

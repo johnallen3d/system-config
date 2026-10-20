@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Root-owned Nix daemon settings on Omarchy (Arch). Standalone Home Manager
+# cannot manage /etc, so this script is their reviewed source (#851).
+#   sudo bash omarchy-nix-system apply   # idempotent; restarts nix-daemon
+#   bash omarchy-nix-system check        # unprivileged drift check
+set -euo pipefail
+
+nix_conf=/etc/nix/nix.conf
+nix_conf_lines=(
+  "extra-substituters = https://johnallen3d.cachix.org"
+  "extra-trusted-public-keys = johnallen3d.cachix.org-1:E4yp86sK2e9gDTQ998xFR8NWFU+YhKMGIBAy0e+EjeM="
+)
+# Builds yield to interactive work instead of starving it.
+drop_in=/etc/systemd/system/nix-daemon.service.d/idle.conf
+drop_in_text='[Service]
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle'
+effective=(Nice=19 CPUSchedulingPolicy=5 IOSchedulingClass=3)
+
+check() {
+  local drift=0 line property
+  for line in "${nix_conf_lines[@]}"; do
+    grep -qxF -- "$line" "$nix_conf" || { echo "missing from $nix_conf: $line"; drift=1; }
+  done
+  [ "$(cat "$drop_in" 2>/dev/null)" = "$drop_in_text" ] || { echo "differs or missing: $drop_in"; drift=1; }
+  for property in "${effective[@]}"; do
+    systemctl show nix-daemon.service -p "${property%%=*}" | grep -qxF -- "$property" ||
+      { echo "nix-daemon not running with $property (reload/restart pending?)"; drift=1; }
+  done
+  return "$drift"
+}
+
+apply() {
+  [ "$(id -u)" = 0 ] || { echo "apply must run as root" >&2; exit 1; }
+  local line
+  for line in "${nix_conf_lines[@]}"; do
+    grep -qxF -- "$line" "$nix_conf" || printf '%s\n' "$line" >>"$nix_conf"
+  done
+  install -d -m 0755 "${drop_in%/*}"
+  printf '%s\n' "$drop_in_text" >"$drop_in"
+  systemctl daemon-reload
+  systemctl restart nix-daemon.service
+  check && echo "Omarchy Nix system settings applied"
+}
+
+case "${1:-}" in
+  apply) apply ;;
+  check) check ;;
+  *) echo "usage: $0 apply|check" >&2; exit 2 ;;
+esac

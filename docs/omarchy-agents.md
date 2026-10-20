@@ -430,6 +430,19 @@ before applying. Do not use forced replacement or Home Manager's blanket backup
 flag. Unexpected collisions should fail. Run `hash -r` in an existing Bash shell
 if it has cached an old command.
 
+### Root-owned Nix daemon settings
+
+Standalone Home Manager cannot manage `/etc`. `.mise/scripts/omarchy-nix-system`
+is the reviewed source for the Cachix substituter in `/etc/nix/nix.conf` and the
+idle-priority `nix-daemon` drop-in. Each deployment runs its unprivileged
+`check` and prints `WARNING: Nix system drift` without failing activation. To
+apply or repair (idempotent; restarts `nix-daemon`, so wait for the deployment
+lock to be free):
+
+```bash
+ssh -t johna@omarchy sudo bash /home/johna/dev/src/system-config/.mise/scripts/omarchy-nix-system apply
+```
+
 ## Account status: available-account setup complete
 
 GitHub access and work-kit provisioning have been completed and verified on

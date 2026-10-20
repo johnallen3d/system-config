@@ -1,13 +1,31 @@
 {
   "nodes": {
-    "credits": {
-      "flake": false,
+    "crane": {
       "locked": {
-        "lastModified": 1792526529,
-        "narHash": "sha256-4ZfLSjueWf8t1X1du/XQPUh16NycgMrewjSzykagszU=",
+        "lastModified": 1792350552,
+        "narHash": "sha256-292lvpvxTGKryKxh3/3tcIVi85CwYGdl4oOi113Sob8=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "e675a36b7377bebe41d548388a2501cbb16d380d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "type": "github"
+      }
+    },
+    "credits": {
+      "inputs": {
+        "crane": "crane",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1792539229,
+        "narHash": "sha256-zAWF1p2a4ztYIvXlDeRtuPAiqORjkt9KijWBx9emclk=",
         "owner": "johnallen3d",
         "repo": "credits",
-        "rev": "85f1c053f11b77cb3286125caebf5bcfc1050eee",
+        "rev": "97f9957d4c8acdfbfb380ad14aa9101a181aaa14",
         "type": "github"
       },
       "original": {
@@ -58,7 +76,7 @@
       "inputs": {
         "flake-parts": "flake-parts",
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "npm-lockfile-fix": "npm-lockfile-fix",
         "pyproject-build-systems": "pyproject-build-systems",
         "pyproject-nix": "pyproject-nix",
@@ -162,6 +180,22 @@
     },
     "nixpkgs": {
       "locked": {
+        "lastModified": 1792488032,
+        "narHash": "sha256-RkAXQ3+a5rHMiP97Er7AawR1kvEXX9tK1mhiWedOPTc=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e513db7b0a65def6f6e17bb55195dfe510871944",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
         "lastModified": 1785318670,
         "narHash": "sha256-dN6Ou5x/+23FZLEpYP3IffO+NyJFzUlGumt1uu3MMaY=",
         "owner": "NixOS",
@@ -176,7 +210,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
+    "nixpkgs_3": {
       "locked": {
         "lastModified": 1792502884,
         "narHash": "sha256-IoNisKcGbUjdd45qCqywGMCYmZ5EnkxezvLII0FWwNA=",
@@ -325,7 +359,7 @@
         "home-manager": "home-manager_2",
         "lop": "lop",
         "nix-darwin": "nix-darwin",
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": "nixpkgs_3",
         "omarchyHerdrProjectPicker": "omarchyHerdrProjectPicker",
         "omarchyHomeManager": "omarchyHomeManager",
         "omarchyNixpkgs": "omarchyNixpkgs",

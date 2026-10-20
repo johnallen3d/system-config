@@ -7,10 +7,7 @@
   ...
 }: let
   state = "${config.xdg.stateHome}/credits";
-  package = import ./packages/credits.nix {
-    inherit pkgs;
-    src = credits;
-  };
+  package = credits.packages.${pkgs.stdenv.hostPlatform.system}.default;
   lanAddress = "192.168.4.26";
 in {
   home.packages = [package];
