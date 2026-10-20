@@ -20,6 +20,10 @@ path = "~/dev/src/playground/home-assistant"
 clone_url = "https://github.com/johnallen3d/home-assistant.git"
 
 [[sessions.work.projects]]
+path = "~/dev/src/amfaro/actions"
+clone_url = "https://github.com/amfaro/actions.git"
+
+[[sessions.work.projects]]
 path = "~/dev/src/amfaro/calc"
 clone_url = "https://github.com/amfaro/calc.git"
 
