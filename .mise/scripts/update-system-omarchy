@@ -15,7 +15,10 @@ import time
 
 import deployment_state as coordination
 
-SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+# Apple SSH supports macOS Keychain directives that portable OpenSSH rejects.
+# Select it explicitly: a caller (including a Nix wrapper) may prepend Nix SSH.
+SSH = ["/usr/bin/ssh" if sys.platform == "darwin" else "ssh",
+       "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
        "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
        "johna@omarchy", "bash -s"]
 

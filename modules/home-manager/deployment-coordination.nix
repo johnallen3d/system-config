@@ -1,4 +1,8 @@
-{pkgs, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   # Keep one current coordinator available even inside older task worktrees.
   # Only these tools are packaged; never include a checkout, profile, or secret.
   tooling = pkgs.runCommand "system-config-deployment-tools" {} ''
@@ -12,7 +16,8 @@ in {
   home.packages = [
     (pkgs.writeShellApplication {
       name = "system-config-deploy";
-      runtimeInputs = [pkgs.python3 pkgs.git pkgs.openssh];
+      # Darwin uses Apple SSH for Keychain-aware user configuration.
+      runtimeInputs = [pkgs.python3 pkgs.git] ++ lib.optionals (!pkgs.stdenv.hostPlatform.isDarwin) [pkgs.openssh];
       text = ''
         exec python3 ${tooling}/.mise/scripts/deployment_state.py apply "$@"
       '';

@@ -8,6 +8,7 @@ import io
 import json
 import os
 from pathlib import Path
+import runpy
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,16 @@ loader = importlib.machinery.SourceFileLoader("omarchy_deploy", str(ROOT / ".mis
 spec = importlib.util.spec_from_loader(loader.name, loader)
 worker = importlib.util.module_from_spec(spec)
 loader.exec_module(worker)
+
+
+class SSHSelection(unittest.TestCase):
+    def test_native_apple_ssh_on_darwin_and_path_ssh_on_linux(self):
+        for platform, executable in (("darwin", "/usr/bin/ssh"), ("linux", "ssh")):
+            with self.subTest(platform=platform), mock.patch.object(sys, "platform", platform):
+                command = runpy.run_path(str(ROOT / ".mise/scripts/update-system-omarchy"))["SSH"]
+                self.assertEqual(command, [executable, "-o", "BatchMode=yes",
+                                          "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=15",
+                                          "-o", "ServerAliveCountMax=3", "johna@omarchy", "bash -s"])
 
 
 class Routing(unittest.TestCase):
