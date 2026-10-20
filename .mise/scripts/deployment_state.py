@@ -175,6 +175,48 @@ def normalize(repo, main, layers):
     return result
 
 
+def retire_formatted_integrations(repo, main, layers, generation):
+    """Retire a fully integrated layer whose only differences are Nix syntax layout.
+
+    Never merge files or rewrite active receipts. Parsed expressions must match
+    for every nonidentical path, and the preserved source must evaluate to the
+    exact installed generation before the ordinary deployment can proceed.
+    """
+    baseline = entries(repo, main)
+    parsed = {}
+
+    def expression(entry):
+        if entry not in parsed:
+            blob = subprocess.check_output(["git", "-C", str(repo), "cat-file", "blob", entry[1]])
+            parsed[entry] = subprocess.check_output(["nix-instantiate", "--parse", "-"], input=blob, cwd=repo)
+        return parsed[entry]
+
+    remaining, retired = [], []
+    for item in layers:
+        before, after = entries(repo, item["base"]), entries(repo, item["tree"])
+        formatted = False
+        for path in before.keys() | after.keys():
+            old, new, integrated = before.get(path), after.get(path), baseline.get(path)
+            if old == new or integrated == new:
+                continue
+            if (integrated == old or not path.endswith(".nix") or new is None or integrated is None
+                    or new[0] not in ("100644", "100755") or new[0] != integrated[0]
+                    or expression(new) != expression(integrated)):
+                remaining.append(item)
+                break
+            formatted = True
+        else:
+            (retired if formatted else remaining).append(item)
+    if not retired:
+        return layers
+    preserved = materialize(repo, main, compose(repo, main, remaining))
+    if evaluated_generation(preserved) != generation:
+        raise RuntimeError("Formatted integration does not reproduce the exact installed generation; no activation started")
+    for item in retired:
+        print(f"[deployment] Verified formatted integration of {item['owner']} against the exact installed generation", file=sys.stderr, flush=True)
+    return remaining
+
+
 def materialize(repo, main, tree):
     root = primary(repo)
     slug = "deployment-" + hashlib.sha256(f"{main}:{tree}".encode()).hexdigest()[:12]
@@ -243,10 +285,13 @@ def plan(repo, directory, incoming=None):
     check_cancelled()
     previous = active(repo, directory)
     incoming = incoming or layer(repo)
-    layers = [item for item in previous["layers"] if item["owner"] != incoming["owner"]] + [incoming]
     main = git(repo, "rev-parse", "refs/heads/main")
     if subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", previous["main"], main]).returncode:
         raise RuntimeError("Local main rewound/diverged since the active deployment")
+    # Reconcile only already-active, fully integrated layers, before considering
+    # this task's incoming changes. Active/pending receipts remain untouched.
+    preserved = retire_formatted_integrations(repo, main, previous["layers"], previous["generation"])
+    layers = [item for item in preserved if item["owner"] != incoming["owner"]] + [incoming]
     tree = compose(repo, main, layers)
     layers = normalize(repo, main, layers)
     source = materialize(repo, main, tree)

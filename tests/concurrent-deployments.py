@@ -123,6 +123,70 @@ class Deployment(unittest.TestCase):
             state.compose(self.repo, newer_main, [incoming])
         self.assertEqual(original["base"], incoming["base"])
 
+    def formatted_fixture(self, integrated='{ value = "same value"; }\n'):
+        original = '{value="same value";}\n'
+        (self.a / "formatted.nix").write_text(original)
+        incoming = state.layer(self.a)
+        (self.b / "formatted.nix").write_text(integrated)
+        main = state.source_tree(self.b)
+        real_output = subprocess.check_output
+
+        def parsed(args, **kwargs):
+            if args[0] == "nix-instantiate":
+                self.assertEqual(args, ["nix-instantiate", "--parse", "-"])
+                blob = kwargs["input"]
+                # Model parser output, preserving spaces *inside* Nix strings.
+                return b'{ value = "same value"; }' if blob == original.encode() else blob.strip()
+            return real_output(args, **kwargs)
+
+        return main, incoming, mock.patch.object(subprocess, "check_output", side_effect=parsed)
+
+    def test_formatted_integration_requires_exact_generation_and_keeps_receipts(self):
+        main, incoming, parser = self.formatted_fixture()
+        before = (self.directory / "active.json").read_bytes()
+        with parser, mock.patch.object(state, "materialize", return_value=self.b) as snapshot, \
+                mock.patch.object(state, "evaluated_generation", return_value=self.generation) as evaluate:
+            self.assertEqual(state.retire_formatted_integrations(self.repo, main, [incoming], self.generation), [])
+            snapshot.assert_called_once_with(self.repo, main, state.compose(self.repo, main, []))
+            evaluate.assert_called_once_with(self.b)
+        self.assertEqual((self.directory / "active.json").read_bytes(), before)
+        self.assertFalse((self.directory / "pending.json").exists())
+
+    def test_formatted_integration_preserves_other_active_layers(self):
+        main, incoming, parser = self.formatted_fixture()
+        (self.b / "other-active-task").write_text("preserve")
+        other = state.layer(self.b)
+        with parser, mock.patch.object(state, "materialize", return_value=self.b) as snapshot, \
+                mock.patch.object(state, "evaluated_generation", return_value=self.generation):
+            self.assertEqual(state.retire_formatted_integrations(self.repo, main, [incoming, other], self.generation), [other])
+            self.assertIn("other-active-task", state.entries(self.repo, snapshot.call_args.args[2]))
+
+    def test_formatted_integration_generation_mismatch_blocks_without_receipt_changes(self):
+        main, incoming, parser = self.formatted_fixture()
+        before = (self.directory / "active.json").read_bytes()
+        with parser, mock.patch.object(state, "materialize", return_value=self.b), \
+                mock.patch.object(state, "evaluated_generation", return_value="/nix/store/not-installed"):
+            with self.assertRaisesRegex(RuntimeError, "exact installed generation"):
+                state.retire_formatted_integrations(self.repo, main, [incoming], self.generation)
+        self.assertEqual((self.directory / "active.json").read_bytes(), before)
+        self.assertFalse((self.directory / "pending.json").exists())
+
+    def test_formatted_integration_never_ignores_string_whitespace_or_non_nix_changes(self):
+        for integrated in ('{ value = "same  value"; }\n', '{ value = "different"; }\n'):
+            with self.subTest(integrated=integrated):
+                main, incoming, parser = self.formatted_fixture(integrated)
+                with parser, mock.patch.object(state, "evaluated_generation") as evaluate:
+                    self.assertEqual(state.retire_formatted_integrations(self.repo, main, [incoming], self.generation), [incoming])
+                    evaluate.assert_not_called()
+                with self.assertRaisesRegex(RuntimeError, "formatted.nix.*integrated main"):
+                    state.compose(self.repo, main, [incoming])
+        main, incoming, parser = self.formatted_fixture()
+        (self.a / "README.md").write_text("active task owns this too")
+        incoming = state.layer(self.a)
+        with parser, mock.patch.object(state, "evaluated_generation") as evaluate:
+            self.assertEqual(state.retire_formatted_integrations(self.repo, main, [incoming], self.generation), [incoming])
+            evaluate.assert_not_called()
+
     def test_identical_same_file_edits_coexist_but_deletion_conflicts(self):
         (self.a / "README.md").write_text("identical")
         (self.b / "README.md").write_text("identical")
