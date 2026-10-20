@@ -3,11 +3,11 @@
     "credits": {
       "flake": false,
       "locked": {
-        "lastModified": 1792522846,
-        "narHash": "sha256-DavX0k8c+FOXm0AUWfaDeSg33/nBFBIAAQR7ZsN94gU=",
+        "lastModified": 1792526529,
+        "narHash": "sha256-4ZfLSjueWf8t1X1du/XQPUh16NycgMrewjSzykagszU=",
         "owner": "johnallen3d",
         "repo": "credits",
-        "rev": "42a8a50a30f18fe5c6cebbe8b7d3029f4e28a0ae",
+        "rev": "85f1c053f11b77cb3286125caebf5bcfc1050eee",
         "type": "github"
       },
       "original": {
@@ -178,11 +178,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1792210252,
-        "narHash": "sha256-Mh0PUaIv4nFY+8wAGonaEh8iBzwsmdNlwjVHmFg1Biw=",
+        "lastModified": 1792502884,
+        "narHash": "sha256-IoNisKcGbUjdd45qCqywGMCYmZ5EnkxezvLII0FWwNA=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "09063bd1f2b36fd9fd793c36dfade7bd40a93dfc",
+        "rev": "02c087f3fe673c9e317f206a627cb6b910336dbe",
         "type": "github"
       },
       "original": {
