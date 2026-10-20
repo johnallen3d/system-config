@@ -111,7 +111,8 @@ print(json.dumps({'device':vault.stat().st_dev,'inode':vault.stat().st_ino}))
     actual = (home / 'notes').stat()
     assert observed == {'device': actual.st_dev, 'inode': actual.st_ino}
     print('Real-vault bind identity, write-only open and unlinked create/write passed; no existing vault bytes changed')
-    host = run('/usr/bin/tailscale', 'ip', '-4')
+    host = metadata['listenAddress']
+    assert host == '192.168.4.26'
     base = f'http://{host}:{metadata["port"]}'
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     assert opener.open(base, timeout=5).status == 200
@@ -125,6 +126,7 @@ print(json.dumps({'device':vault.stat().st_dev,'inode':vault.stat().st_ino}))
     # Read the owner URL only deliberately, in memory; never print it or put it in argv.
     login = run(str(home / '.local/bin/pi-pocket-trial-login'))
     from urllib.parse import parse_qs, urlparse
+    assert login.startswith(metadata['publicUrl'] + '/login?token=')
     token = parse_qs(urlparse(login).query)['token'][0]
     def api(path):
         request = urllib.request.Request(base + '/api/' + path,
@@ -156,7 +158,8 @@ print(json.dumps({'device':vault.stat().st_dev,'inode':vault.stat().st_ino}))
     assert listener in sockets
     assert f'0.0.0.0:{metadata["port"]}' not in sockets
     assert f'127.0.0.1:{metadata["port"]}' not in sockets
-    print('Installed package, private HTTP/API, disabled integrations and tailnet-only listener passed')
+    assert f'{run("/usr/bin/tailscale", "ip", "-4")}:{metadata["port"]}' not in sockets
+    print('Installed package, private HTTP/API, disabled integrations and direct LAN-only listener passed')
     print('Personal proxy configuration and private client-key permissions passed; no inference in this check')
 
 

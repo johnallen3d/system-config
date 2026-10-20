@@ -16,8 +16,14 @@
   notesSource = "${homeDir}/notes";
   workspace = "${sandboxHome}/notes";
   port = 8796;
+  # Caddy on pi-01 reaches the app directly over the LAN; UFW restricts ingress.
+  listenAddress = "192.168.4.26";
+  publicUrl = "https://pi.jallen7usa.com";
   # Reuse the pinned vlt binary, not Hermes's gateway, credentials or state.
-  vaultTools = import ./hermes-native/tools.nix {inherit pkgs; runtimePkgs = pkgs;};
+  vaultTools = import ./hermes-native/tools.nix {
+    inherit pkgs;
+    runtimePkgs = pkgs;
+  };
   taskPython = pkgs.python313.withPackages (ps: [ps.pillow ps.pyyaml]);
   helperPi = pkgs.writeShellScriptBin "pi" ''
     exec ${pkgs.nodejs_24}/bin/node ${app}/node_modules/@earendil-works/pi-coding-agent/dist/cli.js "$@"
@@ -133,25 +139,21 @@
     # host-side lifetime lock before any app initialization or live SQLite open.
     exec 9>${lib.escapeShellArg "${state}/server.lock"}
     ${pkgs.util-linux}/bin/flock --nonblock 9
-    # Native Tailscale is already managed by Omarchy; never change its Serve map.
-    host=$(/usr/bin/tailscale ip -4)
-    [[ "$host" =~ ^100\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 78
     ${sandbox}/bin/pi-pocket-trial-sandbox ${pkgs.nodejs_24}/bin/node ${initialize}
     # Upstream prints the owner URL on startup. Keep the bearer token out of the
     # routine journal; retrieve it only deliberately with the login helper.
     ${sandbox}/bin/pi-pocket-trial-sandbox \
       ${pkgs.nodejs_24}/bin/node ${app}/src/server/main.ts \
-      --host "$host" --port ${toString port} --data ${data} --cwd ${workspace} \
+      --host ${listenAddress} --port ${toString port} --data ${data} --cwd ${workspace} \
       2>&1 | ${pkgs.gnused}/bin/sed -u -E \
         's@(https?://[^[:space:]]*/login[?]token=)[^[:space:]]+@\1[redacted]@g'
   '';
   login = pkgs.writeShellScriptBin "pi-pocket-trial-login" ''
     set -euo pipefail
-    host=$(/usr/bin/tailscale ip -4)
-    exec ${pkgs.nodejs_24}/bin/node --input-type=module - "$host" <<'JS'
+    exec ${pkgs.nodejs_24}/bin/node --input-type=module - <<'JS'
     import { readFileSync } from 'node:fs';
     const { ownerToken } = JSON.parse(readFileSync(${builtins.toJSON "${privateHome}/.pi-pocket/config.json"}, 'utf8'));
-    console.log('http://' + process.argv[2] + ':${toString port}/login?token=' + encodeURIComponent(ownerToken));
+    console.log(${builtins.toJSON publicUrl} + '/login?token=' + encodeURIComponent(ownerToken));
     JS
   '';
 in {
@@ -238,7 +240,8 @@ in {
       notesReadOnly = false;
       package = toString package;
       service = "pi-pocket-trial.service";
-      access = "Tailscale IPv4 only; HTTP inside the encrypted tailnet";
+      inherit listenAddress publicUrl;
+      access = "Plain HTTP on the reserved LAN address; UFW permits pi-01 Caddy only";
       authentication = "Personal subscription proxy client key only; upstream OAuth remains outside the trial";
       networkIsolation = false;
     };
