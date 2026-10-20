@@ -46,12 +46,21 @@
         or the branch/path already exists but is unsuitable, stop and report
         the blocker; never adopt another task's worktree or substitute a base.
       - Keep the actual agent session at the primary repository root in both Pi
-        and Claude. Use absolute worktree paths for file tools and an explicit
-        task-worktree directory for shell commands, builds, tests, and Git.
-        Shell `cd` and `wt switch` do not change the running agent's cwd.
-        If launched inside a linked worktree, require a verified resume/relaunch
-        at the primary repository root before automatic cleanup; do not delete
-        the running session's working directory.
+        and Claude. Record the verified session start directory before task commands;
+        a later shell `pwd` is not evidence of where the session started.
+        Use absolute worktree paths for file tools, `git -C "$task_path"`,
+        `mise -C "$task_path" exec -- ...`, or `(cd "$task_path" && ...)`
+        for task commands. Do not use a top-level `cd` or `wt switch` into the task.
+        In Claude Code, top-level Bash `cd` can persist across tool calls and change
+        the session's reported cwd. In Pi, shell `cd` does not move the agent's cwd.
+      - If a Claude session verified to start at the primary root merely drifted
+        into the task worktree, run a standalone `cd "$repo_root"` in Bash, then
+        verify the updated harness cwd and a fresh plain `pwd -P` in a separate call
+        before cleanup. Do not require a relaunch for recoverable shell drift.
+        If actually started inside a linked worktree, or start/cwd evidence is
+        uncertain, require a verified resume/relaunch at the primary repository root.
+        A subshell, command cwd override, `wt switch`, or Pi `process.chdir` is not
+        proof of a safe session cwd. Never delete the running session's directory.
       - Preserve unrelated changes, credentials, sessions, and other worktrees.
         Keep both profile variables and project mise context; use `mise exec`
         explicitly for noninteractive project commands. A worktree is not

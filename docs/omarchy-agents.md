@@ -127,10 +127,16 @@ Both harnesses keep the actual session at the primary repository root and use
 absolute task-worktree paths for edits plus explicit task cwd for commands. New
 tasks use local `main`, `.worktrees/<slug>`, and `feature/<slug>`; suitable existing
 task worktrees can be reused. Profile variables and mise project context stay
-unchanged. Installed Pi has no supported same-session cwd switch, and a shell's
-`cd` or `wt switch` does not move either running agent session. If launched inside
-a worktree, resume/relaunch at the primary root before cleanup; do not delete the
-active cwd. This safety rule is the same for both harnesses.
+unchanged. Use `git -C`, `mise -C ... exec --`, or `(cd ... && ...)` for task
+commands, not a top-level `cd`/`wt switch` into the task. Pi shell `cd` does not
+move its agent cwd, but Claude's top-level Bash `cd` can persist across calls.
+Record the verified session start directory before task commands. For a Claude
+session verified to start at the primary root, recover shell drift with a
+standalone `cd "$repo_root"`, then check updated harness cwd and a fresh plain
+`pwd -P` in a separate tool call. A session actually started in a worktree, unknown
+start evidence, or unverifiable cwd still requires a verified primary-root
+resume/relaunch. Never delete the running session's directory. See
+[#822](https://app.fizzy.do/6284043/cards/822) for the shell-drift correction.
 
 Both personal `/wrap` prompts compose the single Nix-owned workflow at
 `modules/home-manager/agent-projects/personal-wrap.md`. An actual invocation

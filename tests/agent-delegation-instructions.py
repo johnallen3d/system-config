@@ -38,9 +38,18 @@ def check_contexts(contexts, linux):
             for fragment in ("explicitly opt out", '"no worktree"', '"work in place"',
                              "Keep the actual agent session at the primary repository root",
                              "absolute worktree paths", "verified resume/relaunch",
+                             "Record the verified session start directory",
+                             "top-level Bash `cd` can persist across tool calls",
+                             "In Pi, shell `cd` does not move the agent",
+                             'standalone `cd "$repo_root"`',
+                             "fresh plain `pwd -P` in a separate call",
+                             "Do not require a relaunch for recoverable shell drift",
+                             "start/cwd evidence is",
+                             "Never delete the running session",
                              "guarded rebase of this task's own unpublished local commits",
                              "Uncertain publication or", "signing/hook failures stop"):
                 assert fragment in pi, (profile, fragment)
+            assert "Shell `cd` and `wt switch` do not change" not in pi
     print(f"PASS {'Linux' if linux else 'Mac'}: all four global instruction files, profile isolation")
 
 

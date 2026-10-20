@@ -1,8 +1,7 @@
 ## Personal completion lifecycle
 
-The same personal workflow for Pi and Claude replaces shared `wrapping-up`.
-Follow repository instructions/skills; do not edit work profiles/shared skills.
-Instruction-level policy only.
+The same personal workflow for Pi and Claude supersedes `wrapping-up`.
+Follow repo rules/skills; preserve work profiles/shared skills. Instruction-level policy.
 
 **Authorization:** On actual invocation of this `/wrap` command (including its
 expanded user prompt), John authorizes scoped commit/rebase/integration/cleanup
@@ -15,15 +14,15 @@ do not authorize closure without John's explicit direct request.
 No rebuild, input updates, fetch/push, amend, squash/reset/stash, force deletion,
 process reaping, or merge-commit fallback is authorized by `/wrap` alone.
 
-1. **Validate.** Inspect status and `git worktree list --porcelain`. Resolve canonical
-   primary/task identity via Git metadata, not path/count heuristics. Record this
-   session's `repo_root`, `task_path`, `task_branch`. Run relevant gates; verify
-   required deployments per host. Find/update scoped Fizzy card via skill/project board.
+1. **Validate.** Inspect status/`git worktree list --porcelain`. Use canonical Git
+   metadata, not path/count heuristics. Record `repo_root`, `task_path`, `task_branch`,
+   harness and verified startup cwd. Run relevant gates; verify required per-host
+   deployments. Use Fizzy skill/project board for scoped card.
    Failed/partial gates stop integration/cleanup; preserve work, name pending host/action.
-   Work-in-place opt-out skips integration/cleanup. No work: no invented worktree/empty commit.
+   Work-in-place skips integration/cleanup. No work: no worktree/empty commit.
 2. **Commit.** Read commit skill; commit scoped changes with supplied message verbatim
    or derive one. Preserve signing/hooks/attribution; never bypass signing or hooks.
-   Stop/fix/retry failures. No new commit for clean existing task commits.
+   Stop/fix/retry failures. No commit for clean task commits.
 3. **Integrate.** Require clean primary already on local `main`, clean linked task
    on recorded branch/repository, no existing Git operation in either checkout
    (merge/rebase/cherry-pick/revert/bisect). Missing `main` blocks; no switching/stashing.
@@ -53,10 +52,13 @@ process reaping, or merge-commit fallback is authorized by `/wrap` alone.
    fi
    ```
 
-4. **Clean up.** Wait for task jobs; never kill sessions/servers. Verify harness cwd
-   AND a separate plain `pwd -P` equal `repo_root` (no `cd`/cwd override).
-   Shell switches/`process.chdir`/context mutation are not proof; otherwise retain task
-   pending verified primary-root resume/relaunch. Recheck identity/status/operations/containment.
+4. **Clean up.** Wait for task jobs; never kill sessions/servers. Per global cwd rules,
+   only Claude shell drift from a verified primary-root start permits standalone
+   `cd "$repo_root"`. Then verify harness cwd AND a separate plain `pwd -P` equal
+   `repo_root` in a fresh tool call (no inline `cd`/cwd override). Actual worktree
+   starts/unknown evidence require verified primary-root resume/relaunch; retain task
+   if either cwd is unverified. Shell-only proof/`process.chdir`/context mutation are
+   invalid. Recheck identity/status/operations/containment.
    Inspect ignored files; delete only known disposable task artifacts; unknown contents require John.
    Remaining contents block removal. From primary root:
 
@@ -77,8 +79,7 @@ process reaping, or merge-commit fallback is authorized by `/wrap` alone.
    No `--force`/`--force-delete`/`git branch -D`. Verify this task's registration,
    directory, integrated branch are gone; otherwise report partial cleanup.
    Preserve other worktrees.
-5. **Hand off.** Inspect final status/worktrees. Comment on Fizzy with commit,
-   gates, per-host deployment, integration/cleanup; apply closure gate above.
-   Report actual state/reloads/restarts. Say "ready to push when you are" only
-   if a local commit exists and push is the sole remaining step.
+5. **Hand off.** Inspect final status/worktrees. Comment on Fizzy: commit, gates,
+   per-host deployment, integration/cleanup; apply closure gate. Report state/reloads/restarts.
+   Say "ready to push when you are" only with a local commit and only push remaining.
    Stop subsequent integration/deletion steps on any failure.
