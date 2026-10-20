@@ -2,6 +2,10 @@
   description = "nix-darwin and home-manager configuration";
 
   inputs = {
+    credits = {
+      url = "github:johnallen3d/credits/main";
+      flake = false;
+    };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # #781: retain Omarchy's deployed inputs without downgrading other hosts.
     # Updating these pins is a separate, reviewed deployment/identity change.
@@ -44,6 +48,7 @@
   };
 
   outputs = {
+    credits,
     home-manager,
     herdrProjectPicker,
     hermes,
@@ -96,7 +101,7 @@
           overlays = [(import ./lib/worktrunk-overlay.nix)];
         };
         extraSpecialArgs = {
-          inherit hermes lop;
+          inherit credits hermes lop;
           herdrProjectPicker = omarchyHerdrProjectPicker;
         };
         modules = [./hosts/omarchy.nix];

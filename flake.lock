@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "credits": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792499983,
+        "narHash": "sha256-E0J+8j0UB9iFmLZMHqwmPBA/r5Od3VUggTx1hY4CB1E=",
+        "owner": "johnallen3d",
+        "repo": "credits",
+        "rev": "d8e1faf09d5b654e85c14c284f2a069446a0c42a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "johnallen3d",
+        "ref": "main",
+        "repo": "credits",
+        "type": "github"
+      }
+    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
@@ -302,6 +319,7 @@
     },
     "root": {
       "inputs": {
+        "credits": "credits",
         "herdrProjectPicker": "herdrProjectPicker",
         "hermes": "hermes",
         "home-manager": "home-manager_2",
