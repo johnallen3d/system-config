@@ -25,6 +25,7 @@
     runtimePkgs = pkgs;
   };
   taskPython = pkgs.python313.withPackages (ps: [ps.pillow ps.pyyaml]);
+  paddleocr = import ./packages/omarchy-paddleocr.nix {inherit pkgs;};
   helperPi = pkgs.writeShellScriptBin "pi" ''
     exec ${pkgs.nodejs_24}/bin/node ${app}/node_modules/@earendil-works/pi-coding-agent/dist/cli.js "$@"
   '';
@@ -52,6 +53,7 @@
     taskPython
     vaultTools.vlt
     vaultTools.heif-convert
+    paddleocr
     pkgs.tesseract
     pkgs.nodejs_24
     pkgs.bash
@@ -262,6 +264,8 @@ in {
     systemd.user.services.pi-pocket-trial = {
       Unit = {
         Description = "Isolated Pi Pocket / Pi Durable browser trial";
+        # Preserve active conversations; activate a changed runtime deliberately.
+        X-RestartIfChanged = false;
         After = ["network-online.target"];
         StartLimitIntervalSec = 0;
       };

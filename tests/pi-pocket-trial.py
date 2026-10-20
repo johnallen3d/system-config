@@ -56,7 +56,8 @@ done < /proc/self/mountinfo
 [[ "$VAULT_DIR" == "$HOME/notes" && "$VAULT_NAME" == "$VAULT_DIR" ]]
 [[ "$NOTES_HELPER_PROVIDER" == subscription-codex && "$NOTES_HELPER_MODEL" == gpt-6-luna ]]
 [[ "$NOTES_LABEL_TEXT_ONLY" == 1 ]]
-command -v vlt python3 pi uv tesseract heif-convert >/dev/null
+command -v vlt python3 pi uv paddleocr tesseract heif-convert >/dev/null
+paddleocr --version >/dev/null
 [[ "$(tesseract --list-langs 2>/dev/null)" == *eng* ]]
 python3 -c 'import yaml; from PIL import Image, ImageOps'
 pi --version >/dev/null
