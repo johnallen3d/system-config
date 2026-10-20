@@ -78,9 +78,24 @@ out-of-band commands or a privileged process killing a deployment's process tree
   newer main stop; unrelated main changes are retained without rebasing a task.
 - Composite source lives in `.worktrees/deployment-<source-id>` on its own
   `feature/deployment-<source-id>` branch created from main. It is reused only
-  when ownership, base, and source match. No existing worktree is reset/deleted.
+  when ownership, base, and source match. No existing worktree is reset.
   Git tree refs under `refs/system-config/trees/` retain blobs through GC without
   creating commits or moving task/main branches.
+- After each recorded activation, the coordinator prunes its own superseded
+  `deployment-*` and Omarchy transport `update-system-*` worktrees and their
+  branches, under the host lock. It removes one only when its content still equals
+  the main commit and tree its name was derived from, it has no ignored files
+  other than Python `__pycache__` bytecode, its
+  branch has no commits outside main, and it is not the active or pending source,
+  the source of the generation before the active one (kept for rollback
+  investigation), or the invoking Mac task. Omarchy's per-deployment transport
+  worktree is pruned once its composite is recorded. Its tree stays pinned. Anything else is kept and reported as
+  `Kept source worktree <name> (<reason>)`. Task worktrees are never candidates.
+  Run `python3 "$coordinator" prune "$repo_root"` to prune without deploying; it
+  takes the lock and validates active provenance first. To inspect a pruned
+  source again (inspection only; it is not a deployable or adoptable source),
+  recreate it from its pinned tree:
+  `git worktree add --detach "$path" "$main" && git -C "$path" read-tree --reset -u "$tree" && git -C "$path" reset -q`.
 - Mac and Omarchy compose against their own active receipts. Host-specific active
   overlays need not be imported into the other host's task source. Omarchy still
   synchronizes only clean, fast-forwardable integrated main history and receives
@@ -122,7 +137,7 @@ misattributing them to a convenient branch. Ask John only when evidence cannot
 establish ownership or a genuine conflict/new authorization decision remains.
 
 For an unrecorded rollback or corrupted existing record, retain receipts and
-worktrees and investigate the precise mismatch before proposing recovery; there
+worktrees (pruning refuses to run without valid active provenance) and investigate the precise mismatch before proposing recovery; there
 is no force/adopt-over-existing or reset-to-main switch. Do not edit a receipt
 merely to make a candidate pass. A successful deployment does not authorize
 commits, integration, pushes, worktree removal, service/agent restarts, or card
@@ -140,4 +155,5 @@ These checks use disposable Git repositories/worktrees and command mocks, not
 host activations or synthetic commits. They cover active-but-unintegrated layers,
 real same-file conflicts, private-index preservation, ignored secrets, symlinks
 and binary/deleted files, failed/interrupted activation recovery, generation
-mismatch, layer retirement, and two competing processes sharing the kernel lock.
+mismatch, layer retirement, superseded-source pruning and its exclusions, and two
+competing processes sharing the kernel lock.

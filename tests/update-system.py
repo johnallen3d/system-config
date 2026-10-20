@@ -302,6 +302,25 @@ class Transport(unittest.TestCase):
             worker.receive(self.payload, self.remote)
         self.assertEqual(marker.read_text(), "preserve ignored user config")
 
+    def test_superseded_transport_worktrees_are_pruned_after_recorded_activation(self):
+        self.prepare()
+        old, _ = worker.receive(self.payload, self.remote)
+        (self.local / "newer-source").write_text("next deployment")
+        self.prepare()
+        current, _ = worker.receive(self.payload, self.remote)
+        other = self.remote / ".worktrees/unrelated"
+        worker.git(self.remote, "worktree", "add", "-b", "feature/unrelated", str(other), "main")
+        main = worker.git(self.remote, "rev-parse", "main")
+        composite = worker.coordination.materialize(current, main, worker.source_tree(current))
+        state = self.root / "state"
+        state.mkdir()
+        (state / "active.json").write_text(json.dumps({"source": str(composite)}))
+        # Real remote flow: finish() runs from the recorded composite, not the transport.
+        removed, kept = worker.coordination.prune(composite, state, keep=(composite,))
+        self.assertEqual((sorted(removed), kept), (sorted([old.name, current.name]), []))
+        self.assertFalse(old.exists() or current.exists())
+        self.assertTrue((composite / "newer-source").exists() and other.exists())
+
     def test_unrelated_linked_worktree_is_untouched(self):
         other = self.remote / ".worktrees/unrelated"
         worker.git(self.remote, "worktree", "add", "-b", "feature/unrelated", str(other), "main")

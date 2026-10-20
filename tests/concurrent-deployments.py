@@ -302,6 +302,87 @@ except RuntimeError as error:
             with self.assertRaisesRegex(RuntimeError, "interrupted"):
                 self.plan(self.b)
 
+    def fixture_source(self, name):
+        # A distinct, unrecorded coordinator source, as left by an older deployment.
+        (self.repo / name).write_text(name)
+        tree = state.source_tree(self.repo)
+        (self.repo / name).unlink()
+        return state.materialize(self.repo, state.git(self.repo, "rev-parse", "main"), tree)
+
+    def sources(self):
+        return sorted(path.name for path in (self.repo / ".worktrees").iterdir() if state.SOURCE_SLUG.fullmatch(path.name))
+
+    def test_finish_prunes_superseded_sources_and_keeps_recorded_tasks(self):
+        adopted = json.loads((self.directory / "active.json").read_text())["source"]
+        (self.a / "active-a").write_text("A")
+        (self.b / "own-b").write_text("B")
+        first = self.plan(self.a)
+        self.activate(first)
+        self.assertTrue(Path(adopted).exists())
+        second = self.plan(self.b)
+        self.activate(second)
+        self.assertFalse(Path(adopted).exists())
+        # The previous generation's source survives one deployment for rollback investigation.
+        self.assertEqual(self.sources(), sorted(Path(item["source"]).name for item in (first, second)))
+        cache = Path(first["source"]) / ".mise/scripts/__pycache__"
+        cache.mkdir(exist_ok=True)
+        (cache / "deployment_state.cpython-314.pyc").write_bytes(b"bytecode")
+        third = self.plan(self.a)
+        self.activate(third)
+        self.assertEqual(self.sources(), sorted({Path(item["source"]).name for item in (second, third)}))
+        self.assertNotIn("feature/" + Path(first["source"]).name, state.git(self.repo, "branch", "--format=%(refname:short)"))
+        self.assertEqual(state.git(self.repo, "cat-file", "-t", f"refs/system-config/trees/{first['tree']}"), "tree")
+        self.assertEqual((self.a / "active-a").read_text(), "A")
+        self.assertEqual((self.b / "own-b").read_text(), "B")
+
+    def test_prune_keeps_pending_edited_ignored_and_foreign_sources(self):
+        (self.a / "active-a").write_text("A")
+        first = self.plan(self.a)
+        self.activate(first)
+        edited = self.fixture_source("edited-fixture")
+        (edited / "debugging").write_text("keep")
+        tracked = self.fixture_source("tracked-fixture")
+        (tracked / "README.md").write_text("tracked edit")
+        locked = self.fixture_source("locked-fixture")
+        state.git(self.repo, "worktree", "lock", str(locked))
+        (self.b / "own-b").write_text("B")
+        ignored = Path(state.materialize(self.repo, state.git(self.repo, "rev-parse", "main"), state.source_tree(self.b)))
+        (ignored / ".fizzy.yaml").write_text("ignored user config")
+        (self.b / "own-b").write_text("pending B")
+        pending = self.plan(self.b)
+        foreign = self.repo / ".worktrees" / "deployment-0123456789ab"
+        state.git(self.repo, "worktree", "add", "-b", "feature/someone-else", str(foreign), "main")
+        removed, kept = state.prune(self.repo, self.directory)
+        self.assertEqual(removed, [])
+        self.assertTrue(Path(first["source"]).exists() and Path(pending["source"]).exists())
+        self.assertEqual((edited / "debugging").read_text(), "keep")
+        self.assertEqual((ignored / ".fizzy.yaml").read_text(), "ignored user config")
+        self.assertTrue(foreign.exists())
+        self.assertEqual((tracked / "README.md").read_text(), "tracked edit")
+        self.assertTrue(locked.exists())
+        self.assertEqual(sorted(item.split()[0] for item in kept), sorted([edited.name, tracked.name, locked.name, ignored.name, foreign.name]))
+
+    def test_prune_keeps_branches_outside_main_and_requires_provenance(self):
+        (self.a / "active-a").write_text("A")
+        self.activate(self.plan(self.a))
+        stale = self.fixture_source("stale-fixture")
+        state.git(self.repo, "update-ref", "refs/heads/main", "main^")
+        removed, kept = state.prune(self.repo, self.directory)
+        self.assertTrue(stale.exists())
+        self.assertIn("commits outside main", " ".join(kept))
+        (self.directory / "active.json").unlink()
+        with self.assertRaisesRegex(RuntimeError, "refusing to prune"):
+            state.prune(self.repo, self.directory)
+
+    def test_prune_failure_does_not_fail_recorded_activation(self):
+        (self.a / "active-a").write_text("A")
+        record = self.plan(self.a)
+        for failure in (RuntimeError("busy filesystem"), KeyboardInterrupt()):
+            with self.subTest(failure=failure), mock.patch.object(state, "prune", side_effect=failure):
+                (self.directory / "pending.json").write_text(json.dumps(record))
+                self.activate(record)
+                self.assertEqual(json.loads((self.directory / "active.json").read_text()), record)
+
     def test_profiles_unchanged(self):
         before = {key: os.environ.get(key) for key in ("PI_CODING_AGENT_DIR", "CLAUDE_CONFIG_DIR")}
         self.plan(self.a)

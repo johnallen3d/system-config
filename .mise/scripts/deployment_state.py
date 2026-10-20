@@ -8,6 +8,7 @@ import json
 import os
 import signal
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -15,6 +16,8 @@ import time
 
 
 CANCELLED = None
+# Coordinator-owned sources: deployment_state composites and Omarchy transports.
+SOURCE_SLUG = re.compile(r"(?:deployment|update-system)-([0-9a-f]{12})")
 
 
 def check_cancelled():
@@ -275,7 +278,7 @@ def active(repo, directory):
 
 def pin(repo, record):
     # Tree refs retain binary blobs for GC without creating commits or moving any
-    # task/main branch. Source worktrees are retained too; never reset or delete.
+    # task/main branch. Source worktrees are never reset; see prune() for removal.
     for item in record["layers"]:
         git(repo, "update-ref", f"refs/system-config/trees/{item['tree']}", item["tree"])
     git(repo, "update-ref", f"refs/system-config/trees/{record['tree']}", record["tree"])
@@ -297,7 +300,7 @@ def plan(repo, directory, incoming=None):
     source = materialize(repo, main, tree)
     record = {"repository": str(primary(repo)), "main": main, "tree": tree,
               "source": str(source), "layers": layers, "generation": evaluated_generation(source),
-              "previous_generation": previous["generation"]}
+              "previous_generation": previous["generation"], "previous_source": previous["source"]}
     check_cancelled()
     pin(repo, record)
     atomic_json(directory / "pending.json", record)
@@ -320,6 +323,72 @@ def finish(repo, directory):
     validate(repo, record)
     atomic_json(directory / "active.json", record)
     (directory / "pending.json").unlink()
+    # The activation is recorded; cleanup failure or interruption must not report it as failed.
+    try:
+        prune(repo, directory, keep=(repo,))
+    except (Exception, KeyboardInterrupt) as error:
+        print(f"[deployment] Activation recorded; source worktree pruning skipped: {error}", file=sys.stderr, flush=True)
+
+
+def worktrees(root):
+    result = []
+    for block in git(root, "worktree", "list", "--porcelain").split("\n\n"):
+        fields = dict((line.split(" ", 1) + [""])[:2] for line in block.splitlines() if line)
+        if "worktree" in fields:
+            result.append(fields)
+    return result
+
+
+def prune(repo, directory, keep=()):
+    """Remove superseded coordinator source worktrees. Caller holds the host lock.
+
+    Only a coordinator-named worktree on its own branch whose content still equals
+    the main commit and tree its name was derived from is removed, after pinning
+    that tree. Recorded active/pending sources and the source of the generation
+    before the active one (for rollback investigation), task worktrees, edited
+    snapshots, ignored files, and branches with commits outside main are kept.
+    """
+    check_cancelled()
+    if not (directory / "active.json").exists():
+        raise RuntimeError("Active deployment provenance is unknown; refusing to prune source worktrees")
+    root = primary(repo)
+    retained = {root, *(Path(path).resolve() for path in keep)}
+    for name in ("active.json", "pending.json"):
+        if (directory / name).exists():
+            record = json.loads((directory / name).read_text())
+            retained.update(Path(record[key]).resolve() for key in ("source", "previous_source") if key in record)
+    main = git(root, "rev-parse", "refs/heads/main")
+    removed, kept = [], []
+    for fields in worktrees(root):
+        path = Path(fields["worktree"]).resolve()
+        match = SOURCE_SLUG.fullmatch(path.name)
+        if not match or path.parent != root / ".worktrees" or path in retained:
+            continue
+        head, branch = fields.get("HEAD", ""), "feature/" + path.name
+        try:
+            if "locked" in fields or "prunable" in fields or fields.get("branch") != "refs/heads/" + branch:
+                raise RuntimeError("not an unlocked coordinator worktree on its own branch")
+            if subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", head, main]).returncode:
+                raise RuntimeError("branch has commits outside main")
+            tree = source_tree(path)
+            if hashlib.sha256(f"{head}:{tree}".encode()).hexdigest()[:12] != match.group(1):
+                raise RuntimeError("source differs from the tree its name records")
+            # Python bytecode left by importing coordinator scripts is disposable.
+            ignored = [name for name in git(path, "ls-files", "--others", "--ignored", "--exclude-standard").splitlines()
+                       if not (name.endswith(".pyc") and "__pycache__" in Path(name).parts)]
+            if ignored:
+                raise RuntimeError("contains ignored files")
+            git(root, "update-ref", f"refs/system-config/trees/{tree}", tree)
+            git(root, "worktree", "remove", "--force", str(path))
+            git(root, "update-ref", "-d", "refs/heads/" + branch, head)
+            removed.append(path.name)
+        except (RuntimeError, subprocess.CalledProcessError) as error:
+            kept.append(f"{path.name} ({error})")
+    if removed:
+        print(f"[deployment] Pruned {len(removed)} superseded source worktree(s); trees remain pinned", file=sys.stderr, flush=True)
+    for item in kept:
+        print(f"[deployment] Kept source worktree {item}", file=sys.stderr, flush=True)
+    return removed, kept
 
 
 def adopt(repo, source, owner, directory):
@@ -391,6 +460,10 @@ def main():
     elif mode == "adopt":
         with lock(directory, "adopt " + sys.argv[4]):
             adopt(repo, Path(sys.argv[3]).resolve(), sys.argv[4], directory)
+    elif mode == "prune":
+        with lock(directory, "prune " + str(repo)):
+            active(repo, directory)
+            prune(repo, directory, keep=(repo,))
     elif mode == "status":
         lock_path = directory / "lock"
         busy = False
