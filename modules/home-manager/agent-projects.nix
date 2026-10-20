@@ -7,6 +7,7 @@
   amfaroConfig = "${config.home.homeDirectory}/dev/src/amfaro/mise.toml";
   delegationInstructions = builtins.readFile ./agent-projects/delegation-instructions.md;
   taskScopeInstructions = builtins.readFile ./agent-projects/task-scope-instructions.md;
+  deploymentInstructions = builtins.readFile ./agent-projects/deployment-instructions.md;
   omarchyInstructions = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
 
     ## Arch/Omarchy
@@ -77,16 +78,18 @@
 
     ''
     + taskScopeInstructions
+    + deploymentInstructions
     + delegationInstructions
     + omarchyInstructions;
   workInstructions =
     builtins.readFile ./agent-projects/work-instructions.md
     + "\n"
     + taskScopeInstructions
+    + deploymentInstructions
     + delegationInstructions
     + omarchyInstructions;
 in {
-  imports = [./claude-work-context.nix];
+  imports = [./claude-work-context.nix ./deployment-coordination.nix];
 
   # Shared directory context, not project dependencies (those stay in mise).
   # Home Manager must fail on unexpected unmanaged files; review/back up before

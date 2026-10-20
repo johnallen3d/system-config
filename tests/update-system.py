@@ -10,12 +10,14 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / ".mise/scripts"))
 loader = importlib.machinery.SourceFileLoader("omarchy_deploy", str(ROOT / ".mise/scripts/update-system-omarchy"))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 worker = importlib.util.module_from_spec(spec)
@@ -78,7 +80,15 @@ if mode == 'deploy':
     sys.exit(int(os.environ.get('OMARCHY_RC', '0')))
 sys.exit(int(os.environ.get(mode.upper() + '_RC', '0')))
 ''')
-        self.env = {k: v for k, v in os.environ.items() if not k.startswith("usage_")}
+        (self.repo / ".mise/scripts/deployment_state.py").write_text('''
+import os, pathlib, subprocess, sys
+mode, repo = sys.argv[1:3]
+if mode == "run":
+    sys.exit(subprocess.run(sys.argv[3:], env=dict(os.environ, SYSTEM_CONFIG_COORDINATED=repo)).returncode)
+if mode == "plan":
+    pathlib.Path(sys.argv[3]).write_text(repo)
+''')
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith(("usage_", "SYSTEM_CONFIG_"))}
         self.env.update(PATH=f"{self.bin}:{os.environ['PATH']}", EVENTS=str(self.log), MARKERS=str(self.root))
 
     def invoke(self, **variables):
@@ -112,7 +122,8 @@ sys.exit(int(os.environ.get(mode.upper() + '_RC', '0')))
     def test_picker_only_resolves_before_both_builds(self):
         result = self.invoke(usage_picker_only="true")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.events()[1], ["mise", ["run", "nix-rebuild", "--update-only", "--picker-only"]])
+        self.assertEqual(next(e for e in self.events() if e[0] == "mise"),
+                         ["mise", ["run", "nix-rebuild", "--update-only", "--picker-only"]])
 
     def test_local_only_explicitly_skips_remote_and_forwards_refresh_scope(self):
         result = self.invoke(usage_switch_only="true", usage_local_only="true", usage_harness_refresh="true")
@@ -147,6 +158,26 @@ sys.exit(int(os.environ.get(mode.upper() + '_RC', '0')))
         self.assertEqual(result.returncode, 3)
         self.assertNotIn(["worker", ["deploy"]], self.events())
         self.assertFalse(any(e[0] == "mise" for e in self.events()))
+
+    def test_installed_tooling_never_executes_older_task_rebuild(self):
+        tools = self.root / "installed tools"
+        shutil.copytree(self.repo / ".mise", tools / ".mise")
+        current = tools / ".mise/tasks/nix-rebuild"
+        current.write_text('''#!/usr/bin/env bash
+set -eu
+[[ "$SYSTEM_CONFIG_TASK_ROOT" == "$EXPECTED_TASK" ]]
+[[ "$usage_switch_only" == true ]]
+printf "installed-rebuild\\n"
+[[ -n "$PI_CODING_AGENT_DIR" && -n "$CLAUDE_CONFIG_DIR" ]]
+''')
+        (self.repo / ".mise/tasks/nix-rebuild").write_text("exit 97\n")
+        result = self.invoke(usage_switch_only="true", usage_local_only="true",
+                             SYSTEM_CONFIG_TOOL_ROOT=str(tools), SYSTEM_CONFIG_TASK_ROOT=str(self.repo),
+                             EXPECTED_TASK=str(self.repo), PI_CODING_AGENT_DIR="/inherited/pi",
+                             CLAUDE_CONFIG_DIR="/inherited/claude")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("installed-rebuild", result.stdout)
+        self.assertFalse(any(e[0] == "mise" and "nix-rebuild" in e[1] for e in self.events()))
 
     def test_invalid_flags_prevent_side_effects(self):
         result = self.invoke(usage_switch_only="true", usage_picker_only="true")
@@ -206,10 +237,17 @@ class Transport(unittest.TestCase):
         script = kwargs["input"]
         payload = script.split("\nUPDATE_SYSTEM_PAYLOAD\n")[0].split("\n")[-1]
         with tarfile.open(fileobj=io.BytesIO(base64.b64decode(payload)), mode="r:gz") as archive:
-            self.assertEqual(set(archive.getnames()), {"main.bundle", "source.patch", "manifest.json", "worker.py"})
+            self.assertEqual(set(archive.getnames()), {"main.bundle", "source.patch", "manifest.json", "worker.py", "deployment_state.py"})
         self.assertNotIn(os.environ.get("PI_CODING_AGENT_DIR", "/inherited-profile"), script)
         self.assertNotIn(os.environ.get("CLAUDE_CONFIG_DIR", "/inherited-claude"), script)
         self.assertIn('python3 "$directory/worker.py" remote "$directory"', script)
+
+    def test_main_advance_after_mac_plan_requires_retry_before_deployments(self):
+        planned = self.local / ".worktrees/old-planned-source"
+        worker.git(self.local, "worktree", "add", "--detach", str(planned), "main^")
+        with self.assertRaisesRegex(RuntimeError, "Main advanced after Mac planning"):
+            worker.prepare(self.local, self.payload, planned)
+        self.assertFalse((self.payload / "manifest.json").exists())
 
     def test_remote_main_fast_forwards_integrated_history(self):
         old = worker.git(self.remote, "rev-parse", "main^")

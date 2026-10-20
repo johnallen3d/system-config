@@ -30,8 +30,44 @@ if [[ "${usage_switch_only:-false}" == true && "${usage_picker_only:-false}" == 
   exit 2
 fi
 
-repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+tool_root="${SYSTEM_CONFIG_TOOL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+repo="${SYSTEM_CONFIG_TASK_ROOT:-$tool_root}"
 cd "$repo"
+
+# One host-wide lock covers input resolution, both children, and provenance.
+if [[ "${SYSTEM_CONFIG_COORDINATED:-}" != "$repo" ]]; then
+  exec python3 "$tool_root/.mise/scripts/deployment_state.py" run "$repo" bash "${BASH_SOURCE[0]}" "$@"
+fi
+payload="$(mktemp -d)"
+cleanup() {
+  trap '' INT TERM
+  [[ -z "${mac_pid:-}" ]] || wait "$mac_pid" 2>/dev/null || true
+  [[ -z "${omarchy_pid:-}" ]] || wait "$omarchy_pid" 2>/dev/null || true
+  rm -rf "$payload"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+rebuild() {
+  if [[ "$tool_root" == "$repo" ]]; then
+    mise run nix-rebuild "$@"
+  else
+    # Installed tooling also coordinates older worktrees; never execute their
+    # pre-coordinator rebuild script or mutate them to upgrade it.
+    local switch=false update=false picker=false arg
+    for arg in "$@"; do
+      case "$arg" in
+        --switch-only) switch=true ;;
+        --update-only) update=true ;;
+        --picker-only) picker=true ;;
+        *) return 2 ;;
+      esac
+    done
+    usage_switch_only="$switch" usage_update_only="$update" usage_picker_only="$picker" \
+      bash "$tool_root/.mise/tasks/nix-rebuild"
+  fi
+}
 
 # Resolve inputs exactly once, before either host starts building.
 if [[ "${usage_switch_only:-false}" != true ]]; then
@@ -39,32 +75,35 @@ if [[ "${usage_switch_only:-false}" != true ]]; then
   if [[ "${usage_picker_only:-false}" == true ]]; then
     update_args+=(--picker-only)
   fi
-  mise run nix-rebuild "${update_args[@]}"
+  rebuild "${update_args[@]}"
 fi
 
+python3 "$tool_root/.mise/scripts/deployment_state.py" plan "$repo" "$payload/mac-source"
+SYSTEM_CONFIG_SOURCE="$(<"$payload/mac-source")"
+export SYSTEM_CONFIG_SOURCE
+
 if [[ "${usage_local_only:-false}" == true ]]; then
-  mise run nix-rebuild --switch-only
+  rebuild --switch-only
+  python3 "$tool_root/.mise/scripts/deployment_state.py" finish "$repo"
   echo '[Mac] SUCCESS (Omarchy explicitly skipped)'
 else
-  worker="$repo/.mise/scripts/update-system-omarchy"
-  payload="$(mktemp -d)"
-  trap 'rm -rf "$payload"' EXIT
-  python3 "$worker" prepare "$repo" "$payload"
+  worker="$tool_root/.mise/scripts/update-system-omarchy"
+  python3 "$worker" prepare "$repo" "$payload" "$SYSTEM_CONFIG_SOURCE"
   # The installed sudoers rule permits this exact command without a password.
   # A generic sudo -v would incorrectly demand unrelated authentication.
   sudo -n -l -- /run/current-system/sw/bin/darwin-rebuild switch --impure \
-    --no-update-lock-file --no-write-lock-file --flake "path:$repo" >/dev/null || {
+    --no-update-lock-file --no-write-lock-file --flake "path:$SYSTEM_CONFIG_SOURCE" >/dev/null || {
     auth_status=$?
     echo 'Command-specific darwin-rebuild sudo authorization is unavailable; no deployments started.' >&2
     exit "$auth_status"
   }
   echo '[Mac + Omarchy] Starting parallel deployments'
-  mise run nix-rebuild --switch-only &
+  rebuild --switch-only &
   mac_pid=$!
   python3 "$worker" deploy "$payload" &
   omarchy_pid=$!
   status=0
-  if wait "$mac_pid"; then
+  if wait "$mac_pid" && python3 "$tool_root/.mise/scripts/deployment_state.py" finish "$repo"; then
     echo '[Mac] SUCCESS'
   else
     mac_status=$?

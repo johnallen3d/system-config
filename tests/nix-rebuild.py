@@ -18,6 +18,9 @@ def main():
         script = repo / ".mise/tasks/nix-rebuild"
         script.parent.mkdir(parents=True)
         shutil.copyfile(ROOT / ".mise/tasks/nix-rebuild", script)
+        coordinator = repo / ".mise/scripts/deployment_state.py"
+        coordinator.parent.mkdir(parents=True)
+        coordinator.write_text("# routing-only stub; coordination is exercised in concurrent-deployments.py\n")
         commands = temp / "bin"
         commands.mkdir()
         capture = temp / "calls.jsonl"
@@ -33,7 +36,8 @@ if os.path.basename(sys.argv[0]) == "nix":
         mock.chmod(0o700)
         for command in ("nix", "sudo", "launchctl"):
             (commands / command).symlink_to(mock)
-        base_env = dict(os.environ, PATH=f"{commands}:{os.environ['PATH']}", CAPTURE=str(capture))
+        base_env = dict(os.environ, PATH=f"{commands}:{os.environ['PATH']}", CAPTURE=str(capture),
+                        SYSTEM_CONFIG_COORDINATED=str(repo), SYSTEM_CONFIG_SOURCE=str(repo))
         cases = [
             ({}, ["flake", "update"], 0),
             ({"usage_switch_only": "true"}, None, 0),

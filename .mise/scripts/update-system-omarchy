@@ -13,6 +13,8 @@ import tarfile
 import tempfile
 import time
 
+import deployment_state as coordination
+
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
        "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
        "johna@omarchy", "bash -s"]
@@ -36,15 +38,15 @@ def source_tree(repo):
         return run("git", "-C", str(repo), "write-tree", env=env)
 
 
-def prepare(repo, directory):
+def prepare(repo, directory, planned_source=None):
     repo = repo.resolve()
     main = git(repo, "rev-parse", "refs/heads/main")
-    if subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", main, "HEAD"]).returncode:
-        raise RuntimeError("Invoking checkout is not based on current local main; reconcile it before deployment")
+    if planned_source is not None and git(planned_source, "rev-parse", "HEAD") != main:
+        raise RuntimeError("Main advanced after Mac planning; retry the coordinated deployment before either host starts")
     if git(repo, "ls-files", "--unmerged"):
         raise RuntimeError("Resolve local Git conflicts before deploying")
     tree = source_tree(repo)
-    manifest = {"main": main, "tree": tree}
+    manifest = {"main": main, "tree": tree, "layer": coordination.layer(repo)}
     manifest["slug"] = "update-system-" + hashlib.sha256(f"{main}:{tree}".encode()).hexdigest()[:12]
     (directory / "manifest.json").write_text(json.dumps(manifest))
     subprocess.run(["git", "-C", str(repo), "bundle", "create", str(directory / "main.bundle"),
@@ -54,13 +56,14 @@ def prepare(repo, directory):
                         "--src-prefix=a/", "--dst-prefix=b/", "--binary", "--full-index", main, tree, "--"],
                        stdout=output, check=True)
     shutil.copyfile(__file__, directory / "worker.py")
+    shutil.copyfile(Path(__file__).with_name("deployment_state.py"), directory / "deployment_state.py")
     print(f"[Omarchy] Prepared source {tree[:12]} on main {main[:12]}", flush=True)
 
 
 def deploy(directory):
     archive = directory / "payload.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
-        for name in ("main.bundle", "source.patch", "manifest.json", "worker.py"):
+        for name in ("main.bundle", "source.patch", "manifest.json", "worker.py", "deployment_state.py"):
             output.add(directory / name, arcname=name)
     # Fish is the login shell. Run Bash explicitly, with no local profile/env
     # variables or credentials serialized into the remote command.
@@ -139,9 +142,30 @@ def receive(directory, repo):
 
 
 def remote(directory):
+    with coordination.lock(coordination.state_dir(), "Omarchy: " + str(json.loads((directory / "manifest.json").read_text())["layer"]["owner"])):
+        remote_locked(directory)
+
+
+def remote_locked(directory):
     if sys.platform != "linux" or str(Path.home()) != "/home/johna":
         raise RuntimeError("Unexpected remote host/user")
-    task, tree = receive(directory, Path.home() / "dev/src/system-config")
+    task, _ = receive(directory, Path.home() / "dev/src/system-config")
+    incoming = json.loads((directory / "manifest.json").read_text())["layer"]
+    if incoming["tree"] != source_tree(task):
+        raise RuntimeError("Task ownership layer does not match transported source")
+    record = coordination.plan(task, coordination.state_dir(), incoming)
+    activate_omarchy(record)
+
+
+def local(repo):
+    if sys.platform != "linux" or str(Path.home()) != "/home/johna":
+        raise RuntimeError("Unexpected Linux deployment host/user")
+    with coordination.lock(coordination.state_dir(), str(repo)):
+        activate_omarchy(coordination.plan(repo, coordination.state_dir()))
+
+
+def activate_omarchy(record):
+    task, tree = Path(record["source"]), record["tree"]
     logs = Path.home() / ".local/state/system-config/logs"
     logs.mkdir(parents=True, exist_ok=True)
     log = logs / f"update-system-{time.time_ns()}.log"
@@ -159,6 +183,9 @@ def remote(directory):
         generation = Path(result.stdout.strip())
         if generation.parent != Path("/nix/store") or not generation.name.endswith("-home-manager-generation"):
             raise RuntimeError(f"Unexpected build output; inspect {log}")
+        coordination.preactivate(task, coordination.state_dir())
+        if source_tree(task) != tree:
+            raise RuntimeError("Deployment source changed before activation")
         subprocess.run(context + [str(generation / "activate")], stdout=output, stderr=output, env=env, check=True)
     active = (Path.home() / ".local/state/nix/profiles/home-manager").resolve()
     if active != generation:
@@ -166,19 +193,24 @@ def remote(directory):
     if source_tree(task) != tree:
         raise RuntimeError(f"Source changed during deployment: {task}")
     verify_files(generation)
+    coordination.finish(task, coordination.state_dir())
     print(f"[Omarchy] Active generation: {generation}", flush=True)
 
 
 def main():
     mode = sys.argv[1]
     if mode == "prepare":
-        prepare(Path(sys.argv[2]), Path(sys.argv[3]))
+        prepare(Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4]) if len(sys.argv) > 4 else None)
     elif mode == "deploy":
         deploy(Path(sys.argv[2]))
     elif mode == "remote":
         remote(Path(sys.argv[2]))
+    elif mode == "local":
+        local(Path(sys.argv[2]).resolve())
     elif mode == "check":
         manifest = json.loads((Path(sys.argv[3]) / "manifest.json").read_text())
+        if git(Path(sys.argv[2]), "rev-parse", "refs/heads/main") != manifest["main"]:
+            raise RuntimeError("Main advanced during deployment; retry coordination against the new integrated baseline")
         if source_tree(Path(sys.argv[2])) != manifest["tree"]:
             raise RuntimeError("Local source changed during deployment; hosts may differ")
     else:

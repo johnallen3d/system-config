@@ -351,14 +351,22 @@ Start a new work Claude session to load the full policy; do not restart active a
 
 For agent configuration shared by Mac and Omarchy, apply and verify both hosts
 unless the request explicitly targets only one. From the verified Mac task worktree,
-`mise update-system --switch-only` now deploys **both hosts in parallel**. Without
+`mise exec -- system-config-deploy "$task_path" --switch-only` deploys **both hosts
+in parallel**, including from task worktrees with older deployment scripts. Current
+`mise update-system --switch-only` also coordinates. Read
+[concurrent deployment ownership and recovery](concurrent-deployments.md) and inspect
+both hosts' lock/provenance status before activation. Without
 `--switch-only`, inputs are updated once on Mac before either build starts.
 `--picker-only` updates only the shared Herdr picker; `--local-only` explicitly
 skips Omarchy. `--harness-refresh` runs after both requested deployments succeed;
 `--harness-only` still refreshes agent packages/plugins without activation.
 
 The updater sends integrated local `main` history and a binary patch representing
-the invoking checkout's source, including nonignored untracked files. It uses a
+the invoking checkout's source, including nonignored untracked files. Under each
+host's activation lock, it composes that task with verified already-active task
+layers in a separate linked deployment worktree. It never collects unrelated
+pending changes or integrates other tasks; same-file conflicts report their owners.
+Generation-bound receipts preserve exact source provenance and interrupted outcomes. It uses a
 private Git index without changing the user's staging area. Ignored files and host
 profiles/credentials are not transported. Omarchy's primary checkout must be clean
 and on `main`; it is synchronized only when fast-forwardable. Divergence, dirty
@@ -367,7 +375,7 @@ than overwriting changes. The Mac deployment can still succeed: either host's
 failure returns nonzero and is explicitly reported as partial.
 
 Omarchy builds and activates standalone Home Manager from a source-verified linked
-worktree at `~/dev/src/system-config/.worktrees/update-system-<source-id>`, created
+worktree at `~/dev/src/system-config/.worktrees/deployment-<source-id>`, created
 from its synchronized `main`. An identical source can reuse its matching worktree;
 changed or unrelated worktrees are never reset/deleted. Deployment worktrees are
 retained for inspection and normal authorized cleanup. Build/activation log paths
@@ -410,13 +418,9 @@ For manual activation, use the verified
 task worktree as `johna` (not a dirty or unverified primary checkout):
 
 ```bash
-. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-export NIX_CONFIG='extra-experimental-features = nix-command flakes'
-# Set task_path to this deployment's verified task worktree first.
-cd "$task_path"
-nix build --no-write-lock-file \
-  'path:.#homeConfigurations."johna@omarchy".activationPackage' --out-link result-agents
-./result-agents/activate
+# Set task_path to the verified absolute task worktree first.
+# The installed coordinator also works with older task checkouts.
+mise -C ~/dev/src/amfaro exec -- system-config-deploy "$task_path" --switch-only
 ```
 
 Launchers are linked into `~/.local/bin`, already on Omarchy's PATH, as well as

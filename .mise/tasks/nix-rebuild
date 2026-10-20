@@ -6,12 +6,17 @@
 set -uo pipefail
 
 # Apply the invoking checkout, including linked worktrees, not unrelated main edits.
-repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+tool_root="${SYSTEM_CONFIG_TOOL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+repo="${SYSTEM_CONFIG_TASK_ROOT:-$tool_root}"
 cd "$repo" || exit
 
 if [[ "${usage_switch_only:-false}" == "true" && ( "${usage_picker_only:-false}" == "true" || "${usage_update_only:-false}" == "true" ) ]]; then
   echo "--switch-only cannot be combined with --picker-only or --update-only" >&2
   exit 2
+fi
+
+if [[ "${usage_update_only:-false}" != true && "${SYSTEM_CONFIG_COORDINATED:-}" != "$repo" ]]; then
+  exec python3 "$tool_root/.mise/scripts/deployment_state.py" run "$repo" bash "${BASH_SOURCE[0]}" "$@"
 fi
 
 raise_nofile_limit() {
@@ -40,7 +45,19 @@ printf 'nix-rebuild log: %s\n' "$log" >&2
     nix flake update
   fi
   if [[ "${usage_update_only:-false}" != "true" ]]; then
-    sudo -n /run/current-system/sw/bin/darwin-rebuild switch --impure --no-update-lock-file --no-write-lock-file --flake "path:$repo"
+    standalone=false
+    if [[ -z "${SYSTEM_CONFIG_SOURCE:-}" ]]; then
+      standalone=true
+      payload="$(mktemp -d)"
+      trap 'rm -rf "$payload"' EXIT
+      python3 "$tool_root/.mise/scripts/deployment_state.py" plan "$repo" "$payload/source"
+      SYSTEM_CONFIG_SOURCE="$(<"$payload/source")"
+    fi
+    python3 "$tool_root/.mise/scripts/deployment_state.py" guard "$repo"
+    sudo -n /run/current-system/sw/bin/darwin-rebuild switch --impure --no-update-lock-file --no-write-lock-file --flake "path:$SYSTEM_CONFIG_SOURCE"
+    if [[ "$standalone" == true ]]; then
+      python3 "$tool_root/.mise/scripts/deployment_state.py" finish "$repo"
+    fi
   fi
 ) >"$log" 2>&1
 rc=$?
