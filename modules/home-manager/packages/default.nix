@@ -110,7 +110,6 @@ in {
       markdownlint-cli2
       # marksman # broken in nixpkgs oct 2025 - dotnet build takes forever
       minikube
-      minio-client
       # preferring brew install for more up-to-date versions ATM
       # mise
       mkdocs
