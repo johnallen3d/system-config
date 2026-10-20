@@ -17,11 +17,12 @@ fi
 scripts_dir="$(cd "$(dirname "$0")/../scripts" && pwd)"
 
 refresh_omarchy() {
-  # Ship only the two workers, into a disposable directory. This runs exactly
+  # Ship only the refresh workers/report helper into a disposable directory.
+  # This runs exactly
   # the same implementation without relying on/synchronizing the remote snapshot.
   # No credentials, profile config, or repository state crosses the SSH boundary.
   local payload
-  if ! payload="$(COPYFILE_DISABLE=1 tar --format=ustar -C "$scripts_dir" -czf - harness-refresh-local pi-refresh | base64)"; then
+  if ! payload="$(COPYFILE_DISABLE=1 tar --format=ustar -C "$scripts_dir" -czf - harness-refresh-local pi-refresh harness-report.py | base64)"; then
     return 1
   fi
   {
@@ -67,7 +68,8 @@ if [ "$host" = Darwin ] && [ "$local_only" != true ]; then
 fi
 
 if [ "$status" -eq 0 ]; then
-  echo 'All requested hosts refreshed. Restart Claude Code on each refreshed host to load plugin updates.'
+  echo 'All requested hosts refreshed; security findings (if any) are listed above.'
+  echo 'Restart Claude Code on each refreshed host to load plugin updates; start a new Pi session for updated extensions.'
 else
   echo 'Harness refresh incomplete; see per-host failures above.' >&2
 fi

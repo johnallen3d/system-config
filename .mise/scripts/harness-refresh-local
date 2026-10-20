@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Host-local worker; called through the managed Amfaro mise context.
 set -uo pipefail
+umask 077
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/system-config/harness-refresh"
+mkdir -p "$state_dir"
+export HARNESS_REFRESH_LOG_DIR
+HARNESS_REFRESH_LOG_DIR="$(mktemp -d "$state_dir/$(date +%Y%m%d-%H%M%S).XXXXXX")" || exit 1
+printf 'Harness refresh logs: %s\n' "$HARNESS_REFRESH_LOG_DIR"
 
 # Refresh both harnesses even if one fails, so a partial failure is visible.
 status=0
@@ -15,18 +21,20 @@ if [ ! -x "$claude" ]; then
   status=1
 else
   export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
-  if "$claude" plugin marketplace update amfaro; then
-    if ! "$claude" plugin update agent-kit@amfaro; then
-      echo "Claude Code agent-kit update failed" >&2
+  if "$claude" plugin marketplace update amfaro > "$HARNESS_REFRESH_LOG_DIR/claude-marketplace.log" 2>&1; then
+    if ! "$claude" plugin update agent-kit@amfaro > "$HARNESS_REFRESH_LOG_DIR/claude-plugin.log" 2>&1; then
+      echo "Claude Code agent-kit update failed; see $HARNESS_REFRESH_LOG_DIR/claude-plugin.log" >&2
       status=1
+    else
+      echo "[Claude] Marketplace and agent-kit plugin refreshed."
     fi
   else
-    echo "Claude Code marketplace update failed; skipping plugin update" >&2
+    echo "Claude Code marketplace update failed; skipping plugin update; see $HARNESS_REFRESH_LOG_DIR/claude-marketplace.log" >&2
     status=1
   fi
 fi
 
 if [ "$status" -eq 0 ]; then
-  echo "Host-local package refresh succeeded."
+  echo "Host-local package refresh succeeded (security findings are reported separately)."
 fi
 exit "$status"

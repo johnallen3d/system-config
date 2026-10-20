@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 #MISE description="Refresh nix-managed pi packages for personal, work + notes profiles"
 set -euo pipefail
+umask 077
+scripts_dir="$(cd "$(dirname "$0")" && pwd)"
+if [ -z "${HARNESS_REFRESH_LOG_DIR:-}" ]; then
+  state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/system-config/harness-refresh"
+  mkdir -p "$state_dir"
+  HARNESS_REFRESH_LOG_DIR="$(mktemp -d "$state_dir/$(date +%Y%m%d-%H%M%S).XXXXXX")"
+fi
+log_dir="$HARNESS_REFRESH_LOG_DIR"
+# Audit once after reconciliation, not after every intermediate npm operation.
+# Keep warnings enabled; raw output is retained in private per-profile logs.
+export npm_config_audit=false npm_config_fund=false npm_config_progress=false
+export npm_config_update_notifier=false NO_COLOR=1
+printf 'Pi refresh logs: %s\n' "$log_dir"
 
 pi_bin="$(which -a pi 2>/dev/null | grep -v '/.npm/_npx/' | head -n1)"
 if [ -z "$pi_bin" ]; then
@@ -17,14 +30,13 @@ for nix_bin in "$HOME/.nix-profile/bin" "/etc/profiles/per-user/$USER/bin" /run/
   fi
 done
 
-# Retire known, formerly Nix-declared personal packages through the existing
-# refresh owner. Unregistered npm dependencies are not active Pi extensions,
-# but otherwise survive declaration changes indefinitely. Never prune work,
-# notes, arbitrary packages, credentials, caches, or legacy global installs.
-retire_personal_packages() {
-  local profile_dir="$HOME/.config/pi"
+# Retire only known former declarations in personal/notes. Preserve work,
+# arbitrary packages, explicit resource references, credentials, and sessions.
+retire_packages() {
+  local profile_dir="$1"
+  local label="$2"
   local retired name
-  retired="$(python3 - "$profile_dir" <<'PY'
+  retired="$(python3 - "$profile_dir" "$label" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -43,12 +55,31 @@ for package in settings.get("packages", []):
     version_at = spec.find("@", 1)  # Preserve the leading @ in scoped names.
     declared.add(spec[:version_at] if version_at >= 0 else spec)
 known_retired = {
-    "@samfp/pi-memory", "@tintinweb/pi-tasks", "@tmustier/pi-skill-creator",
-    "context-mode", "pi-answer", "pi-ask-user", "pi-claude-bridge", "pi-intercom",
-    "pi-mcp-adapter", "pi-subagents",
-}
+    "personal": {
+        "@samfp/pi-memory", "@tintinweb/pi-tasks", "@tmustier/pi-skill-creator",
+        "context-mode", "pi-answer", "pi-ask-user", "pi-claude-bridge", "pi-intercom",
+        "pi-mcp-adapter", "pi-subagents",
+    },
+    "notes": {
+        "pi-claude-bridge", "pi-headroom", "pi-mcp-adapter",
+        "pi-prompt-template-model", "pi-web-access",
+    },
+}.get(sys.argv[2], set())
+# A package can also be used through an explicit local resource path. Do not
+# retire it merely because its npm source no longer appears in packages.
+references = []
+for field in ("packages", "extensions", "skills", "prompts", "themes"):
+    for entry in settings.get(field, []):
+        source = entry if isinstance(entry, str) else entry.get("source", "")
+        if source and not source.startswith(("npm:", "git:")):
+            references.append(source)
 installed = json.loads(manifest.read_text()).get("dependencies", {})
 for name in sorted(known_retired.intersection(installed).difference(declared)):
+    package = (profile / "npm/node_modules" / name).resolve()
+    if any(Path(ref.lstrip("!+-")).expanduser().is_absolute() and
+           Path(ref.lstrip("!+-")).expanduser().resolve().is_relative_to(package)
+           or f"node_modules/{name}/" in ref + "/" for ref in references):
+        continue
     print(name)
 PY
   )" || return 1
@@ -57,7 +88,7 @@ PY
     [ -n "$name" ] && packages+=("$name")
   done <<< "$retired"
   if [ -n "$retired" ]; then
-    printf '[personal] Removing retired npm dependencies: %s\n' "${packages[*]}"
+    printf '[%s] Removing retired npm dependencies: %s\n' "$label" "${packages[*]}"
     PI_CODING_AGENT_DIR="$profile_dir" npm uninstall --prefix "$profile_dir/npm" --legacy-peer-deps "${packages[@]}" || return 1
   fi
 }
@@ -71,6 +102,7 @@ refresh_dependencies() {
   local label="$2"
   local root="$3"
   [ -f "$root/package.json" ] || return 0
+  printf '%s\n' "$root" >> "$log_dir/$label.roots"
   local dependency_list
   if ! dependency_list="$(python3 - "$root" <<'PY'
 import json
@@ -160,9 +192,8 @@ PY
     done <<< "$package_list"
   fi
 
-  if [ "$label" = "personal" ]; then
-    retire_personal_packages || return 1
-  fi
+  retire_packages "$profile_dir" "$label" || return 1
+  python3 "$scripts_dir/harness-report.py" policy "$profile_dir/npm" || return 1
 
   if [ ! -f "$marker" ]; then
     echo "[$label] Bootstrapping declared packages"
@@ -171,8 +202,9 @@ PY
 
   for package_source in "${git_packages[@]}"; do
     echo "[$label] Refreshing declared git package: $package_source"
-    rm -rf "$profile_dir/git/${package_source#git:}"
-    if PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" install "$package_source"; then
+    # Native update installs a missing checkout and fetches only the selected
+    # ref otherwise. Never delete/reclone a package just to check for updates.
+    if PI_CODING_AGENT_DIR="$profile_dir" "$pi_bin" update "$package_source"; then
       :
     else
       failures+=("$label:$package_source")
@@ -196,7 +228,10 @@ PY
       failures+=("$label:npm-dependencies")
     fi
     for package_source in "${git_packages[@]}"; do
-      if ! refresh_dependencies "$profile_dir" "$label" "$profile_dir/git/${package_source#git:}"; then
+      git_path="${package_source#git:}"
+      git_path="${git_path%@*}"
+      git_path="${git_path%.git}"
+      if ! refresh_dependencies "$profile_dir" "$label" "$profile_dir/git/$git_path"; then
         failures+=("$label:$package_source:dependencies")
       fi
     done
@@ -215,21 +250,25 @@ echo "Note: pi command is nix-managed here; wrapper resolves latest pi runtime a
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-refresh_profile "$HOME/.config/pi" "personal" "$tmp_dir/personal.failures" &
+refresh_profile "$HOME/.config/pi" "personal" "$tmp_dir/personal.failures" > "$log_dir/personal.log" 2>&1 &
 personal_pid=$!
-refresh_profile "$HOME/.config/pi-work" "work" "$tmp_dir/work.failures" &
+refresh_profile "$HOME/.config/pi-work" "work" "$tmp_dir/work.failures" > "$log_dir/work.log" 2>&1 &
 work_pid=$!
-refresh_profile "$HOME/.config/pi-notes" "notes" "$tmp_dir/notes.failures" &
+refresh_profile "$HOME/.config/pi-notes" "notes" "$tmp_dir/notes.failures" > "$log_dir/notes.log" 2>&1 &
 notes_pid=$!
 
 refresh_failed=0
-wait "$personal_pid" || refresh_failed=1
-wait "$work_pid" || refresh_failed=1
-wait "$notes_pid" || refresh_failed=1
+wait "$personal_pid" || { refresh_failed=1; touch "$log_dir/personal.failed"; }
+wait "$work_pid" || { refresh_failed=1; touch "$log_dir/work.failed"; }
+wait "$notes_pid" || { refresh_failed=1; touch "$log_dir/notes.failed"; }
 
 # pi install may register the notes git package in personal settings. Let the
 # managed wrapper remove that stale registration after all refreshes finish.
-PI_CODING_AGENT_DIR="$HOME/.config/pi" "$pi_bin" --help >/dev/null || refresh_failed=1
+PI_CODING_AGENT_DIR="$HOME/.config/pi" "$pi_bin" --help > "$log_dir/wrapper.log" 2>&1 || refresh_failed=1
+
+# Findings are separate from installation success. Audit/network/report errors
+# do fail the refresh, rather than silently claiming a clean dependency tree.
+python3 "$scripts_dir/harness-report.py" report "$log_dir" || refresh_failed=1
 
 if [ "$refresh_failed" -ne 0 ]; then
   printf 'Failed package updates:\n' >&2
@@ -244,4 +283,4 @@ if [ "$refresh_failed" -ne 0 ]; then
 fi
 
 
-echo "Done"
+echo "Pi package updates completed; security findings are reported separately."

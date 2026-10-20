@@ -26,10 +26,13 @@ class HarnessRefreshTests(unittest.TestCase):
         self.bin.mkdir()
         self.log = self.home / "calls.jsonl"
         self.env = dict(os.environ, HOME=str(self.home), USER="test",
+                        XDG_STATE_HOME=str(self.home / '.local/state'),
                         PATH=f"{self.bin}:{os.environ['PATH']}",
                         TEST_LOG=str(self.log), MOCK_PLATFORM="Darwin",
                         PI_CODING_AGENT_DIR="/inherited/do-not-use",
-                        CLAUDE_CONFIG_DIR="/inherited/do-not-use")
+                        CLAUDE_CONFIG_DIR="/inherited/do-not-use",
+                        SYSTEM_CONFIG_COORDINATED=str(ROOT),
+                        SYSTEM_CONFIG_TASK_ROOT=str(ROOT), SYSTEM_CONFIG_TOOL_ROOT=str(ROOT))
         for key in list(self.env):
             if key.startswith("usage_"):
                 del self.env[key]
@@ -41,9 +44,27 @@ class HarnessRefreshTests(unittest.TestCase):
 import json, os, sys
 with open(os.environ['TEST_LOG'], 'a') as log:
     log.write(json.dumps(['npm', os.environ['PI_CODING_AGENT_DIR'], sys.argv[1:], os.getcwd()]) + '\\n')
+if sys.argv[1] == 'audit':
+    print(os.environ.get('MOCK_AUDIT_JSON', json.dumps({'metadata': {'vulnerabilities': {'total': 0}}})))
+    sys.exit(int(os.environ.get('MOCK_AUDIT_RC', '0')))
+if sys.argv[1] == 'install-scripts':
+    print(os.environ.get('MOCK_SCRIPTS_JSON', '{"allowScripts": []}'))
+    sys.exit(int(os.environ.get('MOCK_SCRIPTS_RC', '0')))
 sys.exit(int(os.environ.get('MOCK_DEPENDENCY_RC', '0')))
 ''')
-        (nix_bin / 'python3').symlink_to(sys.executable)
+        # Deployment orchestration is tested separately. Never let these
+        # harness-only fixtures access a real coordinator, Nix, or mise config.
+        self.executable(nix_bin / 'python3', '''#!/usr/bin/env python3
+import os, pathlib, sys
+if len(sys.argv) > 2 and sys.argv[1].endswith('/deployment_state.py'):
+    if sys.argv[2] == 'plan':
+        pathlib.Path(sys.argv[4]).write_text(sys.argv[3])
+    elif sys.argv[2] != 'finish':
+        raise SystemExit('Unexpected coordinator invocation')
+    raise SystemExit(0)
+os.execv(sys.executable, [sys.executable, *sys.argv[1:]])
+''')
+        (self.bin / 'python3').symlink_to(nix_bin / 'python3')
         self.executable(self.bin / "uname", '#!/bin/bash\necho "$MOCK_PLATFORM"\n')
         self.executable(self.bin / "mise", '''#!/usr/bin/env python3
 import json, os, subprocess, sys
@@ -66,10 +87,12 @@ sys.exit(int(os.environ.get('MOCK_SSH_RC', '0')))
 import json, os, shutil, sys
 from pathlib import Path
 profile = os.environ['PI_CODING_AGENT_DIR']
+if os.environ.get('MOCK_PI_OUTPUT'):
+    print(os.environ['MOCK_PI_OUTPUT'])
 with open(os.environ['TEST_LOG'], 'a') as log:
     log.write(json.dumps(['pi', profile, sys.argv[1:]]) + '\\n')
-if sys.argv[1:2] == ['install'] and sys.argv[2].startswith('git:') and os.environ.get('TEST_GIT_FIXTURE'):
-    target = Path(profile) / 'git' / sys.argv[2][4:]
+if sys.argv[1:2] == ['update'] and sys.argv[2].startswith('git:') and os.environ.get('TEST_GIT_FIXTURE'):
+    target = Path(profile) / 'git' / sys.argv[2][4:].split('@')[0].removesuffix('.git')
     shutil.copytree(os.environ['TEST_GIT_FIXTURE'], target, dirs_exist_ok=True)
 sys.exit(int(os.environ.get('MOCK_PI_RC', '0'))
          if sys.argv[1] == 'update' else 0)
@@ -114,8 +137,8 @@ sys.exit(int(os.environ.get(key, '0')))
         self.assertIn('[Omarchy] SUCCESS', result.stdout)
         expected = {str(self.home / '.config' / profile)
                     for profile in ('pi', 'pi-work', 'pi-notes')}
-        for command in ('install', 'update'):
-            self.assertEqual({c[1] for c in self.calls('pi') if c[2][0] == command}, expected)
+        self.assertEqual({c[1] for c in self.calls('pi') if c[2][0] == 'update'}, expected)
+        self.assertEqual([c for c in self.calls('pi') if c[2][0] == 'install'], [])
         self.assertEqual([c[2] for c in self.calls('claude')], [
             ['plugin', 'marketplace', 'update', 'amfaro'],
             ['plugin', 'update', 'agent-kit@amfaro']])
@@ -128,7 +151,7 @@ sys.exit(int(os.environ.get(key, '0')))
         payload = (self.home / 'payload.sh').read_text()
         encoded = payload.split("<<'HARNESS_PAYLOAD' | tar -xzf - -C \"$tmp_dir\"\n")[1].split('\nHARNESS_PAYLOAD')[0]
         with tarfile.open(fileobj=io.BytesIO(base64.b64decode(encoded)), mode='r:gz') as archive:
-            self.assertEqual(set(archive.getnames()), {'harness-refresh-local', 'pi-refresh'})
+            self.assertEqual(set(archive.getnames()), {'harness-refresh-local', 'pi-refresh', 'harness-report.py'})
             for name in archive.getnames():
                 self.assertEqual(archive.extractfile(name).read(),
                                  (ROOT / '.mise/scripts' / name).read_bytes())
@@ -147,16 +170,11 @@ sys.exit(int(os.environ.get(key, '0')))
         settings['packages'].append({'source': 'npm:@tmustier/pi-skill-creator@0.3.0'})
         (personal / 'settings.json').write_text(json.dumps(settings))
         (personal / 'auth.json').write_text('credential sentinel')
-        self.executable(self.home / '.nix-profile/bin/npm', '''#!/usr/bin/env python3
-import json, os, sys
-with open(os.environ['TEST_LOG'], 'a') as log:
-    log.write(json.dumps(['npm', os.environ['PI_CODING_AGENT_DIR'], sys.argv[1:]]) + '\\n')
-''')
         result = self.run_task('--local-only')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls('npm'), [['npm', str(personal), [
-            'uninstall', '--prefix', str(personal / 'npm'), '--legacy-peer-deps',
-            'context-mode', 'pi-mcp-adapter']]])
+        self.assertEqual([call[:3] for call in self.calls('npm') if call[2][0] == 'uninstall'], [
+            ['npm', str(personal), ['uninstall', '--prefix', str(personal / 'npm'),
+                                   '--legacy-peer-deps', 'context-mode', 'pi-mcp-adapter']]])
         self.assertEqual((personal / 'auth.json').read_text(), 'credential sentinel')
 
     def dependency_root(self, root):
@@ -198,7 +216,7 @@ with open(os.environ['TEST_LOG'], 'a') as log:
         self.dependency_root(fixture)
         result = self.run_task('--local-only', TEST_GIT_FIXTURE=str(fixture))
         self.assertEqual(result.returncode, 0, result.stderr)
-        calls = {call[3]: call for call in self.calls('npm')}
+        calls = {call[3]: call for call in self.calls('npm') if call[2][0] == 'update'}
         self.assertEqual(len(calls), 6)
         for profile, root, manifest in roots:
             call = calls[str(root.resolve())]
@@ -210,13 +228,19 @@ with open(os.environ['TEST_LOG'], 'a') as log:
             self.assertEqual((root / 'package.json').read_bytes(), manifest)
             self.assertEqual((profile / 'auth.json').read_text(), 'credential sentinel')
         self.assertEqual(len([c for c in self.calls('pi') if c[2] == ['update', 'npm:test-package@1.0.0']]), 3)
+        for command in ('audit', 'install-scripts'):
+            reports = [c for c in self.calls('npm') if c[2][0] == command]
+            self.assertEqual(len(reports), 6)
+            self.assertEqual({c[3] for c in reports}, {str(root.resolve()) for _, root, _ in roots})
+            for call in reports:
+                self.assertTrue(Path(call[3]).is_relative_to(Path(call[1]).resolve()))
 
     def test_dependency_failure_propagates_and_other_profiles_continue(self):
         for name in ('pi', 'pi-work', 'pi-notes'):
             self.dependency_root(self.home / '.config' / name / 'npm')
         result = self.run_task(MOCK_DEPENDENCY_RC='1')
         self.assertEqual(result.returncode, 1)
-        self.assertEqual(len(self.calls('npm')), 3)
+        self.assertEqual(len([c for c in self.calls('npm') if c[2][0] == 'update']), 3)
         self.assertEqual(len(self.calls('claude')), 2)
         self.assertEqual(len(self.calls('ssh')), 1)
         for label in ('personal', 'work', 'notes'):
@@ -229,7 +253,9 @@ with open(os.environ['TEST_LOG'], 'a') as log:
         result = self.run_task('--local-only')
         self.assertEqual(result.returncode, 1)
         self.assertEqual(self.calls('npm'), [])
-        self.assertIn('Cannot read dependency lock', result.stderr)
+        self.assertIn('[personal] FAILED; log:', result.stdout)
+        log = next((self.home / '.local/state/system-config/harness-refresh').glob('*/personal.log'))
+        self.assertIn('Cannot read dependency lock', log.read_text())
         self.assertEqual(len([c for c in self.calls('pi') if c[2] == ['update', 'npm:test-package']]), 3)
 
     def test_failed_reconciliation_skips_dependency_refresh(self):
@@ -248,6 +274,129 @@ with open(os.environ['TEST_LOG'], 'a') as log:
         self.assertEqual(result.returncode, 1)
         updated = {c[1] for c in self.calls('pi') if c[2][0] == 'update'}
         self.assertEqual(updated, {str(self.home / '.config/pi-work'), str(self.home / '.config/pi-notes')})
+
+    def test_notes_retirement_preserves_declarations_references_and_other_profiles(self):
+        for name in ('pi-work', 'pi-notes'):
+            profile = self.home / '.config' / name
+            self.dependency_root(profile / 'npm')
+            (profile / 'npm/package.json').write_text(json.dumps({'dependencies': {
+                'pi-mcp-adapter': '^2.21.1', 'pi-claude-bridge': '^0.6.3',
+                'pi-headroom': '^0.1.0', 'unrelated-user-package': '^1.0.0'}}))
+            (profile / 'auth.json').write_text('credential sentinel')
+        notes = self.home / '.config/pi-notes'
+        settings = {'packages': ['git:github.com/badlogic/pi-telegram', 'npm:pi-headroom'],
+                    'extensions': ['./npm/node_modules/pi-claude-bridge/extension.ts']}
+        (notes / 'settings.json').write_text(json.dumps(settings))
+        result = self.run_task('--local-only')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        removed = [c for c in self.calls('npm') if c[2][0] == 'uninstall']
+        self.assertEqual(len(removed), 1)
+        self.assertEqual(removed[0][1], str(notes))
+        self.assertEqual(removed[0][2], ['uninstall', '--prefix', str(notes / 'npm'),
+                                        '--legacy-peer-deps', 'pi-mcp-adapter'])
+        self.assertEqual((notes / 'auth.json').read_text(), 'credential sentinel')
+
+    def test_profile_script_decisions_are_pinned_and_preserve_user_policy(self):
+        root = self.home / '.config/pi-work/npm'
+        self.dependency_root(root)
+        manifest = json.loads((root / 'package.json').read_text())
+        manifest['allowScripts'] = {'esbuild@0.28.2': False, 'user-package': True}
+        (root / 'package.json').write_text(json.dumps(manifest))
+        lock = json.loads((root / 'package-lock.json').read_text())
+        for name, version in (('esbuild', '0.28.2'), ('fsevents', '2.3.3')):
+            lock['packages']['node_modules/' + name] = {
+                'version': version, 'resolved': f'https://registry.npmjs.org/{name}/-/{name}-{version}.tgz'}
+        (root / 'package-lock.json').write_text(json.dumps(lock))
+        result = self.run_task('--local-only')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        policy = json.loads((root / 'package.json').read_text())['allowScripts']
+        self.assertEqual(policy, {'esbuild@0.28.2': False, 'fsevents@2.3.3': False, 'user-package': True})
+
+    def test_profile_policy_preserves_name_only_and_disjunction_decisions(self):
+        import runpy
+        helper = runpy.run_path(str(ROOT / '.mise/scripts/harness-report.py'))
+        root = self.home / '.config/pi-work/npm'
+        self.dependency_root(root)
+        manifest = json.loads((root / 'package.json').read_text())
+        manifest['allowScripts'] = {'esbuild@0.28.2 || 0.28.1': False, 'fsevents': True}
+        (root / 'package.json').write_text(json.dumps(manifest))
+        lock = json.loads((root / 'package-lock.json').read_text())
+        for name, version in (('esbuild', '0.28.2'), ('fsevents', '2.3.3')):
+            lock['packages']['node_modules/' + name] = {
+                'version': version, 'resolved': f'https://registry.npmjs.org/{name}/-/{name}-{version}.tgz'}
+        (root / 'package-lock.json').write_text(json.dumps(lock))
+        before = (root / 'package.json').read_bytes()
+        helper['apply_profile_policy'](root)
+        self.assertEqual((root / 'package.json').read_bytes(), before)
+
+    def test_native_git_update_preserves_existing_checkout_and_handles_pinned_ref(self):
+        profile = self.home / '.config/pi-work'
+        source = 'git:github.com/example/test-kit@v1'
+        (profile / 'settings.json').write_text(json.dumps({'packages': [source]}))
+        root = profile / 'git/github.com/example/test-kit'
+        self.dependency_root(root)
+        sentinel = root / 'checkout-sentinel'
+        sentinel.write_text('not deleted')
+        result = self.run_task('--local-only')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(sentinel.read_text(), 'not deleted')
+        self.assertIn(['pi', str(profile), ['update', source]], self.calls('pi'))
+        self.assertEqual(len([c for c in self.calls('npm') if c[2][0] == 'audit']), 1)
+
+    def test_raw_output_is_private_and_not_interleaved(self):
+        result = self.run_task('--local-only', MOCK_PI_OUTPUT='raw spinner and clone chatter')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('raw spinner', result.stdout + result.stderr)
+        logs = list((self.home / '.local/state/system-config/harness-refresh').glob('*/personal.log'))
+        self.assertEqual(len(logs), 1)
+        self.assertIn('raw spinner', logs[0].read_text())
+        self.assertEqual(logs[0].stat().st_mode & 0o077, 0)
+        self.assertEqual(logs[0].parent.stat().st_mode & 0o077, 0)
+
+    def test_security_findings_are_not_installation_failures(self):
+        self.dependency_root(self.home / '.config/pi-work/npm')
+        audit = {'metadata': {'vulnerabilities': {'high': 2, 'moderate': 4, 'total': 6}},
+                 'vulnerabilities': {'parent': {'fixAvailable': {
+                     'name': 'parent', 'version': '4.3.1', 'isSemVerMajor': True}}}}
+        result = self.run_task('--local-only', MOCK_AUDIT_JSON=json.dumps(audit), MOCK_AUDIT_RC='1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('SECURITY WARNING: 2 high, 4 moderate', result.stdout)
+        self.assertIn('source-level major upgrade required: parent@4.3.1', result.stdout)
+        summary = next((self.home / '.local/state/system-config/harness-refresh').glob('*/summary.json'))
+        self.assertTrue(json.loads(summary.read_text())['security_findings'])
+
+    def test_audit_errors_fail_instead_of_reporting_clean(self):
+        self.dependency_root(self.home / '.config/pi/npm')
+        for audit in ('not JSON', json.dumps({'error': {'code': 'ENETUNREACH'}}), '{}'):
+            result = self.run_task('--local-only', MOCK_AUDIT_JSON=audit, MOCK_AUDIT_RC='1')
+            self.assertEqual(result.returncode, 1)
+            self.assertIn('SECURITY CHECK FAILED', result.stderr)
+            self.assertNotIn('audit clean', result.stdout)
+
+    def test_unreviewed_scripts_and_deprecations_remain_visible(self):
+        root = self.home / '.config/pi-work/npm'
+        self.dependency_root(root)
+        lock = json.loads((root / 'package-lock.json').read_text())
+        lock['packages']['node_modules/boolean'] = {'version': '3.2.0', 'deprecated': 'Unsupported'}
+        (root / 'package-lock.json').write_text(json.dumps(lock))
+        pending = {'allowScripts': [{'name': 'sharp', 'changes': [
+            {'key': 'sharp@0.34.5', 'change': 'pending'}]}]}
+        result = self.run_task('--local-only', MOCK_SCRIPTS_JSON=json.dumps(pending))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('unreviewed install scripts: sharp@0.34.5', result.stdout)
+        self.assertIn('deprecated dependencies: boolean@3.2.0', result.stdout)
+
+    def test_unexpected_npm_security_warnings_are_not_hidden(self):
+        result = self.run_task('--local-only',
+                               MOCK_PI_OUTPUT='npm warn install-scripts package.json policy is ignored')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('WARNING: install-scripts package.json policy is ignored', result.stdout)
+
+    def test_script_report_failure_is_not_silenced(self):
+        self.dependency_root(self.home / '.config/pi-work/npm')
+        result = self.run_task('--local-only', MOCK_SCRIPTS_RC='1')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('SECURITY CHECK FAILED', result.stderr)
 
     def test_local_only_direct_and_mise_flag(self):
         for args, env in ((['--local-only'], {}), ([], {'usage_local_only': 'true'})):
@@ -272,7 +421,7 @@ with open(os.environ['TEST_LOG'], 'a') as log:
         self.assertEqual(result.returncode, 1)
         self.assertEqual(len(self.calls('claude')), 2)
         self.assertEqual(len(self.calls('ssh')), 1)
-        self.assertEqual(len([c for c in self.calls('pi') if c[2][0] == 'update']), 3)
+        self.assertEqual(len([c for c in self.calls('pi') if c[2][0] == 'update']), 6)
         self.assertIn('[Darwin] FAILED', result.stderr)
         self.assertIn('[Omarchy] SUCCESS', result.stdout)
 
