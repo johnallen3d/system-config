@@ -41,6 +41,6 @@ Personal instructions go in `APPEND_SYSTEM.md`, preserving Pi's native system pr
 - Local extension declarations: `modules/home-manager/pi/local-extensions.nix` and profile-specific variants.
 - Prompt declarations: `modules/home-manager/pi-prompts.nix`.
 - `/reload` reloads extensions, skills, prompts, themes, and context files; `pi --no-extensions` also disables built-in extensions unless explicitly supplied.
-- Useful gates: `tests/pi-settings.py`, `tests/coding-agent-profiles.py`, `tests/harness-refresh.py`, and `tests/pi-native-personal.mjs` (see `docs/pi-native-personal.md`).
+- Verify only the changed installed behavior on each affected host: profile selection, `pi list`, or `pi mcp list` as relevant (see `docs/pi-native-personal.md`). No blanket suite or unapproved test additions.
 
 Follow repository AGENTS.md for apply, issue tracking, quality gates, and two-host handoff. Never run direct macOS rebuild or flake-update commands.

@@ -64,12 +64,10 @@ No Mac activation is needed for this host-only service.
 ```bash
 systemctl --user status syncthing.service
 syncthing --version
-python3 tests/omarchy-syncthing.py --installed
-python3 tests/omarchy-session-capture.py --installed
 ```
 
-Run `python3 tests/omarchy-syncthing.py` for source evaluation without starting a
-service. `--installed` additionally checks the active service, the loopback-only
-Syncthing listener, the restricted LAN forwarder, the authenticated local REST
-API, and the tailnet-only Serve mapping without modifying configuration. Verify the browser endpoint from the Mac with
+After relevant changes, inspect the listener with `ss -ltn`, the Serve mapping
+with `tailscale serve status`, and confirm protected REST routes still reject
+unauthenticated access. Keep the loopback listener and restricted LAN forwarder
+intact. Verify the browser endpoint from the Mac with
 `curl --noproxy '*' http://omarchy.taila14c2.ts.net:8384/rest/noauth/health`.

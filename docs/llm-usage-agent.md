@@ -92,18 +92,15 @@ no longer used and can be removed manually after switching.
 ## Verify
 
 ```sh
-nix flake check
-python3 tests/llm-usage-agent.py --evaluate --binary "$(command -v llm-usage)" --installed
 launchctl print "gui/$(id -u)/org.nix-community.home.llm-usage" \
   | rg -e 'state =' -e 'last exit'
 plutil -p ~/Library/LaunchAgents/org.nix-community.home.llm-usage.plist
-bash ~/.config/sketchybar/plugins/llm-usage.sh --test
 ```
 
 The plist must contain only `LLM_USAGE_CLIPROXY_URL` in its environment, not a
-management key or Pi/Claude profile variables. The isolated binary test supplies
-no key and uses a temporary home: it verifies repeated private JSON output and
-explicit proxy-source errors without touching real credentials or providers.
+management key or Pi/Claude profile variables. Inspect the installed cache
+metadata and sanitized provider status below; do not print credentials or raw
+provider responses.
 
 For the default cache location:
 
@@ -117,7 +114,7 @@ Expect `source: "cliproxy"`, successful or stale provider usage, mode
 customized, use the substituted `cache=` path in the installed plugin instead.
 Confirm the bar label and the Codex, OpenCode Go, and Claude Code popup rows.
 On Omarchy, verify the built binary's `json --help` support for `--interval` and
-`--output`, and run the isolated `--binary` test. Check installed packages
+`--output`. Check installed packages
 independently: absence of `llm-usage` in the current standalone configuration is
 expected, not proof that its package pin was deployed to a runtime.
 

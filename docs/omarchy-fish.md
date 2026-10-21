@@ -65,7 +65,6 @@ DRY_RUN=1 ./result-fish/activate
 ./result-fish/activate
 ~/.nix-profile/bin/omarchy-fish-default-shell
 ~/.local/bin/herdr server reload-config
-python3 tests/omarchy-fish.py
 
 # Read-only confirmation; no sudo needed.
 ~/.nix-profile/bin/omarchy-fish-default-shell --check

@@ -20,7 +20,7 @@
   # or a full-pane overlay. Other Worktrunk actions remain downward splits.
   herdrWorktrunk =
     pkgs.runCommand "herdr-worktrunk-popup-picker" {
-      nativeBuildInputs = with pkgs; [fish git jq patch python3 shellcheck worktrunk];
+      nativeBuildInputs = with pkgs; [fish git jq patch worktrunk];
     } ''
       cp -R ${herdrWorktrunkSrc}/. "$out"
       chmod -R u+w "$out"
@@ -50,15 +50,9 @@
         { print }
       ' "$out/herdr-plugin.toml" > "$out/herdr-plugin.toml.new"
       mv "$out/herdr-plugin.toml.new" "$out/herdr-plugin.toml"
-      test "$(grep -c '^placement = "popup"$' "$out/herdr-plugin.toml")" -eq 3
       substituteInPlace "$out/picker.sh" \
         --replace-fail $'worktrunk_fzf_layout\n' \
         $'worktrunk_fzf_layout\nWORKTRUNK_FZF_LAYOUT=(--border=none --margin=0)\n'
-
-      cd "$out"
-      bash -n picker.sh helpers.sh
-      shellcheck -x picker.sh helpers.sh
-      python3 ${../../tests/herdr-worktrunk-short-names.py} "$out"
     '';
   projectPickerSrc = herdrProjectPicker;
   projectPickerBinary = pkgs.rustPlatform.buildRustPackage {

@@ -7,8 +7,8 @@
 #
 # Roles select family aliases, never provider/version-specific model IDs.
 # In work, subscription-proxy.nix owns the ANTHROPIC_DEFAULT_*_MODEL targets;
-# these must be advertised by the live work gateway (verified by
-# tests/subscription-proxy-claude.py). Personal uses its own alias defaults.
+# these must be advertised by the live work gateway. Verify its catalog directly
+# when changing routing. Personal uses its own alias defaults.
 {
   config,
   lib,

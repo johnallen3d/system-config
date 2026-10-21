@@ -54,11 +54,10 @@ in
       runHook postCheck
     '';
     # Upstream's extension-reload test has stale exact response-shape assertions.
-    # Test our actual installed HTTP/auth/SQLite boundary without that feature.
+    # Keep the CLI smoke check; repository-owned checks are opt-in, not build inputs.
     installCheckPhase = ''
       runHook preInstallCheck
       "$out/bin/pi-pocket" --help
-      PI_POCKET_TEST_PACKAGE="$out" node --test ${../../../tests/pi-pocket-package.mjs}
       runHook postInstallCheck
     '';
     passthru = {

@@ -154,16 +154,10 @@ integrations in each explicit profile. Existing coding-agent/work-kit tests
 passed. Shell/desktop file fingerprints were unchanged. No reboot, GUI logout,
 suspend, or model prompt was performed.
 
-Run the remote smoke test from a **Mac Herdr pane**:
-
-```bash
-python3 tests/herdr-omarchy.py
-```
-
-It creates its own unfocused remote workspace, verifies a delayed shell process
-across independent SSH API connections, personal profile defaults, Nix PATH,
-Worktrunk's shell function and Pi detection, then closes only that workspace.
-No model call is made.
+After relevant remote-routing changes, inspect `herdr --machine Omarchy workspace
+list` and `herdr --machine Omarchy agent list` from a Mac Herdr pane. Verify
+changed behavior only in a disposable workspace with authorization, never by
+restarting a live agent or closing an existing workspace.
 
 ## Rollback
 

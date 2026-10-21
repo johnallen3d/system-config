@@ -103,21 +103,12 @@ Use [standalone Home Manager activation](omarchy-agents.md#apply); no Mac rebuil
 is needed. This adds a forwarder without changing Syncthing's daemon listener
 or synchronization settings.
 
-```bash
-python3 tests/omarchy-syncthing.py
-python3 tests/omarchy-syncthing-lan.py
-# After Home Manager activation:
-python3 tests/omarchy-syncthing.py --installed
-systemctl --user status syncthing.service syncthing-lan.service
-```
+After relevant changes, inspect `systemctl --user status syncthing.service
+syncthing-lan.service`, `ss -ltnp`, and the installed forwarder’s source restriction.
+The production `ExecStartPre` authentication guard remains mandatory; removing
+repository regression fixtures does not remove that fail-closed runtime check.
 
-The source regression checks Mac exclusion and the exact listener/filter. Linux
-also runs a synthetic socat fixture proving permitted sources forward and others
-are rejected. Installed checks verify the actual forwarder listener, source
-filter, backend authentication, and existing Syncthing/Tailscale behavior.
-
-From pi-01, run `python3 tests/omarchy-syncthing-lan.py --lan-client` using a copy
-of that test and `modules/home-manager/omarchy-syncthing/check-auth.py`. Or:
+From pi-01, verify the actual endpoint directly:
 
 ```bash
 curl --noproxy '*' --fail --connect-timeout 10 http://192.168.4.26:8384/rest/noauth/health

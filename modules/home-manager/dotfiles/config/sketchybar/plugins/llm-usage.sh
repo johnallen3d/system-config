@@ -41,18 +41,6 @@ popup_rows() {
     done
 }
 
-if [ "${1:-}" = "--test" ]; then
-  [ "$(color_for_severity ok)" = "0xff9ccfd8" ] || exit 1
-  [ "$(color_for_severity warning)" = "0xfff6c177" ] || exit 1
-  [ "$(color_for_severity critical)" = "0xffeb6f92" ] || exit 1
-  [ "$(color_for_severity unknown)" = "0xfff6c177" ] || exit 1
-  test_cache=$(mktemp)
-  printf '%s' '{"providers":[{"provider":"codex","status":"ok","windows":[{"label":"5h","status":"ok","used_percent":62},{"label":"7d","status":"ok","used_percent":18}],"display":{"name":"Codex","capacity_used_percent":62,"limiting_window":{"label":"5h","used_percent":62}}},{"provider":"opencode-go","status":"ok","windows":[{"label":"5h","status":"ok","used_percent":4}],"display":{"name":"OpenCode Go","capacity_used_percent":4,"limiting_window":{"label":"5h","used_percent":4}}},{"provider":"claude-code","status":"stale","windows":[{"label":"5h","status":"unavailable"},{"label":"7d","status":"ok","used_percent":23}],"display":{"name":"Claude Code","capacity_used_percent":23,"limiting_window":{"label":"7d","used_percent":23}}}]}' >"$test_cache"
-  [ "$(popup_rows "$test_cache")" = $'codex\tCodex         5h  62%       7d  18%     \nopencode_go\tOpenCode Go   5h   4%                   \nclaude_code\tClaude Code                 7d  23%      (stale)' ] || exit 1
-  rm -f "$test_cache"
-  exit 0
-fi
-
 [ -r "$cache" ] || exit 0
 
 summary=$(jq -r '.presentation.summary' "$cache")

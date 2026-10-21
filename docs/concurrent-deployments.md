@@ -143,17 +143,10 @@ merely to make a candidate pass. A successful deployment does not authorize
 commits, integration, pushes, worktree removal, service/agent restarts, or card
 closure.
 
-## Offline verification
+## Targeted verification
 
-```bash
-mise exec -- python3 tests/concurrent-deployments.py
-mise exec -- python3 tests/update-system.py
-mise exec -- python3 tests/nix-rebuild.py
-```
-
-These checks use disposable Git repositories/worktrees and command mocks, not
-host activations or synthetic commits. They cover active-but-unintegrated layers,
-real same-file conflicts, private-index preservation, ignored secrets, symlinks
-and binary/deleted files, failed/interrupted activation recovery, generation
-mismatch, layer retirement, superseded-source pruning and its exclusions, and two
-competing processes sharing the kernel lock.
+After deployment, inspect coordinator status on each affected host and confirm
+the installed generation matches its active receipt. Verify only the changed
+installed behavior; do not run a blanket repository suite. The production
+coordinator continues to enforce provenance, source-conflict, and kernel-lock
+checks during every activation.

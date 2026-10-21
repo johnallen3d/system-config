@@ -47,18 +47,29 @@ mkdir -p "$runtime"
 printf '[Unit]\nConditionPathExists=/run/user/%s/lop-preflight-approved\n' "$(id -u)" > "$runtime/preflight.conf"
 systemctl --user daemon-reload
 # Build and activate Home Manager as documented in omarchy-agents.md.
-python3 tests/lop-omarchy.py --installed --preflight
+systemd-run --user --wait --pipe --collect --unit=lop-preflight \
+  --property=Type=oneshot --property="WorkingDirectory=$HOME" --property=UMask=0077 \
+  --property="Environment=$(systemctl --user show lop.service -p Environment --value)" \
+  -- "$HOME/.nix-profile/bin/lop" scan
+```
+
+The preflight fetches repositories but does not prune. Inspect its summary for
+`apply: false`, zero fetch/operational failures, and successful exit before
+releasing the timer hold. If it fails, retain the hold and investigate. Only
+after that review:
+
+```bash
 rm "$runtime/preflight.conf"
 rmdir "$runtime"
 systemctl --user daemon-reload
 systemctl --user start lop.timer
-python3 tests/lop-omarchy.py --installed
+systemctl --user status lop.timer lop.service
+systemctl --user show lop.service -p Result -p ExecMainStatus
 ```
 
-The preflight fetches repositories but does not prune. The installed test checks
-policy, exclusions, command, environment, timer cadence, and successful scheduled
-execution without initiating additional pruning. A new deployment should wait
-for the service's first run to finish before running the final check.
+Wait for the service’s first scheduled run to finish and confirm success; do not
+initiate extra pruning as a verification step. Inspect changed policy/exclusions
+and the installed unit directly when those settings are modified.
 
 Linux package overrides keep the full test suite enabled while replacing the
 fixture's `/bin/cat` with Nix coreutils and serializing flaky executable-fixture

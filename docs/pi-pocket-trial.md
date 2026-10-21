@@ -142,19 +142,12 @@ Routine journal output redacts startup owner URLs. Full private transcripts stay
 in app state; do not paste them or provider diagnostics into routine logs.
 Use `journalctl --user -u pi-pocket-trial.service` deliberately when needed.
 
-Run from a verified source worktree on Omarchy:
-
-```bash
-mise -C ~/dev/src/amfaro exec -- python3 /absolute/task/worktree/tests/pi-pocket-trial.py
-```
-
-The installed check exercises the real sandbox, environment, listener, assets,
-real-vault bind identity, writable access (without changing existing notes), food
-runtime, API authentication,
-and initial extension choices without model calls or opening
-the live database. Package checks use disposable profiles/data and a faux model
-for queue visibility, late attachment, cancellation, and persisted conversations;
-a separate installed-package HTTP/auth/session test checks a real process restart.
+After relevant changes, inspect `systemctl --user status pi-pocket-trial.service`,
+its installed sandbox/listener settings, and the browser page. An unauthenticated
+request to `/api/sessions` must return 401. Keep real-vault bind identity and
+writable state intact; do not open the live database or change notes just to
+verify a deployment. Upstream package checks remain separate from direct
+installed-outcome verification; there is no repository-owned trial suite.
 A bounded real exchange through the running Pocket API on 19 October 2026
 returned the exact synthetic test response from `subscription-codex/gpt-6-luna`,
 with a normal stop and no tools. Its scratch-workspace test session was archived;

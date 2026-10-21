@@ -53,8 +53,8 @@ See also: `:h news`, `:h lsp-quickstart`, and the [Neovim 0.11 release notes](ht
 
 ## Build/Test/Lint Commands
 
-- From the system-config repository: `mise exec -- python3 tests/omarchy-nvim.py` checks host wiring.
-- After activation and plugin/parser installation: `mise exec -- python3 tests/omarchy-nvim.py --installed` exercises both real editor profiles.
+- After changing editor configuration, open the affected profile and verify the changed behavior directly; use `:checkhealth vim.lsp` for LSP diagnostics.
+- Follow the repository minimal-checks policy: no unapproved test additions or blanket suite runs.
 - Format Lua with `mise exec -- stylua <changed-file.lua>`; see `docs/omarchy-nvim.md` for deployment and rollback.
 
 ## IMPORTANT: Plugin Management

@@ -117,12 +117,10 @@ plan returns a 7-day window only. Do not invent a missing 5-hour percentage.
 Native Codex usage still works. Omarchy's cross-profile footer exclusion remains
 unchanged; its shared quota helper is deployed and independently verified.
 
-```bash
-# Mac: actual managed factory/rendering plus a read-only gateway quota check
-PI_CODING_AGENT_DIR="$HOME/.config/pi" node tests/pi-usage-footer.mjs "$runtime" --installed --live
-```
+After footer changes, inspect it in a fresh personal Pi session. A read-only
+`subscription-proxy codex-usage personal --base-url <selected-model-url>` query
+checks gateway quota without downloading upstream tokens.
 
-Run `tests/subscription-proxy.py` with the managed helper's Nix Python (PyYAML).
 Use `/reload` or a new personal Pi session after activation for the footer and
 MCP removal. No package refresh or Claude restart is needed for this follow-up.
 
@@ -136,27 +134,10 @@ refresh declared packages. Restart Claude after plugin refresh; start a new Pi
 session in its intended directory to pick up the changed prompt/MCP integration.
 Never restart active agents automatically.
 
-Mac activation-script and offline orchestration gates:
-
-```bash
-mise exec -- python3 tests/pi-settings.py
-mise exec -- python3 tests/harness-refresh.py
-```
-
-On Omarchy, additionally run `python3 tests/coding-agent-profiles.py` against its
-installed Linux launchers, and `python3 tests/harness-refresh.py`.
-
-With explicit host-local profile and resolved installed Pi runtime directory:
-
-```bash
-PI_CODING_AGENT_DIR="$HOME/.config/pi" node tests/pi-native-personal.mjs "$runtime" --live
-PI_CODING_AGENT_DIR="$HOME/.config/pi-work" node tests/pi-native-personal.mjs "$runtime"
-```
-
-Use Nix Node ahead of mise shims for those explicit-profile calls. The native test
-checks actual extension discovery, native prompt preservation, retained template
-support, exact personal npm ownership, absence of the adapter update notice,
-HTTP/OAuth credential isolation, read-only live calls, and work-loader regressions.
-It rejects personal Cloudflare declarations and reports the pre-existing Omarchy
-Doppler authorization gap explicitly. No
-credential values, sessions, or model calls are used by the test.
+Verify only the affected behavior on each host in its intended directory context:
+`mise exec -- pi list` for package discovery and `mise exec -- pi mcp list` for
+native MCP connection status. Inspect changed settings without printing secrets;
+keep work and personal profiles separate. Use a new personal session for prompt,
+extension, or footer changes. Read-only live MCP calls are scoped to the changed
+service and its existing authorization, not a blanket deployment gate. The
+pre-existing Omarchy Doppler authorization gap remains explicit in #694.

@@ -41,7 +41,6 @@ Omarchy: use the standalone Home Manager activation in
 [the Herdr guide](omarchy-herdr.md#apply-and-operate), then reload Herdr config.
 Do not stop active Herdr servers.
 
-`python3 tests/herdr-favorite-projects.py` tests provisioning in disposable homes.
 After applying, check that every catalog path resolves to its own repository root
 and that both hosts have the same managed picker catalog. Commits and branches
 may differ: this ensures availability, not synchronization.

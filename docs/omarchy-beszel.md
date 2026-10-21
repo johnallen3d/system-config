@@ -72,21 +72,9 @@ machine-local pairing/state or the Beszel system record.
 
 ## Verification
 
-From the checkout, with Nix available:
-
-```bash
-python3 tests/omarchy-beszel.py
-```
-
-On Omarchy after activation:
-
-```bash
-python3 /home/johna/dev/src/system-config/.worktrees/consolidate-omarchy-config/tests/omarchy-beszel.py --installed
-```
-
-The test checks evaluated host-only ownership, file-based credentials, disabled
-inbound/Docker access, protected runtime files/state, service enablement, and no
-listening sockets. It never reads pairing contents or changes service state.
+On Omarchy after relevant changes, inspect `systemctl --user status beszel-agent`
+and `ss -ltnp` to confirm service health and that no inbound listener was added.
+Inspect pairing-file permissions without printing their contents.
 Also verify independently through the dashboard user's Beszel API that exactly
 one `omarchy` system is up with recent `1m` stats, positive uptime, memory/root
 capacity, and current CPU/memory/disk percentages. Verify Glance's rendered

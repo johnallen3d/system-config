@@ -34,16 +34,9 @@ path/label behavior. The global path template is unchanged.
 
 The pinned plugin is patched by
 `modules/home-manager/patches/herdr-worktrunk-short-names.patch`. Patch application
-rejects fuzz. Its Nix derivation runs shell syntax checks, ShellCheck, upstream
-shell tests, and the local regression suite with temporary Git repositories,
-real Worktrunk hooks/templates, and mocked Herdr/fzf. No real Herdr session is
-modified by those tests.
-
-To repeat the local suite against a built plugin:
-
-```sh
-python3 tests/herdr-worktrunk-short-names.py /nix/store/<built-plugin>
-```
+rejects fuzz and retains upstream shell tests. Repository-owned lint/regression
+checks are not build inputs. Verify changed picker behavior directly in an
+authorized disposable workspace rather than running a local suite.
 
 After source changes, apply on macOS using `mise run nix-rebuild --switch-only`,
 then run `herdr server reload-config` inside a Herdr-managed pane. The next popup

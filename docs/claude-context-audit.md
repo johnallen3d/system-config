@@ -157,31 +157,11 @@ sessions. Existing sessions retain their original launch-time context.
 
 ## Reproduction
 
-`tests/claude-context-audit.py` defaults to a sanitized installed-state inventory.
-It asserts **both** work profile variables, and never emits credentials,
-transcript text, provider error bodies, or executable hook bodies.
-
-```bash
-# Offline parser, cache accounting, and overlay-isolation regression tests.
-mise exec -- python3 tests/claude-context-audit.py --self-test
-
-# Installed inventory; absolute path is needed because mise -C changes cwd.
-mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-context-audit.py"
-
-# One explicit, bounded model turn through the selected work proxy.
-mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-context-audit.py" --live
-
-# Mac: choose its existing matching binary and retain the actual work profile.
-mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-context-audit.py" \
-  --live --claude "$HOME/.local/share/claude/versions/2.1.295"
-```
-
-On Omarchy run through `ssh johna@omarchy 'bash -s'`, using the absolute script
-path in its inspected snapshot. The inference subprocess uses `/dev/null` stdin,
-so it cannot consume the remaining SSH Bash script. `--model claude-opus-5-5`
-selects the other tested Claude model. `--overlay /tmp/context-policy.json` uses
-only a temporary CLI overlay; the parser rejects auth, hooks, and permission
-bypass settings. Each live probe has a $2 ceiling and a 240-second timeout.
+The historical audit helper has been retired with the repository test suite.
+Do not run inference as a routine deployment check or print credentials, raw
+transcripts, hook bodies, or provider errors. Any new live measurement must be
+explicitly scoped to its model, budget, and timeout while preserving the work
+profile and proxy.
 
 For an interactive check, start a **new isolated** work session with the matched
 model/window and use `/context`. `--no-session-persistence` is print-only; do not
@@ -276,27 +256,11 @@ excluded skills are absent from both live inventories. Installed settings verify
 all denies, including those for interactive-only tools/connectors not advertised
 in proxy-backed print mode; that is not a native-login connector execution test.
 
-### Repeatable gates
+### Targeted verification
 
-```bash
-# Offline merging, Mac capability boundary, safety, and ~14k regression checks.
-mise exec -- python3 tests/claude-work-context.py
-mise exec -- python3 tests/claude-context-audit.py --self-test
-
-# Immediately before activation; stores private hashes, not values.
-mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-work-context.py" \
-  --record-before /tmp/claude-work-before.json
-
-# Explicit live inference through the installed launcher.
-mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-context-audit.py" \
-  --live > /tmp/claude-work-live.json
-
-# Installed state, preservation, native-tool equality, and 12k–15k target gate.
-mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/claude-work-context.py" \
-  --installed --before /tmp/claude-work-before.json \
-  --live-report /tmp/claude-work-live.json
-```
-
-Use absolute script paths on Omarchy because `mise -C` changes the working
-directory. Start **new work Claude sessions on both hosts** to load the full
-policy; existing agents keep launch-time tools/settings and were left running.
+After context-policy changes, inspect only the affected installed settings on
+both hosts and confirm unrelated settings and credentials were preserved without
+printing their values. Use `/context` in a new isolated work session only when a
+live footprint measurement is part of the request; historical token counts are
+not a mandatory build/deployment gate. Start new work Claude sessions on both
+hosts to load changed policy; leave active agents running.

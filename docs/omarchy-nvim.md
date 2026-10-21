@@ -50,10 +50,8 @@ SSH editor without restarting it, run:
 :runtime autoload/provider/clipboard.vim
 ```
 
-Run `mise exec -- python3 tests/omarchy-clipboard.py` for selection regressions,
-and add `--installed` on Omarchy to exercise both real editor profiles in an
-isolated pseudo-terminal. The installed test captures explicit/unnamed OSC 52
-yanks and simulates a terminal paste response without changing a real clipboard.
+After clipboard changes, verify a yank/paste in the affected local or SSH editor
+with the operator’s consent; do not overwrite a real clipboard automatically.
 
 ## Deployment
 
@@ -87,21 +85,15 @@ Review/back up any existing lock first; never replace one during routine
 activation. Locks are runtime state, not declarative read-only files. Preserve
 any existing Omarchy spelling additions rather than replacing them with Mac's.
 
-Start each profile once to install its plugins. Allow Tree-sitter parser installs
-to finish before testing. On Omarchy run:
+Start each affected profile once to install its plugins. Allow Tree-sitter parser
+installs to finish, then inspect the changed behavior directly. Use
+`:checkhealth vim.lsp` for LSP diagnostics and open a representative file for
+parser, formatting, or lint changes. This is not a blanket plugin/keybinding gate.
 
-```bash
-mise exec -- python3 tests/omarchy-nvim.py --installed
-```
-
-The installed test checks both real profiles, theme/keybindings, Pi buffer
-recognition, dictionary, dependency resolution, fresh Fish editor selection,
-and actual Markdown parsing/formatting/linting/Harper attachment.
-
-Shared editor or lint-config changes also require the Mac's repo-local
-`mise update-system --switch-only` and the same installed test there. Do not
-restart active editors or agents: reopen an editor to pick up Lua changes, and
-start a fresh shell/session for changed editor environment variables.
+Shared editor or lint-config changes also require both-host deployment through
+the coordinator and direct verification on the Mac. Do not restart active editors
+or agents: reopen an editor to pick up Lua changes, and start a fresh shell/session
+for changed editor environment variables.
 
 ## Rollback
 

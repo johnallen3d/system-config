@@ -341,11 +341,10 @@ provider policies can change. It uses the personal Codex account's access/quota,
 not a free Claude entitlement. Tailscale and the Omarchy gateway must be online;
 there is no silent work-account or native-Claude fallback. Start a new personal
 Claude session to load routing; active agents are never restarted automatically.
-Verify each host in its personal profile with
-`python3 tests/subscription-proxy-claude.py --profile personal --live-default --live` (bounded
-real streaming/read-tool calls, no persisted sessions), or omit `--live` for
-configuration/catalog-only checks. `--live-subagent scout` checks alias routing
-through a real Agent dispatch.
+After routing changes, inspect the selected model in a new personal session on
+each host and compare its alias with the gateway catalog. Live streaming/tool or
+subagent verification makes real model calls and must be explicitly scoped; it
+is not an ordinary deployment gate. Never print credentials or raw transcripts.
 
 ## Runtime ownership and operations
 

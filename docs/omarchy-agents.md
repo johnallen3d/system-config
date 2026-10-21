@@ -53,8 +53,8 @@ context window. Existing shells and agents can retain an inherited value. Clear
 it in Fish with `set -eg CLAUDE_CODE_DISABLE_1M_CONTEXT` (and
 `set -eU CLAUDE_CODE_DISABLE_1M_CONTEXT` if a universal value exists), then start
 new agents in the intended profile. Do not restart active agents automatically.
-Verify with `python3 tests/claude-context-environment.py --installed`; it checks
-fresh personal/work environments without inference or touching credentials.
+Verify the variable is absent in a fresh shell in each intended directory
+context; do not dump the full environment or touch credentials.
 
 Noninteractive shells, ordinary SSH commands, and automation must use mise
 explicitly; `cd` alone does not activate it there:
@@ -106,13 +106,9 @@ new authorization. Apply and verify shared changes on both hosts below. Pi can
 load changed context with `/reload`; start a new Claude session to load it. Do not
 restart active agents automatically.
 
-Run `python3 tests/agent-delegation-instructions.py --evaluate` to check both
-hosts' evaluated instruction files. On each activated host, run it with
-`--installed --pi-loader /absolute/path/to/pi-coding-agent/dist/core/resource-loader.js`
-(using `mise exec` for Node). This checks all four installed global files and
-Pi's native loader in both profiles outside Amfaro, without inference. It proves
-instruction delivery, not behavioral compliance. Existing profile-preservation
-checks remain in `tests/amfaro-mise.py` and `tests/coding-agent-profiles.py`.
+After instruction changes, review the affected installed global files and
+confirm the intended profile discovers them. This proves delivery, not model
+compliance; do not assert instruction wording with tests.
 
 ### Shared personal worktree workflow
 
@@ -162,14 +158,10 @@ PR workflow are unchanged. Plain “wrap up” or mentioning `/wrap` does not au
 its commit/integration/cleanup lifecycle; card-closure and deployment gates still
 apply.
 
-Run `python3 tests/personal-worktree-lifecycle.py --evaluate` for disposable
-Git/Worktrunk scenarios and both-host prompt composition, plus
-`python3 tests/agent-delegation-instructions.py --evaluate` for global instructions.
-After each host's activation, run `python3 tests/fizzy-closure-policy.py --installed`
-and the installed delegation/loader check above. These prove command safety and
-instruction delivery, not model compliance. Apply and verify both hosts; reload
-Pi with `/reload` and start new Claude sessions to load changed instructions and
-commands, without restarting active agents automatically.
+After changing this workflow, review the installed shared prompt on both hosts
+and verify only the changed operation when authorized. Instruction delivery is
+not model compliance. Reload Pi with `/reload` or start new Claude sessions to
+load changed instructions/commands, without restarting active agents.
 
 ### Shared work instructions
 
@@ -195,11 +187,9 @@ The `feature/` prefix applies to every task, including fixes and chores. Keep
 work repositories beneath `~/dev/src/amfaro` to retain mise context in their
 `.worktrees/` descendants. These are agent instructions, not a write-blocking
 hook. Restart existing work agents to load the new context; do not restart them
-automatically. Verify through work-profile
-`mise exec` with `python3 tests/work-agent-instructions.py --installed --pi-loader
-/path/to/installed/pi-coding-agent/dist/core/resource-loader.js` and the installed
-profile test (`python3 tests/amfaro-mise.py --installed`). The loader path must be
-from that host's actual Pi runtime, not a copied runtime or a model call.
+automatically. Inspect the installed work instructions and confirm both profile
+variables through work-context `mise exec`; do not print unrelated environment
+variables or credentials.
 
 John currently has no personal Claude account. The personal Claude profile stays
 installed but dormant; this is intentional, not an authentication failure. Use
@@ -255,8 +245,9 @@ wheels can fail with `libstdc++.so.6` missing and the extension only reports
 “proxy offline.” This does not change the login shell or Claude environment.
 After launcher changes, restart Pi in the intended directory (or retry
 `/headroom on` if its process already has the corrected library path).
-Verify with `python3 tests/headroom-omarchy.py`; it tests both installed profiles
-on isolated ports without model calls or touching an active agent's proxy.
+If Headroom is intentionally enabled, inspect `/headroom` in a new session in
+the intended profile. Do not start an isolated proxy or model call as a routine
+deployment gate, and do not touch an active agent’s proxy.
 
 [Fizzy #742](https://app.fizzy.do/6284043/cards/742) fixes a separate shared
 Mac/Omarchy problem in `pi-headroom` 0.1.0: its proxy child has piped stdout and
@@ -267,12 +258,10 @@ Pi launcher applies a version/source-guarded repair to the selected profile
 before extension loading (and reapplies it after npm refreshes). Both streams
 are drained and discarded, not accumulated or written to a request log. Newer
 upstream versions are left untouched; source drift within 0.1.0 fails visibly.
-Run `python3 tests/headroom-proxy.py --installed` on either host to verify both
-profiles and reproduce the baseline blockage with isolated fake proxies. Run
-`python3 tests/headroom-live.py` to check the managed launcher's real proxy health,
-native core and context compression in both profiles using synthetic tool results
-on isolated ports, without model calls. Existing Pi processes need a restart in their intended directory to load the repair; do
-not restart agents automatically. A wedged old proxy may need separate recovery
+When changing the repair, inspect the installed selected-profile source and,
+only if Headroom is enabled, its health in a new session. Existing Pi processes
+need a restart in their intended directory to load the repair; do not restart
+agents automatically. A wedged old proxy may need separately authorized recovery
 before port 8787 is usable again.
 
 Authentication files and sessions remain writable, machine-local, and outside
@@ -292,11 +281,9 @@ This Claude footer is separate from the excluded cross-profile Pi usage footer.
 No personal credentials, cached plugins, or sessions are shared with work.
 
 After activation, start a new Claude session in the intended profile to load the
-footer setting; do not restart active agents automatically. Verify both profiles
-with `python3 tests/claude-work-statusline.py --installed`. The historical test
-filename is retained; `--evaluate` checks the actual Mac/Omarchy settings merge,
-and `--record-before PATH` / `--installed --before PATH` check preservation using
-hashes only. No model calls or account authentication are required.
+footer setting; do not restart active agents automatically. After footer changes,
+inspect its rendering in each affected profile. No account authentication or
+model call is required just to inspect the installed renderer/settings.
 
 ### Nix-managed Claude agents panel
 
@@ -319,14 +306,11 @@ Mods require Claude's runtime eligibility; do not bypass rollout flags or copy
 credentials if a profile cannot load one. Authentication and sessions remain
 independent of the shared immutable plugin source.
 
-`python3 tests/claude-work-statusline.py --evaluate` checks both hosts' settings
-merges, plugin-path preservation, idempotence, and invalid input.
-`--installed` verifies the Nix-backed plugin manifest/path in both profiles and
-the shared footer. Run `claude plugin validate
-~/.local/share/claude-plugins/savvy-progress` in each intended profile to check
-installed-version compatibility. These checks do not prove live terminal drawing;
-verify `/agents-info`, ordinary subagents, `/tasks`, and resize behavior in new
-sessions. Never restart active agents automatically.
+After plugin changes, run `claude plugin validate
+~/.local/share/claude-plugins/savvy-progress` in the intended profile to check
+installed-version compatibility. This does not prove live terminal drawing;
+verify changed `/agents-info` or resize behavior in a new session when relevant.
+Never restart active agents automatically.
 
 ## Claude startup context
 
@@ -346,10 +330,10 @@ Existing host restrictions, saved model/window choices, routing/hooks, personal
 settings, and credentials are preserved. The conservative 31k policy was rejected
 and superseded. Final installed-runtime measurements: **Mac 14,038; Omarchy 13,410**.
 See the [full policy and measurements](claude-context-audit.md#reviewed-work-context-policy-731).
-`tests/claude-context-audit.py --live` explicitly measures inference;
-`tests/claude-work-context.py` tests regressions offline and verifies installed
-settings with `--installed`. Add `--live-report PATH` to gate the ~14k footprint.
-Start a new work Claude session to load the full policy; do not restart active agents.
+Inspect changed installed policy directly. A live `/context` measurement in a
+new isolated work session is appropriate only when requested, not as a routine
+activation gate. Start a new work Claude session to load the full policy; do not
+restart active agents.
 
 ## Apply
 
@@ -406,11 +390,11 @@ See [source reconciliation](omarchy-source-consolidation.md).
 
 Ordinary SSH commands use Omarchy's Fish login shell. Execute Bash scripts with
 `ssh johna@omarchy 'bash -s'` and pass the script on stdin. For noninteractive
-work commands use `mise -C ~/dev/src/amfaro exec -- ...`. Give test scripts
-absolute paths because `mise -C` changes the command's working directory, e.g.:
+work commands use `mise -C ~/dev/src/amfaro exec -- ...`. Inspect only the
+changed profile variables, for example:
 
 ```bash
-mise -C ~/dev/src/amfaro exec -- python3 "$task_path/tests/amfaro-mise.py" --installed
+mise -C ~/dev/src/amfaro exec -- sh -c 'printf "PI_CODING_AGENT_DIR=%s\nCLAUDE_CONFIG_DIR=%s\n" "$PI_CODING_AGENT_DIR" "$CLAUDE_CONFIG_DIR"'
 ```
 
 Verify installed config and effective profile behavior on each host after
@@ -497,19 +481,14 @@ prove the private package installed; use the explicit setup command and check
 
 Do not copy the Mac's credential files to bypass these logins.
 
-Verify actual installation and runtime behavior without model calls:
+Verify only the changed installation behavior without model calls, using
+`mise -C ~/dev/src/amfaro exec -- pi list`, `claude plugin list`, or
+`claude mcp list` in the intended profile as appropriate. Inspect the shared
+footer directly after footer changes.
 
-```bash
-python3 tests/amfaro-mise.py --installed
-python3 tests/coding-agent-profiles.py
-python3 tests/agent-work-kit.py
-python3 tests/claude-work-statusline.py --installed
-```
-
-Claude may show a dependency-install advisory for the plugin's bundled Pi
-package-lock entries. The Claude MCP adapter is dependency-free; the second test
-checks its real startup, initialization, and tool discovery. Do not disable
-Claude's dependency checks or install arbitrary dependencies to hide the warning.
+Claude may show a dependency-install advisory for the plugin’s bundled Pi
+package-lock entries. Do not disable Claude’s dependency checks or install
+arbitrary dependencies to hide the warning.
 
 ## Refresh
 
@@ -550,20 +529,10 @@ On Omarchy, run `mise run harness-refresh` from the verified Git task worktree
 (set `task_path` to this deployment's worktree);
 Linux always refreshes only itself and never connects back to the Mac.
 
-Validate orchestration offline with `mise exec -- python3 tests/harness-refresh.py`
-on each host. After a live refresh, use the absolute checkout path with work
-context (mise changes the working directory):
-
-```bash
-mise -C ~/dev/src/amfaro exec -- python3 "$PWD/tests/harness-refresh-installed.py"
-```
-
-The installed test checks each profile's declared npm versions/Git revisions
-against upstream, Pi runtime and package discovery, the enabled Claude plugin,
-native Sharp processing, and Claude MCP startup/tool discovery without model
-calls. It also audits production dependency roots, fails on the stale
-brace-expansion advisories, and reports remaining findings separately. It tests
-host-local installations, not just source files or marker files.
+After a live refresh, inspect the changed installed package version/revision
+and runtime discovery on each host in the intended profile. Use `pi list`,
+`claude plugin list`, or `claude mcp list` as relevant; do not turn a refresh
+into an upstream-version sweep, broad dependency audit, or blanket suite run.
 
 Pi's runtime follows latest upstream; a new process resolves it through npx.
 For a single-profile refresh on either host:
