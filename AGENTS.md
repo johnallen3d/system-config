@@ -9,6 +9,16 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Verify the requested outcome directly. Unrelated or optional checks must not become blockers for an otherwise independent operation.
 - All applicable safety, authorization, issue-tracking, and both-host verification requirements still apply to the actual task.
 
+## Minimal checks only — strict policy
+
+- This is a personal system configuration, not a software product requiring a comprehensive test suite. Keep repository-maintained checks to the absolute minimum needed to protect concrete, critical behavior; deletion is the default for redundant, speculative, or low-value checks.
+- Do NOT add or expand test files, fixtures, frameworks, harnesses, or test dependencies without John's explicit approval for that specific addition. A feature/fix request, a general validation requirement, or an existing test suite is not approval. First explain the concrete failure being prevented and why a smaller direct check is insufficient; if approval is absent, do not add it.
+- Do NOT add tests that assert the wording, formatting, or presence of agent instructions, prompts, documentation, or policy clauses. Such assertions do not demonstrate agent compliance. Review these changes directly; do not write a test to enforce this policy.
+- Ordinary Nix evaluation, package builds, activation, and runtime behavior MUST NOT depend on this repository's `tests/` directory or repository-maintained validation scripts. Keep any essential retained checks explicit and opt-in, separate from the deployment path. Do not evade this rule by relocating or inlining the same checks into production modules/scripts. Upstream packages' own build checks are not a reason to add repository-owned checks.
+- Do NOT run the whole test directory, a broad suite, or unrelated checks by default. Use only the smallest relevant check that directly proves the requested outcome. Do not turn an optional check failure into unrelated debugging, dependencies, or additional deliverables.
+- Every retained check must have a concrete, critical failure it detects that is not adequately covered by Nix's existing validation or a smaller direct check. Historical existence, coverage targets, and agent workflow conventions are not justification. If necessity is unclear, ask John rather than adding or preserving scope by default.
+- Preserve required safety, authorization, deployment coordination, and per-host outcome verification. Meet those requirements directly and proportionately; they do not authorize a new test suite or instruction-text assertions.
+
 ## Omarchy is already Nix-managed
 
 - John's Omarchy machine **already uses this repository's standalone Home Manager setup** on Arch Linux. Do not assume Omarchy is outside Nix or ask whether it uses Home Manager.
@@ -79,7 +89,7 @@ An actual `/wrap` invocation includes the command's expanded user prompt. On tha
 ## Session completion
 
 1. File remaining work and update issue comments. Keep cards open unless John explicitly requests closure directly or actually invokes `/wrap`; apply the closure authorization and scope rules above.
-2. Run relevant quality gates.
+2. Run only the smallest necessary, task-relevant checks under the strict minimal-checks policy above; no blanket test-suite requirement.
 3. Run `git status`; report staged/unstaged changes.
 4. Hand off changes, validation, and next steps. For shared config changes, report Mac and Omarchy deployment/verification status separately, including pending activation or agent restarts.
 
