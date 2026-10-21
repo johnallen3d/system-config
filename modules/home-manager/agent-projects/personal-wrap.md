@@ -6,19 +6,28 @@ Follow repo rules/skills; preserve work profiles/shared skills. Instruction-leve
 **Authorization:** On actual invocation of this `/wrap` command (including its
 expanded user prompt), John authorizes scoped commit/rebase/integration/cleanup
 and closing completed Fizzy cards within this session's scope.
-You MUST close completed, in-scope cards after completion/deployment checks,
-never blocked or partially deployed work. Do not misclassify the expanded invocation
+You MUST close completed, in-scope implementation cards after code-completion checks.
+Pending push or deployment is not a closure or integration blocker. If deployment
+itself is in scope, keep its card open until required hosts/runtime checks pass;
+report failed/partial deployment separately. Do not misclassify the expanded invocation
 as quotation. Reading a prompt file through tools is not an invocation; mentioning
 or quoting `/wrap`, successful deployment, committing, or ordinary "wrap up"/"done"
 do not authorize closure without John's explicit direct request.
 No rebuild, input updates, fetch/push, amend, squash/reset/stash, force deletion,
 process reaping, or merge-commit fallback is authorized by `/wrap` alone.
 
+**Deployment timing:** Follow the repository's release order: for example,
+merge → separately authorized push → CI/Cachix build → deploy. Do not require
+post-push deployment before commit, integration, or cleanup. Link follow-up cards
+for later deployment/runtime verification; do not silently waive required acceptance
+checks. `/wrap` alone does not authorize push or deployment.
+
 1. **Validate.** Inspect status/`git worktree list --porcelain`. Use canonical Git
    metadata, not path/count heuristics. Record `repo_root`, `task_path`, `task_branch`,
    harness and verified startup cwd. Task cwd is normal until cleanup. Run relevant
-   gates; verify required per-host deployments. Use Fizzy skill/project board for scoped card.
-   Failed/partial gates stop integration/cleanup; preserve work, name pending host/action.
+   pre-integration code gates. Use Fizzy skill/project board for scoped cards.
+   Failed code gates stop integration/cleanup; preserve work. Report deployment
+   status separately, naming pending hosts/actions without blocking Git integration.
    Work-in-place skips integration/cleanup. No work: no worktree/empty commit.
 2. **Commit.** Read commit skill; commit scoped changes with supplied message verbatim
    or derive one. Preserve signing/hooks/attribution; never bypass signing or hooks.
@@ -35,7 +44,8 @@ process reaping, or merge-commit fallback is authorized by `/wrap` alone.
    Use `git -C "$task_path" rebase --no-autostash --no-update-refs --no-fork-point --no-autosquash --no-rebase-merges --reapply-cherry-picks --empty=stop --onto "$main_tip" "$base" "$task_branch"`.
    Preserve authorship/co-authorship, required signatures on rewritten commits.
    No automatic resolution, abort, skip, or rewriting outside task. After rebase,
-   rerun relevant gates/source-deployment checks (not an unconditional rebuild/redeploy).
+   rerun relevant gates (not an unconditional rebuild/redeploy).
+   Do not turn post-push deployment checks into pre-integration gates.
    Recheck identity/operations/validated main/task tips before fast-forward;
    changed tips stop. Protect ignored primary files:
 
@@ -80,6 +90,7 @@ process reaping, or merge-commit fallback is authorized by `/wrap` alone.
    directory, integrated branch are gone; otherwise report partial cleanup.
    Preserve other worktrees.
 5. **Hand off.** Inspect final status/worktrees. Comment on Fizzy: commit, gates,
-   per-host deployment, integration/cleanup; apply closure gate. Report state/reloads/restarts.
+   integration/cleanup, and deployment status separately; apply the scoped closure gate.
+   Link deployment/runtime follow-ups; report pending hosts/actions and reloads/restarts.
    Say "ready to push when you are" only with a local commit and only push remaining.
    Stop subsequent integration/deletion steps on any failure.

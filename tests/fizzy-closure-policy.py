@@ -35,9 +35,10 @@ def check_policy(path, text=None):
         "committing",
         '"wrap up"',
         '"done"',
-        "never blocked or partially deployed work",
     ):
         assert phrase in text, (path, "missing policy clause", phrase)
+    assert ("never blocked or partially deployed work" in text
+            or "Pending push or deployment is not a closure or integration blocker" in text), path
     assert "explicit" in text and "direct" in text, path
     assert "actually invokes `/wrap`" in text or "actual invocation of this `/wrap` command" in text, path
     assert "mentioning" in text and "quoting" in text, path
@@ -64,7 +65,7 @@ def main():
     for source, _ in PROMPTS.values():
         expanded = (ROOT / source).read_text() + "\n" + lifecycle
         # Bound the actual expanded prompt, not just the small harness wrapper.
-        assert len(expanded.encode()) <= 6000, (source, "wrap prompt byte budget")
+        assert len(expanded.encode()) <= 7000, (source, "wrap prompt byte budget")
         text = check_policy(ROOT / source, expanded)
         assert "On actual invocation" in text
         assert "completed Fizzy cards within this session's scope" in text
@@ -72,7 +73,13 @@ def main():
         assert "appended personal completion lifecycle" in text
         assert "skill: wrapping-up" not in text
     for phrase in ("same personal workflow for Pi and Claude", "merge --ff-only",
-                   "separate plain `pwd -P`", "--foreground", "never blocked or partially deployed work",
+                   "separate plain `pwd -P`", "--foreground",
+                   "Pending push or deployment is not a closure or integration blocker",
+                   "If deployment\nitself is in scope", "keep its card open",
+                   "merge → separately authorized push → CI/Cachix build → deploy",
+                   "Do not require\npost-push deployment before commit, integration, or cleanup",
+                   "Failed code gates stop integration/cleanup",
+                   "Link follow-up cards", "do not silently waive required acceptance",
                    "MUST close completed, in-scope", "unknown contents require",
                    "Stop subsequent integration/deletion steps"):
         assert phrase in lifecycle, phrase
