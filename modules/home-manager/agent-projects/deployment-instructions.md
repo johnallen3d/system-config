@@ -12,8 +12,9 @@
   A difference from `main` is not permission to revert active work, nor a reason
   to make John broker routine nonconflicting coordination.
 - Preserve only verified, already-active task changes, not every dirty worktree
-  or pending implementation. Compose deployment source in a separate linked Git
-  worktree; leave task branches, indexes, source worktrees, and credentials alone.
+  or pending implementation. Compose deployment source in an automatically cleaned
+  temporary directory backed by pinned Git snapshots, not another linked worktree.
+  Leave task branches, indexes, source worktrees, and credentials alone.
   Carrying a verified active overlay is not committing or integrating its task.
 - Use the same host-wide activation lock for all deployment entry points. Wait
   for its owner or retry after it finishes; do not bypass it, kill another agent,

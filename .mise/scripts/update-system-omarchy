@@ -44,8 +44,11 @@ def source_tree(repo):
 def prepare(repo, directory, planned_source=None):
     repo = repo.resolve()
     main = git(repo, "rev-parse", "refs/heads/main")
-    if planned_source is not None and git(planned_source, "rev-parse", "HEAD") != main:
-        raise RuntimeError("Main advanced after Mac planning; retry the coordinated deployment before either host starts")
+    if planned_source is not None:
+        planned = json.loads((coordination.state_dir() / "pending.json").read_text())
+        if planned["main"] != main or planned["source"] != str(planned_source):
+            raise RuntimeError("Main/source changed after Mac planning; retry before either host starts")
+        coordination.validate(repo, planned, require_source=True)
     if git(repo, "ls-files", "--unmerged"):
         raise RuntimeError("Resolve local Git conflicts before deploying")
     tree = source_tree(repo)
@@ -140,49 +143,45 @@ def receive(directory, repo):
         # Only integrated local main is synchronized, never a task branch.
         git(repo, "merge", "--ff-only", "--no-overwrite-ignore", main)
         print(f"[Omarchy] Fast-forwarded main {old_main[:12]} -> {main[:12]}", flush=True)
-    task = repo / ".worktrees" / slug
-    branch = "feature/" + slug
-    if task.exists():
-        if f"worktree {task.resolve()}\n" not in worktrees + "\n":
-            raise RuntimeError(f"Unregistered deployment path exists: {task}")
-        if git(task, "symbolic-ref", "--short", "HEAD") != branch or git(task, "rev-parse", "HEAD") != main:
-            raise RuntimeError(f"Deployment worktree ownership/base mismatch: {task}")
-    else:
-        subprocess.run(["git", "-C", str(repo), "worktree", "add", "-b", branch, str(task), "main"], check=True)
+    # Reconstruct the incoming tree in this repository's object database. A
+    # private index applies the patch without a transport checkout or branch.
+    with tempfile.TemporaryDirectory(prefix="update-system-index-") as index:
+        env = dict(os.environ, GIT_INDEX_FILE=str(Path(index) / "index"))
+        run("git", "-C", str(repo), "read-tree", main, env=env)
         if (directory / "source.patch").stat().st_size:
-            git(task, "apply", "--binary", str(directory / "source.patch"))
-    if git(task, "ls-files", "--others", "--ignored", "--exclude-standard"):
-        raise RuntimeError(f"Unexpected ignored files in deployment worktree; preserve/reconcile them: {task}")
-    if source_tree(task) != tree:
-        raise RuntimeError(f"Deployment source differs; refusing to overwrite changes in {task}")
-    print(f"[Omarchy] Deployment source: {task}", flush=True)
-    return task, tree
+            run("git", "-C", str(repo), "apply", "--cached", "--binary",
+                str(directory / "source.patch"), env=env)
+        if run("git", "-C", str(repo), "write-tree", env=env) != tree:
+            raise RuntimeError("Transported source does not match its declared tree")
+    git(repo, "update-ref", f"refs/system-config/trees/{tree}", tree)
+    print(f"[Omarchy] Received source tree {tree[:12]} (no transport worktree)", flush=True)
+    return repo, tree
 
 
 def remote(directory):
-    with coordination.lock(coordination.state_dir(), "Omarchy: " + str(json.loads((directory / "manifest.json").read_text())["layer"]["owner"])):
+    with coordination.lock(coordination.state_dir(), "Omarchy: " + str(json.loads((directory / "manifest.json").read_text())["layer"]["owner"])), coordination.temporary_sources():
         remote_locked(directory)
 
 
 def remote_locked(directory):
     if sys.platform != "linux" or str(Path.home()) != "/home/johna":
         raise RuntimeError("Unexpected remote host/user")
-    task, _ = receive(directory, Path.home() / "dev/src/system-config")
+    repo, tree = receive(directory, Path.home() / "dev/src/system-config")
     incoming = json.loads((directory / "manifest.json").read_text())["layer"]
-    if incoming["tree"] != source_tree(task):
+    if incoming["tree"] != tree:
         raise RuntimeError("Task ownership layer does not match transported source")
-    record = coordination.plan(task, coordination.state_dir(), incoming)
-    activate_omarchy(record)
+    record = coordination.plan(repo, coordination.state_dir(), incoming)
+    activate_omarchy(repo, record)
 
 
 def local(repo):
     if sys.platform != "linux" or str(Path.home()) != "/home/johna":
         raise RuntimeError("Unexpected Linux deployment host/user")
-    with coordination.lock(coordination.state_dir(), str(repo)):
-        activate_omarchy(coordination.plan(repo, coordination.state_dir()))
+    with coordination.lock(coordination.state_dir(), str(repo)), coordination.temporary_sources():
+        activate_omarchy(repo, coordination.plan(repo, coordination.state_dir()))
 
 
-def activate_omarchy(record):
+def activate_omarchy(repo, record):
     task, tree = Path(record["source"]), record["tree"]
     logs = Path.home() / ".local/state/system-config/logs"
     logs.mkdir(parents=True, exist_ok=True)
@@ -201,18 +200,18 @@ def activate_omarchy(record):
         generation = Path(result.stdout.strip())
         if generation.parent != Path("/nix/store") or not generation.name.endswith("-home-manager-generation"):
             raise RuntimeError(f"Unexpected build output; inspect {log}")
-        coordination.preactivate(task, coordination.state_dir())
-        if source_tree(task) != tree:
+        coordination.preactivate(repo, coordination.state_dir())
+        if coordination.snapshot_tree(repo, task) != tree:
             raise RuntimeError("Deployment source changed before activation")
         subprocess.run(context + [str(generation / "activate")], stdout=output, stderr=output, env=env, check=True)
     active = (Path.home() / ".local/state/nix/profiles/home-manager").resolve()
     if active != generation:
         raise RuntimeError(f"Activation did not select the built generation; inspect {log}")
-    if source_tree(task) != tree:
+    if coordination.snapshot_tree(repo, task) != tree:
         raise RuntimeError(f"Source changed during deployment: {task}")
     verify_files(generation)
     check_nix_system(task)
-    coordination.finish(task, coordination.state_dir())
+    coordination.finish(repo, coordination.state_dir())
     print(f"[Omarchy] Active generation: {generation}", flush=True)
 
 

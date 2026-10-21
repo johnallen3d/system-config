@@ -1,6 +1,7 @@
 # Concurrent deployments
 
-[Fizzy #824](https://app.fizzy.do/6284043/cards/824).
+[Fizzy #824](https://app.fizzy.do/6284043/cards/824), with temporary deployment sources
+in [#878](https://app.fizzy.do/6284043/cards/878).
 
 Concurrent tasks are normal; deployment preservation is not Git integration.
 Only the invoking task's authorized changes and **verified already-active** task
@@ -43,7 +44,9 @@ Status reports the actual kernel-lock state, last lock holder metadata, active
 and pending receipts, and the installed generation. Stale lock metadata is not
 an active lock. Receipts live at `~/.local/state/system-config/deployment`, outside
 Pi/Claude profiles. They contain Git identifiers, task branch owners, origin
-paths, generation paths, and source paths, never credentials or session data.
+paths, generation paths, and pinned Git snapshots, never credentials or session data.
+Pending receipts also contain a temporary build path; active receipts do not depend
+on a checkout or temporary directory.
 
 Each host has one advisory kernel lock covering source planning, build,
 activation, verification, and receipt recording. A second task waits up to ten
@@ -76,26 +79,30 @@ out-of-band commands or a privileged process killing a deployment's process tree
   from that layer (including individual files in a multi-file layer). Later
   integrated edits are not mistaken for an unfinished task. Other overlaps with
   newer main stop; unrelated main changes are retained without rebasing a task.
-- Composite source lives in `.worktrees/deployment-<source-id>` on its own
-  `feature/deployment-<source-id>` branch created from main. It is reused only
-  when ownership, base, and source match. No existing worktree is reset.
-  Git tree refs under `refs/system-config/trees/` retain blobs through GC without
-  creating commits or moving task/main branches.
-- After each recorded activation, the coordinator prunes its own superseded
-  `deployment-*` and Omarchy transport `update-system-*` worktrees and their
-  branches, under the host lock. It removes one only when its content still equals
-  the main commit and tree its name was derived from, it has no ignored files
-  other than Python `__pycache__` bytecode, its
-  branch has no commits outside main, and it is not the active or pending source,
-  the source of the generation before the active one (kept for rollback
-  investigation), or the invoking Mac task. Omarchy's per-deployment transport
-  worktree is pruned once its composite is recorded. Its tree stays pinned. Anything else is kept and reported as
-  `Kept source worktree <name> (<reason>)`. Task worktrees are never candidates.
-  Run `python3 "$coordinator" prune "$repo_root"` to prune without deploying; it
-  takes the lock and validates active provenance first. To inspect a pruned
-  source again (inspection only; it is not a deployable or adoptable source),
-  recreate it from its pinned tree:
-  `git worktree add --detach "$path" "$main" && git -C "$path" read-tree --reset -u "$tree" && git -C "$path" reset -q`.
+- Composite source is checked out into the lock owner's OS temporary directory,
+  without a `.git` directory, linked worktree, or deployment branch. It contains
+  the complete recorded tree, including files marked `export-ignore`. The owner
+  waits for build/activation children before automatic cleanup, including failure
+  and handled interruption. A hard kill/power loss can bypass `finally`; OS
+  temporary-file cleanup handles any remnants.
+- Git refs under `refs/system-config/trees/` and `refs/system-config/commits/`
+  retain composite/layer blobs and baseline history through GC. Active receipts
+  validate these snapshots and their composition, not the continued existence
+  of a build directory. Pre-activation and completion additionally verify the
+  live temporary source, including unexpected ignored files. Interrupted
+  activation can recover an exact installed pending generation after temp cleanup.
+- Omarchy reconstructs the transported task tree using a private Git index in its
+  synchronized repository, then composes its own temporary build source. It creates
+  neither an `update-system-*` transport worktree nor a deployment worktree.
+- Legacy worktree-based receipts must still validate their original source. A
+  successful normal activation records snapshot-based provenance, then prunes
+  matching legacy `deployment-*`/`update-system-*` worktrees and their branches
+  under the lock. Edited sources, unrecognized ignored files, branches outside
+  main, and task worktrees are preserved. Active/pending legacy sources remain
+  protected until that upgrade succeeds. `python3 "$coordinator" prune "$repo_root"`
+  performs the same guarded legacy cleanup without deploying; it first validates
+  active provenance. The prior generation's main/tree IDs remain available for
+  source reconstruction without retaining its directory.
 - Mac and Omarchy compose against their own active receipts. Host-specific active
   overlays need not be imported into the other host's task source. Omarchy still
   synchronizes only clean, fast-forwardable integrated main history and receives
@@ -106,7 +113,7 @@ A pending receipt is written before activation. Success records it as active;
 if the caller dies after successful activation, the next invocation recovers
 only an exact installed-generation match with validated source. A failed build
 keeps the previous active receipt; its unactivated layer is not carried forward.
-Source tampering, missing Git objects, generation drift, or an out-of-band
+Live-source tampering, missing pinned Git objects, generation drift, or an out-of-band
 rollback stop before another activation. Keep artifacts for investigation.
 One host failing remains a **partial deployment**, even if the other succeeds.
 Installed configuration and effective runtime verification remain required; a
@@ -127,7 +134,7 @@ Once ownership is verified, bootstrap with:
 mise exec -- python3 "$coordinator" adopt "$repo_root" "$verified_source" "$task_branch"
 ```
 
-Adoption creates a source-frozen linked worktree and accepts it only when its
+Adoption checks out a temporary pinned snapshot and accepts it only when its
 **evaluated output path exactly equals the installed generation**. It performs
 no activation and cannot replace existing active or pending records. A verified
 clean primary `main` may be adopted with owner `main`. Ignored files in the

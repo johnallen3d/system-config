@@ -16,7 +16,7 @@ import time
 
 
 CANCELLED = None
-# Coordinator-owned sources: deployment_state composites and Omarchy transports.
+# Legacy coordinator worktrees only; new sources never register a worktree.
 SOURCE_SLUG = re.compile(r"(?:deployment|update-system)-([0-9a-f]{12})")
 
 
@@ -220,36 +220,85 @@ def retire_formatted_integrations(repo, main, layers, generation):
     return remaining
 
 
+@contextmanager
+def temporary_sources():
+    # The lock owner outlives all build/activation children. Its finally block
+    # removes sources on success, failure and handled interruption, not at plan exit.
+    previous = os.environ.get("SYSTEM_CONFIG_TEMP_ROOT")
+    with tempfile.TemporaryDirectory(prefix="system-config-deploy-") as directory:
+        # macOS TMPDIR usually starts with the /var symlink; Nix path flakes
+        # require canonical parent components, so use /private/var instead.
+        os.environ["SYSTEM_CONFIG_TEMP_ROOT"] = str(Path(directory).resolve())
+        try:
+            yield
+        finally:
+            if previous is None:
+                os.environ.pop("SYSTEM_CONFIG_TEMP_ROOT", None)
+            else:
+                os.environ["SYSTEM_CONFIG_TEMP_ROOT"] = previous
+
+
+def snapshot_tree(repo, source):
+    """Hash a plain source directory, including ignored files, without its own Git repo."""
+    with tempfile.TemporaryDirectory(prefix="deployment-index-") as directory:
+        env = dict(os.environ, GIT_INDEX_FILE=str(Path(directory) / "index"),
+                   GIT_DIR=git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir"),
+                   GIT_WORK_TREE=str(source))
+        git(source, "read-tree", "--empty", env=env)
+        git(source, "add", "--force", "-A", "--", ".", env=env)
+        return git(source, "write-tree", env=env)
+
+
 def materialize(repo, main, tree):
-    root = primary(repo)
-    slug = "deployment-" + hashlib.sha256(f"{main}:{tree}".encode()).hexdigest()[:12]
-    task, branch = root / ".worktrees" / slug, "feature/" + slug
-    if task.exists():
-        registered = git(root, "worktree", "list", "--porcelain")
-        if f"worktree {task}\n" not in registered + "\n" or git(task, "symbolic-ref", "--short", "HEAD") != branch or git(task, "rev-parse", "HEAD") != main:
-            raise RuntimeError(f"Deployment worktree ownership/base mismatch: {task}")
-    else:
-        git(root, "worktree", "add", "-b", branch, str(task), "main")
-        patch = subprocess.check_output(["git", "-C", str(repo), "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-relative",
-                                         "--src-prefix=a/", "--dst-prefix=b/", "--binary", "--full-index", main, tree, "--"])
-        if patch:
-            subprocess.run(["git", "-C", str(task), "apply", "--binary", "-"], input=patch, check=True)
-    if git(task, "ls-files", "--others", "--ignored", "--exclude-standard") or source_tree(task) != tree:
-        raise RuntimeError(f"Deployment source changed; refusing to overwrite {task}")
-    return task
+    directory = os.environ.get("SYSTEM_CONFIG_TEMP_ROOT")
+    if not directory or not Path(directory).is_dir():
+        raise RuntimeError("Deployment source requires the lock owner's temporary directory")
+    source = Path(directory) / ("source-" + hashlib.sha256(f"{main}:{tree}".encode()).hexdigest()[:12])
+    if not source.exists():
+        source.mkdir()
+        with tempfile.TemporaryDirectory(prefix="deployment-index-") as index:
+            env = dict(os.environ, GIT_INDEX_FILE=str(Path(index) / "index"))
+            git(repo, "read-tree", tree, env=env)
+            # Unlike git archive, checkout-index retains export-ignore files and
+            # does not perform export-subst: this is the complete recorded tree.
+            git(repo, "checkout-index", "--all", "--prefix=" + str(source) + "/", env=env)
+    if snapshot_tree(repo, source) != tree:
+        raise RuntimeError(f"Deployment source changed; refusing to overwrite {source}")
+    return source
 
 
-def validate(repo, record):
+def durable(record):
+    # Temporary paths are build handles, never durable provenance dependencies.
+    return {key: value for key, value in record.items() if key not in ("source", "previous_source")}
+
+
+def validate(repo, record, require_source=False):
     if Path(record["repository"]).resolve() != primary(repo):
         raise RuntimeError("Deployment provenance belongs to another repository")
-    source = Path(record["source"])
-    slug = "deployment-" + hashlib.sha256(f"{record['main']}:{record['tree']}".encode()).hexdigest()[:12]
-    if (source.resolve() != primary(repo) / ".worktrees" / slug
-            or git(source, "rev-parse", "HEAD") != record["main"]
-            or git(source, "symbolic-ref", "--short", "HEAD") != "feature/" + slug):
-        raise RuntimeError(f"Recorded deployment worktree ownership/base changed: {source}")
-    if source_tree(source) != record["tree"]:
-        raise RuntimeError(f"Recorded deployment source was edited: {record['source']}; preserve it and recover provenance before activation")
+    if record.get("version", 1) == 1:
+        # Upgrade only through a verified normal activation. Never silently accept
+        # a missing/edited legacy source or rewrite its receipt to make it pass.
+        source = Path(record["source"])
+        slug = "deployment-" + hashlib.sha256(f"{record['main']}:{record['tree']}".encode()).hexdigest()[:12]
+        if (source.resolve() != primary(repo) / ".worktrees" / slug
+                or git(source, "rev-parse", "HEAD") != record["main"]
+                or git(source, "symbolic-ref", "--short", "HEAD") != "feature/" + slug):
+            raise RuntimeError(f"Recorded deployment worktree ownership/base changed: {source}")
+        if source_tree(source) != record["tree"]:
+            raise RuntimeError(f"Recorded deployment source was edited: {source}; recover provenance before activation")
+    elif record["version"] == 2:
+        for tree in {record["tree"], *(item["tree"] for item in record["layers"])}:
+            if git(repo, "rev-parse", f"refs/system-config/trees/{tree}") != tree:
+                raise RuntimeError(f"Deployment tree is not pinned: {tree}")
+        if require_source:
+            source = Path(record["source"])
+            directory = os.environ.get("SYSTEM_CONFIG_TEMP_ROOT")
+            if (not directory or source.parent.resolve() != Path(directory).resolve()
+                    or not source.is_dir() or source.is_symlink()
+                    or snapshot_tree(repo, source) != record["tree"]):
+                raise RuntimeError(f"Temporary deployment source changed or is missing: {source}")
+    else:
+        raise RuntimeError("Unsupported deployment receipt version")
     # Missing/pruned objects or changed layer data must fail before any activation.
     if compose(repo, record["main"], record["layers"]) != record["tree"]:
         raise RuntimeError("Deployment provenance cannot reproduce its recorded source")
@@ -264,7 +313,7 @@ def active(repo, directory):
         candidate = json.loads(pending.read_text())
         if candidate["generation"] == current:
             validate(repo, candidate)
-            atomic_json(directory / "active.json", candidate)
+            atomic_json(directory / "active.json", durable(candidate) if candidate.get("version") == 2 else candidate)
             pending.unlink()
     path = directory / "active.json"
     if not path.exists():
@@ -277,8 +326,10 @@ def active(repo, directory):
 
 
 def pin(repo, record):
-    # Tree refs retain binary blobs for GC without creating commits or moving any
-    # task/main branch. Source worktrees are never reset; see prune() for removal.
+    # Retain trees and their baseline history through GC without creating commits
+    # or moving task/main branches. No checkout needs to survive activation.
+    for commit in {record["main"], *(item["base"] for item in record["layers"])}:
+        git(repo, "update-ref", f"refs/system-config/commits/{commit}", commit)
     for item in record["layers"]:
         git(repo, "update-ref", f"refs/system-config/trees/{item['tree']}", item["tree"])
     git(repo, "update-ref", f"refs/system-config/trees/{record['tree']}", record["tree"])
@@ -298,9 +349,10 @@ def plan(repo, directory, incoming=None):
     tree = compose(repo, main, layers)
     layers = normalize(repo, main, layers)
     source = materialize(repo, main, tree)
-    record = {"repository": str(primary(repo)), "main": main, "tree": tree,
+    record = {"version": 2, "repository": str(primary(repo)), "main": main, "tree": tree,
               "source": str(source), "layers": layers, "generation": evaluated_generation(source),
-              "previous_generation": previous["generation"], "previous_source": previous["source"]}
+              "previous_generation": previous["generation"], "previous_main": previous["main"],
+              "previous_tree": previous["tree"]}
     check_cancelled()
     pin(repo, record)
     atomic_json(directory / "pending.json", record)
@@ -313,15 +365,15 @@ def preactivate(repo, directory):
     record = json.loads((directory / "pending.json").read_text())
     if current_generation() != record["previous_generation"]:
         raise RuntimeError("Active generation changed after deployment planning; no activation started")
-    validate(repo, record)
+    validate(repo, record, require_source=True)
 
 
 def finish(repo, directory):
     record = json.loads((directory / "pending.json").read_text())
     if current_generation() != record["generation"]:
         raise RuntimeError("Installed generation does not match planned deployment")
-    validate(repo, record)
-    atomic_json(directory / "active.json", record)
+    validate(repo, record, require_source=True)
+    atomic_json(directory / "active.json", durable(record))
     (directory / "pending.json").unlink()
     # The activation is recorded; cleanup failure or interruption must not report it as failed.
     try:
@@ -340,13 +392,13 @@ def worktrees(root):
 
 
 def prune(repo, directory, keep=()):
-    """Remove superseded coordinator source worktrees. Caller holds the host lock.
+    """Remove verified legacy coordinator worktrees. Caller holds the host lock.
 
     Only a coordinator-named worktree on its own branch whose content still equals
     the main commit and tree its name was derived from is removed, after pinning
-    that tree. Recorded active/pending sources and the source of the generation
-    before the active one (for rollback investigation), task worktrees, edited
+    that tree. Sources still required by legacy receipts, task worktrees, edited
     snapshots, ignored files, and branches with commits outside main are kept.
+    Snapshot-based receipts do not retain active/previous source directories.
     """
     check_cancelled()
     if not (directory / "active.json").exists():
@@ -401,7 +453,7 @@ def adopt(repo, source, owner, directory):
     generation = evaluated_generation(snapshot)
     if generation != current_generation():
         raise RuntimeError(f"Candidate does not reproduce installed generation: {generation}")
-    record = {"repository": str(primary(repo)), "main": main, "tree": tree, "source": str(snapshot),
+    record = {"version": 2, "repository": str(primary(repo)), "main": main, "tree": tree,
               "generation": generation, "layers": [incoming]}
     pin(repo, record)
     atomic_json(directory / "active.json", record)
@@ -434,7 +486,7 @@ def main():
         # ~/dev/src/amfaro. Preserve that environment while selecting only cwd.
         return subprocess.run(command, cwd=repo, env=env).returncode
     elif mode == "run":
-        with lock(directory, str(repo)) as handle:
+        with lock(directory, str(repo)) as handle, temporary_sources():
             env = dict(os.environ, SYSTEM_CONFIG_COORDINATED=str(repo))
             env.pop("SYSTEM_CONFIG_SOURCE", None)
             child = subprocess.Popen(sys.argv[3:], env=env, pass_fds=(handle.fileno(),))
@@ -458,7 +510,7 @@ def main():
     elif mode == "finish":
         finish(repo, directory)
     elif mode == "adopt":
-        with lock(directory, "adopt " + sys.argv[4]):
+        with lock(directory, "adopt " + sys.argv[4]), temporary_sources():
             adopt(repo, Path(sys.argv[3]).resolve(), sys.argv[4], directory)
     elif mode == "prune":
         with lock(directory, "prune " + str(repo)):

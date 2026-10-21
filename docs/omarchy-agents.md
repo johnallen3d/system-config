@@ -364,18 +364,20 @@ source, conflicting deployment worktrees, or SSH failure stop that host rather
 than overwriting changes. The Mac deployment can still succeed: either host's
 failure returns nonzero and is explicitly reported as partial.
 
-Omarchy builds and activates standalone Home Manager from a source-verified linked
-worktree at `~/dev/src/system-config/.worktrees/deployment-<source-id>`, created
-from its synchronized `main`. An identical source can reuse its matching worktree;
-changed or unrelated worktrees are never reset/deleted. Deployment worktrees are
-retained for inspection and normal authorized cleanup. Build/activation log paths
+Omarchy builds and activates standalone Home Manager from a source-verified
+temporary directory composed from its synchronized `main` and verified active
+layers. Pinned Git snapshots in `~/dev/src/system-config` retain provenance;
+transport and builds create no linked worktrees or branches. The lock owner
+automatically removes temporary source after build/activation children exit.
+Matching legacy deployment worktrees are safely retired after snapshot-based
+activation succeeds; changed or unrelated worktrees are never reset/deleted. Build/activation log paths
 are printed; inspect failure logs with targeted searches, not a full log dump.
 The active generation and installed managed entries are verified after activation.
 No agent or Herdr restart is explicitly requested by the updater; Home Manager
 retains its ordinary changed-service activation behavior.
 
-Source belongs to Omarchy's `~/dev/src/system-config` Git repository and linked
-worktrees. A commit or push alone does not synchronize or activate it. Plain
+Durable source belongs to Omarchy's `~/dev/src/system-config` Git object database;
+the temporary build directory is not a standalone deployment history. A commit or push alone does not synchronize or activate it. Plain
 `mise run nix-rebuild` remains Mac-only. For Linux-only deployment or recovery,
 the manual Home Manager procedure below remains available.
 
