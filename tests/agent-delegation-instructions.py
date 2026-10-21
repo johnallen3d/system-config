@@ -36,20 +36,29 @@ def check_contexts(contexts, linux):
             assert pi.startswith(work), "Existing work instructions must remain intact"
         else:
             for fragment in ("explicitly opt out", '"no worktree"', '"work in place"',
-                             "Keep the actual agent session at the primary repository root",
-                             "absolute worktree paths", "verified resume/relaunch",
-                             "Record the verified session start directory",
-                             "top-level Bash `cd` can persist across tool calls",
+                             "Work in the task worktree during implementation",
+                             'standalone `cd "$task_path"`',
+                             "expected task cwd, not",
+                             "Do not restore the primary directory between task commands",
+                             "absolute worktree", "verified session start directory",
+                             "Bash `cd` can persist across tool calls",
                              "In Pi, shell `cd` does not move the agent",
+                             'Before `/wrap` removes the task worktree',
                              'standalone `cd "$repo_root"`',
                              "fresh plain `pwd -P` in a separate call",
-                             "Do not require a relaunch for recoverable shell drift",
-                             "start/cwd evidence is",
+                             "normal task-directory change needs no relaunch",
+                             "If the actual session was launched inside the task worktree",
+                             "alone does not relocate its session anchor",
+                             "Retain the worktree if the actual session anchor",
                              "Never delete the running session",
                              "guarded rebase of this task's own unpublished local commits",
                              "Uncertain publication or", "signing/hook failures stop"):
                 assert fragment in pi, (profile, fragment)
-            assert "Shell `cd` and `wt switch` do not change" not in pi
+            for obsolete in ("Shell `cd` and `wt switch` do not change",
+                             "Keep the actual agent session at the primary repository root",
+                             "Do not use a top-level `cd` or `wt switch` into the task",
+                             "Do not require a relaunch for recoverable shell drift"):
+                assert obsolete not in pi, obsolete
     print(f"PASS {'Linux' if linux else 'Mac'}: all four global instruction files, profile isolation")
 
 

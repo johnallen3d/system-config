@@ -16,8 +16,8 @@ process reaping, or merge-commit fallback is authorized by `/wrap` alone.
 
 1. **Validate.** Inspect status/`git worktree list --porcelain`. Use canonical Git
    metadata, not path/count heuristics. Record `repo_root`, `task_path`, `task_branch`,
-   harness and verified startup cwd. Run relevant gates; verify required per-host
-   deployments. Use Fizzy skill/project board for scoped card.
+   harness and verified startup cwd. Task cwd is normal until cleanup. Run relevant
+   gates; verify required per-host deployments. Use Fizzy skill/project board for scoped card.
    Failed/partial gates stop integration/cleanup; preserve work, name pending host/action.
    Work-in-place skips integration/cleanup. No work: no worktree/empty commit.
 2. **Commit.** Read commit skill; commit scoped changes with supplied message verbatim
@@ -52,13 +52,13 @@ process reaping, or merge-commit fallback is authorized by `/wrap` alone.
    fi
    ```
 
-4. **Clean up.** Wait for task jobs; never kill sessions/servers. Per global cwd rules,
-   only Claude shell drift from a verified primary-root start permits standalone
-   `cd "$repo_root"`. Then verify harness cwd AND a separate plain `pwd -P` equal
-   `repo_root` in a fresh tool call (no inline `cd`/cwd override). Actual worktree
-   starts/unknown evidence require verified primary-root resume/relaunch; retain task
-   if either cwd is unverified. Shell-only proof/`process.chdir`/context mutation are
-   invalid. Recheck identity/status/operations/containment.
+4. **Clean up.** Wait for task jobs; never kill sessions/servers. Return to primary.
+   In Claude, run standalone `cd "$repo_root"`;
+   verify harness cwd AND a separate plain `pwd -P` equal `repo_root` in a fresh
+   tool call (no inline `cd`/cwd override).
+   Task cwd needs no relaunch. If launched inside the task or anchor/cwd is
+   unverified, retain it for verified primary-root resume/relaunch. Shell-only
+   proof/`process.chdir`/context mutation are invalid. Recheck identity/status/operations/containment.
    Inspect ignored files; delete only known disposable task artifacts; unknown contents require John.
    Remaining contents block removal. From primary root:
 

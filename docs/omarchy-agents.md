@@ -123,20 +123,26 @@ default; read-only investigation does not need one. Say **“no worktree”** or
 **“work in place”** to opt out for the current task. Agents do not infer exemptions
 for small tasks.
 
-Both harnesses keep the actual session at the primary repository root and use
-absolute task-worktree paths for edits plus explicit task cwd for commands. New
-tasks use local `main`, `.worktrees/<slug>`, and `feature/<slug>`; suitable existing
-task worktrees can be reused. Profile variables and mise project context stay
-unchanged. Use `git -C`, `mise -C ... exec --`, or `(cd ... && ...)` for task
-commands, not a top-level `cd`/`wt switch` into the task. Pi shell `cd` does not
-move its agent cwd, but Claude's top-level Bash `cd` can persist across calls.
-Record the verified session start directory before task commands. For a Claude
-session verified to start at the primary root, recover shell drift with a
+Work in the task worktree during implementation. New tasks use local `main`,
+`.worktrees/<slug>`, and `feature/<slug>`; suitable existing task worktrees can
+be reused. Profile variables and mise project context stay unchanged. In Claude,
+enter the task with standalone `cd "$task_path"` and verify `pwd -P`; its Bash cwd
+persists across calls. This is expected task cwd, not drift: do not repeatedly
+restore primary during work. In Pi, shell `cd` does not move the agent; use
+absolute task-worktree paths for file tools and `git -C`, `mise -C ... exec --`,
+or `(cd ... && ...)` for commands. Do not simulate a session move with
+`process.chdir`. Record the verified session start directory for cleanup safety.
+
+Return to primary only before `/wrap` removes the worktree. In Claude, use a
 standalone `cd "$repo_root"`, then check updated harness cwd and a fresh plain
-`pwd -P` in a separate tool call. A session actually started in a worktree, unknown
-start evidence, or unverifiable cwd still requires a verified primary-root
-resume/relaunch. Never delete the running session's directory. See
-[#822](https://app.fizzy.do/6284043/cards/822) for the shell-drift correction.
+`pwd -P` in a separate tool call. A normal task-directory change needs no relaunch.
+A session actually launched inside the task worktree still requires verified
+primary-root resume/relaunch before removal: a Bash `cd` does not relocate its
+actual session anchor. Retain the worktree if that anchor or current cwd cannot
+be verified outside it. Never delete the running session's directory.
+[#857](https://app.fizzy.do/6284043/cards/857) moves cwd restoration to cleanup,
+superseding the primary-root-at-all-times restriction from
+[#822](https://app.fizzy.do/6284043/cards/822).
 
 Both personal `/wrap` prompts compose the single Nix-owned workflow at
 `modules/home-manager/agent-projects/personal-wrap.md`. An actual invocation

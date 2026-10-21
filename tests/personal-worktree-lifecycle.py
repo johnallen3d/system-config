@@ -207,10 +207,11 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(result.stdout.splitlines(),
                          [str(self.task), str(self.task), str(self.primary)])
 
-    def test_persistent_shell_drift_can_recover_before_cleanup(self):
+    def test_worktree_shell_returns_to_primary_for_wrap_cleanup(self):
         self.git(self.primary, "merge", "--ff-only", self.branch)
-        # Model a persistent Bash session with separate commands. This proves
-        # shell behavior, not Claude harness metadata or session-start evidence.
+        # Working in the task is normal. Model entering it, using its relative
+        # paths, then returning for cleanup with separate persistent commands.
+        # This proves shell behavior, not Claude harness/session-anchor evidence.
         with subprocess.Popen(["bash"], cwd=self.primary, env=self.env,
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, text=True) as shell:
@@ -221,7 +222,11 @@ class LifecycleTests(unittest.TestCase):
             command('cd "$task_path"')
             command('pwd -P')
             self.assertEqual(shell.stdout.readline().strip(), str(self.task))
-            command('cd "$repo_root"')  # Standalone recovery, not a guard override.
+            command('git branch --show-current')
+            self.assertEqual(shell.stdout.readline().strip(), self.branch)
+            command('test -f task && printf "task files available\\n"')
+            self.assertEqual(shell.stdout.readline().strip(), "task files available")
+            command('cd "$repo_root"')  # Normal /wrap return, not a guard override.
             command('pwd -P')  # Fresh subsequent command verifies persisted cwd.
             self.assertEqual(shell.stdout.readline().strip(), str(self.primary))
             command(REMOVE)
@@ -230,18 +235,20 @@ class LifecycleTests(unittest.TestCase):
         self.assertFalse(self.task.exists())
         self.assertNotIn(self.branch, self.git(self.primary, "branch", "--format=%(refname:short)"))
 
-    def test_cwd_recovery_policy_preserves_launch_and_harness_guards(self):
+    def test_task_cwd_is_normal_but_cleanup_preserves_session_anchor_guards(self):
         policy = " ".join(LIFECYCLE.read_text().split())
         for clause in (
-            "harness and verified startup cwd", "Per global cwd rules",
-            "only Claude shell drift from a verified primary-root start permits standalone",
+            "harness and verified startup cwd", "Task cwd is normal until cleanup",
+            "Return to primary",
             '`cd "$repo_root"`', "verify harness cwd AND a separate plain `pwd -P`",
             "in a fresh tool call", "no inline `cd`/cwd override",
-            "Actual worktree starts/unknown evidence require verified primary-root resume/relaunch",
-            "retain task if either cwd is unverified",
+            "Task cwd needs no relaunch",
+            "If launched inside the task or anchor/cwd is unverified",
+            "retain it for verified primary-root resume/relaunch",
             "Shell-only proof/`process.chdir`/context mutation are invalid",
         ):
             self.assertIn(clause, policy)
+        self.assertNotIn("only Claude shell drift", policy)
         self.assertNotIn('cd "$repo_root"', REMOVE)
         self.assertIn('test "$(pwd -P)" = "$repo_root"', REMOVE)
 
