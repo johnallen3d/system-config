@@ -5,6 +5,7 @@
   ...
 }: let
   amfaroConfig = "${config.home.homeDirectory}/dev/src/amfaro/mise.toml";
+  attributionInstructions = builtins.readFile ./agent-projects/attribution-instructions.md;
   delegationInstructions = builtins.readFile ./agent-projects/delegation-instructions.md;
   taskScopeInstructions = builtins.readFile ./agent-projects/task-scope-instructions.md;
   deploymentInstructions = builtins.readFile ./agent-projects/deployment-instructions.md;
@@ -82,6 +83,7 @@
         or push by itself; repository deployment and card-closure gates remain.
 
     ''
+    + attributionInstructions
     + taskScopeInstructions
     + deploymentInstructions
     + delegationInstructions
@@ -89,12 +91,13 @@
   workInstructions =
     builtins.readFile ./agent-projects/work-instructions.md
     + "\n"
+    + attributionInstructions
     + taskScopeInstructions
     + deploymentInstructions
     + delegationInstructions
     + omarchyInstructions;
 in {
-  imports = [./claude-work-context.nix ./deployment-coordination.nix];
+  imports = [./agent-skills.nix ./claude-work-context.nix ./deployment-coordination.nix];
 
   # Shared directory context, not project dependencies (those stay in mise).
   # Home Manager must fail on unexpected unmanaged files; review/back up before
