@@ -21,11 +21,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1792591693,
-        "narHash": "sha256-4SA2T6Hc1dygngwbH7G5xcz4g/IM1N5yc+xXbkZWHGI=",
+        "lastModified": 1792592930,
+        "narHash": "sha256-1sAgpbrP+NbQ/lfV5snMMQzZkwDwHMwZCV1Q/7oo4k4=",
         "owner": "johnallen3d",
         "repo": "credits",
-        "rev": "b9964e15ccd0b2063e042e6c29dc2ebb1c1c1687",
+        "rev": "6f2bcc52c3cf4471ea17c8361437d42db71b571f",
         "type": "github"
       },
       "original": {
