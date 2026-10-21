@@ -55,8 +55,9 @@ class CreditsNixTests(unittest.TestCase):
         self.assertTrue(self.config["package"].startswith("/nix/store/"))
         self.assertEqual(len(service["ExecStart"]), 1)
         command = service["ExecStart"][0]
-        self.assertTrue(command.endswith(
-            " -- " + self.config["package"] + "/bin/credits"))
+        # The server binary is the package's mainProgram; its name is upstream's.
+        self.assertTrue(command.split(" -- ")[-1].startswith(
+            self.config["package"] + "/bin/"))
         self.assertIn("--project credits --config dev", command)
         self.assertIn("CREDITS_BIND=127.0.0.1:3001", service["Environment"])
         self.assertIn("CREDITS_DB=/home/johna/.local/state/credits/cache.sqlite3",

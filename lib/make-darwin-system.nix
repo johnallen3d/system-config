@@ -1,4 +1,5 @@
 {
+  credits,
   home-manager,
   herdrProjectPicker,
   lop,
@@ -86,7 +87,7 @@ in
             useUserPackages = true;
             backupFileExtension = "hm-backup";
             extraSpecialArgs = {
-              inherit brew_bin full_name herdrProjectPicker home lop yem op_path op_ssh_sign_path;
+              inherit brew_bin credits full_name herdrProjectPicker home lop yem op_path op_ssh_sign_path;
             };
             users.${user}.imports = [
               ../modules/home-manager

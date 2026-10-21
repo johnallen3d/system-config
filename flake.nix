@@ -63,7 +63,7 @@
     full_name = "John Allen";
 
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
-      inherit home-manager herdrProjectPicker lop nix-darwin nixpkgs yem user full_name;
+      inherit credits home-manager herdrProjectPicker lop nix-darwin nixpkgs yem user full_name;
     };
     makeNixosSystem = import ./lib/make-nixos-system.nix {
       inherit home-manager herdrProjectPicker lop nixpkgs yem user full_name;
