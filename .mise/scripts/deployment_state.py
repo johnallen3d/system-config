@@ -105,7 +105,7 @@ def current_generation():
 
 def evaluated_generation(repo):
     if sys.platform == "darwin":
-        attribute = f'darwinConfigurations."{run("hostname", "-s")}".system.outPath'
+        attribute = f'darwinConfigurations."{run("scutil", "--get", "LocalHostName")}".system.outPath'
     else:
         attribute = 'homeConfigurations."johna@omarchy".activationPackage.outPath'
     return run("nix", "--extra-experimental-features", "nix-command flakes", "eval", "--raw", "--impure",
