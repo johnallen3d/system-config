@@ -82,6 +82,12 @@ in {
     man.enable = false;
   };
 
+  # Manage global ignores without replacing Omarchy's existing Git settings.
+  xdg.configFile."git/ignore".text = ''
+    **/.claude/settings.local.json
+    .worktrees/
+  '';
+
   # Match the Mac's Nix-owned policy; exclusions stay writable and host-local.
   xdg.configFile."lop/config.toml".source = ../modules/home-manager/dotfiles/config/lop/config.toml;
   xdg.configFile."lop/schedule.toml".text = ''
