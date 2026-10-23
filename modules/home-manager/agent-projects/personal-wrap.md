@@ -34,3 +34,36 @@ force deletion, killing processes, or bypassing hooks/signing.
    block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.
+
+### Blocked outcome — make it impossible to mistake for success
+
+If a required lifecycle step fails, cannot safely proceed, or leaves required
+acceptance/deployment incomplete, announce it immediately. Start the final reply
+with this plain-text box in a fenced code block, before any success summary:
+
+```text
++------------------------------------+
+|     WRAP BLOCKED - NOT COMPLETE     |
++------------------------------------+
+```
+
+Do not rely on color, ANSI escapes, or a buried bullet. Immediately below the box,
+state these fields, using concrete paths, hosts, and actions where relevant:
+
+- **Blocker:** the failed/stopped step and exact reason.
+- **Not finished:** required stages still pending, including later stages skipped.
+- **Impact:** what John still cannot use or rely on. Explicitly distinguish
+  deployed changes from source integrated into `main`; a successful deployment
+  does not mean the normal checkout entry point contains the fix. If only cleanup
+  is blocked, say so rather than implying the implementation is broken.
+- **Next action:** the smallest safe unblock action and who can take it. Ask one
+  targeted question if John's decision or new authorization is required; never
+  suggest discarding unrelated changes or bypassing a safety gate.
+- **Resume:** how to continue after the blocker is resolved (normally rerun
+  `/wrap` in this task's session). State that wrap has not automatically resumed.
+
+Then briefly list what did succeed, the commit if any, retained branch/worktree,
+per-host deployment status when applicable, and the card left open. Never lead
+with "done", "fixed", "completed", or "ready to push" while a required step is
+blocked. Optional follow-up work and an unrequested push are not wrap blockers.
+This reporting requirement changes no authorization or safety gates above.
