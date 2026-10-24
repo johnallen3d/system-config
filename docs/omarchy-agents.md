@@ -386,8 +386,8 @@ deployment targets. Synchronize Omarchy's local `main` with reviewed, integrated
 its task worktree. Do not copy newer source over an old Git baseline or reuse a
 historical deployment worktree. Preserve independent changes before reconciliation;
 see #781/#792 for the archived overlay cleanup. The Omarchy-only input pins remain unchanged.
-Hermes runs its upstream gateway as an ordinary systemd user service; no
-bespoke approval receipts, restart gates, or activation preflight apply.
+Pi Pocket is the production personal assistant ([pi-pocket.md](pi-pocket.md));
+Hermes was removed in #906 and no assistant gates activation.
 See [source reconciliation](omarchy-source-consolidation.md).
 
 Ordinary SSH commands use Omarchy's Fish login shell. Execute Bash scripts with

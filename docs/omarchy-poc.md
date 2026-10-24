@@ -74,9 +74,8 @@ Deployment source now belongs to the normal `~/dev/src/system-config` Git
 repository. The recovered deployed version is in its linked worktree
 `.worktrees/consolidate-omarchy-config` on `feature/consolidate-omarchy-config`;
 the stale primary checkout's independent uncommitted changes remain untouched.
-Hermes now runs its upstream gateway as an ordinary systemd user service.
-The migration controller, bespoke guards, and fixture suites were removed in #787.
-See [current Hermes operations](hermes-vault-editing.md).
+The Hermes migration controller, bespoke guards, and fixture suites were removed
+in #787; Hermes itself was replaced by [Pi Pocket](pi-pocket.md) in #906.
 
 ## Build and apply on Omarchy (no sudo)
 

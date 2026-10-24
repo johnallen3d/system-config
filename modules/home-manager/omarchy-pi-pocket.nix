@@ -1,17 +1,18 @@
-# Omarchy-only Pi Durable trial: real notes read/write; no other agent profile mounts.
+# John's production assistant on Omarchy: Pi Pocket / Pi Durable with real notes
+# read/write and no other agent profile mounts.
 {
   config,
   lib,
   pkgs,
   ...
 }: let
-  cfg = config.piPocketTrial;
+  cfg = config.piPocket;
   homeDir = config.home.homeDirectory;
   package = import ./packages/pi-pocket.nix {inherit pkgs;};
-  state = "${homeDir}/.local/state/pi-pocket-trial";
+  state = "${homeDir}/.local/state/pi-pocket";
   privateHome = "${state}/home";
   sandboxHome = "/home/pi-pocket";
-  profile = "${sandboxHome}/.config/pi-pocket-trial";
+  profile = "${sandboxHome}/.config/pi-pocket";
   data = "${sandboxHome}/.pi-pocket";
   notesSource = "${homeDir}/notes";
   workspace = "${sandboxHome}/notes";
@@ -19,8 +20,8 @@
   # Caddy on pi-01 reaches the app directly over the LAN; UFW restricts ingress.
   listenAddress = "192.168.4.26";
   publicUrl = "https://pi.jallen7usa.com";
-  # Reuse the pinned vlt binary, not Hermes's gateway, credentials or state.
-  vaultTools = import ./hermes-native/tools.nix {
+  # Pinned vault task binaries (vlt, gog, heif-convert).
+  vaultTools = import ./packages/vault-tools.nix {
     inherit pkgs;
     runtimePkgs = pkgs;
   };
@@ -51,6 +52,7 @@
     helperPi
     helperUv
     taskPython
+    vaultTools.gog
     vaultTools.vlt
     vaultTools.heif-convert
     paddleocr
@@ -67,12 +69,19 @@
     pkgs.util-linux
   ];
   app = "${package}/share/pi-pocket";
+  # Pocket's own gog login: Calendar read/write and Gmail read-only scopes.
+  gogHome = "${sandboxHome}/.config/gogcli";
+  gogPassword = "${privateHome}/.config/gogcli/keyring-password";
   # An empty root with explicit mounts, not a writable host home with deny-list
   # exceptions. The host user bus, SSH/GPG sockets, credentials, /etc secrets,
-  # Hermes data and host processes are not visible. John authorized read/write
+  # other agent data and host processes are not visible. John authorized read/write
   # access to the whole notes project, not to the rest of the host filesystem.
-  sandbox = pkgs.writeShellScriptBin "pi-pocket-trial-sandbox" ''
+  sandbox = pkgs.writeShellScriptBin "pi-pocket-sandbox" ''
     set -euo pipefail
+    gog_password=""
+    if [ -r ${lib.escapeShellArg gogPassword} ]; then
+      gog_password="$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg gogPassword})"
+    fi
     exec ${pkgs.coreutils}/bin/env -i \
       HOME=${sandboxHome} \
       USER=pi-pocket LOGNAME=pi-pocket \
@@ -89,6 +98,10 @@
       FOOD_LOG_PROVIDER=subscription-codex FOOD_LOG_MODEL=gpt-6-luna \
       NOTES_HELPER_PROVIDER=subscription-codex NOTES_HELPER_MODEL=gpt-6-luna \
       NOTES_LABEL_TEXT_ONLY=1 \
+      GOG_HOME=${gogHome} GOG_KEYRING_BACKEND=file \
+      GOG_KEYRING_PASSWORD="$gog_password" \
+      GOG_ENABLE_COMMANDS=auth,config,calendar,gmail \
+      GOG_GMAIL_NO_SEND=1 GOG_TIMEZONE=America/New_York \
       MISE_AUTO_INSTALL=0 MISE_TRUSTED_CONFIG_PATHS=${workspace} \
       MISE_DISABLE_TOOLS=uv,sd,yq,npm:defuddle \
       UV_OFFLINE=1 UV_PYTHON_DOWNLOADS=never PI_TELEMETRY=0 \
@@ -111,7 +124,7 @@
         --chdir ${workspace} \
         -- "$@"
   '';
-  initialize = pkgs.writeText "pi-pocket-trial-initialize.mjs" ''
+  initialize = pkgs.writeText "pi-pocket-initialize.mjs" ''
     import { ConfigStore } from '${app}/src/server/config.ts';
     import { existsSync, mkdirSync, symlinkSync, readlinkSync } from 'node:fs';
     const directory = process.env.PI_POCKET_DIR;
@@ -135,22 +148,22 @@
       ]) config.setExtensionEnabled(file, false);
     }
   '';
-  launcher = pkgs.writeShellScript "pi-pocket-trial-server" ''
+  launcher = pkgs.writeShellScript "pi-pocket-server" ''
     set -euo pipefail
     # Namespace-local PIDs cannot arbitrate other namespaces. Keep an additional
     # host-side lifetime lock before any app initialization or live SQLite open.
     exec 9>${lib.escapeShellArg "${state}/server.lock"}
     ${pkgs.util-linux}/bin/flock --nonblock 9
-    ${sandbox}/bin/pi-pocket-trial-sandbox ${pkgs.nodejs_24}/bin/node ${initialize}
+    ${sandbox}/bin/pi-pocket-sandbox ${pkgs.nodejs_24}/bin/node ${initialize}
     # Upstream prints the owner URL on startup. Keep the bearer token out of the
     # routine journal; retrieve it only deliberately with the login helper.
-    ${sandbox}/bin/pi-pocket-trial-sandbox \
+    ${sandbox}/bin/pi-pocket-sandbox \
       ${pkgs.nodejs_24}/bin/node ${app}/src/server/main.ts \
       --host ${listenAddress} --port ${toString port} --data ${data} --cwd ${workspace} \
       2>&1 | ${pkgs.gnused}/bin/sed -u -E \
         's@(https?://[^[:space:]]*/login[?]token=)[^[:space:]]+@\1[redacted]@g'
   '';
-  login = pkgs.writeShellScriptBin "pi-pocket-trial-login" ''
+  login = pkgs.writeShellScriptBin "pi-pocket-login" ''
     set -euo pipefail
     exec ${pkgs.nodejs_24}/bin/node --input-type=module - <<'JS'
     import { readFileSync } from 'node:fs';
@@ -159,17 +172,36 @@
     JS
   '';
 in {
-  options.piPocketTrial.enable = lib.mkEnableOption "the isolated Pi Pocket trial on Omarchy";
+  options.piPocket.enable = lib.mkEnableOption "Pi Pocket, John's production assistant on Omarchy";
 
   config = lib.mkIf cfg.enable {
     home.packages = [sandbox login];
+    # Without Telegram the brief only updates the daily note; output goes to the journal.
+    systemd.user.services.pi-pocket-morning-brief = {
+      Unit.Description = "Morning brief into today's daily note";
+      Service = {
+        Type = "oneshot";
+        ExecStart = "${sandbox}/bin/pi-pocket-sandbox ${pkgs.coreutils}/bin/env MORNING_BRIEF_DELIVERY=stdout mise run morning-brief";
+        WorkingDirectory = state;
+        UMask = "0077";
+        NoNewPrivileges = true;
+      };
+    };
+    systemd.user.timers.pi-pocket-morning-brief = {
+      Unit.Description = "Daily morning brief at 05:00";
+      Timer = {
+        OnCalendar = "*-*-* 05:00:00";
+        Persistent = true;
+      };
+      Install.WantedBy = ["timers.target"];
+    };
     home.file = {
-      ".local/bin/pi-pocket-trial-login".source = "${login}/bin/pi-pocket-trial-login";
-      ".local/bin/pi-pocket-trial-sandbox".source = "${sandbox}/bin/pi-pocket-trial-sandbox";
+      ".local/bin/pi-pocket-login".source = "${login}/bin/pi-pocket-login";
+      ".local/bin/pi-pocket-sandbox".source = "${sandbox}/bin/pi-pocket-sandbox";
       # Only nonsecret routing belongs in the store. The deliberately provisioned
-      # personal gateway client key stays in private trial state, not auth.json
+      # personal gateway client key stays in private Pocket state, not auth.json
       # from another profile. No management key or upstream OAuth is exposed.
-      ".local/state/pi-pocket-trial/home/.config/pi-pocket-trial/models.json".text = builtins.toJSON {
+      ".local/state/pi-pocket/home/.config/pi-pocket/models.json".text = builtins.toJSON {
         providers.subscription-codex = {
           baseUrl = "http://${config.subscriptionProxy.address}:8317/v1";
           api = "openai-responses";
@@ -204,8 +236,8 @@ in {
             ];
         };
       };
-      ".local/state/pi-pocket-trial/home/.config/pi-pocket-trial/AGENTS.md".text = ''
-        You are John's isolated Pi Durable trial, not the production assistant.
+      ".local/state/pi-pocket/home/.config/pi-pocket/AGENTS.md".text = ''
+        You are John's personal assistant: Pi Durable on Omarchy.
         Always respond in English. Your default directory is /home/pi-pocket/notes
         (~/notes), a read/write mount of John's actual notes project. John has
         authorized project edits; follow its vault editing rules, locking and
@@ -213,7 +245,7 @@ in {
         commit, merge or push unless John separately asks you to.
         /search food [--nutrition] <query> is a deterministic read-only mise task.
         /food <entry> runs mise run log-food through a one-off local-food helper
-        using the trial's subscription-codex/gpt-6-luna model. Do not log it twice
+        using Pocket's subscription-codex/gpt-6-luna model. Do not log it twice
         or invoke /food recursively. A stopped/interrupted command may already
         have written: inspect the daily note before a retry, never blindly replay.
         For package-label uploads, run mise run import-food-label -- <exact image paths>.
@@ -226,28 +258,32 @@ in {
         Use vlt vault="$VAULT_NAME" rather than vault="Personal" in this sandbox;
         there is no host Obsidian registry. Existing tasks use VAULT_NAME.
         Use /home/pi-pocket/scratch for temporary generated files only.
-        Hermes state and other agent profiles are not mounted. Do not try to
-        recover or connect to them over the network.
-        No Telegram, email, calendar, production jobs, or other external mutations
-        are authorized. Explain missing integrations rather than claiming parity.
+        Other agent profiles are not mounted. Do not try to recover or connect
+        to them over the network.
+        Google through gog (google-workspace skill): jallen7usa@gmail.com has
+        Gmail read-only and Google Calendar read/write; john.allen@gmatter.co has
+        Gmail and Calendar read-only (never attempt work calendar changes).
+        Other Google services are disabled. There is no Telegram.
+        A 05:00 timer runs mise run morning-brief into the daily note.
+        No other external mutations are authorized.
         Never read or display credentials, Pi Pocket's owner token, or auth files.
         Ask before installing extensions, scheduling work, or changing app settings.
       '';
     };
-    xdg.configFile."pi-pocket-trial/deployment.json".text = builtins.toJSON {
+    xdg.configFile."pi-pocket/deployment.json".text = builtins.toJSON {
       schemaVersion = 1;
       version = package.version;
       inherit (package) revision piVersion;
       inherit state privateHome sandboxHome profile data workspace port notesSource;
       notesReadOnly = false;
       package = toString package;
-      service = "pi-pocket-trial.service";
+      service = "pi-pocket.service";
       inherit listenAddress publicUrl;
       access = "Plain HTTP on the reserved LAN address; UFW permits pi-01 Caddy only";
-      authentication = "Personal subscription proxy client key only; upstream OAuth remains outside the trial";
+      authentication = "Personal subscription proxy client key only; upstream OAuth remains outside Pocket";
       networkIsolation = false;
     };
-    home.activation.piPocketTrialDirectories = lib.hm.dag.entryBetween ["reloadSystemd"] ["linkGeneration"] ''
+    home.activation.piPocketDirectories = lib.hm.dag.entryBetween ["reloadSystemd"] ["linkGeneration"] ''
       run ${pkgs.coreutils}/bin/install -d -m 0700 ${lib.escapeShellArgs [
         state
         privateHome
@@ -257,13 +293,19 @@ in {
         "${privateHome}/.cache"
         "${privateHome}/.local/share"
         "${privateHome}/.local/state"
-        "${privateHome}/.config/pi-pocket-trial"
+        "${privateHome}/.config/pi-pocket"
         "${privateHome}/.config/claude-personal"
+        "${privateHome}/.config/gogcli"
       ]}
+      # A locally generated file-keyring password for Pocket's own gog tokens;
+      # never a copy of another runtime's password.
+      if [ ! -e ${lib.escapeShellArg gogPassword} ]; then
+        run ${pkgs.bash}/bin/bash -c ${lib.escapeShellArg "umask 077; ${pkgs.openssl}/bin/openssl rand -base64 32 > ${lib.escapeShellArg gogPassword}"}
+      fi
     '';
-    systemd.user.services.pi-pocket-trial = {
+    systemd.user.services.pi-pocket = {
       Unit = {
-        Description = "Isolated Pi Pocket / Pi Durable browser trial";
+        Description = "Pi Pocket / Pi Durable assistant";
         # Preserve active conversations; activate a changed runtime deliberately.
         X-RestartIfChanged = false;
         After = ["network-online.target"];

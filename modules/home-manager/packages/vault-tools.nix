@@ -1,4 +1,4 @@
-# Pinned dependencies for Hermes's existing vault tasks, private to its PATH.
+# Pinned dependencies for the notes vault tasks, private to the agent sandbox PATH.
 { pkgs, runtimePkgs }: let
   py = runtimePkgs.python313Packages;
   taskYaml = py.pyyaml.overridePythonAttrs (_: {
@@ -33,7 +33,7 @@
   };
   releaseBinary = { name, version, url, sha256, archive ? false, binary ? name }:
     pkgs.stdenv.mkDerivation {
-      pname = "hermes-native-${name}";
+      pname = "vault-tools-${name}";
       inherit version;
       src = pkgs.fetchurl { inherit url sha256; };
       nativeBuildInputs = [ pkgs.autoPatchelfHook ];
@@ -95,7 +95,7 @@ in {
       --library-path ${pkgs.lib.makeLibraryPath [ pkgs.glibc pkgs.stdenv.cc.cc.lib ]} \
       --argv0 mise ${miseRelease} "$@"
   '').overrideAttrs (_: {
-    name = "hermes-native-mise-2026.9.7";
+    name = "vault-tools-mise-2026.9.7";
     version = "2026.9.7";
   });
   vlt = releaseBinary {

@@ -16,11 +16,6 @@
       url = "github:johnallen3d/herdr-project-picker/70219b8e1157f85dab8a8b9cf3b67907e6ca969d";
       flake = false;
     };
-    hermes = {
-      # Native staging foundation (#755); upstream owns its sealed Python/npm locks.
-      url = "github:NousResearch/hermes-agent/a19160bbf02dc37c57ff47cf0eaa4a3ab8ee43dc";
-      # Deliberately retain upstream's locked package inputs, independent of host locks.
-    };
     home-manager = {
       # Stay on Home Manager master while nixpkgs tracks nixos-unstable.
       url = "github:nix-community/home-manager";
@@ -49,7 +44,6 @@
     credits,
     home-manager,
     herdrProjectPicker,
-    hermes,
     lop,
     nix-darwin,
     nixpkgs,
@@ -99,7 +93,7 @@
           overlays = [(import ./lib/worktrunk-overlay.nix)];
         };
         extraSpecialArgs = {
-          inherit credits hermes lop;
+          inherit credits lop;
           herdrProjectPicker = omarchyHerdrProjectPicker;
         };
         modules = [./hosts/omarchy.nix];
