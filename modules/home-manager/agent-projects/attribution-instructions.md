@@ -1,10 +1,6 @@
 
 ## Implementation attribution
 
-- Before staging or committing, read the Nix-managed
-  `~/.agents/skills/authoring-commits/SKILL.md`. It is the canonical commit skill
-  for personal and work Pi/Claude profiles; prefer it over packaged versions
-  with the same name. Keep all existing authorization and project-specific gates.
 - `Co-Authored-By` credits models that materially authored the scoped code, tests,
   documentation, or configuration, not the model currently running cleanup.
   This user-level policy overrides packaged skills' current-model or

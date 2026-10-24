@@ -82,6 +82,15 @@
         do not authorize that lifecycle. `/wrap` never authorizes a rebuild
         or push by itself; repository deployment and card-closure gates remain.
 
+      ## Personal commit skill
+
+      - Before staging or committing in a personal profile, read its Nix-managed
+        `authoring-commits` skill: `~/.config/pi/skills/authoring-commits/SKILL.md`
+        for Pi, or `~/.config/claude-personal/skills/authoring-commits/SKILL.md`
+        for Claude Code. Prefer it over packaged versions with the same name.
+        This personal policy does not apply to work profiles. Keep all existing
+        authorization and project-specific gates.
+
     ''
     + attributionInstructions
     + taskScopeInstructions

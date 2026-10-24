@@ -75,25 +75,20 @@
     ".agents/skills/herdr"
     ".config/pi/skills/herdr"
     ".config/pi-work/skills/herdr"
+    ".config/claude-personal/skills/herdr"
     ".config/claude-gmatter/skills/herdr"
   ];
 in {
   imports = [./herdr-projects.nix];
 
-  # Keep one package-versioned Herdr skill available globally, in both custom
-  # Pi profiles, and in the work Claude profile. The personal Claude profile
-  # shares the global skills directory below.
-  home.file =
-    lib.genAttrs skillTargets (_: {source = herdrSkill;})
-    // {
-      ".config/claude-personal/skills".source =
-        config.lib.file.mkOutOfStoreSymlink "${homeDir}/.agents/skills";
-    };
+  # Keep one package-versioned Herdr skill available globally and in each
+  # personal/work profile, without aliasing an entire profile skills directory.
+  home.file = lib.genAttrs skillTargets (_: {source = herdrSkill;});
 
   # Replace the mutable copy created by `npx skills add herdrdev/herdr -g` only
   # when it still matches Herdr's bundled skill. Preserve modified copies so
   # Home Manager reports the collision instead of deleting local changes.
-  home.activation.herdrSkillMigration = lib.hm.dag.entryBefore ["writeBoundary"] ''
+  home.activation.herdrSkillMigration = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
     global_skill="${homeDir}/.agents/skills/herdr"
     if [ -d "$global_skill" ] && [ ! -L "$global_skill" ]; then
       if ${pkgs.diffutils}/bin/diff -qr "$global_skill" ${herdrSkill} >/dev/null; then
@@ -107,9 +102,15 @@ in {
     personal_skills="${homeDir}/.config/claude-personal/skills"
     if [ -L "$personal_skills" ]; then
       link_target="$(${pkgs.coreutils}/bin/readlink "$personal_skills")"
-      if [ "$link_target" = "${homeDir}/.agents/skills" ] || [ "$link_target" = "${homeDir}/.agents/skills/" ]; then
-        $DRY_RUN_CMD rm -f "$personal_skills"
-      fi
+      case "$link_target" in
+        "${homeDir}/.agents/skills"|"${homeDir}/.agents/skills/"|/nix/store/*-home-manager-files/.config/claude-personal/skills)
+          # Home Manager wraps the old out-of-store alias in another symlink.
+          # Remove only a recognized alias that still resolves to shared skills.
+          if [ "$(${pkgs.coreutils}/bin/realpath "$personal_skills")" = "$(${pkgs.coreutils}/bin/realpath "${homeDir}/.agents/skills")" ]; then
+            $DRY_RUN_CMD rm -f "$personal_skills"
+          fi
+          ;;
+      esac
     fi
   '';
 
