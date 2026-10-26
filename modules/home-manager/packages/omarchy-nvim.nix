@@ -16,7 +16,6 @@ in {
     harper
     jarify
     kcl
-    kcl-language-server
     lua-language-server
     markdownlint-cli2
     marksman

@@ -37,10 +37,6 @@
         trusted = true;
       }
       {
-        name = "kcl-lang/tap";
-        trusted = true;
-      }
-      {
         name = "ksdme/tap";
         trusted = true;
       }
@@ -69,7 +65,6 @@
       "gogcli"
       "immanuwell/droast/droast"
       "hunk"
-      "kcl-lsp"
       # "libspatialite"
       # using this vs nix-package due to issues with SbarLua
       "lua"
