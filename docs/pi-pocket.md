@@ -2,7 +2,8 @@
 
 John's production personal assistant. It began as the [#796](https://app.fizzy.do/6284043/cards/796)
 trial and replaced Hermes in [#906](https://app.fizzy.do/6284043/cards/906);
-there is no Telegram bot. Mac configuration is unchanged. `hosts/omarchy.nix`
+the Hermes Telegram bot is gone, but the morning brief still sends its summary
+to Telegram (see below). Mac configuration is unchanged. `hosts/omarchy.nix`
 alone enables `omarchy-pi-pocket.nix` (`piPocket.enable`).
 
 Skills, prompts, Pocket extensions and the tasks they call belong to the notes
@@ -170,11 +171,24 @@ this is not an exactly-once external-effects guarantee.
 ## Morning brief
 
 `pi-pocket-morning-brief.timer` runs daily at 05:00 (`Persistent=true`). Its
-oneshot service runs the notes `mise run morning-brief` inside the Pocket sandbox
-with `MORNING_BRIEF_DELIVERY=stdout`: it updates today's daily note (weather and
-personal and work calendars) and logs the summary to
-`journalctl --user -u pi-pocket-morning-brief.service`. There is no Telegram
-delivery. The brief's lock directory is under the sandbox's private `/tmp`, so it
+oneshot service runs the notes `mise run morning-brief` inside the Pocket sandbox:
+it updates today's daily note (weather and personal and work calendars) and
+sends the summary to John through the notes `send-telegram` task. Failures land
+in `journalctl --user -u pi-pocket-morning-brief.service`.
+
+- `send-telegram` reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from Doppler
+  `notes/pocket`, which holds only those two secrets. Nix puts `doppler` on the
+  sandbox PATH and the sandbox loads `DOPPLER_TOKEN` from
+  `/home/pi-pocket/.config/doppler/service-token` when readable (host:
+  `~/.local/state/pi-pocket/home/.config/doppler/service-token`, 0600, directory
+  0700). That read-only service token is provisioned out of band, not by Nix;
+  without it the brief cannot send. `DOPPLER_CONFIG_DIR` is the same directory
+  and version checks are off.
+- Boundary: the token is in Pocket's environment, so anyone who can steer
+  Pocket can read the bot token and chat ID and message that chat as the bot.
+  It grants nothing else in Doppler.
+
+The brief's lock directory is under the sandbox's private `/tmp`, so it
 does not exclude a concurrent Pocket write to the same daily note.
 
 ## Operations

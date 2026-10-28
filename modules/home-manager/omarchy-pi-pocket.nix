@@ -56,6 +56,7 @@
     vaultTools.vlt
     vaultTools.heif-convert
     paddleocr
+    pkgs.doppler
     pkgs.tesseract
     pkgs.nodejs_24
     pkgs.bash
@@ -72,6 +73,10 @@
   # Pocket's own gog login: Calendar read/write and Gmail read-only scopes.
   gogHome = "${sandboxHome}/.config/gogcli";
   gogPassword = "${privateHome}/.config/gogcli/keyring-password";
+  # A read-only Doppler service token scoped to notes/pocket (the morning brief's
+  # Telegram bot token and chat ID). Provisioned out of band, never by Nix.
+  dopplerHome = "${sandboxHome}/.config/doppler";
+  dopplerToken = "${privateHome}/.config/doppler/service-token";
   # An empty root with explicit mounts, not a writable host home with deny-list
   # exceptions. The host user bus, SSH/GPG sockets, credentials, /etc secrets,
   # other agent data and host processes are not visible. John authorized read/write
@@ -81,6 +86,10 @@
     gog_password=""
     if [ -r ${lib.escapeShellArg gogPassword} ]; then
       gog_password="$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg gogPassword})"
+    fi
+    doppler_token=""
+    if [ -r ${lib.escapeShellArg dopplerToken} ]; then
+      doppler_token="$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg dopplerToken})"
     fi
     exec ${pkgs.coreutils}/bin/env -i \
       HOME=${sandboxHome} \
@@ -102,6 +111,8 @@
       GOG_KEYRING_PASSWORD="$gog_password" \
       GOG_ENABLE_COMMANDS=auth,config,calendar,gmail \
       GOG_GMAIL_NO_SEND=1 GOG_TIMEZONE=America/New_York \
+      DOPPLER_TOKEN="$doppler_token" DOPPLER_CONFIG_DIR=${dopplerHome} \
+      DOPPLER_ENABLE_VERSION_CHECK=false \
       MISE_AUTO_INSTALL=0 MISE_TRUSTED_CONFIG_PATHS=${workspace} \
       MISE_DISABLE_TOOLS=uv,sd,yq,npm:defuddle \
       UV_OFFLINE=1 UV_PYTHON_DOWNLOADS=never PI_TELEMETRY=0 \
@@ -176,12 +187,13 @@ in {
 
   config = lib.mkIf cfg.enable {
     home.packages = [sandbox login];
-    # Without Telegram the brief only updates the daily note; output goes to the journal.
+    # The brief updates the daily note and sends its summary through the notes
+    # send-telegram task, which reads notes/pocket secrets with DOPPLER_TOKEN.
     systemd.user.services.pi-pocket-morning-brief = {
       Unit.Description = "Morning brief into today's daily note";
       Service = {
         Type = "oneshot";
-        ExecStart = "${sandbox}/bin/pi-pocket-sandbox ${pkgs.coreutils}/bin/env MORNING_BRIEF_DELIVERY=stdout mise run morning-brief";
+        ExecStart = "${sandbox}/bin/pi-pocket-sandbox mise run morning-brief";
         WorkingDirectory = state;
         UMask = "0077";
         NoNewPrivileges = true;
@@ -263,8 +275,12 @@ in {
         Google through gog (google-workspace skill): jallen7usa@gmail.com has
         Gmail read-only and Google Calendar read/write; john.allen@gmatter.co has
         Gmail and Calendar read-only (never attempt work calendar changes).
-        Other Google services are disabled. There is no Telegram.
-        A 05:00 timer runs mise run morning-brief into the daily note.
+        Other Google services are disabled.
+        A 05:00 timer runs mise run morning-brief into the daily note and sends
+        its summary to John on Telegram through send-telegram. DOPPLER_TOKEN is a
+        read-only token for Doppler notes/pocket (the Telegram bot token and chat
+        ID only); use it only for that delivery and never print those secrets.
+        Do not send other Telegram messages unless John asks.
         No other external mutations are authorized.
         Never read or display credentials, Pi Pocket's owner token, or auth files.
         Ask before installing extensions, scheduling work, or changing app settings.
@@ -296,6 +312,7 @@ in {
         "${privateHome}/.config/pi-pocket"
         "${privateHome}/.config/claude-personal"
         "${privateHome}/.config/gogcli"
+        "${privateHome}/.config/doppler"
       ]}
       # A locally generated file-keyring password for Pocket's own gog tokens;
       # never a copy of another runtime's password.
