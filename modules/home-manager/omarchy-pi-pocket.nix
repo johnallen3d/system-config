@@ -214,6 +214,30 @@ in {
       # personal gateway client key stays in private Pocket state, not auth.json
       # from another profile. No management key or upstream OAuth is exposed.
       ".local/state/pi-pocket/home/.config/pi-pocket/models.json".text = builtins.toJSON {
+        # Existing notes helpers explicitly select this provider/model. Route
+        # that name through Pocket's proxy instead of requiring upstream OAuth.
+        providers.openai-codex = {
+          baseUrl = "http://${config.subscriptionProxy.address}:8317/v1";
+          api = "openai-responses";
+          authHeader = true;
+          apiKey = "!${pkgs.coreutils}/bin/cat ${profile}/proxy-client-key";
+          models = [
+            {
+              id = "gpt-5.6-luna";
+              name = "Codex 5.6 Luna (personal proxy)";
+              reasoning = true;
+              input = ["text"];
+              contextWindow = 128000;
+              maxTokens = 32000;
+              cost = {
+                input = 0;
+                output = 0;
+                cacheRead = 0;
+                cacheWrite = 0;
+              };
+            }
+          ];
+        };
         providers.subscription-codex = {
           baseUrl = "http://${config.subscriptionProxy.address}:8317/v1";
           api = "openai-responses";
