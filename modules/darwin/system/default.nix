@@ -157,6 +157,12 @@
         "com.apple.ImageCapture".disableHotPlug = true;
         # Turn on app auto-update
         "com.apple.commerce".AutoUpdate = true;
+        # Match Ghostty's font in Rex, which keeps fonts in app defaults
+        # rather than init.lua
+        "com.superlogical.rex" = {
+          "Workspace.terminalFontName" = "JetBrainsMono Nerd Font Mono";
+          "Workspace.terminalFontPointSize" = 15.5;
+        };
       };
     };
 

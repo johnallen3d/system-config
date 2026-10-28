@@ -197,6 +197,8 @@ EOF
         trey = "Trey Anastasio/Lonely Trip"
         violent = "Violent Femmes/Violent Femmes"
       '';
-    } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {};
+    } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+      ".config/rex/init.lua".source = ./dotfiles/config/rex/init.lua;
+    };
   };
 }
