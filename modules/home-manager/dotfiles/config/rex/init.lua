@@ -67,18 +67,21 @@ rex.bind("cmd+shift+m", "yem_float")
 -- lists the tabs, fzf runs in a float, and its pick comes back through a FIFO
 -- so the app can be asked to show that tab once `run` returns.
 -- Config actions can only read their own session, so a `rex do` script, which
--- can attach to each one, lists the tabs.
+-- can attach to each one, lists the tabs. Each session gets a header row that
+-- picks its current tab, with its tabs indented below in aligned columns.
 local tab_list_script = [==[
 local terminal = "com.superlogical.terminal"
 local home = rex.exec({ "sh", "-c", 'printf %s "$HOME"' }).stdout
 local list, err = rex.call("session.list")
 if list == nil then error(err, 0) end
-local lines = {}
+local groups = {}
 for _, session in ipairs(list.sessions or {}) do
   local _, attach_err = rex.session.attach{ session_id = session.session_id }
   if attach_err ~= nil then error(attach_err, 0) end
   local view, view_err = rex.session.view{ session_id = session.session_id }
   if view == nil then error(view_err, 0) end
+  local tabs = {}
+  groups[#groups + 1] = { session = session, tabs = tabs }
   for _, window in ipairs(view.windows or {}) do
     local blocks = {}
     for _, layer in ipairs(window.layers or {}) do
@@ -106,9 +109,35 @@ for _, session in ipairs(list.sessions or {}) do
         dir = "~" .. dir:sub(#home + 1)
       end
     end
+    tabs[#tabs + 1] = { window_id = window.window_id, name = name, dir = dir }
+  end
+end
+
+local function width(s) return (utf8 and utf8.len(s)) or #s end
+local max_name = 48
+local name_width = 0
+for _, group in ipairs(groups) do
+  for _, tab in ipairs(group.tabs) do
+    if width(tab.name) > max_name then
+      local cut = (utf8 and utf8.offset(tab.name, max_name)) or max_name
+      tab.name = tab.name:sub(1, cut - 1) .. "…"
+    end
+    name_width = math.max(name_width, width(tab.name))
+  end
+end
+
+local lines = {}
+for _, group in ipairs(groups) do
+  local session = group.session
+  lines[#lines + 1] = table.concat({
+    session.session_id, "",
+    "\27[1;35m" .. (session.label or session.session_id) .. "\27[0m",
+  }, "\t")
+  for _, tab in ipairs(group.tabs) do
     lines[#lines + 1] = table.concat({
-      session.session_id, window.window_id,
-      (session.label or "") .. "  " .. name .. "  " .. dir,
+      session.session_id, tab.window_id,
+      "  " .. tab.name .. string.rep(" ", name_width - width(tab.name))
+        .. "  \27[2m" .. tab.dir .. "\27[0m",
     }, "\t")
   end
 end
@@ -174,7 +203,7 @@ rex.action{
 
     local _, layer_err = rex.session.new_layer{
       session_id = ctx.session_id,
-      bounds     = { 0.2, 0.15, 0.6, 0.6 },
+      bounds     = { 0.12, 0.1, 0.76, 0.75 },
       focus      = true,
       layout     = rex.layout.block{
         flavor  = "com.superlogical.terminal.shell",
@@ -182,7 +211,8 @@ rex.action{
         options = { command = {
           "sh", "-c", 'PATH=$1; export PATH; d=$2; shift 2; exec fzf "$@" < "$d/tabs"',
           "sh", path, dir,
-          "--delimiter=\t", "--with-nth=3", "--reverse", "--prompt=tab> ",
+          "--delimiter=\t", "--with-nth=3", "--ansi", "--no-sort", "--reverse",
+          "--prompt=tab> ",
           "--with-shell=sh -c",
           "--bind=focus:execute-silent(printf '%s\\t%s\\n' {1} {2} > " .. dir .. "/pick)",
           "--bind=zero:execute-silent(: > " .. dir .. "/pick)",
@@ -206,9 +236,11 @@ rex.action{
     end
     local pick = rex.exec({ "cat", picker_dir() .. "/pick" })
     close_picker(ctx)
-    local session_id, window_id = (pick.stdout or ""):match("^([^\t]+)\t([^\t\n]+)")
+    local session_id, window_id = (pick.stdout or ""):match("^([^\t]+)\t([^\t\n]*)")
     if session_id ~= nil then
-      rex.client.queue("session.select", { session_id = session_id, window_id = window_id })
+      rex.client.queue("session.select", {
+        session_id = session_id, window_id = window_id ~= "" and window_id or nil,
+      })
     end
   end,
 }
