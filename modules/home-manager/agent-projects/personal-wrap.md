@@ -30,7 +30,9 @@ force deletion, killing processes, or bypassing hooks/signing.
    primary. Never force. Verify this task's worktree and branch are gone.
 4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
    separately. Close completed in-scope cards; keep blocked or partially deployed
-   cards open. Follow repository release order: later push/deployment does not
+   cards open. If the repository tracks work in Fizzy and no card covers this
+   task, create one describing the completed work before closing it; never
+   finish with untracked work. Follow repository release order: later push/deployment does not
    block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.

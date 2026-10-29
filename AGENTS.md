@@ -75,8 +75,8 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 Use Fizzy only—no Markdown TODOs, other trackers, or duplicate cards. The project board is selected by `.fizzy.yaml`. Use the CLI's built-in `--jq` for programmatic output.
 
-1. Check existing work with `fizzy card list --all --jq '[.data[] | {number, title}]'` and search before creating a card.
-2. Claim an existing card with `fizzy card self-assign <number>` when appropriate.
+1. Check existing work with `fizzy card list --all --jq '[.data[] | {number, title}]'` and search before creating a card. If no card covers the current task, create one before starting repository changes; every task needs a card, and `/wrap` must not finish with untracked work.
+2. Claim the task's card with `fizzy card self-assign <number>` when appropriate.
 3. File discoveries with `fizzy card create --board <board-id> --title "Title" --description "Context"` and relate them in the originating card's description or comments.
 4. Add progress/completion comments; leave cards open unless John explicitly requests closure directly or actually invokes `/wrap`. Only then may you run `fizzy card close <number>` within that authorization's scope.
 
