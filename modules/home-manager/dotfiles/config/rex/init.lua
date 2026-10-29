@@ -14,12 +14,12 @@ rex.bind("cmd+ctrl+=", "pane.balance")
 
 -- Herdr workspaces
 rex.bind("cmd+ctrl+n", "session.new")
-rex.bind("ctrl+tab", "session.next")
-rex.bind("ctrl+shift+tab", "session.previous")
 rex.bind("cmd+s", "client.sidebar.toggle")
 
 -- Herdr tabs and panes
 rex.bind("cmd+t", "client.tab.new")
+rex.bind("ctrl+tab", "client.tab.next")
+rex.bind("ctrl+shift+tab", "client.tab.previous")
 rex.bind("cmd+w", "pane.close")
 rex.bind("cmd+d", "pane.split.right")
 rex.bind("cmd+shift+d", "pane.split.down")
