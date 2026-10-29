@@ -174,8 +174,8 @@ work-specific rules. Apply shared changes on both hosts
 using the deployment procedure below.
 
 Pi reads profile-global and ancestor `AGENTS.md` context (and supports `CLAUDE.md`
-as a fallback); Claude Code reads profile-global and ancestor `CLAUDE.md`, not
-`AGENTS.md` by default. Profile-global instructions remain available when a
+as a fallback); Claude Code reads profile-global `CLAUDE.md` and ancestor
+`AGENTS.md`, so repositories keep a single `AGENTS.md`. Profile-global instructions remain available when a
 worktree is outside the Amfaro directory, provided both work profile variables are
 selected. A parent-directory file alone would not cover that case.
 
