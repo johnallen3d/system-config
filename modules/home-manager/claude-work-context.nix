@@ -1,4 +1,5 @@
-# Mac-equivalent work context on both hosts. Settings remain writable/host-local.
+# Mac-equivalent context for work and personal Claude on both hosts.
+# Settings remain writable/host-local.
 {
   lib,
   pkgs,
@@ -14,10 +15,13 @@
       "writeBoundary"
       "claudeProfileDefaults"
       "claudeGmatterSettings"
+      "subscriptionProxyClients"
     ] ''
       if [ -z "''${DRY_RUN_CMD:-}" ]; then
-        ${pkgs.python3}/bin/python3 ${./claude-work-context/merge.py} \
-          --policy ${./claude-work-context/policy.json}
+        for profile in claude-gmatter claude-personal; do
+          ${pkgs.python3}/bin/python3 ${./claude-work-context/merge.py} \
+            --policy ${./claude-work-context/policy.json} --profile "$profile"
+        done
       fi
     '';
 }

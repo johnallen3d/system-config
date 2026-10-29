@@ -21,7 +21,12 @@ force deletion, killing processes, or bypassing hooks/signing.
    automatic conflict handling or unrelated ref updates. Rerun relevant gates.
    Recheck identity, cleanliness, operation state, and unchanged validated tips;
    integrate with `git merge --ff-only --no-overwrite-ignore`.
-3. **Clean up.** Follow the personal session-cwd safety checks before removal;
+3. **Clean up.** First return to the primary checkout. In Claude, run a standalone
+   `cd "$repo_root"`, then verify the harness cwd and a fresh `pwd -P` in a separate
+   call. If the session was launched inside the task worktree, `cd` does not move
+   its anchor: require a verified resume/relaunch at the primary root before
+   removal. A subshell, command cwd override, `wt switch`, or Pi `process.chdir`
+   is not proof of a safe cwd. Never delete the running session's directory;
    retain the worktree if the session anchor or cwd is uncertain. Wait for task
    jobs. Inspect ignored files: leave known disposable build output (`target/`,
    etc.) for worktree removal, not separate deletion. Unknown or valuable ignored

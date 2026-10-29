@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply only the declared work-context denies/skill overrides, never auth/defaults."""
+"""Apply only the declared context denies/skill overrides, never auth/defaults."""
 import argparse
 import json
 import os
@@ -56,12 +56,12 @@ def merge(settings, policy):
     return result
 
 
-def apply(home, policy):
+def apply(home, policy, profile):
     validate_policy(policy)
-    path = home / ".config/claude-gmatter/settings.json"
+    path = home / ".config" / profile / "settings.json"
     # Refuse to replace an unexpected declarative or cross-profile symlink.
     if path.is_symlink():
-        raise ValueError("Work settings must be a writable regular file")
+        raise ValueError("Profile settings must be a writable regular file")
     current = json.loads(path.read_text()) if path.exists() else {}
     result = merge(current, policy)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,12 +81,13 @@ def apply(home, policy):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--policy", type=Path, required=True)
+    parser.add_argument("--profile", choices=["claude-gmatter", "claude-personal"], required=True)
     args = parser.parse_args()
     try:
-        apply(Path.home(), json.loads(args.policy.read_text()))
+        apply(Path.home(), json.loads(args.policy.read_text()), args.profile)
     except (ValueError, OSError):
         # Settings/errors may contain credentials: never echo their contents.
-        raise SystemExit("Work-context policy failed; settings left unchanged") from None
+        raise SystemExit(f"{args.profile} context policy failed; settings left unchanged") from None
 
 
 if __name__ == "__main__":

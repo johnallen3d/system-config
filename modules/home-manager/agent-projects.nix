@@ -17,6 +17,7 @@
     Never run macOS rebuild tasks here or change Omarchy shell/desktop settings.
     See docs/omarchy-agents.md in system-config for application and authentication.
   '';
+  # Always-on rules only; procedures live in skills and the /wrap command.
   personalInstructions =
     ''
       # Personal agent instructions
@@ -25,77 +26,72 @@
       - Respect `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`; keep profiles,
         credentials, and sessions separate.
 
-      ## Personal worktrees by default
+      ## Scope
 
-      - Perform repository changes in a dedicated linked Git worktree on a
-        task-specific branch. Read-only investigation needs no worktree.
-        John can explicitly opt out for the current task with "no worktree" or
-        "work in place"; never infer an exemption because a task looks simple.
-      - Before repository writes, use `git worktree list --porcelain` and
-        `git rev-parse --path-format=absolute --git-dir --git-common-dir` to
-        identify the primary checkout and linked worktrees. Resolve symlinks;
-        a feature branch in the primary checkout is not a linked worktree.
-      - Reuse a suitable linked worktree belonging to this task. Otherwise create
-        it from local `main`, with a simple kebab-case task slug, at the primary
-        repository's `.worktrees/<slug>` on `feature/<slug>` (including fixes
-        and chores):
+      - John's requested outcome is the scope boundary; workflow rules never
+        authorize extra deliverables. Ask before adding optional edits, worktrees,
+        docs, tests, deployment, or investigation.
+      - A direct operation on a user-owned file outside a repository needs no
+        repository edits or worktree; a Nix-managed file needs its declarative
+        source and deployment workflow.
+      - Use the smallest verification that proves the result. A failed optional
+        check is not a blocker; don't debug dependencies it introduced.
+      - Proportionality never bypasses safety, profile, credential,
+        issue-tracking, authorization, or deployment gates.
+
+      ## Worktrees
+
+      - Make repository changes in a linked worktree on a task branch.
+        Read-only work needs none. John may opt out with "no worktree" or
+        "work in place"; never infer an exemption.
+      - Before writing, check `git worktree list --porcelain` and
+        `git rev-parse --path-format=absolute --git-dir --git-common-dir`
+        (resolve symlinks; a feature branch in the primary checkout is not a
+        worktree). Reuse this task's worktree, otherwise create one from local
+        `main` with a kebab-case slug (fixes and chores included):
 
         ```bash
         git -C "$repo_root" worktree add -b "feature/$slug" "$repo_root/.worktrees/$slug" main
         ```
 
-        `repo_root` is the absolute primary checkout path. If `main` is missing
-        or the branch/path already exists but is unsuitable, stop and report
-        the blocker; never adopt another task's worktree or substitute a base.
-      - Work in the task worktree during implementation. In Claude Code, enter it
-        with a standalone `cd "$task_path"` and verify with `pwd -P`. Top-level
-        Bash `cd` can persist across tool calls; this is expected task cwd, not
-        drift. Do not restore the primary directory between task commands.
-        Record the verified session start directory before task commands so
-        cleanup can distinguish task cwd from the actual session anchor.
-      - In Pi, shell `cd` does not move the agent's cwd. Use absolute worktree
-        paths for file tools and `git -C "$task_path"`,
-        `mise -C "$task_path" exec -- ...`, or `(cd "$task_path" && ...)`
-        for task commands. Do not simulate a session move with `process.chdir`.
-        Keep edits, builds, tests, and task Git operations in the task worktree.
-      - Before `/wrap` removes the task worktree, return to the primary checkout.
-        In Claude, run a standalone `cd "$repo_root"` in Bash, then verify the
-        updated harness cwd and a fresh plain `pwd -P` in a separate call.
-        A normal task-directory change needs no relaunch or correction during work.
-        If the actual session was launched inside the task worktree, a Bash `cd`
-        alone does not relocate its session anchor: require a verified
-        resume/relaunch at the primary repository root before removal.
-        Retain the worktree if the actual session anchor or current cwd is uncertain.
-        A subshell, command cwd override, `wt switch`, or Pi `process.chdir` is not
-        proof of a safe session cwd. Never delete the running session's directory.
+        If `main` is missing or the branch/path exists but is unsuitable, stop
+        and report; never adopt another task's worktree or change the base.
+      - Claude: enter it with a standalone `cd "$task_path"` and verify with
+        `pwd -P`; staying there is expected. Note the session start directory
+        for cleanup. Pi: shell `cd` doesn't move the agent, so use absolute paths,
+        `git -C`, and `mise -C "$task_path" exec --`.
       - Preserve unrelated changes, credentials, sessions, and other worktrees.
-        Keep both profile variables and project mise context; use `mise exec`
-        explicitly for noninteractive project commands. A worktree is not
-        permission to switch profiles or copy credentials.
+        A worktree is not permission to switch profiles or copy credentials.
+
+      ## Authorization
+
       - Never commit, merge, push, or remove a worktree without authorization.
-        An actual personal `/wrap` invocation authorizes scoped commit,
-        guarded rebase of this task's own unpublished local commits onto existing
-        local `main` when needed, fast-forward integration, and safe task-worktree
-        cleanup under the personal command's lifecycle. Uncertain publication or
-        task ownership, conflicts, and signing/hook failures stop that sequence. Ordinary "wrap up",
-        quoting or mentioning `/wrap`, and reading a prompt file through tools
-        do not authorize that lifecycle. `/wrap` never authorizes a rebuild
-        or push by itself; repository deployment and card-closure gates remain.
+      - An actual personal `/wrap` invocation authorizes the scoped commit,
+        guarded rebase/fast-forward integration, and worktree cleanup its
+        command describes. Mentioning or quoting `/wrap`, reading its prompt
+        file, or "wrap up" does not. `/wrap` never authorizes a rebuild or push.
+      - An authorized deployment includes clean fast-forward sync of a deployment
+        host's `main` to integrated local `main`, without separate merge
+        permission; stop on dirty source, divergence, or uncertain ownership.
 
-      ## Personal commit skill
+      ## Commits
 
-      - Before staging or committing in a personal profile, read its Nix-managed
-        `authoring-commits` skill: `~/.config/pi/skills/authoring-commits/SKILL.md`
-        for Pi, or `~/.config/claude-personal/skills/authoring-commits/SKILL.md`
-        for Claude Code. Prefer it over packaged versions with the same name.
-        This personal policy does not apply to work profiles. Keep all existing
-        authorization and project-specific gates.
+      - Before staging or committing, read the personal `authoring-commits` skill
+        (`~/.config/claude-personal/skills/` for Claude, `~/.config/pi/skills/`
+        for Pi; prefer it over packaged copies) and the
+        `implementation-attribution` skill. Not for work profiles.
+      - During implementation, keep an attribution handoff in the conversation
+        (branch/worktree, each contributor's model, paths it authored, evidence)
+        and include it in completion summaries.
 
+      ## Delegation
+
+      - When John explicitly asks for a sub-agent, delegating is your first
+        substantive action: no investigation, task-file reads, card actions,
+        edits, or tests beforehand. Read the `delegating-to-subagents` skill for
+        the brief, handoff, and failure recovery (reading it counts as launch
+        discovery).
     ''
-    + attributionInstructions
-    + taskScopeInstructions
-    + deploymentInstructions
-    + delegationInstructions
     + omarchyInstructions;
   workInstructions =
     builtins.readFile ./agent-projects/work-instructions.md

@@ -15,19 +15,8 @@
   pkgs,
   ...
 }: let
-  claudeKit = pkgs.fetchFromGitHub {
-    owner = "johnnyvizz";
-    repo = "claude-kit";
-    rev = "272a877f39b6971690e087b16a7cc3951b811e39";
-    hash = "sha256-K+1MP18bP1NLkqQWu49IyKTbycng63sLdeLnMqDka/o=";
-  };
-  claudeSkins = pkgs.fetchFromGitHub {
-    owner = "hellosverre";
-    repo = "claude-skins";
-    rev = "dccf562424e4633c94e158978d467080c62c889d";
-    hash = "sha256-EedeCu3UPrzuzL/lj/8pzA8a803FE0D0dmodx150RAw=";
-  };
-  managedPluginPaths = map (name: "${config.home.homeDirectory}/.local/share/claude-plugins/${name}") [
+  # Retired plugin directories (savvy-progress, skins); strip them from settings.
+  retiredPluginPaths = map (name: "${config.home.homeDirectory}/.local/share/claude-plugins/${name}") [
     "savvy-progress"
     "skins"
   ];
@@ -61,9 +50,6 @@
   };
 in {
   home.file = {
-    ".local/share/claude-plugins/savvy-progress".source = "${claudeKit}/plugins/savvy-progress";
-    ".local/share/claude-plugins/skins".source = claudeSkins;
-
     # Personal prompts → ~/.config/claude-personal/commands/
     ".config/claude-personal/commands/pkg-install.md".source = ./claude-prompts/pkg-install.md;
     ".config/claude-personal/commands/wrap.md".text =
@@ -174,7 +160,6 @@ in {
     fi
   '';
 
-  # A stable plugin path avoids stale store paths after source upgrades.
   # Replace statusLine completely; preserve unrelated settings and plugin paths.
   home.activation.claudeGmatterSettings = lib.hm.dag.entryAfter ["writeBoundary" "claudeProfileDefaults"] ''
     if [ -z "''${DRY_RUN_CMD:-}" ]; then
@@ -190,11 +175,12 @@ in {
         fi
         tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
         if ${pkgs.jq}/bin/jq --argjson managed "$managed" \
-          --argjson plugins ${lib.escapeShellArg (builtins.toJSON managedPluginPaths)} \
+          --argjson retired ${lib.escapeShellArg (builtins.toJSON retiredPluginPaths)} \
           '. + $managed |
            (.env.CLAUDE_CODE_PLUGIN_DIRS // "" | split(":") |
-            map(select(length > 0)) - $plugins) as $dirs |
-           .env.CLAUDE_CODE_PLUGIN_DIRS = ($dirs + $plugins | join(":"))' \
+            map(select(length > 0)) - $retired) as $dirs |
+           if $dirs == [] then del(.env.CLAUDE_CODE_PLUGIN_DIRS)
+           else .env.CLAUDE_CODE_PLUGIN_DIRS = ($dirs | join(":")) end' \
           "$settings" > "$tmp"; then
           chmod 0600 "$tmp"
           mv "$tmp" "$settings"

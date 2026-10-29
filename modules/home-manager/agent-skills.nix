@@ -24,11 +24,20 @@
     ".config/pi/skills/authoring-commits/SKILL.md"
     ".config/claude-personal/skills/authoring-commits/SKILL.md"
   ];
+  # Personal-only procedures moved out of the always-loaded instructions.
+  personalSkills = lib.concatMapAttrs (name: source: {
+    ".config/pi/skills/${name}/SKILL.md".source = source;
+    ".config/claude-personal/skills/${name}/SKILL.md".source = source;
+  }) {
+    delegating-to-subagents = ./agent-skills/delegating-to-subagents/SKILL.md;
+    implementation-attribution = ./agent-skills/implementation-attribution/SKILL.md;
+  };
 in {
   # Personal policy must not enter global discovery or either work profile.
   # Manage files, not whole skill directories or mutable plugin/package caches.
   home.file =
     lib.genAttrs targets (_: {source = skill;})
+    // personalSkills
     // {
       # Both Pi profiles discover this location without profile-local copies.
       ".agents/skills/rex/SKILL.md".source = rexSkill;
