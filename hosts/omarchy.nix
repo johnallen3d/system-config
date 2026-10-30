@@ -3,6 +3,7 @@
   lib,
   lop,
   pkgs,
+  rex,
   ...
 }: let
   homeDir = config.home.homeDirectory;
@@ -33,7 +34,21 @@ in {
     ../modules/home-manager/omarchy-pi-pocket.nix
     ../modules/home-manager/omarchy-syncthing-lan.nix
     ../modules/home-manager/omarchy-vnc.nix
+    ../modules/home-manager/nix-netrc.nix
+    rex.homeManagerModules.default
   ];
+
+  # Personal Rex server as a user service (lingering keeps it up). Omarchy owns
+  # ~/.ssh/config, so `rex terminfo setup` installs the ssh guard there instead.
+  programs.rex.sshGuard = false;
+  services.rex = {
+    enable = true;
+    # Rex's own tailnet node (owner-only); the Mac app connects to it remotely.
+    tailscale = {
+      enable = true;
+      hostname = "rex-omarchy";
+    };
+  };
 
   # John's production assistant (Pi Pocket / Pi Durable); replaced Hermes.
   piPocket.enable = true;

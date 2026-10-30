@@ -38,6 +38,11 @@
       url = "github:johnallen3d/herdr-project-picker";
       flake = false;
     };
+    rex = {
+      # Pre-release; fetching needs the netrc from modules/home-manager/nix-netrc.nix.
+      url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
+      inputs.nixpkgs.follows = "omarchyNixpkgs";
+    };
   };
 
   outputs = {
@@ -51,6 +56,7 @@
     omarchyNixpkgs,
     omarchyHomeManager,
     omarchyHerdrProjectPicker,
+    rex,
     ...
   }: let
     user = "john.allen";
@@ -93,7 +99,7 @@
           overlays = [(import ./lib/worktrunk-overlay.nix)];
         };
         extraSpecialArgs = {
-          inherit credits lop;
+          inherit credits lop rex;
           herdrProjectPicker = omarchyHerdrProjectPicker;
         };
         modules = [./hosts/omarchy.nix];
