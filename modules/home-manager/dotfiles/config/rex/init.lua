@@ -136,17 +136,20 @@ for _, group in ipairs(groups) do
   end
 end
 
+-- A no-break space ends the unsearched prefix, so fzf shows the host
+-- without matching it.
+local nbsp = "\194\160"
 local lines = {}
 for _, group in ipairs(groups) do
   local session = group.session
   lines[#lines + 1] = table.concat({
     session.session_id, "", group.target,
-    "\27[1;35m[" .. group.host .. "] " .. (session.label or session.session_id) .. "\27[0m",
+    "\27[1;35m[" .. group.host .. "]" .. nbsp .. (session.label or session.session_id) .. "\27[0m",
   }, "\t")
   for _, tab in ipairs(group.tabs) do
     lines[#lines + 1] = table.concat({
       session.session_id, tab.window_id, group.target,
-      "  " .. tab.name .. string.rep(" ", name_width - width(tab.name))
+      nbsp .. " " .. tab.name .. string.rep(" ", name_width - width(tab.name))
         .. "  \27[2m" .. tab.dir .. "\27[0m",
     }, "\t")
   end
@@ -211,7 +214,7 @@ rex.action{
         options = { command = {
           "sh", "-c", 'PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"; export PATH; entries=$1; shift; printf %s "$entries" | fzf "$@"',
           "sh", entries,
-          "--delimiter=\t", "--with-nth=4", "--ansi", "--no-sort", "--reverse",
+          "--delimiter=\t|\194\160", "--with-nth=4..", "--nth=2..", "--ansi", "--no-sort", "--reverse",
           "--prompt=tab> ",
           "--with-shell=sh -c",
           "--bind=focus:execute-silent(printf '\\033]2;rex-tab-picker:%s/%s/%s\\007' {3} {1} {2} > /dev/tty)",
