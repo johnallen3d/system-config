@@ -55,7 +55,9 @@ in {
         echo "Refusing modified Rex skill: $shared" >&2
         exit 1
       fi
-      backup="$HOME/.local/state/system-config/skill-migrations/rex/SKILL.md"
+      # One backup per stub revision, so a newer Rex stub never collides with an older backup.
+      digest="$(${pkgs.coreutils}/bin/sha256sum "$shared" | ${pkgs.coreutils}/bin/cut -c1-12)"
+      backup="$HOME/.local/state/system-config/skill-migrations/rex/SKILL-$digest.md"
       if [ -e "$backup" ] || [ -L "$backup" ]; then
         if [ -L "$backup" ] || ! ${pkgs.diffutils}/bin/cmp -s "$backup" "$shared"; then
           echo "Refusing conflicting Rex skill backup: $backup" >&2
