@@ -63,54 +63,64 @@ rex.action{
 }
 rex.bind("cmd+shift+m", "yem_float")
 
--- Fuzzy-find any tab across sessions, like Herdr's project picker. A script
--- lists the tabs, fzf runs in a float, and its pick comes back through a FIFO
--- so the app can be asked to show that tab once `run` returns.
--- Config actions can only read their own session, so a `rex do` script, which
--- can attach to each one, lists the tabs. Each session gets a header row that
--- picks its current tab, with its tabs indented below in aligned columns.
+-- Fuzzy-find tabs across sessions and hosts, like Herdr's project picker.
+-- A `rex do` script can attach to every session on each configured server.
+-- Pass its rows directly to the float: rex.exec runs on the config host,
+-- while the float runs on the focused session's host. fzf records its pick
+-- in the terminal title, which the action can read through the session API.
+-- Each session gets a header row that picks its current tab.
 local tab_list_script = [==[
 local terminal = "com.superlogical.terminal"
 local home = rex.exec({ "sh", "-c", 'printf %s "$HOME"' }).stdout
-local list, err = rex.call("session.list")
-if list == nil then error(err, 0) end
 local groups = {}
-for _, session in ipairs(list.sessions or {}) do
-  local _, attach_err = rex.session.attach{ session_id = session.session_id }
-  if attach_err ~= nil then error(attach_err, 0) end
-  local view, view_err = rex.session.view{ session_id = session.session_id }
-  if view == nil then error(view_err, 0) end
-  local tabs = {}
-  groups[#groups + 1] = { session = session, tabs = tabs }
-  for _, window in ipairs(view.windows or {}) do
-    local blocks = {}
-    for _, layer in ipairs(window.layers or {}) do
-      if layer.kind == "tiled" then
-        for _, block in ipairs(layer.blocks or {}) do
-          blocks[#blocks + 1] = block.block_id
+local function collect(server, host)
+  local list, err = server.call("session.list")
+  if list == nil then error(host .. ": " .. tostring(err), 0) end
+  for _, session in ipairs(list.sessions or {}) do
+    local _, attach_err = server.session.attach{ session_id = session.session_id }
+    if attach_err ~= nil then error(attach_err, 0) end
+    local view, view_err = server.session.view{ session_id = session.session_id }
+    if view == nil then error(view_err, 0) end
+    local tabs = {}
+    -- Hex keeps arbitrary host labels safe inside the terminal-title payload.
+    local target = server == rex and "-" or host:gsub(".", function(c)
+      return string.format("%02x", c:byte())
+    end)
+    groups[#groups + 1] = { session = session, tabs = tabs, host = host, target = target }
+    for _, window in ipairs(view.windows or {}) do
+      local blocks = {}
+      for _, layer in ipairs(window.layers or {}) do
+        if layer.kind == "tiled" then
+          for _, block in ipairs(layer.blocks or {}) do
+            blocks[#blocks + 1] = block.block_id
+          end
         end
       end
-    end
-    local block_id = blocks[1]
-    for _, id in ipairs(blocks) do
-      if id == window.focused_block_id then block_id = id end
-    end
-    local args = { session_id = session.session_id, block_id = block_id }
-    local name = window.label or ""
-    local dir = ""
-    if block_id ~= nil then
-      local title = rex.block.call(terminal, "title", args)
-      if name:match("^Window %x+$") and title and title.title ~= "" then
-        name = title.title
+      local block_id = blocks[1]
+      for _, id in ipairs(blocks) do
+        if id == window.focused_block_id then block_id = id end
       end
-      local pwd = rex.block.call(terminal, "pwd", args)
-      dir = ((pwd and pwd.pwd) or ""):gsub("^file://[^/]*", "")
-      if home ~= "" and dir:sub(1, #home) == home then
-        dir = "~" .. dir:sub(#home + 1)
+      local args = { session_id = session.session_id, block_id = block_id }
+      local name = window.label or ""
+      local dir = ""
+      if block_id ~= nil then
+        local title = server.block.call(terminal, "title", args)
+        if name:match("^Window %x+$") and title and title.title ~= "" then
+          name = title.title
+        end
+        local pwd = server.block.call(terminal, "pwd", args)
+        dir = ((pwd and pwd.pwd) or ""):gsub("^file://[^/]*", "")
+        if host == "local" and home ~= "" and dir:sub(1, #home) == home then
+          dir = "~" .. dir:sub(#home + 1)
+        end
       end
+      tabs[#tabs + 1] = { window_id = window.window_id, name = name, dir = dir }
     end
-    tabs[#tabs + 1] = { window_id = window.window_id, name = name, dir = dir }
   end
+end
+collect(rex, "local")
+for _, host in ipairs(rex.servers()) do
+  collect(rex.server(host), host)
 end
 
 local function width(s) return (utf8 and utf8.len(s)) or #s end
@@ -130,12 +140,12 @@ local lines = {}
 for _, group in ipairs(groups) do
   local session = group.session
   lines[#lines + 1] = table.concat({
-    session.session_id, "",
-    "\27[1;35m" .. (session.label or session.session_id) .. "\27[0m",
+    session.session_id, "", group.target,
+    "\27[1;35m[" .. group.host .. "] " .. (session.label or session.session_id) .. "\27[0m",
   }, "\t")
   for _, tab in ipairs(group.tabs) do
     lines[#lines + 1] = table.concat({
-      session.session_id, tab.window_id,
+      session.session_id, tab.window_id, group.target,
       "  " .. tab.name .. string.rep(" ", name_width - width(tab.name))
         .. "  \27[2m" .. tab.dir .. "\27[0m",
     }, "\t")
@@ -144,7 +154,7 @@ end
 return table.concat(lines, "\n") .. "\n"
 ]==]
 
--- The server runs with a bare PATH, so find rex and fzf where they're installed.
+-- The config host runs with a bare PATH, so find its rex CLI.
 local function user_path()
   local r = rex.exec({ "sh", "-c",
     'printf %s "$HOME/.local/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"' })
@@ -156,11 +166,6 @@ local function tab_entries(path)
   if r == nil then error(err, 0) end
   if not r.ok then error(r.stderr, 0) end
   return rex.json.decode(r.stdout)
-end
-
--- The picker's files live in one place so the actions below can find them.
-local function picker_dir()
-  return rex.exec({ "sh", "-c", 'printf %s "${TMPDIR:-/tmp}/rex-tab-picker-$(id -un)"' }).stdout
 end
 
 local function picker_layer(ctx)
@@ -196,11 +201,6 @@ rex.action{
     if picker_layer(ctx) ~= nil then return close_picker(ctx) end
     local path = user_path()
     local entries = tab_entries(path)
-    local dir = picker_dir()
-    local prep = rex.exec({ "sh", "-c", 'mkdir -p "$1" && rm -f "$1/pick" && cat > "$1/tabs"', "sh", dir },
-      { stdin = entries })
-    if not prep.ok then error(prep.stderr, 0) end
-
     local _, layer_err = rex.session.new_layer{
       session_id = ctx.session_id,
       bounds     = { 0.12, 0.1, 0.76, 0.75 },
@@ -209,13 +209,13 @@ rex.action{
         flavor  = "com.superlogical.terminal.shell",
         label   = "tab-picker",
         options = { command = {
-          "sh", "-c", 'PATH=$1; export PATH; d=$2; shift 2; exec fzf "$@" < "$d/tabs"',
-          "sh", path, dir,
-          "--delimiter=\t", "--with-nth=3", "--ansi", "--no-sort", "--reverse",
+          "sh", "-c", 'PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"; export PATH; entries=$1; shift; printf %s "$entries" | fzf "$@"',
+          "sh", entries,
+          "--delimiter=\t", "--with-nth=4", "--ansi", "--no-sort", "--reverse",
           "--prompt=tab> ",
           "--with-shell=sh -c",
-          "--bind=focus:execute-silent(printf '%s\\t%s\\n' {1} {2} > " .. dir .. "/pick)",
-          "--bind=zero:execute-silent(: > " .. dir .. "/pick)",
+          "--bind=focus:execute-silent(printf '\\033]2;rex-tab-picker:%s/%s/%s\\007' {3} {1} {2} > /dev/tty)",
+          "--bind=zero:execute-silent(printf '\\033]2;rex-tab-picker:\\007' > /dev/tty)",
         } },
       },
     }
@@ -234,14 +234,33 @@ rex.action{
       rex.client.queue("pane.send_key", { key = "enter" })
       return
     end
-    local pick = rex.exec({ "cat", picker_dir() .. "/pick" })
+    local pick = rex.block.call("com.superlogical.terminal", "title", {
+      session_id = ctx.session_id, block_id = block_id,
+    })
     close_picker(ctx)
-    local session_id, window_id = (pick.stdout or ""):match("^([^\t]+)\t([^\t\n]*)")
-    if session_id ~= nil then
+    local host, session_id, window_id = ((pick and pick.title) or ""):match("^rex%-tab%-picker:([^/]+)/([^/]+)/([^/]*)$")
+    if session_id == nil then return end
+    if host == "-" then
       rex.client.queue("session.select", {
         session_id = session_id, window_id = window_id ~= "" and window_id or nil,
       })
+      return
     end
+    host = host:gsub("%x%x", function(pair) return string.char(tonumber(pair, 16)) end)
+    -- Queued client actions belong to the config host, even with a remote
+    -- session focused. Use the selected host's app connection instead.
+    -- Detach so the app can finish this action before handling the jump.
+    -- The CLI refuses ambiguous app targets; failures stay in this log.
+    local command = {
+      "sh", "-c", 'umask 077; log="${XDG_STATE_HOME:-$HOME/.local/state}/rex/tab-picker.log"; mkdir -p "${log%/*}" || exit; exec "$@" >> "$log" 2>&1',
+      "sh", "rex", "-S", host, "do", "session.select", "session_id=" .. session_id,
+    }
+    if window_id ~= "" then command[#command + 1] = "window_id=" .. window_id end
+    local job, err = rex.exec.start(command, {
+      detach = true,
+      env = { PATH = user_path(), REX_SERVER = false, REX_CLIENT = false, REX_SESSION = false, REX_BLOCK = false },
+    })
+    if job == nil then error(err, 0) end
   end,
 }
 
