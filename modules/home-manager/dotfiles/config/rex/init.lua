@@ -73,6 +73,8 @@ local tab_list_script = [==[
 local terminal = "com.superlogical.terminal"
 local home = rex.exec({ "sh", "-c", 'printf %s "$HOME"' }).stdout
 local groups = {}
+-- Agents report status per pane; a tab shows its most urgent one.
+local urgency = { done = 1, working = 2, error = 3, blocked = 4 }
 local function collect(server, host)
   local list, err = server.call("session.list")
   if list == nil then error(host .. ": " .. tostring(err), 0) end
@@ -97,8 +99,16 @@ local function collect(server, host)
         end
       end
       local block_id = blocks[1]
+      local state
       for _, id in ipairs(blocks) do
         if id == window.focused_block_id then block_id = id end
+        local status = server.block.call(terminal, "program_status",
+          { session_id = session.session_id, block_id = id })
+        for _, record in ipairs((status and status.records) or {}) do
+          if (urgency[record.state] or 0) > (urgency[state] or 0) then
+            state = record.state
+          end
+        end
       end
       local args = { session_id = session.session_id, block_id = block_id }
       local name = window.label or ""
@@ -114,7 +124,7 @@ local function collect(server, host)
           dir = "~" .. dir:sub(#home + 1)
         end
       end
-      tabs[#tabs + 1] = { window_id = window.window_id, name = name, dir = dir }
+      tabs[#tabs + 1] = { window_id = window.window_id, name = name, dir = dir, state = state }
     end
   end
 end
@@ -137,8 +147,14 @@ for _, group in ipairs(groups) do
 end
 
 -- A no-break space ends the unsearched prefix, so fzf shows the host
--- without matching it.
+-- and status mark without matching them.
 local nbsp = "\194\160"
+local marks = {
+  working = "\27[36m●\27[0m",
+  blocked = "\27[1;33m?\27[0m",
+  done    = "\27[32m✓\27[0m",
+  error   = "\27[1;31m!\27[0m",
+}
 local lines = {}
 for _, group in ipairs(groups) do
   local session = group.session
@@ -149,7 +165,7 @@ for _, group in ipairs(groups) do
   for _, tab in ipairs(group.tabs) do
     lines[#lines + 1] = table.concat({
       session.session_id, tab.window_id, group.target,
-      nbsp .. " " .. tab.name .. string.rep(" ", name_width - width(tab.name))
+      (marks[tab.state] or " ") .. nbsp .. tab.name .. string.rep(" ", name_width - width(tab.name))
         .. "  \27[2m" .. tab.dir .. "\27[0m",
     }, "\t")
   end
