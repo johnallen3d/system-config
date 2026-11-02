@@ -47,6 +47,13 @@ in {
     configPath = "${config.xdg.configHome}/fish/starship.toml";
     enableBashIntegration = false;
     enableZshIntegration = false;
+    # Mark remote shells: Rex panes run under the Rex service, not sshd, so
+    # SSH_CONNECTION alone misses them. Local desktop terminals stay unmarked.
+    settings.hostname = {
+      ssh_only = false;
+      detect_env_vars = ["SSH_CONNECTION" "REX_SESSION"];
+      format = "[🌐 $hostname]($style) in ";
+    };
   };
 
   # Use Omarchy's native mise and Neovim; do not replace their configuration.
