@@ -36,6 +36,10 @@
   llm-usage = import ./llm-usage.nix {inherit pkgs;};
   pinned_yt_dlp = import ./yt-dlp.nix {inherit pkgs;};
   vlt = import ./vlt.nix {inherit pkgs;};
+  rex-project-picker = import ./rex-project-picker.nix {
+    inherit pkgs;
+    palette = managedTheme.activePalette;
+  };
   rex-tab-picker = import ./rex-tab-picker.nix {
     inherit pkgs;
     palette = managedTheme.activePalette;
@@ -162,7 +166,7 @@ in {
       zellij
     ]
     ++ scripts
-    ++ [context-mode llm-usage nail-parquet pi rex-tab-picker vlt]
+    ++ [context-mode llm-usage nail-parquet pi rex-project-picker rex-tab-picker vlt]
     ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ai-intercept yemPackage];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)

@@ -63,6 +63,30 @@ rex.action{
 }
 rex.bind("cmd+shift+m", "yem_float")
 
+-- Pick a zoxide folder with rex-project-picker and switch to the session named
+-- after it, creating one if needed. It lists this host's folders; Tab moves to
+-- another Rex host. The float runs on the focused session's host.
+rex.action{
+  name  = "project_session",
+  title = "New Session in Directory…",
+  run   = function(ctx, args)
+    local _, err = rex.session.new_layer{
+      session_id = ctx.session_id,
+      bounds     = { 0.12, 0.1, 0.76, 0.75 },
+      focus      = true,
+      layout     = rex.layout.block{
+        flavor  = "com.superlogical.terminal.shell",
+        label   = "project-session",
+        options = { command = {
+          "sh", "-c", 'PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"; export PATH; exec rex-project-picker',
+        } },
+      },
+    }
+    if err ~= nil then error(err, 0) end
+  end,
+}
+rex.bind("cmd+shift+n", "project_session")
+
 -- Pick a tab across sessions and hosts with rex-tab-picker.
 -- A `rex do` script can attach to every session on each configured server.
 -- Pass its rows directly to the float: rex.exec runs on the config host,
