@@ -227,6 +227,8 @@ struct App {
     local_host: Option<String>,
     current: (String, String),
     query: String,
+    /// Show only tabs whose agent has finished (ctrl-f).
+    finished_only: bool,
     matcher: Matcher,
     rows: Vec<Row>,
     hits: HashMap<Item, Hits>,
@@ -252,6 +254,7 @@ impl App {
             local_host,
             current,
             query: String::new(),
+            finished_only: false,
             matcher: Matcher::new(Config::DEFAULT.match_paths()),
             rows: Vec::new(),
             hits: HashMap::new(),
@@ -327,6 +330,9 @@ impl App {
             let host = self.sessions[s].host.clone();
             let mut matched_tabs = Vec::new();
             for &t in &self.sessions[s].tabs.clone() {
+                if self.finished_only && self.tabs[t].state != State::Done {
+                    continue;
+                }
                 if !filtering {
                     matched_tabs.push(t);
                     continue;
@@ -350,7 +356,9 @@ impl App {
             } else {
                 Some(())
             };
-            if session_hit.is_none() && matched_tabs.is_empty() {
+            // With the finished filter on, a session shows only for its
+            // finished tabs, never on its own name.
+            if matched_tabs.is_empty() && (session_hit.is_none() || self.finished_only) {
                 continue;
             }
             if last_host.as_deref() != Some(&host) {
@@ -369,6 +377,7 @@ impl App {
         let want = if filtering { best.map(|(_, i)| i) } else { prev };
         self.selected = want
             .and_then(|w| self.rows.iter().position(|r| matches!(r, Row::Item(i) if *i == w)))
+            .or_else(|| self.rows.iter().position(|r| matches!(r, Row::Item(Item::Tab(_)))))
             .or_else(|| self.rows.iter().position(|r| matches!(r, Row::Item(_))));
         self.offset = 0;
     }
@@ -466,6 +475,10 @@ impl App {
                 self.refilter();
             }
             KeyCode::Char('w') if ctrl => self.delete_word(),
+            KeyCode::Char('f') if ctrl => {
+                self.finished_only = !self.finished_only;
+                self.refilter();
+            }
             KeyCode::Backspace if alt || ctrl => self.delete_word(),
             KeyCode::Backspace => {
                 self.query.pop();
@@ -571,14 +584,17 @@ impl App {
             f.set_cursor_position((cursor_x, area.y));
         }
         let matches = self.rows.iter().filter(|r| matches!(r, Row::Item(Item::Tab(_)))).count();
-        let count = if typing {
-            vec![
-                Span::styled(matches.to_string(), Style::new().fg(p.text)),
-                Span::styled(format!(" of {} tabs ", self.tabs.len()), Style::new().fg(p.muted)),
-            ]
+        let mut count = Vec::new();
+        if self.finished_only {
+            count.push(Span::styled(" ✓ finished ", Style::new().fg(p.pine).bg(p.overlay)));
+            count.push(Span::raw("  "));
+        }
+        if typing || self.finished_only {
+            count.push(Span::styled(matches.to_string(), Style::new().fg(p.text)));
+            count.push(Span::styled(format!(" of {} tabs ", self.tabs.len()), Style::new().fg(p.muted)));
         } else {
-            vec![Span::styled(format!("{} tabs ", self.tabs.len()), Style::new().fg(p.muted))]
-        };
+            count.push(Span::styled(format!("{} tabs ", self.tabs.len()), Style::new().fg(p.muted)));
+        }
         f.render_widget(Line::from(count).right_aligned(), area);
     }
 
@@ -636,6 +652,16 @@ impl App {
                 Line::from(""),
                 Line::styled("No tabs to show", Style::new().fg(p.subtle)),
                 Line::styled("Rex didn't report any sessions", Style::new().fg(p.muted)),
+            ]
+        } else if self.finished_only && self.query.is_empty() {
+            vec![
+                Line::styled("✓", Style::new().fg(p.hl_high)),
+                Line::from(""),
+                Line::styled("No finished agents", Style::new().fg(p.subtle)),
+                Line::from(vec![
+                    Span::styled("⌃F", Style::new().fg(p.subtle).bg(p.overlay)),
+                    Span::styled(" shows all tabs", Style::new().fg(p.muted)),
+                ]),
             ]
         } else {
             vec![
@@ -795,7 +821,8 @@ impl App {
         // Hints first; the summary only when it still fits beside them.
         let mut spans = vec![Span::raw(" ")];
         let mut used = 1;
-        for (k, label) in [("↑↓", "move"), ("⇥", "next session"), ("⏎", "open"), ("esc", "close")] {
+        let filter = if self.finished_only { "all tabs" } else { "finished" };
+        for (k, label) in [("↑↓", "move"), ("⇥", "next session"), ("⌃F", filter), ("⏎", "open"), ("esc", "close")] {
             let hint = hint(k, label);
             let w: usize = hint.iter().map(|s| str_width(&s.content)).sum();
             if used + w > area.width as usize {
