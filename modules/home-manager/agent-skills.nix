@@ -11,11 +11,12 @@
     "claude-personal"
     "claude-gmatter"
   ];
+  # Home Manager owns this hook, so Rex's app toggle can't rewrite it; keep naming off here.
   rexHook = {
     hooks = [
       {
         type = "command";
-        command = "/bin/sh -c 'rex __internal session-start --agent claude 2>/dev/null || true'";
+        command = "/bin/sh -c 'rex __internal session-start --agent claude --feature-session-naming=false 2>/dev/null || true'";
         timeout = 5;
       }
     ];
@@ -78,8 +79,8 @@ in {
     done
   '';
 
-  # Settings remain writable. Add only a missing Rex hook, retaining every
-  # unrelated hook/settings entry. Rex's hook is a no-op without its CLI.
+  # Settings remain writable. Replace any Rex session-start hook with ours,
+  # retaining every unrelated hook/settings entry. Rex's hook is a no-op without its CLI.
   home.activation.rexClaudeHooks = lib.hm.dag.entryAfter ["writeBoundary" "claudeWorkContext"] ''
     if [ -z "''${DRY_RUN_CMD:-}" ]; then
       for profile in claude-personal claude-gmatter; do
@@ -89,9 +90,11 @@ in {
         tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
         if ${pkgs.jq}/bin/jq --argjson rex ${lib.escapeShellArg (builtins.toJSON rexHook)} '
           .hooks.SessionStart //= [] |
-          if any(.hooks.SessionStart[].hooks[]?;
-            .type == "command" and .command == $rex.hooks[0].command)
-          then . else .hooks.SessionStart += [$rex] end
+          .hooks.SessionStart |= map(
+            .hooks |= map(select(
+              (.type == "command" and ((.command // "") | contains("rex __internal session-start"))) | not))
+            | select((.hooks // []) | length > 0)) |
+          .hooks.SessionStart += [$rex]
         ' "$settings" > "$tmp"; then
           chmod 0600 "$tmp"
           mv "$tmp" "$settings"
