@@ -63,12 +63,12 @@ rex.action{
 }
 rex.bind("cmd+shift+m", "yem_float")
 
--- Fuzzy-find tabs across sessions and hosts, like Herdr's project picker.
+-- Pick a tab across sessions and hosts with rex-tab-picker.
 -- A `rex do` script can attach to every session on each configured server.
 -- Pass its rows directly to the float: rex.exec runs on the config host,
--- while the float runs on the focused session's host. fzf records its pick
--- in the terminal title, which the action can read through the session API.
--- Each session gets a header row that picks its current tab.
+-- while the float runs on the focused session's host. The picker records its
+-- pick in the terminal title, which the action can read through the session
+-- API. Each session gets a header row that picks its current tab.
 local tab_list_script = [==[
 local terminal = "com.superlogical.terminal"
 local home = rex.exec({ "sh", "-c", 'printf %s "$HOME"' }).stdout
@@ -133,40 +133,17 @@ for _, host in ipairs(rex.servers()) do
   collect(rex.server(host), host)
 end
 
-local function width(s) return (utf8 and utf8.len(s)) or #s end
-local max_name = 48
-local name_width = 0
-for _, group in ipairs(groups) do
-  for _, tab in ipairs(group.tabs) do
-    if width(tab.name) > max_name then
-      local cut = (utf8 and utf8.offset(tab.name, max_name)) or max_name
-      tab.name = tab.name:sub(1, cut - 1) .. "…"
-    end
-    name_width = math.max(name_width, width(tab.name))
-  end
-end
-
--- A no-break space ends the unsearched prefix, so fzf shows the host
--- and status mark without matching them.
-local nbsp = "\194\160"
-local marks = {
-  working = "\27[36m●\27[0m",
-  blocked = "\27[1;33m?\27[0m",
-  done    = "\27[32m✓\27[0m",
-  error   = "\27[1;31m!\27[0m",
-}
+-- rex-tab-picker draws the rows; see its source for the format.
+local function clean(s) return (tostring(s or ""):gsub("[\t\r\n]", " ")) end
 local lines = {}
 for _, group in ipairs(groups) do
   local session = group.session
   lines[#lines + 1] = table.concat({
-    session.session_id, "", group.target,
-    "\27[1;35m[" .. group.host .. "]" .. nbsp .. (session.label or session.session_id) .. "\27[0m",
+    "S", group.target, clean(group.host), session.session_id, clean(session.label or session.session_id),
   }, "\t")
   for _, tab in ipairs(group.tabs) do
     lines[#lines + 1] = table.concat({
-      session.session_id, tab.window_id, group.target,
-      (marks[tab.state] or " ") .. nbsp .. tab.name .. string.rep(" ", name_width - width(tab.name))
-        .. "  \27[2m" .. tab.dir .. "\27[0m",
+      "T", tab.window_id, tab.state or "", clean(tab.name), clean(tab.dir),
     }, "\t")
   end
 end
@@ -208,8 +185,8 @@ local function close_picker(ctx)
   rex.client.queue("client.mode.exit_all")
 end
 
--- An action that waits for fzf holds up the app's keys, so this one opens the
--- float and returns. fzf records the highlighted tab as it moves, and the
+-- An action that waits for the picker holds up the app's keys, so this one
+-- opens the float and returns. The picker records the highlighted tab, and the
 -- tab_picker mode turns Enter and Escape into the actions that finish.
 rex.mode("tab_picker")
 
@@ -228,13 +205,8 @@ rex.action{
         flavor  = "com.superlogical.terminal.shell",
         label   = "tab-picker",
         options = { command = {
-          "sh", "-c", 'PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"; export PATH; entries=$1; shift; printf %s "$entries" | fzf "$@"',
-          "sh", entries,
-          "--delimiter=\t|\194\160", "--with-nth=4..", "--nth=2..", "--ansi", "--no-sort", "--reverse",
-          "--prompt=tab> ",
-          "--with-shell=sh -c",
-          "--bind=focus:execute-silent(printf '\\033]2;rex-tab-picker:%s/%s/%s\\007' {3} {1} {2} > /dev/tty)",
-          "--bind=zero:execute-silent(printf '\\033]2;rex-tab-picker:\\007' > /dev/tty)",
+          "sh", "-c", 'PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"; export PATH; exec rex-tab-picker "$@"',
+          "sh", "--current", ctx.session_id .. "/" .. (ctx.window_id or ""), entries,
         } },
       },
     }

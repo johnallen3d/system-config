@@ -18,6 +18,12 @@
           --replace-fail '/bin/cat' '${pkgs.coreutils}/bin/cat'
       '';
   });
+  # The Mac's cmd+k tab picker opens its float here when an Omarchy session
+  # is focused.
+  rexTabPicker = import ../modules/home-manager/packages/rex-tab-picker.nix {
+    inherit pkgs;
+    palette = (import ../modules/home-manager/managed-theme.nix {inherit lib;}).activePalette;
+  };
   lopPath =
     lib.makeBinPath [pkgs.coreutils pkgs.git pkgs.herdr pkgs.openssh pkgs.worktrunk]
     + ":${homeDir}/.local/bin:${homeDir}/.nix-profile/bin:/usr/local/bin:/usr/bin:/bin";
@@ -72,7 +78,7 @@ in {
     username = "johna";
     homeDirectory = "/home/johna";
     stateVersion = "26.05";
-    packages = [lopPackage];
+    packages = [lopPackage rexTabPicker];
     # The Syncthing-paired Obsidian vault is local to Omarchy.
     sessionVariables.PI_SESSION_CAPTURE_VAULT_PATH = "${homeDir}/notes";
   };
