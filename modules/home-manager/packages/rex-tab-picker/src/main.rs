@@ -217,6 +217,11 @@ struct Hits {
     dir: Vec<usize>,
 }
 
+/// Only tabs can be selected; host and session rows are headers.
+fn is_tab(r: &Row) -> bool {
+    matches!(r, Row::Item(Item::Tab(_)))
+}
+
 // ---------------------------------------------------------------- app
 
 struct App {
@@ -346,19 +351,28 @@ impl App {
                     matched_tabs.push(t);
                 }
             }
-            let session_hit = if filtering {
-                self.score(&pattern, &[&label, &host]).map(|(score, f)| {
+            // Sessions are headers, not picks: a search that matches a
+            // session's name or host shows its tabs instead. With the
+            // finished filter on, only its finished tabs qualify.
+            if filtering {
+                if let Some((score, f)) = self.score(&pattern, &[&label, &host]) {
                     self.hits.insert(Item::Session(s), Hits { name: f[0].clone(), dir: Vec::new() });
-                    if best.is_none_or(|(b, _)| score > b) {
-                        best = Some((score, Item::Session(s)));
+                    if matched_tabs.is_empty() {
+                        matched_tabs = self.sessions[s]
+                            .tabs
+                            .iter()
+                            .copied()
+                            .filter(|&t| !self.finished_only || self.tabs[t].state == State::Done)
+                            .collect();
                     }
-                })
-            } else {
-                Some(())
-            };
-            // With the finished filter on, a session shows only for its
-            // finished tabs, never on its own name.
-            if matched_tabs.is_empty() && (session_hit.is_none() || self.finished_only) {
+                    if let Some(&first) = matched_tabs.first() {
+                        if best.is_none_or(|(b, _)| score > b) {
+                            best = Some((score, Item::Tab(first)));
+                        }
+                    }
+                }
+            }
+            if matched_tabs.is_empty() {
                 continue;
             }
             if last_host.as_deref() != Some(&host) {
@@ -374,11 +388,10 @@ impl App {
                 self.rows.push(Row::Item(Item::Tab(t)));
             }
         }
-        let want = if filtering { best.map(|(_, i)| i) } else { prev };
+        let want = if filtering { best.map(|(_, i)| i) } else { prev }.filter(|i| matches!(i, Item::Tab(_)));
         self.selected = want
             .and_then(|w| self.rows.iter().position(|r| matches!(r, Row::Item(i) if *i == w)))
-            .or_else(|| self.rows.iter().position(|r| matches!(r, Row::Item(Item::Tab(_)))))
-            .or_else(|| self.rows.iter().position(|r| matches!(r, Row::Item(_))));
+            .or_else(|| self.rows.iter().position(is_tab));
         self.offset = 0;
     }
 
@@ -394,7 +407,7 @@ impl App {
                 if next < 0 || next >= n {
                     break;
                 }
-                if self.item(next as usize).is_some() {
+                if is_tab(&self.rows[next as usize]) {
                     break;
                 }
             }
@@ -407,18 +420,17 @@ impl App {
         self.selected = Some(at);
     }
 
+    /// Move to the first tab of the next session, or back to the first tab
+    /// of this session (then the one before).
     fn jump_session(&mut self, forward: bool) {
         let Some(at) = self.selected else { return };
-        let is_session = |r: &Row| matches!(r, Row::Item(Item::Session(_)));
+        let first_tab = |i: usize| {
+            is_tab(&self.rows[i]) && i > 0 && matches!(self.rows[i - 1], Row::Item(Item::Session(_)))
+        };
         let found = if forward {
-            (at + 1..self.rows.len()).find(|&i| is_session(&self.rows[i]))
+            (at + 1..self.rows.len()).find(|&i| first_tab(i))
         } else {
-            // Back to this session's header first, then the one before.
-            let own = (0..at).rev().find(|&i| is_session(&self.rows[i]));
-            match own {
-                Some(h) if !is_session(&self.rows[at]) => Some(h),
-                _ => (0..at).rev().find(|&i| is_session(&self.rows[i])),
-            }
+            (0..at).rev().find(|&i| first_tab(i))
         };
         if let Some(i) = found {
             self.selected = Some(i);
@@ -426,11 +438,10 @@ impl App {
     }
 
     fn edge(&mut self, end: bool) {
-        let pos = |r: &Row| matches!(r, Row::Item(_));
         self.selected = if end {
-            self.rows.iter().rposition(pos)
+            self.rows.iter().rposition(is_tab)
         } else {
-            self.rows.iter().position(pos)
+            self.rows.iter().position(is_tab)
         };
     }
 
@@ -438,16 +449,12 @@ impl App {
     fn pick(&self) -> String {
         let item = self.selected.and_then(|r| self.item(r));
         match item {
-            Some(Item::Session(s)) => {
-                let s = &self.sessions[s];
-                format!("{}/{}/", s.target, s.id)
-            }
             Some(Item::Tab(t)) => {
                 let tab = &self.tabs[t];
                 let s = &self.sessions[tab.session];
                 format!("{}/{}/{}", s.target, s.id, tab.window_id)
             }
-            None => String::new(),
+            _ => String::new(),
         }
     }
 
@@ -513,8 +520,11 @@ impl App {
         if x < a.x || x >= a.x + a.width || y < a.y || y >= a.y + a.height {
             return;
         }
-        let row = self.offset + (y - a.y) as usize;
-        if self.item(row).is_some() {
+        let mut row = self.offset + (y - a.y) as usize;
+        if matches!(self.rows.get(row), Some(Row::Item(Item::Session(_)))) {
+            row += 1;
+        }
+        if self.rows.get(row).is_some_and(is_tab) {
             self.selected = Some(row);
         }
     }
