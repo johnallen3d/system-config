@@ -122,8 +122,6 @@ impl Palette {
 // ---------------------------------------------------------------- glyphs
 
 const ICON_SEARCH: &str = "\u{f0349}"; // nf-md-magnify
-const ICON_LOCAL: &str = "\u{f0322}"; // nf-md-laptop
-const ICON_REMOTE: &str = "\u{f048b}"; // nf-md-server
 const ICON_SESSION: &str = "\u{f0bdf}"; // nf-md-console_line
 const CAP_L: &str = "\u{e0b6}"; // powerline round caps
 const CAP_R: &str = "\u{e0b4}";
@@ -204,12 +202,6 @@ enum Item {
     Tab(usize),
 }
 
-enum Row {
-    Host(String, usize),
-    Gap,
-    Item(Item),
-}
-
 /// Highlighted character positions for an item's visible fields.
 #[derive(Default, Clone)]
 struct Hits {
@@ -217,9 +209,9 @@ struct Hits {
     dir: Vec<usize>,
 }
 
-/// Only tabs can be selected; host and session rows are headers.
-fn is_tab(r: &Row) -> bool {
-    matches!(r, Row::Item(Item::Tab(_)))
+/// Only tabs can be selected; session rows are headers.
+fn is_tab(r: &Item) -> bool {
+    matches!(r, Item::Tab(_))
 }
 
 // ---------------------------------------------------------------- app
@@ -228,14 +220,12 @@ struct App {
     p: Palette,
     sessions: Vec<Session>,
     tabs: Vec<Tab>,
-    hosts: usize,
-    local_host: Option<String>,
     current: (String, String),
     query: String,
     /// Show only tabs whose agent has finished (ctrl-f).
     finished_only: bool,
     matcher: Matcher,
-    rows: Vec<Row>,
+    rows: Vec<Item>,
     hits: HashMap<Item, Hits>,
     selected: Option<usize>,
     offset: usize,
@@ -247,16 +237,10 @@ struct App {
 impl App {
     fn new(input: &str, current: (String, String)) -> Self {
         let (sessions, tabs) = parse(input);
-        let mut hosts: Vec<&str> = sessions.iter().map(|s| s.host.as_str()).collect();
-        hosts.dedup();
-        let hosts = hosts.len();
-        let local_host = sessions.iter().find(|s| s.target == "-").map(|s| s.host.clone());
         let mut app = App {
             p: Palette::load(),
             sessions,
             tabs,
-            hosts,
-            local_host,
             current,
             query: String::new(),
             finished_only: false,
@@ -272,13 +256,10 @@ impl App {
         app.refilter();
         // Start on the tab the picker was opened from, else the first tab.
         let here = app.rows.iter().position(|r| match r {
-            Row::Item(Item::Tab(t)) => app.is_current(*t),
+            Item::Tab(t) => app.is_current(*t),
             _ => false,
         });
-        let first_tab = app
-            .rows
-            .iter()
-            .position(|r| matches!(r, Row::Item(Item::Tab(_))));
+        let first_tab = app.rows.iter().position(is_tab);
         app.selected = here.or(first_tab).or(app.selected);
         app
     }
@@ -289,10 +270,7 @@ impl App {
     }
 
     fn item(&self, row: usize) -> Option<Item> {
-        match self.rows.get(row) {
-            Some(Row::Item(item)) => Some(*item),
-            _ => None,
-        }
+        self.rows.get(row).copied()
     }
 
     fn score(&mut self, pattern: &Pattern, fields: &[&str]) -> Option<(u32, Vec<Vec<usize>>)> {
@@ -329,7 +307,6 @@ impl App {
         let pattern = Pattern::parse(&self.query, CaseMatching::Smart, Normalization::Smart);
         let filtering = !self.query.trim().is_empty();
         let mut best: Option<(u32, Item)> = None;
-        let mut last_host: Option<String> = None;
         for s in 0..self.sessions.len() {
             let label = self.sessions[s].label.clone();
             let host = self.sessions[s].host.clone();
@@ -375,22 +352,12 @@ impl App {
             if matched_tabs.is_empty() {
                 continue;
             }
-            if last_host.as_deref() != Some(&host) {
-                if last_host.is_some() {
-                    self.rows.push(Row::Gap);
-                }
-                let count = self.sessions.iter().filter(|x| x.host == host).count();
-                self.rows.push(Row::Host(host.clone(), count));
-                last_host = Some(host);
-            }
-            self.rows.push(Row::Item(Item::Session(s)));
-            for t in matched_tabs {
-                self.rows.push(Row::Item(Item::Tab(t)));
-            }
+            self.rows.push(Item::Session(s));
+            self.rows.extend(matched_tabs.into_iter().map(Item::Tab));
         }
         let want = if filtering { best.map(|(_, i)| i) } else { prev }.filter(|i| matches!(i, Item::Tab(_)));
         self.selected = want
-            .and_then(|w| self.rows.iter().position(|r| matches!(r, Row::Item(i) if *i == w)))
+            .and_then(|w| self.rows.iter().position(|i| *i == w))
             .or_else(|| self.rows.iter().position(is_tab));
         self.offset = 0;
     }
@@ -425,7 +392,7 @@ impl App {
     fn jump_session(&mut self, forward: bool) {
         let Some(at) = self.selected else { return };
         let first_tab = |i: usize| {
-            is_tab(&self.rows[i]) && i > 0 && matches!(self.rows[i - 1], Row::Item(Item::Session(_)))
+            is_tab(&self.rows[i]) && i > 0 && matches!(self.rows[i - 1], Item::Session(_))
         };
         let found = if forward {
             (at + 1..self.rows.len()).find(|&i| first_tab(i))
@@ -521,7 +488,7 @@ impl App {
             return;
         }
         let mut row = self.offset + (y - a.y) as usize;
-        if matches!(self.rows.get(row), Some(Row::Item(Item::Session(_)))) {
+        if matches!(self.rows.get(row), Some(Item::Session(_))) {
             row += 1;
         }
         if self.rows.get(row).is_some_and(is_tab) {
@@ -593,7 +560,7 @@ impl App {
         if cursor_x < area.x + area.width {
             f.set_cursor_position((cursor_x, area.y));
         }
-        let matches = self.rows.iter().filter(|r| matches!(r, Row::Item(Item::Tab(_)))).count();
+        let matches = self.rows.iter().filter(|r| is_tab(r)).count();
         let mut count = Vec::new();
         if self.finished_only {
             count.push(Span::styled(" ✓ finished ", Style::new().fg(p.pine).bg(p.overlay)));
@@ -617,15 +584,9 @@ impl App {
         }
         if let Some(sel) = self.selected {
             if sel < self.offset {
-                self.offset = sel;
-                // Keep the host header in view when scrolling back to the top
-                // of a group.
-                while self.offset > 0
-                    && !matches!(self.rows[self.offset], Row::Host(..))
-                    && self.item(self.offset - 1).is_none()
-                {
-                    self.offset -= 1;
-                }
+                // Keep the session header in view when scrolling back to a
+                // session's first tab.
+                self.offset = if sel > 0 && !is_tab(&self.rows[sel - 1]) { sel - 1 } else { sel };
             } else if sel >= self.offset + h {
                 self.offset = sel + 1 - h;
             }
@@ -637,7 +598,7 @@ impl App {
         for (i, row) in self.rows.iter().enumerate().skip(self.offset).take(h) {
             let r = Rect { y: area.y + (i - self.offset) as u16, height: 1, ..list };
             let selected = self.selected == Some(i);
-            let last = !matches!(self.rows.get(i + 1), Some(Row::Item(Item::Tab(_))));
+            let last = !self.rows.get(i + 1).is_some_and(is_tab);
             self.draw_row(f, r, row, selected, last, tick);
         }
         if overflow {
@@ -697,117 +658,97 @@ impl App {
         }
     }
 
-    fn draw_row(&self, f: &mut Frame, r: Rect, row: &Row, selected: bool, last: bool, tick: usize) {
+    fn draw_row(&self, f: &mut Frame, r: Rect, item: &Item, selected: bool, last: bool, tick: usize) {
         let p = &self.p;
         let width = r.width as usize;
-        match row {
-            Row::Gap => {}
-            Row::Host(host, n) => {
-                let local = self.local_host.as_deref() == Some(host.as_str());
-                let icon = if local { ICON_LOCAL } else { ICON_REMOTE };
-                let pill = Style::new().fg(p.iris).bg(p.overlay).add_modifier(Modifier::BOLD);
-                let line = Line::from(vec![
-                    Span::styled(CAP_L, Style::new().fg(p.overlay).bg(p.base)),
-                    Span::styled(format!("{icon} {host}"), pill),
-                    Span::styled(CAP_R, Style::new().fg(p.overlay).bg(p.base)),
-                    Span::styled(
-                        format!("  {n} session{}", if *n == 1 { "" } else { "s" }),
-                        Style::new().fg(p.muted),
-                    ),
-                ]);
-                f.render_widget(line, r);
-            }
-            Row::Item(item) => {
-                // Selection: a soft full-row wash with an iris edge.
-                let bg = if selected { p.overlay } else { p.base };
-                let chip_bg = if selected { p.hl_med } else { p.overlay };
-                f.buffer_mut().set_style(r, Style::new().bg(bg));
-                let edge = if selected {
-                    Span::styled("▎", Style::new().fg(p.iris).bg(bg))
-                } else {
-                    Span::styled(" ", Style::new().bg(bg))
+        // Selection: a soft full-row wash with an iris edge.
+        let bg = if selected { p.overlay } else { p.base };
+        let chip_bg = if selected { p.hl_med } else { p.overlay };
+        f.buffer_mut().set_style(r, Style::new().bg(bg));
+        let edge = if selected {
+            Span::styled("▎", Style::new().fg(p.iris).bg(bg))
+        } else {
+            Span::styled(" ", Style::new().bg(bg))
+        };
+        let hits = self.hits.get(item).cloned().unwrap_or_default();
+        let hl = Style::new().fg(p.rose).bg(bg).add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
+        match item {
+            Item::Session(s) => {
+                let s = &self.sessions[*s];
+                let count = |st: State| s.tabs.iter().filter(|&&t| self.tabs[t].state == st).count();
+                let mut right: Vec<Span> = Vec::new();
+                let mut chip = |text: String, fg: Color| {
+                    right.push(Span::styled(CAP_L, Style::new().fg(chip_bg).bg(bg)));
+                    right.push(Span::styled(text, Style::new().fg(fg).bg(chip_bg)));
+                    right.push(Span::styled(CAP_R, Style::new().fg(chip_bg).bg(bg)));
+                    right.push(Span::styled(" ", Style::new().bg(bg)));
                 };
-                let hits = self.hits.get(item).cloned().unwrap_or_default();
-                let hl = Style::new().fg(p.rose).bg(bg).add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
-                match item {
-                    Item::Session(s) => {
-                        let s = &self.sessions[*s];
-                        let count = |st: State| s.tabs.iter().filter(|&&t| self.tabs[t].state == st).count();
-                        let mut right: Vec<Span> = Vec::new();
-                        let mut chip = |text: String, fg: Color| {
-                            right.push(Span::styled(CAP_L, Style::new().fg(chip_bg).bg(bg)));
-                            right.push(Span::styled(text, Style::new().fg(fg).bg(chip_bg)));
-                            right.push(Span::styled(CAP_R, Style::new().fg(chip_bg).bg(bg)));
-                            right.push(Span::styled(" ", Style::new().bg(bg)));
-                        };
-                        let (blocked, errors) = (count(State::Blocked), count(State::Error));
-                        if blocked > 0 {
-                            chip(format!("● {blocked} waiting"), p.gold);
-                        }
-                        if errors > 0 {
-                            chip(format!("✗ {errors} failed"), p.love);
-                        }
-                        let n = s.tabs.len();
-                        chip(format!("{n} tab{}", if n == 1 { "" } else { "s" }), p.subtle);
-                        let right_w: usize = right.iter().map(|s| str_width(&s.content)).sum();
-                        let lead = 4;
-                        let avail = width.saturating_sub(lead + right_w + 2);
-                        let label = Style::new()
-                            .fg(p.text)
-                            .bg(bg)
-                            .add_modifier(Modifier::BOLD);
-                        let mut spans = vec![
-                            edge,
-                            Span::styled(ICON_SESSION, Style::new().fg(if selected { p.iris } else { p.subtle }).bg(bg)),
-                            Span::styled("  ", Style::new().bg(bg)),
-                        ];
-                        spans.extend(highlight(&s.label, &hits.name, avail, false, label, hl));
-                        f.render_widget(Line::from(spans), r);
-                        f.render_widget(Line::from(right).right_aligned(), r);
-                    }
-                    Item::Tab(t) => {
-                        let tab = &self.tabs[*t];
-                        let (glyph, color) = match tab.state {
-                            State::Working => (SPINNER[tick % SPINNER.len()], p.foam),
-                            State::Blocked => ("●", p.gold),
-                            State::Done => ("✓", p.pine),
-                            State::Error => ("✗", p.love),
-                            State::Idle => ("·", p.muted),
-                        };
-                        let here = self.is_current(*t);
-                        let here_label = "current";
-                        let guide = if last { "╰─ " } else { "├─ " };
-                        let lead = 1 + 1 + 3 + 2; // edge, indent, guide, glyph + space
-                        let dir_room = (width.saturating_sub(lead) * 2 / 5).min(48);
-                        let dir_w = str_width(&tab.dir).min(dir_room);
-                        let here_w = if here { 2 + here_label.len() } else { 0 };
-                        let name_room = width.saturating_sub(lead + dir_w + 3 + here_w);
-                        let name_style = if selected {
-                            Style::new().fg(p.text).bg(bg).add_modifier(Modifier::BOLD)
-                        } else {
-                            Style::new().fg(p.text).bg(bg)
-                        };
-                        let mut spans = vec![
-                            edge,
-                            Span::styled(" ", Style::new().bg(bg)),
-                            Span::styled(guide, Style::new().fg(p.hl_med).bg(bg)),
-                            Span::styled(glyph, Style::new().fg(color).bg(bg)),
-                            Span::styled(" ", Style::new().bg(bg)),
-                        ];
-                        spans.extend(highlight(&tab.name, &hits.name, name_room, false, name_style, hl));
-                        if here {
-                            spans.push(Span::styled(
-                                format!("  {here_label}"),
-                                Style::new().fg(p.iris).bg(bg).add_modifier(Modifier::ITALIC),
-                            ));
-                        }
-                        f.render_widget(Line::from(spans), r);
-                        let dir_style = Style::new().fg(if selected { p.subtle } else { p.muted }).bg(bg);
-                        let mut dir = highlight(&tab.dir, &hits.dir, dir_w, true, dir_style, hl);
-                        dir.push(Span::styled(" ", Style::new().bg(bg)));
-                        f.render_widget(Line::from(dir).right_aligned(), r);
-                    }
+                let (blocked, errors) = (count(State::Blocked), count(State::Error));
+                if blocked > 0 {
+                    chip(format!("● {blocked} waiting"), p.gold);
                 }
+                if errors > 0 {
+                    chip(format!("✗ {errors} failed"), p.love);
+                }
+                let n = s.tabs.len();
+                chip(format!("{n} tab{}", if n == 1 { "" } else { "s" }), p.subtle);
+                let right_w: usize = right.iter().map(|s| str_width(&s.content)).sum();
+                let lead = 4;
+                let avail = width.saturating_sub(lead + right_w + 2);
+                let label = Style::new()
+                    .fg(p.text)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD);
+                let mut spans = vec![
+                    edge,
+                    Span::styled(ICON_SESSION, Style::new().fg(if selected { p.iris } else { p.subtle }).bg(bg)),
+                    Span::styled("  ", Style::new().bg(bg)),
+                ];
+                spans.extend(highlight(&s.label, &hits.name, avail, false, label, hl));
+                f.render_widget(Line::from(spans), r);
+                f.render_widget(Line::from(right).right_aligned(), r);
+            }
+            Item::Tab(t) => {
+                let tab = &self.tabs[*t];
+                let (glyph, color) = match tab.state {
+                    State::Working => (SPINNER[tick % SPINNER.len()], p.foam),
+                    State::Blocked => ("●", p.gold),
+                    State::Done => ("✓", p.pine),
+                    State::Error => ("✗", p.love),
+                    State::Idle => ("·", p.muted),
+                };
+                let here = self.is_current(*t);
+                let here_label = "current";
+                let guide = if last { "╰─ " } else { "├─ " };
+                let lead = 1 + 1 + 3 + 2; // edge, indent, guide, glyph + space
+                let dir_room = (width.saturating_sub(lead) * 2 / 5).min(48);
+                let dir_w = str_width(&tab.dir).min(dir_room);
+                let here_w = if here { 2 + here_label.len() } else { 0 };
+                let name_room = width.saturating_sub(lead + dir_w + 3 + here_w);
+                let name_style = if selected {
+                    Style::new().fg(p.text).bg(bg).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::new().fg(p.text).bg(bg)
+                };
+                let mut spans = vec![
+                    edge,
+                    Span::styled(" ", Style::new().bg(bg)),
+                    Span::styled(guide, Style::new().fg(p.hl_med).bg(bg)),
+                    Span::styled(glyph, Style::new().fg(color).bg(bg)),
+                    Span::styled(" ", Style::new().bg(bg)),
+                ];
+                spans.extend(highlight(&tab.name, &hits.name, name_room, false, name_style, hl));
+                if here {
+                    spans.push(Span::styled(
+                        format!("  {here_label}"),
+                        Style::new().fg(p.iris).bg(bg).add_modifier(Modifier::ITALIC),
+                    ));
+                }
+                f.render_widget(Line::from(spans), r);
+                let dir_style = Style::new().fg(if selected { p.subtle } else { p.muted }).bg(bg);
+                let mut dir = highlight(&tab.dir, &hits.dir, dir_w, true, dir_style, hl);
+                dir.push(Span::styled(" ", Style::new().bg(bg)));
+                f.render_widget(Line::from(dir).right_aligned(), r);
             }
         }
     }
@@ -822,11 +763,9 @@ impl App {
             ]
         };
         let summary = format!(
-            "{} session{} on {} host{}",
+            "{} session{}",
             self.sessions.len(),
-            if self.sessions.len() == 1 { "" } else { "s" },
-            self.hosts,
-            if self.hosts == 1 { "" } else { "s" }
+            if self.sessions.len() == 1 { "" } else { "s" }
         );
         // Hints first; the summary only when it still fits beside them.
         let mut spans = vec![Span::raw(" ")];
@@ -922,7 +861,7 @@ fn highlight(text: &str, hits: &[usize], room: usize, keep_end: bool, base: Styl
 
 const USAGE: &str = "usage: rex-tab-picker [--current SESSION/WINDOW] [ROWS | -]
 
-Shows Rex tabs grouped by host and session and reports the highlighted one in
+Shows Rex tabs grouped by session and reports the highlighted one in
 the terminal title as rex-tab-picker:TARGET/SESSION/WINDOW. ROWS are the tab
 separated rows built by the Rex config; `-` or no argument reads stdin.";
 
