@@ -18,7 +18,11 @@
     packages = piPackages.notesPackageSpecs;
   });
   runPi = pkgs.writeShellScript "run-pi-latest" ''
-    ${pkgs.nodejs_24}/bin/npx --yes ${piPackageSpec} "$@"
+    # Resolve latest through npm, then replace the wrapper with Pi itself so
+    # terminals such as Rex can identify the foreground program's CLI path.
+    pi_cli="$(${pkgs.nodejs_24}/bin/npx --yes --package=${piPackageSpec} --call 'command -v pi')" || exit $?
+    pi_cli="$(${pkgs.coreutils}/bin/realpath "$pi_cli")" || exit $?
+    exec ${pkgs.nodejs_24}/bin/node "$pi_cli" "$@"
   '';
 
   # Install declared Pi packages with the same managed/latest pi runtime the
