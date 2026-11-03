@@ -63,29 +63,6 @@ rex.action{
 }
 rex.bind("cmd+shift+m", "yem_float")
 
--- Pick a zoxide folder with rex-project-picker and switch to the session named
--- after it, creating one if needed. It lists this host's folders; Tab moves to
--- another Rex host. The float runs on the focused session's host.
-rex.action{
-  name  = "project_session",
-  title = "New Session in Directory…",
-  run   = function(ctx, args)
-    local _, err = rex.session.new_layer{
-      session_id = ctx.session_id,
-      bounds     = { 0.12, 0.1, 0.76, 0.75 },
-      focus      = true,
-      layout     = rex.layout.block{
-        flavor  = "com.superlogical.terminal.shell",
-        label   = "project-session",
-        options = { command = {
-          "sh", "-c", 'PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"; export PATH; exec rex-project-picker',
-        } },
-      },
-    }
-    if err ~= nil then error(err, 0) end
-  end,
-}
-rex.bind("cmd+shift+n", "project_session")
 
 -- Pick a tab across sessions and hosts with rex-tab-picker.
 -- A `rex do` script can attach to every session on each configured server.
@@ -288,3 +265,105 @@ rex.action{
 rex.bind("cmd+k", "tab_picker")
 rex.bind("tab_picker/enter", "tab_picker_go")
 rex.bind("tab_picker/escape", "tab_picker_cancel")
+
+-- Pick a zoxide folder with rex-project-picker and switch to the session named
+-- after it, creating one if needed. It lists the focused host's folders; Tab
+-- moves to another Rex host. The float runs on the focused session's host,
+-- which may have no route back here, so this host passes in its own label,
+-- folders, and hosts, and finishes the pick itself as tab_picker does.
+local function float_block(ctx, label)
+  local view = rex.session.view{ session_id = ctx.session_id }
+  for _, window in ipairs((view and view.windows) or {}) do
+    for _, layer in ipairs(window.layers or {}) do
+      for _, block in ipairs(layer.blocks or {}) do
+        if layer.kind ~= "tiled" and block.label == label then
+          return layer, block.block_id
+        end
+      end
+    end
+  end
+end
+
+local function close_project_picker(ctx)
+  local layer = float_block(ctx, "project-session")
+  if layer ~= nil then
+    rex.session.close_layer{ session_id = ctx.session_id, layer_id = layer.layer_id }
+  end
+  rex.client.queue("client.mode.exit_all")
+end
+
+rex.mode("project_picker")
+
+rex.action{
+  name  = "project_session",
+  title = "New Session in Directory…",
+  run   = function(ctx, args)
+    if float_block(ctx, "project-session") ~= nil then return close_project_picker(ctx) end
+    local path = user_path()
+    local home = rex.exec({ "hostname", "-s" }).stdout:gsub("%s+$", "")
+    local folders = rex.exec({ "zoxide", "query", "-l" }, { env = { PATH = path } })
+    local command = {
+      "sh", "-c", 'PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"; export PATH; exec rex-project-picker "$@"',
+      "sh", home, (folders and folders.ok and folders.stdout) or "",
+    }
+    for _, host in ipairs(rex.servers()) do command[#command + 1] = host end
+    local _, err = rex.session.new_layer{
+      session_id = ctx.session_id,
+      bounds     = { 0.12, 0.1, 0.76, 0.75 },
+      focus      = true,
+      layout     = rex.layout.block{
+        flavor  = "com.superlogical.terminal.shell",
+        label   = "project-session",
+        options = { command = command },
+      },
+    }
+    if err ~= nil then error(err, 0) end
+    rex.client.queue("client.mode.enter", { name = "project_picker" })
+  end,
+}
+
+rex.action{
+  name  = "project_session_go",
+  title = "Open Picked Directory",
+  run   = function(ctx, args)
+    local _, block_id = float_block(ctx, "project-session")
+    if block_id == nil or block_id ~= ctx.block_id then
+      close_project_picker(ctx)
+      rex.client.queue("pane.send_key", { key = "enter" })
+      return
+    end
+    local pick = rex.block.call("com.superlogical.terminal", "title", {
+      session_id = ctx.session_id, block_id = block_id,
+    })
+    local host, dir = ((pick and pick.title) or ""):match("^rex%-project%-picker:(%x+)/(%x+)$")
+    if host == nil then return end
+    close_project_picker(ctx)
+    local function unhex(s) return (s:gsub("%x%x", function(pair) return string.char(tonumber(pair, 16)) end)) end
+    host, dir = unhex(host), unhex(dir)
+    local env = { PATH = user_path(), REX_SERVER = false, REX_CLIENT = false, REX_SESSION = false, REX_BLOCK = false }
+    local r, err = rex.exec({ "rex-project-picker", "--open", host, dir }, { env = env })
+    if r == nil then error(err, 0) end
+    if not r.ok or r.stdout == "" then error(r.stderr, 0) end
+    local home = rex.exec({ "hostname", "-s" }).stdout:gsub("%s+$", "")
+    if host == home then
+      rex.client.queue("session.select", { session_id = r.stdout })
+      return
+    end
+    -- As in tab_picker_go: select through that host's app connection, detached.
+    local job, start_err = rex.exec.start({
+      "sh", "-c", 'umask 077; log="${XDG_STATE_HOME:-$HOME/.local/state}/rex/project-picker.log"; mkdir -p "${log%/*}" || exit; exec "$@" >> "$log" 2>&1',
+      "sh", "rex", "-S", host, "do", "session.select", "session_id=" .. r.stdout,
+    }, { detach = true, env = env })
+    if job == nil then error(start_err, 0) end
+  end,
+}
+
+rex.action{
+  name  = "project_session_cancel",
+  title = "Close Project Picker",
+  run   = function(ctx, args) close_project_picker(ctx) end,
+}
+
+rex.bind("cmd+shift+n", "project_session")
+rex.bind("project_picker/enter", "project_session_go")
+rex.bind("project_picker/escape", "project_session_cancel")
