@@ -112,6 +112,30 @@ in {
     CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS = "1";
   };
 
+  home.activation.desktopprPrepareWallpaper = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
+    (lib.hm.dag.entryBetween ["desktoppr"] ["setDarwinDefaults"] ''
+      # desktoppr manage adjusts the old image before replacing it, which crashes
+      # if that image was garbage-collected. Set the current image first.
+      run "${lib.getExe config.programs.desktoppr.package}" all ${lib.escapeShellArg "${solidWallpaper}"}
+      if [ -z "''${DRY_RUN:-}" ]; then
+        # macOS publishes wallpaper changes asynchronously to other processes.
+        wallpaper_ready=false
+        for attempt in {1..50}; do
+          current_wallpapers="$("${lib.getExe config.programs.desktoppr.package}" all)"
+          if [ -n "$current_wallpapers" ] && ! printf '%s\n' "$current_wallpapers" |
+            ${pkgs.gnugrep}/bin/grep -Fxqv ${lib.escapeShellArg "${solidWallpaper}"}; then
+            wallpaper_ready=true
+            break
+          fi
+          ${pkgs.coreutils}/bin/sleep 0.2
+        done
+        if [ "$wallpaper_ready" != true ]; then
+          echo "Timed out waiting for the managed wallpaper on all displays" >&2
+          exit 1
+        fi
+      fi
+    '');
+
   programs.desktoppr = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
     enable = true;
     settings = {
