@@ -222,7 +222,10 @@ EOF
         violent = "Violent Femmes/Violent Femmes"
       '';
     } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-      ".config/rex/init.lua".source = ./dotfiles/config/rex/init.lua;
+      ".config/rex" = {
+        source = ./dotfiles/config/rex;
+        recursive = true;
+      };
     };
   };
 }

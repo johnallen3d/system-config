@@ -1,4 +1,4 @@
-# The cmd+k tab picker for Rex (see ../dotfiles/config/rex/init.lua). It runs
+# The cmd+k tab picker for Rex (see ../dotfiles/config/rex/actions/tab-picker.lua). It runs
 # in a float on whichever host the focused session lives on, so it is
 # installed on every host even though the Rex config is Mac-only.
 {
