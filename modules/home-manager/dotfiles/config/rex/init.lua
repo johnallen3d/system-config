@@ -13,7 +13,6 @@ rex.bind("cmd+0", "client.font.reset")
 rex.bind("cmd+ctrl+=", "pane.balance")
 
 -- Herdr workspaces
-rex.bind("cmd+ctrl+n", "session.new")
 rex.bind("cmd+s", "client.sidebar.toggle")
 
 -- Herdr tabs and panes
@@ -364,6 +363,7 @@ rex.action{
   run   = function(ctx, args) close_project_picker(ctx) end,
 }
 
-rex.bind("cmd+shift+n", "project_session")
+rex.bind("cmd+ctrl+n", "project_session")
+rex.unbind("cmd+shift+n") -- drop the native new-session shortcut for now
 rex.bind("project_picker/enter", "project_session_go")
 rex.bind("project_picker/escape", "project_session_cancel")
