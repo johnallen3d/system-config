@@ -38,7 +38,6 @@ in
           home-manager.extraSpecialArgs = {
             inherit herdrProjectPicker lop yem user full_name;
             op_path = "${pkgs._1password-cli}/bin/op";
-            op_ssh_sign_path = "${pkgs._1password-gui}/bin/op-ssh-sign";
           };
 
           home-manager.users.${user}.imports = [

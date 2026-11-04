@@ -99,7 +99,7 @@
           overlays = [(import ./lib/worktrunk-overlay.nix)];
         };
         extraSpecialArgs = {
-          inherit credits lop rex;
+          inherit credits full_name lop rex;
           herdrProjectPicker = omarchyHerdrProjectPicker;
         };
         modules = [./hosts/omarchy.nix];

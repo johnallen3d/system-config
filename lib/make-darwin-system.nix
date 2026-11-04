@@ -16,7 +16,6 @@
   home = "/Users/${user}";
   brew_bin = "/opt/homebrew/bin";
   op_path = "${brew_bin}/op";
-  op_ssh_sign_path = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
 in
   nix-darwin.lib.darwinSystem {
     inherit system;
@@ -87,7 +86,7 @@ in
             useUserPackages = true;
             backupFileExtension = "hm-backup";
             extraSpecialArgs = {
-              inherit brew_bin credits full_name herdrProjectPicker home lop yem op_path op_ssh_sign_path;
+              inherit brew_bin credits full_name herdrProjectPicker home lop yem op_path;
             };
             users.${user}.imports = [
               ../modules/home-manager

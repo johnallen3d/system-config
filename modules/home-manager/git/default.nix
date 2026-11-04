@@ -1,8 +1,12 @@
 {
+  config,
   full_name,
-  op_ssh_sign_path,
+  lib,
   ...
-}: {
+}: let
+  ssh = "${config.home.homeDirectory}/.ssh";
+  email = "john@threedogconsulting.com";
+in {
   programs.difftastic = {
     enable = true;
   };
@@ -12,12 +16,19 @@
     settings = {
       diff = {
         external = "difft";
+        algorithm = "histogram";
+        colorMoved = "plain";
+        mnemonicPrefix = true;
       };
       user = {
         name = "${full_name}";
-        email = "john@threedogconsulting.com";
+        inherit email;
       };
       alias = {
+        co = "checkout";
+        br = "branch";
+        ci = "commit";
+        st = "status";
         lol = "log --color --pretty=format:\"%C(yellow)%h%C(reset) %s%C(bold red)%d%C(reset) %C(green)%ad%C(reset) %C(blue)[%an]%C(reset)\" --relative-date --decorate --oneline";
         head = "lol -n 10";
         blog = "log --graph --format=format:'%C(bold magenta)%h%C(reset) %C(white)%ai%C(reset) %C(bold dim white)%aN%C(auto)%+D%C(reset)%n%C(bold white)%s%C(reset)%+b%n'";
@@ -29,6 +40,9 @@
         bv = "branch -vv  --sort=-committerdate --format='%(color:red)%(objectname:short) %(color:yellow)%(refname:short)%(color:reset) (%(color:green)%(committerdate:relative)%(color:reset)) %(color:cyan)%(upstream:short)%(color:reset)'";
         conv-commits = "!git log --pretty=format:\"%s\" | grep -Eo \"^[a-z]+(\\([a-z]+\\))?:\" | sed \"s/:$//\" | sort | uniq";
         # url =! "bash -c 'git config --get remote.origin.url | sed -E "s/.+:\\(.+\\)\\.git$/https:\\\\/\\\\/github\\\\.com\\\\/\\\\1/g"'";
+      };
+      branch = {
+        sort = "-committerdate";
       };
       color = {
         ui = "always";
@@ -47,6 +61,12 @@
         newNormal = "green bold";
         newHighlight = "green bold 22";
       };
+      column = {
+        ui = "auto";
+      };
+      commit = {
+        verbose = true;
+      };
       github = {
         user = "johnallen3d";
       };
@@ -64,6 +84,7 @@
       };
       push = {
         default = "simple";
+        autoSetupRemote = true;
       };
       rebase = {
         autosquash = true;
@@ -72,14 +93,23 @@
         enabled = true;
         autoupdate = true;
       };
+      tag = {
+        sort = "-version:refname";
+      };
     };
+    # Sign with each host's local SSH key file (no agent or 1Password); hosts
+    # override the key path. Both keys are GitHub signing keys.
     signing = {
       signByDefault = true;
-      key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINGs0qwPKIoejl6w0R0UKGM4i3WoyJI9WooAkEvSQKq6";
+      key = lib.mkDefault "${ssh}/github-ssh-3d";
       format = "ssh";
-      signer = op_ssh_sign_path;
+      allowedSigners = ''
+        ${email} namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINGs0qwPKIoejl6w0R0UKGM4i3WoyJI9WooAkEvSQKq6 m4-mbp
+        ${email} namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZEUGBGQyM7PFS1GPkW+4sUcOK+graXttptqcNRRH2a omarchy
+      '';
     };
     ignores = [
+      "**/.claude/settings.local.json"
       "*~"
       ".*.sw*"
       ".un~"
@@ -94,17 +124,5 @@
       ".pry_history"
       ".worktrees/"
     ];
-  };
-
-  programs.gh = {
-    enable = true;
-    settings = {
-      git_protocol = "ssh";
-      aliases = {
-        co = "pr checkout";
-        labels = "!gh api --paginate repos/:owner/:repo/labels | jq -r .[].name";
-        label-add = "!gh api /repos/technekes/$1/labels --field name=$2";
-      };
-    };
   };
 }

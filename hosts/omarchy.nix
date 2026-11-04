@@ -36,6 +36,7 @@ in {
   # Only opt-in host modules: Omarchy still owns Bash and the desktop.
   imports = [
     ../modules/home-manager/coding-agents.nix
+    ../modules/home-manager/git
     ../modules/home-manager/omarchy-beszel.nix
     ../modules/home-manager/omarchy-credits.nix
     ../modules/home-manager/omarchy-fish.nix
@@ -104,11 +105,17 @@ in {
     man.enable = false;
   };
 
-  # Manage global ignores without replacing Omarchy's existing Git settings.
-  xdg.configFile."git/ignore".text = ''
-    **/.claude/settings.local.json
-    .worktrees/
-  '';
+  # Shared Git policy; sign with Omarchy's own key (GitHub "omarchy-box").
+  # Omarchy's gh stays mise-managed; Nix gh only serves HTTPS credentials.
+  programs.git = {
+    signing.key = "${homeDir}/.ssh/id_ed25519";
+    settings.credential = let
+      helper = ["" "!${lib.getExe pkgs.gh} auth git-credential"];
+    in {
+      "https://github.com" = {inherit helper;};
+      "https://gist.github.com" = {inherit helper;};
+    };
+  };
 
   # Match the Mac's Nix-owned policy; exclusions stay writable and host-local.
   xdg.configFile."lop/config.toml".source = ../modules/home-manager/dotfiles/config/lop/config.toml;

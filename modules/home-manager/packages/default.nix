@@ -50,6 +50,7 @@ in {
     ../direnv
     ../fish
     ../git
+    ../git/gh.nix
     ../nvim
     ../ripgrep
     ../starship
