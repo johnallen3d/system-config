@@ -35,6 +35,25 @@ session/message or delegated-result evidence. No tracked file is needed.
   `runtime_model_info` locates the session file but its current model is not
   provenance. Prose self-identification, the selected/default model, the last
   model before `/wrap`, and attribution reminders are not proof.
+- Claude transcripts are readable JSONL under
+  `$CLAUDE_CONFIG_DIR/projects/<slug>/<session-id>.jsonl`, where `<slug>` is
+  the session's start directory with `/` and `.` replaced by `-` (often the
+  primary checkout, not the worktree). Never claim they are unreadable. Find the
+  task session by its task branch/worktree name, and the model behind each
+  scoped write with:
+
+  ```bash
+  dir="$CLAUDE_CONFIG_DIR/projects"
+  grep -rl --include='*.jsonl' "$branch_or_worktree" "$dir"/-<repo-slug>*
+  jq -r 'select(.type=="assistant") | .message.model as $m
+    | .message.content[]? | select(.type=="tool_use")
+    | "\($m)\t\(.name)\t\((.input.file_path // .input.command // "")|tostring|.[0:120])"' \
+    -- "$transcript"
+  ```
+
+  Models seen only on reads, skill lookups, or Git/tracker steps earn no
+  credit. Resolve attribution from this output yourself; ask John only if the
+  transcript is missing or the writes themselves are ambiguous.
 - If the handoff is missing, inspect the original task session and delegated
   handoffs only; never scan unrelated profiles or pick the newest session.
 - Use recent commits only for the trailer email/format convention, never to infer
