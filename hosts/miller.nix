@@ -4,4 +4,7 @@
   imports = [./omarchy-common.nix];
 
   services.rex.tailscale.hostname = "rex-miller";
+
+  # Tailscale-only VNC listener (this node's stable tailnet IP).
+  omarchyVnc.address = "100.113.199.114";
 }

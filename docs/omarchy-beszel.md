@@ -58,6 +58,16 @@ locked revisions. Follow
 rebuild tasks on this machine. The current source is
 `/home/johna/dev/src/system-config/.worktrees/consolidate-omarchy-config`.
 
+Miller (#952) was paired without the dashboard, matching what Beszel 0.21's
+Add System dialog does: authenticate as the dashboard user with
+`doppler run --only-secrets BESZEL_URL,BESZEL_USER,BESZEL_PASSWORD` from the
+`pi-cielo` checkout (prod config), refuse if a system with that name exists,
+create `systems` `{name, host, port: 45876, users: [self]}`, then create
+`fingerprints` `{system, token: <random UUID>}` (the hub does not create it).
+Confirm `/api/beszel/getkey` equals the host's `hub.pub`, and pipe the token over
+SSH into the `0600` token file without printing it. Afterwards the system shows
+`up` with stats and its fingerprint is bound on first connect.
+
 The unit skips startup if pairing files are absent. Once provisioned:
 
 ```bash

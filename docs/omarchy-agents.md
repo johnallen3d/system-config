@@ -480,9 +480,21 @@ from the Mac):
    server` is already running, `herdr.service` loops on "already running":
    stop the stock server so the managed one starts, then rerun
    `herdr-omarchy-setup` on the Mac.
+8. Log in the host's Rex tailnet node: `rex.service` runs, but its `rex-$h`
+   tsnet node stays unauthenticated (the Mac app cannot connect) until John
+   opens the login link it repeats every few seconds
+   (`journalctl --user -u rex -n 1 -o cat` on `$h`) and signs in; no separate
+   device approval is needed on this tailnet. Then `rex-$h` appears in
+   `tailscale status`.
+9. Set the VNC password with a silent prompt into `~/.config/wayvnc/config`
+   (see [the VNC guide](omarchy-vnc.md); the unit creates the virtual `VNC`
+   output itself) and pair Beszel (system plus `fingerprints` token record via
+   the hub API, as the dashboard's Add System dialog does;
+   [Beszel guide](omarchy-beszel.md)).
 
-Remaining host secrets (signing key, Doppler, Beszel token, VNC password,
-Syncthing pairing) are manual; Miller's are tracked in
+Remaining host setup (signing key via `gh auth refresh -s
+admin:ssh_signing_key`, Doppler logins, Syncthing pairing) is manual; Miller's is
+tracked in
 [#952](https://app.fizzy.do/6284043/cards/952).
 
 ## Account status: available-account setup complete
