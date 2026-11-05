@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transport a Git-based deployment to Omarchy; never transport host profiles."""
+"""Transport a Git-based deployment to Omarchy (Arch) hosts; never transport host profiles."""
 
 import base64
 import hashlib
@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import sys
 import tarfile
@@ -15,12 +16,34 @@ import time
 
 import deployment_state as coordination
 
-# Apple SSH supports macOS Keychain directives that portable OpenSSH rejects.
-# Select it explicitly: a caller (including a Nix wrapper) may prepend Nix SSH.
-SSH = ["/usr/bin/ssh" if sys.platform == "darwin" else "ssh",
-       "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
-       "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
-       "johna@omarchy", "bash -s"]
+# Every Omarchy host has homeConfigurations."johna@<host>" and runs this worker.
+HOSTS = ("omarchy", "miller")
+LABEL = "Linux"
+
+
+def ssh(host):
+    # Apple SSH supports macOS Keychain directives that portable OpenSSH rejects.
+    # Select it explicitly: a caller (including a Nix wrapper) may prepend Nix SSH.
+    return ["/usr/bin/ssh" if sys.platform == "darwin" else "ssh",
+            "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+            "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
+            f"johna@{host}", "bash -s"]
+
+
+def label(host):
+    return host.capitalize()
+
+
+def set_label(host):
+    global LABEL
+    LABEL = label(host)
+
+
+def local_host():
+    host = socket.gethostname().split(".")[0]
+    if host not in HOSTS:
+        raise RuntimeError(f"Unknown Omarchy host {host!r}; expected one of {', '.join(HOSTS)}")
+    return host
 
 
 def run(*args, cwd=None, env=None):
@@ -63,24 +86,27 @@ def prepare(repo, directory, planned_source=None):
                        stdout=output, check=True)
     shutil.copyfile(__file__, directory / "worker.py")
     shutil.copyfile(Path(__file__).with_name("deployment_state.py"), directory / "deployment_state.py")
-    print(f"[Omarchy] Prepared source {tree[:12]} on main {main[:12]}", flush=True)
+    print(f"[{LABEL}] Prepared source {tree[:12]} on main {main[:12]}", flush=True)
 
 
-def deploy(directory):
-    archive = directory / "payload.tar.gz"
+def deploy(directory, host):
+    if host not in HOSTS:
+        raise RuntimeError(f"Unknown Omarchy host {host!r}")
+    set_label(host)
+    archive = directory / f"payload-{host}.tar.gz"
     with tarfile.open(archive, "w:gz") as output:
         for name in ("main.bundle", "source.patch", "manifest.json", "worker.py", "deployment_state.py"):
             output.add(directory / name, arcname=name)
     # Fish is the login shell. Run Bash explicitly, with no local profile/env
     # variables or credentials serialized into the remote command.
     script = """set -euo pipefail
-[ "$(uname -s)" = Linux ] && [ "$HOME" = /home/johna ]
+[ "$(uname -s)" = Linux ] && [ "$HOME" = /home/johna ] && [ "$(hostname -s)" = """ + host + """ ]
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 base64 --decode <<'UPDATE_SYSTEM_PAYLOAD' | tar -xzf - -C "$directory"
 """ + base64.b64encode(archive.read_bytes()).decode() + "\nUPDATE_SYSTEM_PAYLOAD\n" + \
         'python3 "$directory/worker.py" remote "$directory"\n'
-    subprocess.run(SSH, input=script, text=True, check=True)
+    subprocess.run(ssh(host), input=script, text=True, check=True)
 
 
 def verify_files(generation):
@@ -99,7 +125,7 @@ def verify_files(generation):
                 if not (actual.is_file() and expected.is_file() and actual.read_bytes() == expected.read_bytes()):
                     raise RuntimeError(f"Installed managed file differs: {relative}")
             checked += 1
-    print(f"[Omarchy] Verified {checked} installed managed entries", flush=True)
+    print(f"[{LABEL}] Verified {checked} installed managed entries", flush=True)
 
 
 def check_nix_system(task):
@@ -111,10 +137,10 @@ def check_nix_system(task):
     result = subprocess.run(["bash", str(script), "check"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     if result.returncode:
         for line in result.stdout.splitlines():
-            print(f"[Omarchy] WARNING: Nix system drift: {line}", flush=True)
-        print(f"[Omarchy] WARNING: run: sudo bash {script} apply", flush=True)
+            print(f"[{LABEL}] WARNING: Nix system drift: {line}", flush=True)
+        print(f"[{LABEL}] WARNING: run: sudo bash {script} apply", flush=True)
     else:
-        print("[Omarchy] Verified Nix system settings", flush=True)
+        print(f"[{LABEL}] Verified Nix system settings", flush=True)
 
 
 def receive(directory, repo):
@@ -126,11 +152,11 @@ def receive(directory, repo):
         raise RuntimeError("Invalid source manifest")
     worktrees = git(repo, "worktree", "list", "--porcelain")
     if worktrees.splitlines()[0] != f"worktree {repo.resolve()}":
-        raise RuntimeError("Omarchy deployment repository must be its primary checkout")
+        raise RuntimeError(f"{LABEL} deployment repository must be its primary checkout")
     if git(repo, "symbolic-ref", "--short", "HEAD") != "main":
-        raise RuntimeError("Omarchy primary checkout is not on main; refusing to switch it")
+        raise RuntimeError(f"{LABEL} primary checkout is not on main; refusing to switch it")
     if git(repo, "status", "--porcelain", "--untracked-files=all"):
-        raise RuntimeError("Omarchy primary checkout has changes; preserve/reconcile them first")
+        raise RuntimeError(f"{LABEL} primary checkout has changes; preserve/reconcile them first")
     git(repo, "bundle", "verify", str(directory / "main.bundle"))
     bundled = git(repo, "bundle", "list-heads", str(directory / "main.bundle"), "refs/heads/main")
     if bundled != f"{main} refs/heads/main":
@@ -138,11 +164,11 @@ def receive(directory, repo):
     git(repo, "bundle", "unbundle", str(directory / "main.bundle"))
     old_main = git(repo, "rev-parse", "refs/heads/main")
     if subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", old_main, main]).returncode:
-        raise RuntimeError("Omarchy main is ahead or diverged; reconcile history before deployment")
+        raise RuntimeError(f"{LABEL} main is ahead or diverged; reconcile history before deployment")
     if old_main != main:
         # Only integrated local main is synchronized, never a task branch.
         git(repo, "merge", "--ff-only", "--no-overwrite-ignore", main)
-        print(f"[Omarchy] Fast-forwarded main {old_main[:12]} -> {main[:12]}", flush=True)
+        print(f"[{LABEL}] Fast-forwarded main {old_main[:12]} -> {main[:12]}", flush=True)
     # Reconstruct the incoming tree in this repository's object database. A
     # private index applies the patch without a transport checkout or branch.
     with tempfile.TemporaryDirectory(prefix="update-system-index-") as index:
@@ -154,12 +180,13 @@ def receive(directory, repo):
         if run("git", "-C", str(repo), "write-tree", env=env) != tree:
             raise RuntimeError("Transported source does not match its declared tree")
     git(repo, "update-ref", f"refs/system-config/trees/{tree}", tree)
-    print(f"[Omarchy] Received source tree {tree[:12]} (no transport worktree)", flush=True)
+    print(f"[{LABEL}] Received source tree {tree[:12]} (no transport worktree)", flush=True)
     return repo, tree
 
 
 def remote(directory):
-    with coordination.lock(coordination.state_dir(), "Omarchy: " + str(json.loads((directory / "manifest.json").read_text())["layer"]["owner"])), coordination.temporary_sources():
+    set_label(local_host())
+    with coordination.lock(coordination.state_dir(), LABEL + ": " + str(json.loads((directory / "manifest.json").read_text())["layer"]["owner"])), coordination.temporary_sources():
         remote_locked(directory)
 
 
@@ -175,6 +202,7 @@ def remote_locked(directory):
 
 
 def local(repo):
+    set_label(local_host())
     if sys.platform != "linux" or str(Path.home()) != "/home/johna":
         raise RuntimeError("Unexpected Linux deployment host/user")
     with coordination.lock(coordination.state_dir(), str(repo)), coordination.temporary_sources():
@@ -183,20 +211,21 @@ def local(repo):
 
 def activate_omarchy(repo, record):
     task, tree = Path(record["source"]), record["tree"]
+    host = local_host()
     logs = Path.home() / ".local/state/system-config/logs"
     logs.mkdir(parents=True, exist_ok=True)
     log = logs / f"update-system-{time.time_ns()}.log"
-    print(f"[Omarchy] Home Manager log: {log}", flush=True)
+    print(f"[{LABEL}] Home Manager log: {log}", flush=True)
     context = ["mise", "-C", str(Path.home() / "dev/src/amfaro"), "exec", "--"]
     env = dict(os.environ, NIX_CONFIG=os.environ.get("NIX_CONFIG", "") +
                "\nextra-experimental-features = nix-command flakes")
     with log.open("w") as output:
         result = subprocess.run(context + ["nix", "--extra-experimental-features", "nix-command flakes",
                                           "build", "--no-update-lock-file", "--no-write-lock-file", "--no-link", "--print-out-paths",
-                                          f'path:{task}#homeConfigurations."johna@omarchy".activationPackage'],
+                                          f'path:{task}#homeConfigurations."johna@{host}".activationPackage'],
                                 stdout=subprocess.PIPE, stderr=output, text=True, env=env)
         if result.returncode:
-            raise RuntimeError(f"Omarchy build failed (exit {result.returncode}); inspect {log}")
+            raise RuntimeError(f"{LABEL} build failed (exit {result.returncode}); inspect {log}")
         generation = Path(result.stdout.strip())
         if generation.parent != Path("/nix/store") or not generation.name.endswith("-home-manager-generation"):
             raise RuntimeError(f"Unexpected build output; inspect {log}")
@@ -212,7 +241,7 @@ def activate_omarchy(repo, record):
     verify_files(generation)
     check_nix_system(task)
     coordination.finish(repo, coordination.state_dir())
-    print(f"[Omarchy] Active generation: {generation}", flush=True)
+    print(f"[{LABEL}] Active generation: {generation}", flush=True)
 
 
 def main():
@@ -220,7 +249,7 @@ def main():
     if mode == "prepare":
         prepare(Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4]) if len(sys.argv) > 4 else None)
     elif mode == "deploy":
-        deploy(Path(sys.argv[2]))
+        deploy(Path(sys.argv[2]), sys.argv[3])
     elif mode == "remote":
         remote(Path(sys.argv[2]))
     elif mode == "local":
@@ -239,5 +268,5 @@ if __name__ == "__main__":
     try:
         main()
     except (RuntimeError, subprocess.CalledProcessError, OSError) as error:
-        print(f"[Omarchy] {error}", file=sys.stderr, flush=True)
+        print(f"[{LABEL}] {error}", file=sys.stderr, flush=True)
         sys.exit(1)

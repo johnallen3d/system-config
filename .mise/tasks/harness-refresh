@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#MISE description="Refresh Pi packages and work Claude plugin on Mac and Omarchy"
-#USAGE flag "--local-only" help="Refresh only this host (macOS defaults to both hosts)"
+#MISE description="Refresh Pi packages and work Claude plugin on Mac, Omarchy, and Miller"
+#USAGE flag "--local-only" help="Refresh only this host (macOS defaults to every host)"
 set -uo pipefail
 
 local_only="${usage_local_only:-false}"
@@ -16,7 +16,12 @@ fi
 
 scripts_dir="$(cd "$(dirname "$0")/../scripts" && pwd)"
 
-refresh_omarchy() {
+# Omarchy (Arch) hosts refreshed from the Mac.
+linux_hosts=(omarchy miller)
+linux_labels=(Omarchy Miller)
+
+refresh_linux() {
+  local host="$1"
   # Ship only the refresh workers/report helper into a disposable directory.
   # This runs exactly
   # the same implementation without relying on/synchronizing the remote snapshot.
@@ -28,8 +33,8 @@ refresh_omarchy() {
   {
     cat <<'BASH'
 set -euo pipefail
-if [ "$(uname -s)" != Linux ] || [ "$HOME" != /home/johna ]; then
-  echo 'Unexpected Omarchy host/user; refusing refresh' >&2
+if [ "$(uname -s)" != Linux ] || [ "$HOME" != /home/johna ] || [ "$(hostname -s)" != "$1" ]; then
+  echo 'Unexpected Linux host/user; refusing refresh' >&2
   exit 1
 fi
 tmp_dir="$(mktemp -d)"
@@ -42,7 +47,7 @@ HARNESS_PAYLOAD
 mise -C "$HOME/dev/src/amfaro" exec -- bash "$tmp_dir/harness-refresh-local"
 BASH
   } | ssh -o BatchMode=yes -o ConnectTimeout=10 \
-    -o ServerAliveInterval=15 -o ServerAliveCountMax=3 johna@omarchy 'bash -s'
+    -o ServerAliveInterval=15 -o ServerAliveCountMax=3 "johna@$host" bash -s "$host"
 }
 
 status=0
@@ -55,16 +60,19 @@ else
   status=1
 fi
 
-# Linux is always host-local, preventing recursion and Mac rebuilds on Omarchy.
-# Attempt Omarchy even when the local refresh fails.
+# Linux is always host-local, preventing recursion and Mac rebuilds there.
+# Attempt every Linux host even when an earlier refresh fails.
 if [ "$host" = Darwin ] && [ "$local_only" != true ]; then
-  echo '[Omarchy] Refreshing remote harness packages'
-  if refresh_omarchy; then
-    echo '[Omarchy] SUCCESS'
-  else
-    echo '[Omarchy] FAILED (shared refresh is partial)' >&2
-    status=1
-  fi
+  for i in "${!linux_hosts[@]}"; do
+    label="${linux_labels[$i]}"
+    echo "[$label] Refreshing remote harness packages"
+    if refresh_linux "${linux_hosts[$i]}"; then
+      echo "[$label] SUCCESS"
+    else
+      echo "[$label] FAILED (shared refresh is partial)" >&2
+      status=1
+    fi
+  done
 fi
 
 if [ "$status" -eq 0 ]; then

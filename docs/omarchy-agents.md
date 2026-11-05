@@ -12,7 +12,7 @@ needed. Restart existing Claude sessions when convenient to pick up routing.
 The pinned official model catalog includes Haiku 5.5, and Omarchy's Nix-managed
 Claude Code is pinned to 2.1.295 to support it.
 
-`hosts/omarchy.nix` opts into `modules/home-manager/coding-agents.nix`, without
+`hosts/omarchy-common.nix` (shared by Omarchy and Miller) opts into `modules/home-manager/coding-agents.nix`, without
 importing the Mac's shell/desktop configuration. Pi uses the same Nix-managed
 latest-upstream wrapper and package declarations as the Mac. Claude Code uses the locked nixpkgs packaging with an independently pinned
 official release manifest, with its unfree allowance limited to that package.
@@ -337,11 +337,11 @@ restart active agents.
 
 ## Apply
 
-### Shared changes require two deployments
+### Shared changes require every-host deployment
 
-For agent configuration shared by Mac and Omarchy, apply and verify both hosts
-unless the request explicitly targets only one. From the verified Mac task worktree,
-`mise exec -- system-config-deploy "$task_path" --switch-only` deploys **both hosts
+For agent configuration shared by Mac, Omarchy, and Miller, apply and verify every
+host unless the request explicitly targets fewer. From the verified Mac task worktree,
+`mise exec -- system-config-deploy "$task_path" --switch-only` deploys **every host
 in parallel**, including from task worktrees with older deployment scripts. Current
 `mise update-system --switch-only` also coordinates. Read
 [concurrent deployment ownership and recovery](concurrent-deployments.md) and inspect
@@ -434,6 +434,56 @@ lock to be free):
 ```bash
 ssh -t johna@omarchy sudo bash /home/johna/dev/src/system-config/.mise/scripts/omarchy-nix-system apply
 ```
+
+### Hosts and adding another Omarchy machine
+
+`hosts/omarchy-common.nix` is shared by every Omarchy (Arch) host. Per-host files
+add only what is unique: `hosts/omarchy.nix` runs the singletons (Pi Pocket, the
+subscription proxy server, credits, the Syncthing LAN forwarder) and
+`hosts/miller.nix` (2013 Mac Pro, [#951](https://app.fizzy.do/6284043/cards/951))
+is a proxy client only. `flake.nix` builds each with `makeOmarchyHome "<host>"`;
+the Linux worker and coordinator select `homeConfigurations."johna@<hostname -s>"`
+and refuse unknown hostnames (`HOSTS` in `.mise/scripts/update-system-omarchy`).
+
+To add a host `$h` (short hostname, user `johna`, Tailscale SSH or sshd reachable
+from the Mac):
+
+1. In the task worktree: add `hosts/$h.nix` importing `./omarchy-common.nix` with
+   a unique `services.rex.tailscale.hostname = "rex-$h"`; add
+   `"johna@$h" = makeOmarchyHome "$h";` to `flake.nix`; append `$h` to `HOSTS`
+   in `update-system-omarchy`, and to `linux_hosts`/`linux_labels` in
+   `.mise/tasks/update-system` and `.mise/tasks/harness-refresh`; add it to the
+   machine list in `herdr-omarchy-setup.nix`.
+2. On `$h` (John, sudo): install Nix with the official multi-user installer
+   (`curl -L https://nixos.org/nix/install | sh -s -- --daemon --yes`), then
+   apply `omarchy-nix-system` (above) from a seeded checkout.
+3. Seed `~/dev/src/system-config` as a clean primary checkout on `main` from a
+   Mac bundle of `refs/heads/main`, then set `origin` to GitHub HTTPS.
+4. Provision before first activation (activation fails without them):
+   `~/.config/subscription-proxy/credentials.json` (mode 0600, copied host to
+   host, never through chat), `~/.local/share/herdr/project-seeds/pi-cielo.bundle`
+   (see [the Herdr projects guide](herdr-favorite-projects.md)), and
+   `gh auth login` with access to the private `amfaro` repositories.
+5. Bootstrap once (the coordinator needs an existing generation): create a task
+   worktree on `$h` holding the exact task tree, build its
+   `johna@$h` activation package, move any colliding stock files (Omarchy ships
+   `~/.config/git/config`, `~/.config/herdr/config.toml`, and a LazyVim
+   `~/.config/nvim`) into `~/.local/state/system-config/pre-home-manager-backup/`,
+   run `<generation>/activate`, then `deployment_state.py adopt <repo> <task
+   worktree> <task branch>` (exact evaluated-output match required).
+6. On `$h` (John, sudo): `~/.nix-profile/bin/omarchy-fish-default-shell` so
+   noninteractive SSH has Nix on PATH, and `sudo loginctl enable-linger johna`
+   for the Rex user service.
+7. Deploy normally from the Mac task worktree (`mise update-system
+   --switch-only`; the installed `system-config-deploy` only knows the hosts it
+   was built with until that deploy lands). If Omarchy's stock `/usr/bin/herdr
+   server` is already running, `herdr.service` loops on "already running":
+   stop the stock server so the managed one starts, then rerun
+   `herdr-omarchy-setup` on the Mac.
+
+Remaining host secrets (signing key, Doppler, Beszel token, VNC password,
+Syncthing pairing) are manual; Miller's are tracked in
+[#952](https://app.fizzy.do/6284043/cards/952).
 
 ## Account status: available-account setup complete
 

@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import signal
+import socket
 from pathlib import Path
 import re
 import subprocess
@@ -107,7 +108,8 @@ def evaluated_generation(repo):
     if sys.platform == "darwin":
         attribute = f'darwinConfigurations."{run("scutil", "--get", "LocalHostName")}".system.outPath'
     else:
-        attribute = 'homeConfigurations."johna@omarchy".activationPackage.outPath'
+        # Omarchy hosts select homeConfigurations."johna@<short hostname>".
+        attribute = f'homeConfigurations."johna@{socket.gethostname().split(".")[0]}".activationPackage.outPath'
     return run("nix", "--extra-experimental-features", "nix-command flakes", "eval", "--raw", "--impure",
                "--no-update-lock-file", "--no-write-lock-file", f"path:{repo}#{attribute}")
 

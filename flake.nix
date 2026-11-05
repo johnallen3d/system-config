@@ -91,19 +91,23 @@
       };
     };
 
-    homeConfigurations = {
-      # Keep Omarchy isolated from the shared dotfiles and desktop setup.
-      "johna@omarchy" = omarchyHomeManager.lib.homeManagerConfiguration {
-        pkgs = import omarchyNixpkgs {
-          system = "x86_64-linux";
-          overlays = [(import ./lib/worktrunk-overlay.nix)];
+    homeConfigurations = let
+      # Keep Omarchy (Arch) hosts isolated from the shared dotfiles and desktop setup.
+      makeOmarchyHome = host:
+        omarchyHomeManager.lib.homeManagerConfiguration {
+          pkgs = import omarchyNixpkgs {
+            system = "x86_64-linux";
+            overlays = [(import ./lib/worktrunk-overlay.nix)];
+          };
+          extraSpecialArgs = {
+            inherit credits full_name host lop rex;
+            herdrProjectPicker = omarchyHerdrProjectPicker;
+          };
+          modules = [./hosts/${host}.nix];
         };
-        extraSpecialArgs = {
-          inherit credits full_name lop rex;
-          herdrProjectPicker = omarchyHerdrProjectPicker;
-        };
-        modules = [./hosts/omarchy.nix];
-      };
+    in {
+      "johna@miller" = makeOmarchyHome "miller";
+      "johna@omarchy" = makeOmarchyHome "omarchy";
       "john.allen@xcel" = makeHomeManagerSystem {
         system = "aarch64-linux";
         host = "xcel";

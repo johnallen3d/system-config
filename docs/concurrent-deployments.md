@@ -12,16 +12,17 @@ never automatically collected. For example, preserving active PaddleOCR/Pocket
 ## Entry points and discovery
 
 The Nix-managed `system-config-deploy` command packages the current coordinator,
-Mac tasks, and Omarchy worker independently of the task checkout. Use it even
+Mac tasks, and Linux (Omarchy/Miller) worker independently of the task checkout. Use it even
 from older worktrees whose own scripts predate coordination:
 
 ```bash
 mise exec -- system-config-deploy "$task_path" --switch-only
 ```
 
-On Mac this applies both hosts in parallel; `--local-only` explicitly excludes
-Omarchy. Existing input-update and harness flags retain their meanings. On
-Omarchy use work context and an absolute source path:
+On Mac this applies Mac, Omarchy, and Miller in parallel; `--local-only`
+explicitly excludes the Linux hosts. Existing input-update and harness flags
+retain their meanings. On a Linux host (`omarchy` or `miller`, which selects
+`homeConfigurations."johna@<hostname>"`) use work context and an absolute source path:
 
 ```bash
 mise -C ~/dev/src/amfaro exec -- system-config-deploy "$task_path" --switch-only
@@ -53,7 +54,7 @@ activation, verification, and receipt recording. A second task waits up to ten
 minutes, then reports the owner and a retry action; it does not ask John whether
 to discard work. After waiting it re-reads the active generation and layers.
 Normal process exit releases the lock; do not delete lock files or kill another
-agent. The Mac lock remains held until both host outcomes have been collected.
+agent. The Mac lock remains held until every host outcome has been collected.
 An interrupt waits for existing children rather than abandoning their lock;
 no subsequent activation is started by a cancelled remote coordinator.
 These are cooperative deployment tools, not a security boundary against raw
@@ -91,7 +92,7 @@ out-of-band commands or a privileged process killing a deployment's process tree
   of a build directory. Pre-activation and completion additionally verify the
   live temporary source, including unexpected ignored files. Interrupted
   activation can recover an exact installed pending generation after temp cleanup.
-- Omarchy reconstructs the transported task tree using a private Git index in its
+- Each Linux host reconstructs the transported task tree using a private Git index in its
   synchronized repository, then composes its own temporary build source. It creates
   neither an `update-system-*` transport worktree nor a deployment worktree.
 - Legacy worktree-based receipts must still validate their original source. A
@@ -103,8 +104,8 @@ out-of-band commands or a privileged process killing a deployment's process tree
   performs the same guarded legacy cleanup without deploying; it first validates
   active provenance. The prior generation's main/tree IDs remain available for
   source reconstruction without retaining its directory.
-- Mac and Omarchy compose against their own active receipts. Host-specific active
-  overlays need not be imported into the other host's task source. Omarchy still
+- Every host composes against its own active receipts. Host-specific active
+  overlays need not be imported into another host's task source. Linux hosts still
   synchronizes only clean, fast-forwardable integrated main history and receives
   only intended source, not profiles or credentials.
 

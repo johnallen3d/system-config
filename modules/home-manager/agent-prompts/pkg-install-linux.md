@@ -10,16 +10,17 @@ macOS rebuild tasks on Linux.
   `modules/home-manager/packages/coding-agents.nix`.
 - For Pi extensions, update the appropriate personal/work package specs in
   `modules/home-manager/pi/packages.nix`. Respect `$PI_CODING_AGENT_DIR`.
-- Apply from the system-config checkout on Omarchy, without updating inputs:
+- Apply from the system-config checkout on this Omarchy host (`omarchy` or
+  `miller`), without updating inputs:
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
 nix build --no-write-lock-file \
-  'path:.#homeConfigurations."johna@omarchy".activationPackage' --out-link result
+  "path:.#homeConfigurations.\"johna@$(hostname -s)\".activationPackage" --out-link result
 ./result/activate
 ```
 
-Do not overwrite unexpected file collisions or change Omarchy's shell/desktop.
+Do not overwrite unexpected file collisions or change the host's Omarchy shell/desktop.
 Verify the executable and its version. Pi packages are bootstrapped on the next
 launch; use `mise exec -- pi list` from the intended personal or Amfaro work directory.

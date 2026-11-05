@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-#MISE description="Apply Mac and Omarchy config in parallel; optionally refresh harnesses"
+#MISE description="Apply Mac, Omarchy, and Miller config in parallel; optionally refresh harnesses"
 #USAGE flag "--switch-only" help="Skip flake input updates on both hosts"
 #USAGE flag "--picker-only" help="Update only the Herdr project picker input"
-#USAGE flag "--local-only" help="Apply/refresh only the Mac; explicitly skip Omarchy"
-#USAGE flag "--harness-refresh" help="Refresh Mac and Omarchy harness packages after both deployments succeed"
-#USAGE flag "--harness-only" help="Refresh harness packages without rebuilding (Mac + Omarchy from macOS)"
+#USAGE flag "--local-only" help="Apply/refresh only the Mac; explicitly skip Omarchy and Miller"
+#USAGE flag "--harness-refresh" help="Refresh Mac, Omarchy, and Miller harness packages after all deployments succeed"
+#USAGE flag "--harness-only" help="Refresh harness packages without rebuilding (Mac + Linux hosts from macOS)"
 set -euo pipefail
 
 refresh_harnesses() {
@@ -21,7 +21,7 @@ if [[ "${usage_harness_only:-false}" == true ]]; then
 fi
 
 if [[ "$(uname -s)" != Darwin ]]; then
-  echo "System deployments must start on macOS (Mac -> Omarchy); use harness-refresh for host-local Linux refreshes" >&2
+  echo "System deployments must start on macOS (Mac -> Omarchy, Miller); use harness-refresh for host-local Linux refreshes" >&2
   exit 2
 fi
 
@@ -34,15 +34,20 @@ tool_root="${SYSTEM_CONFIG_TOOL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../..
 repo="${SYSTEM_CONFIG_TASK_ROOT:-$tool_root}"
 cd "$repo"
 
-# One host-wide lock covers input resolution, both children, and provenance.
+# One host-wide lock covers input resolution, every child, and provenance.
 if [[ "${SYSTEM_CONFIG_COORDINATED:-}" != "$repo" ]]; then
   exec python3 "$tool_root/.mise/scripts/deployment_state.py" run "$repo" bash "${BASH_SOURCE[0]}" "$@"
 fi
 payload="$(mktemp -d)"
+# Omarchy (Arch) hosts deployed from the Mac; each has homeConfigurations."johna@<host>".
+linux_hosts=(omarchy miller)
+linux_labels=(Omarchy Miller)
+linux_pids=()
 cleanup() {
   trap '' INT TERM
   [[ -z "${mac_pid:-}" ]] || wait "$mac_pid" 2>/dev/null || true
-  [[ -z "${omarchy_pid:-}" ]] || wait "$omarchy_pid" 2>/dev/null || true
+  local pid
+  for pid in ${linux_pids[@]+"${linux_pids[@]}"}; do wait "$pid" 2>/dev/null || true; done
   rm -rf "$payload"
 }
 trap cleanup EXIT
@@ -69,7 +74,7 @@ rebuild() {
   fi
 }
 
-# Resolve inputs exactly once, before either host starts building.
+# Resolve inputs exactly once, before any host starts building.
 if [[ "${usage_switch_only:-false}" != true ]]; then
   update_args=(--update-only)
   if [[ "${usage_picker_only:-false}" == true ]]; then
@@ -85,7 +90,7 @@ export SYSTEM_CONFIG_SOURCE
 if [[ "${usage_local_only:-false}" == true ]]; then
   rebuild --switch-only
   python3 "$tool_root/.mise/scripts/deployment_state.py" finish "$repo"
-  echo '[Mac] SUCCESS (Omarchy explicitly skipped)'
+  echo '[Mac] SUCCESS (Linux hosts explicitly skipped)'
 else
   worker="$tool_root/.mise/scripts/update-system-omarchy"
   python3 "$worker" prepare "$repo" "$payload" "$SYSTEM_CONFIG_SOURCE"
@@ -97,11 +102,13 @@ else
     echo 'Command-specific darwin-rebuild sudo authorization is unavailable; no deployments started.' >&2
     exit "$auth_status"
   }
-  echo '[Mac + Omarchy] Starting parallel deployments'
+  echo "[Mac + $(IFS=,; echo "${linux_labels[*]}")] Starting parallel deployments"
   rebuild --switch-only &
   mac_pid=$!
-  python3 "$worker" deploy "$payload" &
-  omarchy_pid=$!
+  for host in "${linux_hosts[@]}"; do
+    python3 "$worker" deploy "$payload" "$host" &
+    linux_pids+=("$!")
+  done
   status=0
   if wait "$mac_pid" && python3 "$tool_root/.mise/scripts/deployment_state.py" finish "$repo"; then
     echo '[Mac] SUCCESS'
@@ -110,14 +117,17 @@ else
     echo "[Mac] FAILED (exit $mac_status)" >&2
     status=1
   fi
-  # Always collect both outcomes, even when the Mac fails first.
-  if wait "$omarchy_pid"; then
-    echo '[Omarchy] SUCCESS'
-  else
-    omarchy_status=$?
-    echo "[Omarchy] FAILED (exit $omarchy_status)" >&2
-    status=1
-  fi
+  # Always collect every outcome, even when the Mac fails first.
+  for i in "${!linux_hosts[@]}"; do
+    label="${linux_labels[$i]}"
+    if wait "${linux_pids[$i]}"; then
+      echo "[$label] SUCCESS"
+    else
+      host_status=$?
+      echo "[$label] FAILED (exit $host_status)" >&2
+      status=1
+    fi
+  done
   if ! python3 "$worker" check "$repo" "$payload"; then
     status=1
   fi
@@ -125,7 +135,7 @@ else
     echo 'Shared deployment is incomplete/partial; see per-host status and log paths above.' >&2
     exit "$status"
   fi
-  echo 'Mac and Omarchy configurations applied and deployment source unchanged.'
+  echo "Mac, $(IFS=,; echo "${linux_labels[*]}") configurations applied and deployment source unchanged."
 fi
 
 if [[ "${usage_harness_refresh:-false}" == true ]]; then
