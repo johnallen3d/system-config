@@ -17,7 +17,7 @@ import time
 import deployment_state as coordination
 
 # Every Omarchy host has homeConfigurations."johna@<host>" and runs this worker.
-HOSTS = ("omarchy", "miller")
+HOSTS = ("omarchy", "miller", "drummer")
 LABEL = "Linux"
 
 

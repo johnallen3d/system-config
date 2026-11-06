@@ -4,7 +4,7 @@
   the host's active generation, recorded source/task owners, and in-flight
   deployment. Use the project's coordinator/status command where available.
   For system-config, use `mise exec -- system-config-deploy "$task_path"
-  --switch-only` (Mac applies every host; Omarchy and Miller are host-local). The installed
+  --switch-only` (Mac applies every host; Omarchy, Miller, and Drummer are host-local). The installed
   coordinator also supports older task worktrees; do not run their pre-lock
   activation scripts. Inspect status with the installed coordinator script
   `~/.local/share/system-config-deploy/.mise/scripts/deployment_state.py`

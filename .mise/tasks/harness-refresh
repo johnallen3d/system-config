@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Refresh Pi packages and work Claude plugin on Mac, Omarchy, and Miller"
+#MISE description="Refresh Pi packages and work Claude plugin on Mac, Omarchy, Miller, and Drummer"
 #USAGE flag "--local-only" help="Refresh only this host (macOS defaults to every host)"
 set -uo pipefail
 
@@ -17,8 +17,8 @@ fi
 scripts_dir="$(cd "$(dirname "$0")/../scripts" && pwd)"
 
 # Omarchy (Arch) hosts refreshed from the Mac.
-linux_hosts=(omarchy miller)
-linux_labels=(Omarchy Miller)
+linux_hosts=(omarchy miller drummer)
+linux_labels=(Omarchy Miller Drummer)
 
 refresh_linux() {
   local host="$1"

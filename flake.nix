@@ -65,9 +65,6 @@
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
       inherit credits home-manager herdrProjectPicker lop nix-darwin nixpkgs yem user full_name;
     };
-    makeNixosSystem = import ./lib/make-nixos-system.nix {
-      inherit home-manager herdrProjectPicker lop nixpkgs yem user full_name;
-    };
     makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
       inherit home-manager herdrProjectPicker lop nixpkgs yem user full_name;
     };
@@ -82,12 +79,6 @@
 
       macos-virtual = makeDarwinSystem {
         host = "macos-virtual";
-      };
-    };
-
-    nixosConfigurations = {
-      drummer = makeNixosSystem {
-        host = "drummer";
       };
     };
 
@@ -106,6 +97,7 @@
           modules = [./hosts/${host}.nix];
         };
     in {
+      "johna@drummer" = makeOmarchyHome "drummer";
       "johna@miller" = makeOmarchyHome "miller";
       "johna@omarchy" = makeOmarchyHome "omarchy";
       "john.allen@xcel" = makeHomeManagerSystem {

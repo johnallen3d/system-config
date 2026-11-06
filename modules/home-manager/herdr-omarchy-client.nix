@@ -11,7 +11,7 @@ in {
   # catalog/selection/cache. An offline box must not break a Mac rebuild.
   home.activation.herdrOmarchyMachine = lib.hm.dag.entryAfter ["writeBoundary"] ''
     if ! $DRY_RUN_CMD ${setup}/bin/herdr-omarchy-setup; then
-      echo 'Omarchy/Miller Herdr registration incomplete; run herdr-omarchy-setup when SSH/server access is ready.' >&2
+      echo 'Omarchy/Miller/Drummer Herdr registration incomplete; run herdr-omarchy-setup when SSH/server access is ready.' >&2
     fi
   '';
 }

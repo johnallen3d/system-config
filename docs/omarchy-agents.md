@@ -12,7 +12,7 @@ needed. Restart existing Claude sessions when convenient to pick up routing.
 The pinned official model catalog includes Haiku 5.5, and Omarchy's Nix-managed
 Claude Code is pinned to 2.1.295 to support it.
 
-`hosts/omarchy-common.nix` (shared by Omarchy and Miller) opts into `modules/home-manager/coding-agents.nix`, without
+`hosts/omarchy-common.nix` (shared by Omarchy, Miller, and Drummer) opts into `modules/home-manager/coding-agents.nix`, without
 importing the Mac's shell/desktop configuration. Pi uses the same Nix-managed
 latest-upstream wrapper and package declarations as the Mac. Claude Code uses the locked nixpkgs packaging with an independently pinned
 official release manifest, with its unfree allowance limited to that package.
@@ -339,7 +339,7 @@ restart active agents.
 
 ### Shared changes require every-host deployment
 
-For agent configuration shared by Mac, Omarchy, and Miller, apply and verify every
+For agent configuration shared by Mac, Omarchy, Miller, and Drummer, apply and verify every
 host unless the request explicitly targets fewer. From the verified Mac task worktree,
 `mise exec -- system-config-deploy "$task_path" --switch-only` deploys **every host
 in parallel**, including from task worktrees with older deployment scripts. Current
@@ -441,7 +441,9 @@ ssh -t johna@omarchy sudo bash /home/johna/dev/src/system-config/.mise/scripts/o
 add only what is unique: `hosts/omarchy.nix` runs the singletons (Pi Pocket, the
 subscription proxy server, credits, the Syncthing LAN forwarder) and
 `hosts/miller.nix` (2013 Mac Pro, [#951](https://app.fizzy.do/6284043/cards/951))
-is a proxy client only. `flake.nix` builds each with `makeOmarchyHome "<host>"`;
+and `hosts/drummer.nix` (2013 Mac Pro,
+[#957](https://app.fizzy.do/6284043/cards/957)) are proxy clients only; hardware is in
+[the host hardware guide](hosts-hardware.md). `flake.nix` builds each with `makeOmarchyHome "<host>"`;
 the Linux worker and coordinator select `homeConfigurations."johna@<hostname -s>"`
 and refuse unknown hostnames (`HOSTS` in `.mise/scripts/update-system-omarchy`).
 
@@ -495,7 +497,8 @@ from the Mac):
 Remaining host setup (signing key via `gh auth refresh -s
 admin:ssh_signing_key`, Doppler logins, Syncthing pairing) is manual; Miller's is
 tracked in
-[#952](https://app.fizzy.do/6284043/cards/952).
+[#952](https://app.fizzy.do/6284043/cards/952) and Drummer's in
+[#958](https://app.fizzy.do/6284043/cards/958).
 
 ## Account status: available-account setup complete
 

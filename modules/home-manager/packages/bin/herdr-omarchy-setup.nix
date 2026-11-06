@@ -2,7 +2,7 @@
 pkgs.writeShellScriptBin "herdr-omarchy-setup" ''
   set -euo pipefail
   case "''${1:-}" in
-    --help|-h) echo 'Usage: herdr-omarchy-setup (seed session-scoped Omarchy and Miller connections)'; exit 0 ;;
+    --help|-h) echo 'Usage: herdr-omarchy-setup (seed session-scoped Omarchy, Miller, and Drummer connections)'; exit 0 ;;
     "") ;;
     *) echo 'Usage: herdr-omarchy-setup' >&2; exit 2 ;;
   esac
@@ -16,7 +16,7 @@ pkgs.writeShellScriptBin "herdr-omarchy-setup" ''
   herdr=${pkgs.herdr}/bin/herdr
   status=0
   # Omarchy (Arch) hosts, as "label target".
-  for machine in "Omarchy johna@omarchy" "Miller johna@miller"; do
+  for machine in "Omarchy johna@omarchy" "Miller johna@miller" "Drummer johna@drummer"; do
     label=''${machine%% *}
     target=''${machine#* }
     for local_session in personal work; do

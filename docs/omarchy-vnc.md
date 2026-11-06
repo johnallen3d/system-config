@@ -1,10 +1,11 @@
 # Omarchy VNC over Tailscale
 
 Tracked in [Fizzy #689](https://app.fizzy.do/6284043/cards/689); virtual
-output and Miller in [#952](https://app.fizzy.do/6284043/cards/952).
+output and Miller in [#952](https://app.fizzy.do/6284043/cards/952); Drummer in
+[#958](https://app.fizzy.do/6284043/cards/958).
 
 Home Manager runs Nix-packaged WayVNC as `johna`'s `wayvnc.service` on every
-Omarchy host (`omarchy` and `miller`). It does not enable login-screen access or
+Omarchy host (`omarchy`, `miller`, and `drummer`). It does not enable login-screen access or
 arrange an unattended GUI login; a Hyprland session must be running.
 
 ## Virtual `VNC` output

@@ -12,16 +12,16 @@ never automatically collected. For example, preserving active PaddleOCR/Pocket
 ## Entry points and discovery
 
 The Nix-managed `system-config-deploy` command packages the current coordinator,
-Mac tasks, and Linux (Omarchy/Miller) worker independently of the task checkout. Use it even
+Mac tasks, and Linux (Omarchy/Miller/Drummer) worker independently of the task checkout. Use it even
 from older worktrees whose own scripts predate coordination:
 
 ```bash
 mise exec -- system-config-deploy "$task_path" --switch-only
 ```
 
-On Mac this applies Mac, Omarchy, and Miller in parallel; `--local-only`
+On Mac this applies Mac, Omarchy, Miller, and Drummer in parallel; `--local-only`
 explicitly excludes the Linux hosts. Existing input-update and harness flags
-retain their meanings. On a Linux host (`omarchy` or `miller`, which selects
+retain their meanings. On a Linux host (`omarchy`, `miller`, or `drummer`, which selects
 `homeConfigurations."johna@<hostname>"`) use work context and an absolute source path:
 
 ```bash

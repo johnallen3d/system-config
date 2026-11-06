@@ -10,8 +10,8 @@ macOS rebuild tasks on Linux.
   `modules/home-manager/packages/coding-agents.nix`.
 - For Pi extensions, update the appropriate personal/work package specs in
   `modules/home-manager/pi/packages.nix`. Respect `$PI_CODING_AGENT_DIR`.
-- Apply from the system-config checkout on this Omarchy host (`omarchy` or
-  `miller`), without updating inputs:
+- Apply from the system-config checkout on this Omarchy host (`omarchy`,
+  `miller`, or `drummer`), without updating inputs:
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
