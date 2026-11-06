@@ -90,24 +90,27 @@ in {
     done
   '';
 
-  # Claude keeps its own plugin state under the work profile. Install once,
-  # leaving marketplace/plugin updates to Claude rather than every rebuild.
-  home.activation.claudeGmatterAgentKit = lib.hm.dag.entryAfter ["claudeCodeSymlink"] (
-    if pkgs.stdenv.hostPlatform.isDarwin
-    then ''
-      export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
-      claude="$HOME/.local/bin/claude"
-      if ! "$claude" plugin marketplace list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .name == "amfaro")' >/dev/null; then
-        $DRY_RUN_CMD "$claude" plugin marketplace add amfaro/agent-kit
-      fi
-      if ! "$claude" plugin list --json | ${pkgs.jq}/bin/jq -e 'any(.[]; .id == "agent-kit@amfaro")' >/dev/null; then
-        $DRY_RUN_CMD "$claude" plugin install agent-kit@amfaro --scope user
-      fi
-    ''
-    else ''
-      echo "Work agent-kit: run agent-work-setup after configuring GitHub access."
-    ''
-  );
+  # Claude keeps its own plugin state under the work profile. Install once on
+  # every host, leaving marketplace/plugin updates to Claude rather than every
+  # rebuild. The repo is private: without GitHub access (fresh host), warn and
+  # continue instead of failing activation; the next rebuild retries.
+  home.activation.claudeGmatterAgentKit = lib.hm.dag.entryAfter ["linkGeneration" "claudeCodeSymlink"] ''
+    export CLAUDE_CONFIG_DIR="$HOME/.config/claude-gmatter"
+    claude="$HOME/.local/bin/claude"
+    jq=${pkgs.jq}/bin/jq
+    agentKitWarn() {
+      echo "Work agent-kit: $1 failed; configure GitHub access (gh auth login; gh auth setup-git) and rebuild." >&2
+    }
+    if [ ! -x "$claude" ]; then
+      echo "Work agent-kit: $claude not found; skipping plugin install." >&2
+    elif ! "$claude" plugin marketplace list --json | "$jq" -e 'any(.[]; .name == "amfaro")' >/dev/null \
+      && ! $DRY_RUN_CMD "$claude" plugin marketplace add amfaro/agent-kit; then
+      agentKitWarn "marketplace add"
+    elif ! "$claude" plugin list --json | "$jq" -e 'any(.[]; .id == "agent-kit@amfaro")' >/dev/null \
+      && ! $DRY_RUN_CMD "$claude" plugin install agent-kit@amfaro --scope user; then
+      agentKitWarn "plugin install"
+    fi
+  '';
 
   # Remove stale directory-symlinks before home.file writes individual files.
   # Matches the pattern in pi-prompts.nix:9-17.

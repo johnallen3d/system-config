@@ -531,9 +531,10 @@ agent-work-setup
 
 `agent-work-setup` checks Git access before installing the work Pi package and
 `agent-kit@amfaro` Claude plugin. It is safe to rerun: existing marketplaces and
-plugins are updated rather than added again. On Linux, Home Manager does not attempt private
-plugin installation during activation. Work prompts that depend on the plugin
-will not be ready until this succeeds. The shared Pi wrapper currently tolerates
+plugins are updated rather than added again. Home Manager activation also installs
+the `agent-kit@amfaro` Claude plugin on every host once GitHub access works; until
+then it warns and continues, and the next rebuild retries. Work prompts that depend
+on the plugin will not be ready until either succeeds. The shared Pi wrapper currently tolerates
 failed bootstrap installs, so a successful `pi-work --version` alone does **not**
 prove the private package installed; use the explicit setup command and check
 `mise -C ~/dev/src/amfaro exec -- pi list` and
