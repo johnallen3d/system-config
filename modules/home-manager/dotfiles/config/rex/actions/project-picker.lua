@@ -23,7 +23,13 @@ rex.action{
     local folders = rex.exec({ "zoxide", "query", "-l" }, { env = { PATH = util.user_path() } })
     local command = util.float_command("rex-project-picker",
       host_label(), (folders and folders.ok and folders.stdout) or "")
-    for _, host in ipairs(rex.servers()) do command[#command + 1] = host end
+    -- rex.servers() is empty inside a server action; ask the CLI, as the tab
+    -- picker does.
+    local hosts = rex.exec({ "rex", "do", "-e", 'return table.concat(rex.servers(), "\\n")' },
+      { env = util.cli_env() })
+    if hosts and hosts.ok then
+      for host in rex.json.decode(hosts.stdout):gmatch("[^\n]+") do command[#command + 1] = host end
+    end
     local _, err = rex.session.new_layer{
       session_id = ctx.session_id,
       bounds     = { 0.12, 0.1, 0.76, 0.75 },
