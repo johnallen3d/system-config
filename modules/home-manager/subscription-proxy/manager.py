@@ -4,8 +4,7 @@
 Never downloads upstream tokens. Only proxy client/management keys live locally.
 """
 import argparse
-import contextlib
-import fcntl
+import copy
 import json
 import math
 import os
@@ -21,10 +20,14 @@ import urllib.error
 import urllib.request
 import webbrowser
 
-import go_catalog
-
 PROFILES = ("personal", "work")
-GO_MODELS = ("glm-5.2", "kimi-k2.6", "deepseek-v4-flash")
+# Pinned OpenCode Go models served over plain OpenAI chat completions. Edit
+# go-models.json and rebuild to change the lineup; nothing is fetched at runtime.
+GO_MODELS = json.loads((Path(__file__).parent / "go-models.json").read_text())
+GO_BASE = "https://opencode.ai/zen/go/v1"
+GO_HEADERS = {"User-Agent": "$User-Agent", "x-opencode-session": "$session_id"}
+# Native-protocol groups created by the retired catalog reconciler.
+RETIRED_GO_GROUPS = {"xai": "opencode-go-responses", "claude": "opencode-go-messages"}
 CODEX_MODELS = ("gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna")
 CLAUDE_MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1")
 ROOT = Path.home() / ".config/subscription-proxy"
@@ -184,129 +187,54 @@ def open_ui(profile):
     return 0
 
 
-def cached_go_models():
-    cached = load_json(ROOT / "go-catalog.json")
-    if not cached:
-        return None
-    expected = go_catalog.build_catalog(cached["provider"], cached["available"])
-    known = {e["id"]: e for e in expected["models"]}
-    entries = cached["catalog"]["models"]
-    if not entries or any(known.get(e.get("id")) != e for e in entries):
-        raise ValueError("Invalid cached Go catalog; refusing to replace Pi models.")
-    return [e["pi"] for e in entries]
+def go_pi_models():
+    return [dict(m, id="go/" + m["id"]) for m in GO_MODELS]
 
 
-@contextlib.contextmanager
-def catalog_lock(wait=False):
-    ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
-    path = ROOT / "catalog.lock"
-    fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-    try:
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | (0 if wait else fcntl.LOCK_NB))
-        except BlockingIOError:
-            raise ValueError("Another local catalog/activation operation is running; retry later.") from None
-        yield
-    finally:
-        os.close(fd)
+def go_gateway_models():
+    return [{"name": m["id"], "alias": m["id"], "display-name": m["name"],
+             "max-context-length": m["contextWindow"]} for m in GO_MODELS]
 
 
-def public_json(url):
-    # No upstream key is needed for metadata. Curl handles the public endpoint's
-    # TLS/CDN behavior; capture all output and never log response bodies.
-    result = subprocess.run(["curl", "--fail", "--silent", "--show-error", "--location",
-                             "--proto", "=https", "--proto-redir", "=https",
-                             "--max-time", "30", "--max-filesize", "16777216", url],
-                            capture_output=True, timeout=40)
-    if result.returncode or len(result.stdout) > 16777216:
-        raise ValueError("Public Go metadata fetch failed; last-good models retained.")
-    return json.loads(result.stdout)
+def sync_go_server():
+    """Set the central gateway's Go routes to the pinned list (Omarchy only).
 
+    Only the opencode-go model list is written; its key, base URL and headers
+    stay owned by the official panel. Retired native-protocol groups are removed.
+    """
+    def clean(value):
+        # auth-index is a management-only credential index, not writable config.
+        if isinstance(value, dict):
+            return {k: clean(v) for k, v in value.items() if k != "auth-index"}
+        if isinstance(value, list):
+            return [clean(v) for v in value]
+        return value
 
-def write_go_client(command, catalog):
-    path = Path.home() / ".config/pi-work/models.json"
-    data = load_json(path)
-    data.setdefault("providers", {})["subscription-go"] = {
-        "baseUrl": load_json(ROOT / "endpoints.json")["work"] + "/v1",
-        "api": "openai-completions", "authHeader": True,
-        "apiKey": f"!{shlex.quote(command)} client-key work",
-        "compat": {"sendSessionAffinityHeaders": True, "sessionAffinityFormat": "openai"},
-        "models": [e["pi"] for e in catalog["models"]]}
-    if data != load_json(path):
-        private_json(path, data)
-
-
-def refresh_go(command, server=False, cached=False, allow_shrink=False):
-    with catalog_lock():
-        previous = load_json(ROOT / "go-catalog.json")
-        if cached:
-            if not previous:
-                raise ValueError("No successful Go snapshot to replay.")
-            provider, available = previous["provider"], previous["available"]
-        else:
-            metadata = public_json(go_catalog.METADATA_URL)
-            availability = public_json(go_catalog.MODELS_URL)
-            if not isinstance(metadata, dict) or not isinstance(availability, dict):
-                raise ValueError("Invalid public Go metadata/availability response.")
-            provider = metadata.get("opencode-go")
-            records = availability.get("data", [])
-            if not isinstance(records, list) or any(not isinstance(m, dict) for m in records):
-                raise ValueError("Invalid public Go availability entries.")
-            available = [m.get("id") for m in records]
-        catalog = go_catalog.build_catalog(provider, available)
-        old_count = len(previous.get("catalog", {}).get("models", []))
-        if old_count and len(catalog["models"]) < old_count / 2 and not allow_shrink:
-            raise ValueError("Suspicious Go catalog shrink; retain last-good or review with --allow-shrink.")
-        before, after = None, None
-        if server:
-            if not (ROOT / "server-work.yaml").is_file():
-                raise ValueError("Central routing reconciliation must run on Omarchy, not a client host.")
-            api_keys = request("work", "/config").get("api-keys", {})
-            after = go_catalog.routing_config(catalog, api_keys)
-            # PATCH only owned lists. Preserve unrelated entries and secrets,
-            # and abort if an operator changed these lists since our read.
-            before = {k: go_catalog.clean_config(api_keys.get(k, [])) for k in after}
-            current = request("work", "/config").get("api-keys", {})
-            if before != {k: go_catalog.clean_config(current.get(k, [])) for k in after}:
-                raise ValueError("Concurrent provider edit detected; no routing update applied.")
-            if before != after:
-                private_json(ROOT / "go-routing-rollback.json", {"api-keys": before})
-                request("work", "/config", "PATCH", {"api-keys": after})
-            primary = next(p for p in after["openai-compatibility"] if p.get("name") == "opencode-go")
-            if primary.get("disabled") or not any(k.get("api-key") for k in primary.get("keys", [])):
-                # Revocation/disable is intentional, not a publication failure.
-                # Never rollback it and resurrect derived Go credentials.
-                print("Central Go is disabled/unprovisioned; derived keys cleared, last-good Pi choices retained.")
-                return
-        try:
-            # Do not publish Pi choices until the running gateway advertises
-            # them. This uses only the work CLIENT key; no Go keys reach Mac.
-            deadline = time.monotonic() + (15 if server else 0)
-            required = {"go/" + e["id"] for e in catalog["models"]}
-            while True:
-                registered = {m["id"] for m in request("work", "/v1/models", management=False).get("data", [])}
-                if not server or required <= registered or time.monotonic() >= deadline:
-                    break
-                time.sleep(0.5)
-            if server and not required <= registered:
-                raise ValueError("Gateway has not published the validated Go routes.")
-            catalog["models"] = [e for e in catalog["models"] if "go/" + e["id"] in registered]
-            if not catalog["models"] or (old_count and len(catalog["models"]) < old_count / 2 and not allow_shrink):
-                raise ValueError("Gateway Go catalog is empty or incomplete; retaining last-good Pi models.")
-            snapshot = {"version": 1, "provider": provider, "available": available, "catalog": catalog}
-            write_go_client(command, catalog)
-            if snapshot != previous:
-                private_json(ROOT / "go-catalog.json", snapshot)
-        except (ValueError, KeyError, OSError):
-            if server and before != after:
-                # Never rollback over a new panel edit. v8 has no conditional
-                # writes/CAS, so do not edit these lists simultaneously in UI.
-                latest = request("work", "/config").get("api-keys", {})
-                if after == {k: go_catalog.clean_config(latest.get(k, [])) for k in after}:
-                    request("work", "/config", "PATCH", {"api-keys": before})
-            raise
-        print(f"Go catalog refreshed: {len(catalog['models'])} non-Claude models; {len(catalog['excluded'])} excluded/unmapped IDs.")
-        print("No inference calls, profile/default changes, or agent restarts. See private go-catalog.json for exclusions.")
+    before = clean(request("work", "/config").get("api-keys", {}))
+    after = copy.deepcopy(before)
+    matches = [p for p in after.get("openai-compatibility", []) if p.get("name") == "opencode-go"]
+    if len(matches) != 1:
+        raise ValueError("Expected exactly one opencode-go provider in the work gateway.")
+    matches[0]["models"] = go_gateway_models()
+    for section, name in RETIRED_GO_GROUPS.items():
+        if section in after:
+            after[section] = [g for g in after[section] if g.get("name") != name]
+    changed = after != before
+    if changed:
+        request("work", "/config", "PATCH", {"api-keys": after})
+    if matches[0].get("disabled") or not any(k.get("api-key") for k in matches[0].get("keys", [])):
+        print("Central Go is disabled or has no key; pinned routes saved but not published.")
+        return
+    deadline = time.monotonic() + 15
+    required = {m["id"] for m in go_pi_models()}
+    while True:
+        registered = {m["id"] for m in request("work", "/v1/models", management=False).get("data", [])}
+        if required <= registered:
+            break
+        if time.monotonic() >= deadline:
+            raise ValueError("Work gateway did not publish the pinned Go models.")
+        time.sleep(0.5)
+    print(f"Work gateway Go routes {'updated' if changed else 'already current'}: {len(GO_MODELS)} pinned chat models.")
 
 
 def claude_profile(profile):
@@ -379,7 +307,7 @@ def client_config(command, claude_settings=None, personal_claude_settings=None):
                 "baseUrl": endpoints[profile] + "/v1", "api": "openai-completions", "authHeader": True,
                 "apiKey": f"!{shlex.quote(command)} client-key work",
                 "compat": {"sendSessionAffinityHeaders": True, "sessionAffinityFormat": "openai"},
-                "models": cached_go_models() or [model("go/" + m) for m in GO_MODELS]}
+                "models": go_pi_models()}
         private_json(path, data)
     if claude_settings is not None:
         configure_work_claude(claude_settings)
@@ -565,10 +493,8 @@ def seed_server(template):
             providers = data.setdefault("api-keys", {}).setdefault("openai-compatibility", [])
             if not any(p.get("name") == "opencode-go" for p in providers):
                 # Nonsecret provider plumbing is seeded; the official UI owns the key.
-                providers.append({"name": "opencode-go", "prefix": "go",
-                                  "base-url": "https://opencode.ai/zen/go/v1", "keys": [],
-                                  "headers": {"User-Agent": "$User-Agent", "x-opencode-session": "$session_id"},
-                                  "models": [{"name": m, "alias": m} for m in GO_MODELS]})
+                providers.append({"name": "opencode-go", "prefix": "go", "base-url": GO_BASE, "keys": [],
+                                  "headers": dict(GO_HEADERS), "models": go_gateway_models()})
         data.setdefault("plugins", {})["enabled"] = False
         data.setdefault("server", {}).setdefault("discovery", {})["enabled"] = False
         data.setdefault("routing", {}).update({"strategy": "fill-first", "session-affinity": True,
@@ -600,11 +526,7 @@ def main():
     p.add_argument("--command", required=True)
     p.add_argument("--claude-settings", type=Path, help=argparse.SUPPRESS)
     p.add_argument("--personal-claude-settings", type=Path, help=argparse.SUPPRESS)
-    p = sub.add_parser("refresh-go", help="Reconcile validated non-Claude Go models; no inference or agent restart")
-    p.add_argument("--command", default=str(Path.home() / ".local/bin/subscription-proxy"), help=argparse.SUPPRESS)
-    p.add_argument("--server", action="store_true", help="Reconcile central upstream routing on Omarchy too")
-    p.add_argument("--cached", action="store_true", help="Replay the last successful source snapshot without public fetches")
-    p.add_argument("--allow-shrink", action="store_true", help="Accept an operator-reviewed catalog reduction larger than half")
+    sub.add_parser("sync-go", help=argparse.SUPPRESS)
     p = sub.add_parser("seed-server", help=argparse.SUPPRESS)
     p.add_argument("--template", required=True)
     p = sub.add_parser("reload-catalog", help=argparse.SUPPRESS)
@@ -625,19 +547,14 @@ def main():
         elif args.action == "deactivate":
             deactivate(args.profile, args.claude)
         elif args.action == "configure-client":
-            # A persistent timer can fire during systemd activation. Wait for
-            # its bounded refresh instead of failing the Home Manager switch.
-            with catalog_lock(wait=True):
-                client_config(args.command, load_json(args.claude_settings) if args.claude_settings else None,
+            client_config(args.command, load_json(args.claude_settings) if args.claude_settings else None,
                           load_json(args.personal_claude_settings) if args.personal_claude_settings else None)
-        elif args.action == "refresh-go":
-            refresh_go(args.command, args.server, args.cached, args.allow_shrink)
+        elif args.action == "sync-go":
+            sync_go_server()
         elif args.action == "seed-server":
-            with catalog_lock(wait=True):
-                seed_server(args.template)
+            seed_server(args.template)
         elif args.action == "reload-catalog":
-            with catalog_lock(wait=True):
-                reload_catalog(args.profile, args.catalog)
+            reload_catalog(args.profile, args.catalog)
         return 0
     except (ValueError, KeyError, OSError, EOFError, subprocess.SubprocessError) as exc:
         print(f"subscription-proxy: {exc}", file=sys.stderr)

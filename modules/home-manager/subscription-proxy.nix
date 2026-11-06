@@ -129,12 +129,6 @@
       ];
     };
   });
-  refreshArgs = ["${lib.getExe manager}" "refresh-go" "--command" "${lib.getExe manager}"] ++ lib.optional cfg.server.enable "--server";
-  refreshEnv = {
-    HOME = homeDir;
-    PI_CODING_AGENT_DIR = "${homeDir}/.config/pi-work";
-    CLAUDE_CONFIG_DIR = "${homeDir}/.config/claude-gmatter";
-  };
   service = profile: {
     Unit = {
       Description = "Isolated ${profile} subscription gateway";
@@ -207,59 +201,14 @@ in {
               ${lib.getExe manager} reload-catalog "$profile" --catalog ${modelCatalog}
             fi
           done
+          if ${pkgs.systemd}/bin/systemctl --user is-active --quiet subscription-proxy-work.service; then
+            ${lib.getExe manager} sync-go
+          fi
         fi
       '');
-    home.activation.subscriptionProxyCatalogState = lib.hm.dag.entryAfter ["writeBoundary"] ''
-      if [ -z "''${DRY_RUN:-}" ]; then
-        ${pkgs.coreutils}/bin/install -d -m 0700 "${homeDir}/.local/state/subscription-proxy"
-      fi
-    '';
-    systemd.user.services = lib.mkMerge [
-      (lib.mkIf cfg.server.enable {
-        subscription-proxy-personal = service "personal";
-        subscription-proxy-work = service "work";
-      })
-      (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-        subscription-proxy-catalog = {
-          Unit = {
-            Description = "Reconcile validated non-Claude OpenCode Go models";
-            After = ["network-online.target"] ++ lib.optional cfg.server.enable "subscription-proxy-work.service";
-            Wants = lib.optional cfg.server.enable "subscription-proxy-work.service";
-          };
-          Service = {
-            Type = "oneshot";
-            ExecStart = lib.escapeShellArgs refreshArgs;
-            Environment = lib.mapAttrsToList (name: value: "${name}=${value}") refreshEnv;
-            UMask = "0077";
-            TimeoutStartSec = 180;
-            NoNewPrivileges = true;
-          };
-        };
-      })
-    ];
-    systemd.user.timers.subscription-proxy-catalog = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-      Unit.Description = "Daily Go catalog refresh (catch up after downtime)";
-      Timer = {
-        OnCalendar = "*-*-* 03:15:00";
-        OnBootSec = "5min";
-        RandomizedDelaySec = "10min";
-        Persistent = true;
-      };
-      Install.WantedBy = ["timers.target"];
-    };
-    launchd.agents.subscription-proxy-catalog = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
-      enable = true;
-      config = {
-        Label = "org.nix-community.home.subscription-proxy-catalog";
-        ProgramArguments = refreshArgs;
-        EnvironmentVariables = refreshEnv;
-        RunAtLoad = true;
-        StartInterval = 86400;
-        ProcessType = "Background";
-        Umask = 63;
-        StandardOutPath = "${homeDir}/.local/state/subscription-proxy/catalog.log";
-        StandardErrorPath = "${homeDir}/.local/state/subscription-proxy/catalog.err.log";
-      };
+    systemd.user.services = lib.mkIf cfg.server.enable {
+      subscription-proxy-personal = service "personal";
+      subscription-proxy-work = service "work";
     };
   };
 }

@@ -200,10 +200,6 @@
           model = "opencode-go/glm-5.2";
           thinking = "medium";
         };
-        oracle = {
-          model = "opencode-go/kimi-k2.6";
-          thinking = "high";
-        };
         planner = {
           model = "opencode-go/glm-5.2";
           thinking = "medium";
@@ -211,14 +207,6 @@
         researcher = {
           model = "opencode-go/glm-5.2";
           thinking = "low";
-        };
-        reviewer = {
-          model = "opencode-go/kimi-k2.6";
-          thinking = "high";
-        };
-        scout = {
-          model = "opencode-go/deepseek-v4-flash";
-          thinking = "off";
         };
         worker = {
           model = "opencode-go/glm-5.2";

@@ -85,9 +85,9 @@ named-profile collection in the pinned TUI; a small endpoint launcher is enough.
    **API key**, and **Save**. Keep the preseeded endpoint
    `https://opencode.ai/zen/go/v1`, prefix `go`, models, and headers unchanged.
    Do not add a second primary provider or use the pay-as-you-go Zen endpoint.
-4. Ask the operator to reconcile central routing and verify live Go calls from
+4. Ask the operator to rebuild Omarchy (publishing the pinned routes) and verify live Go calls from
    both hosts before using the subagents. Pi uses `subscription-go/go/<model>`;
-   no upstream key belongs in Pi. Daily jobs keep model choices synchronized.
+   no upstream key belongs in Pi. The model list is pinned in Nix (see below).
 
 ### Personal panel
 
@@ -107,109 +107,44 @@ not independently managed upstream Claude OAuth credentials.
 Go is API-key authentication, not OAuth. The endpoint is
 `https://opencode.ai/zen/go/v1`, not pay-as-you-go Zen. Leave OpenCode Console's
 optional **Use balance** setting off unless paid-credit fallback is wanted.
-The initial bootstrap has `glm-5.2`, `kimi-k2.6`, and `deepseek-v4-flash`.
-The catalog reconciler expands this from Go-specific upstream metadata. Pi uses
-Chat Completions to the gateway; the gateway selects Chat Completions, Responses,
-or Messages **upstream per model**, including non-Claude Messages models.
-It forwards Pi's `session_id` to `x-opencode-session` and preserves its user agent
-on all three paths. Do not remove those headers when editing the primary key.
+Only Go models served over Chat Completions are used; the pinned list is in
+`go-models.json`. The gateway forwards Pi's `session_id` to `x-opencode-session`
+and preserves its user agent. Do not remove those headers when editing the key.
 
 Provider/employer policies still apply. Technical proxy OAuth support is not a
 provider endorsement of subscription credential intermediation.
 
-## Repeatable Go catalog refresh
+## Pinned Go model list
 
-Tracked in [Fizzy #725](https://app.fizzy.do/6284043/cards/725), related to #720.
-This automation is Home Manager-owned, not an ad-hoc mise task or another login UI.
+Tracked in [Fizzy #961](https://app.fizzy.do/6284043/cards/961), which replaced
+the daily models.dev reconciler from #725.
 
-Sources are the public Go availability endpoint (`/zen/go/v1/models`) and the
-**`opencode-go`** record from `https://models.dev/api.json`. The latter supplies
-per-model SDK/protocol, context/output limits, reasoning, tools, modalities,
-and nominal cost metadata. Never substitute Zen metadata for a missing Go entry.
-Only available text/tool-capable models with known protocols are published;
-Claude IDs/names/families and unknown metadata are excluded. An advertised ID
-without trustworthy Go metadata is quarantined, not guessed. The initial
-verified expanded snapshot contains 34 models across all three protocols;
-10 legacy/undocumented IDs are pending metadata in
-[Fizzy #730](https://app.fizzy.do/6284043/cards/730), and Claude is excluded.
+The Go lineup is the checked-in file
+`modules/home-manager/subscription-proxy/go-models.json`. Every entry is a Go
+model served over plain OpenAI Chat Completions, so the gateway's single
+**`opencode-go`** provider routes all of them; there are no Responses or
+Messages groups. Nothing is fetched at runtime and there is no timer.
 
-**Daily scheduling on both hosts:**
+To add or retire a model, edit `go-models.json` (ID, display name, reasoning,
+Pi input types, context window, output cap at most 32,768, nominal cost) and
+rebuild. Check the model is listed by `https://opencode.ai/zen/go/v1/models`
+and has no `npm` override in the `opencode-go` record of
+`https://models.dev/api.json` (an override means Responses or Messages).
+Costs shown in Pi are estimates, **not a promise of Go overage billing**.
 
-- Omarchy: `subscription-proxy-catalog.timer`, daily at 03:15 local time plus up
-  to ten minutes jitter, five-minute boot catch-up, and persistent missed-run
-  catch-up. Its oneshot service reconciles central routing and local work Pi.
-- Mac: `org.nix-community.home.subscription-proxy-catalog`, at login/load and
-  every 86,400 seconds while loaded. It updates only local work Pi from validated
-  public metadata intersected with the running gateway's `go/` model aliases.
-  It does not download the upstream Go key or edit central routing.
-- Jobs explicitly set paired `PI_CODING_AGENT_DIR`/`CLAUDE_CONFIG_DIR` work
-  variables. They never run inference, restart agents, update flake inputs,
-  change selected models/defaults/subagent roles, or refresh Pi packages.
+On activation:
 
-Manual refresh (operator; no need to run on both hosts when the daily jobs suffice):
+- Every host writes the list into work Pi's `subscription-go` provider.
+- Omarchy runs `subscription-proxy sync-go` when the work gateway is active. It
+  sets only the `opencode-go` provider's model list through the management API,
+  preserving its key, endpoint and headers, and removes the retired
+  `opencode-go-responses`/`opencode-go-messages` groups. It then waits for the
+  gateway to publish every pinned `go/` model. If Go is disabled or has no key,
+  it saves the list and skips the publish check. Do not save provider edits in
+  the panel during a switch: v8 has no conditional-write API.
 
-```bash
-# Omarchy only: routing plus local Pi
-subscription-proxy refresh-go --server
-# Mac: local Pi, after the central routes are published
-subscription-proxy refresh-go
-# Replay the exact last successful public-source inputs without downloading them
-subscription-proxy refresh-go --server --cached  # Omarchy
-subscription-proxy refresh-go --cached           # Mac
-```
-
-`~/.config/subscription-proxy/go-catalog.json` is the private, replayable last-good
-public-source snapshot and normalized model/exclusion list. Future Home Manager
-activations use it, rather than resetting Pi to the three bootstrap models.
-Output caps are conservatively limited to 32,768; context, reasoning, supported
-Pi text/image inputs, and nominal cost data come from the metadata. Costs shown
-in Pi are estimates, **not a promise of Go overage billing**; leave Use balance off.
-
-The central primary **`opencode-go`** remains the official-UI key editor. Its
-Chat Completions model list and required session/User-Agent headers are managed.
-The reconciler maintains two derived groups using that same Go key **only on
-Omarchy**: **`opencode-go-responses`** in the native xAI/Responses section and
-**`opencode-go-messages`** in the native Claude/Messages section. These API
-protocol labels do not mean GPT routes use Codex OAuth or Qwen/MiniMax routes
-use Claude subscription credentials. Their prefixes/models are disjoint and
-all endpoints remain under `/zen/go`. Do not edit derived keys/model lists;
-rotate the original key, then run central refresh (or wait for its next run).
-The Messages group uses a **per-key `x-api-key` header**, because Go requires it
-and CLIProxyAPI otherwise uses only Bearer auth on non-Anthropic hosts. Each
-pooled/rotated key has its own correct header; these values stay in Omarchy's
-private configuration and never enter the public-source/Pi snapshots.
-Removing/disabling the primary clears derived keys on successful refresh.
-Use `--cached` to propagate key changes even when public metadata is unavailable.
-
-Fetch/schema/empty-catalog failures and suspicious reductions larger than half
-retain last-good Pi choices. Review large legitimate retirements before using
-`--allow-shrink`. Local flock prevents overlapping refresh/activation jobs. Activation waits for
-an already-running bounded refresh, since a persistent timer can start during
-the Home Manager switch; duplicate refreshes fail safely and can be retried.
-Central changes use the protected management API and preserve unrelated provider
-entries, keys, OAuth configuration, and settings. A second read detects operator
-edits before patching, but v8 has **no conditional-write/CAS API**: do not save
-provider edits in the panel simultaneously with a refresh. A failed gateway
-publication rolls back only if those lists still match the reconciler's write;
-it never rolls back over a detected subsequent operator edit. A private central
-`go-routing-rollback.json` holds the prior affected lists (including keys), never
-in Git, Nix, or the Mac. Tailnet outages leave Mac's last-good choices in place.
-
-Inspect job status without dumping secret configuration:
-
-```bash
-# Omarchy
-systemctl --user status subscription-proxy-catalog.timer subscription-proxy-catalog.service
-journalctl --user -u subscription-proxy-catalog.service -n 10 --no-pager
-# Mac
-launchctl print gui/$(id -u)/org.nix-community.home.subscription-proxy-catalog
-```
-
-Job logs contain counts/redacted errors, not keys or request bodies. New Pi
-sessions load refreshed models; use Pi's `/reload` or restart an existing agent
-at your discretion. Existing sessions retain their selected model. Neither
-model-router virtual-model legacy routing nor Claude Code selection is changed
-by this automation.
+New Pi sessions load the updated models; use Pi's `/reload` or restart an
+existing agent at your discretion.
 
 ## Select clients after provisioning and verification
 
