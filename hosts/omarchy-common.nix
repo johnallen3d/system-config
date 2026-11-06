@@ -30,6 +30,14 @@
     inherit pkgs;
     palette = rexPalette;
   };
+  # Mac (deploys) plus each Linux host's own key, for cross-host rsync/scp.
+  # Omarchy uses OpenSSH; Miller and Drummer use Tailscale SSH (tailnet policy).
+  authorizedKeys = pkgs.writeText "authorized_keys" ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINGs0qwPKIoejl6w0R0UKGM4i3WoyJI9WooAkEvSQKq6 mac
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZEUGBGQyM7PFS1GPkW+4sUcOK+graXttptqcNRRH2a omarchy
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIItN4G6hV5/dv26t6WGKd7rrpa0HTgsLF5zqGp2i+2Dm miller
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC32sawjNZMspwhMgXwCqL1Btq5JDqjdJvZD6eFQsfq1 drummer
+  '';
   lopPath =
     lib.makeBinPath [pkgs.coreutils pkgs.git pkgs.openssh pkgs.worktrunk]
     + ":${homeDir}/.local/bin:${homeDir}/.nix-profile/bin:/usr/local/bin:/usr/bin:/bin";
@@ -105,6 +113,13 @@ in {
       "https://gist.github.com" = {inherit helper;};
     };
   };
+
+  # A real file, not a store symlink: sshd StrictModes rejects group-writable
+  # /nix/store. Replaced on every activation; add keys here, not by hand.
+  home.activation.sshAuthorizedKeys = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    run install -d -m 700 ${homeDir}/.ssh
+    run install -m 600 ${authorizedKeys} ${homeDir}/.ssh/authorized_keys
+  '';
 
   # Match the Mac's Nix-owned policy; exclusions stay writable and host-local.
   xdg.configFile."lop/config.toml".source = ../modules/home-manager/dotfiles/config/lop/config.toml;

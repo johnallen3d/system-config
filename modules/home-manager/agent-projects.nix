@@ -16,6 +16,8 @@
     This is standalone Home Manager on Arch/Omarchy, not macOS or NixOS.
     Never run macOS rebuild tasks here or change Omarchy shell/desktop settings.
     See docs/omarchy-agents.md in system-config for application and authentication.
+    Omarchy, Miller, and Drummer reach each other over the tailnet as `johna@<host>`
+    without prompts; use `rsync`/`scp`/`ssh` directly for cross-host copies.
   '';
   # Always-on rules only; procedures live in skills and the /wrap command.
   personalInstructions =
