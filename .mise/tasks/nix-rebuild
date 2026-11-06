@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Apply darwin-rebuild (updates flake by default); logs to temp file"
 #USAGE flag "--switch-only" help="Skip nix flake update"
-#USAGE flag "--picker-only" help="Update only the Herdr project picker input"
 #USAGE flag "--update-only" help="Resolve inputs without building/applying (update-system preparation)"
 set -uo pipefail
 
@@ -10,8 +9,8 @@ tool_root="${SYSTEM_CONFIG_TOOL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../..
 repo="${SYSTEM_CONFIG_TASK_ROOT:-$tool_root}"
 cd "$repo" || exit
 
-if [[ "${usage_switch_only:-false}" == "true" && ( "${usage_picker_only:-false}" == "true" || "${usage_update_only:-false}" == "true" ) ]]; then
-  echo "--switch-only cannot be combined with --picker-only or --update-only" >&2
+if [[ "${usage_switch_only:-false}" == "true" && "${usage_update_only:-false}" == "true" ]]; then
+  echo "--switch-only cannot be combined with --update-only" >&2
   exit 2
 fi
 
@@ -39,9 +38,7 @@ printf 'nix-rebuild log: %s\n' "$log" >&2
   # Raise to hard limit so flake input fetches do not hit tarball-cache EMFILE.
   raise_nofile_limit
 
-  if [[ "${usage_picker_only:-false}" == "true" ]]; then
-    nix flake update herdrProjectPicker
-  elif [[ "${usage_switch_only:-false}" != "true" ]]; then
+  if [[ "${usage_switch_only:-false}" != "true" ]]; then
     nix flake update
   fi
   if [[ "${usage_update_only:-false}" != "true" ]]; then

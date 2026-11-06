@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Apply Mac, Omarchy, Miller, and Drummer config in parallel; optionally refresh harnesses"
 #USAGE flag "--switch-only" help="Skip flake input updates on both hosts"
-#USAGE flag "--picker-only" help="Update only the Herdr project picker input"
 #USAGE flag "--local-only" help="Apply/refresh only the Mac; explicitly skip Omarchy, Miller, and Drummer"
 #USAGE flag "--harness-refresh" help="Refresh Mac, Omarchy, Miller, and Drummer harness packages after all deployments succeed"
 #USAGE flag "--harness-only" help="Refresh harness packages without rebuilding (Mac + Linux hosts from macOS)"
@@ -22,11 +21,6 @@ fi
 
 if [[ "$(uname -s)" != Darwin ]]; then
   echo "System deployments must start on macOS (Mac -> Omarchy, Miller, Drummer); use harness-refresh for host-local Linux refreshes" >&2
-  exit 2
-fi
-
-if [[ "${usage_switch_only:-false}" == true && "${usage_picker_only:-false}" == true ]]; then
-  echo "--switch-only and --picker-only are mutually exclusive" >&2
   exit 2
 fi
 
@@ -60,27 +54,22 @@ rebuild() {
   else
     # Installed tooling also coordinates older worktrees; never execute their
     # pre-coordinator rebuild script or mutate them to upgrade it.
-    local switch=false update=false picker=false arg
+    local switch=false update=false arg
     for arg in "$@"; do
       case "$arg" in
         --switch-only) switch=true ;;
         --update-only) update=true ;;
-        --picker-only) picker=true ;;
         *) return 2 ;;
       esac
     done
-    usage_switch_only="$switch" usage_update_only="$update" usage_picker_only="$picker" \
+    usage_switch_only="$switch" usage_update_only="$update" \
       bash "$tool_root/.mise/tasks/nix-rebuild"
   fi
 }
 
 # Resolve inputs exactly once, before any host starts building.
 if [[ "${usage_switch_only:-false}" != true ]]; then
-  update_args=(--update-only)
-  if [[ "${usage_picker_only:-false}" == true ]]; then
-    update_args+=(--picker-only)
-  fi
-  rebuild "${update_args[@]}"
+  rebuild --update-only
 fi
 
 python3 "$tool_root/.mise/scripts/deployment_state.py" plan "$repo" "$payload/mac-source"

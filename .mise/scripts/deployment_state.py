@@ -464,12 +464,12 @@ def adopt(repo, source, owner, directory):
 
 def main():
     if len(sys.argv) < 3 or (sys.argv[1] == "apply" and sys.argv[2] in ("-h", "--help")):
-        print("Usage: system-config-deploy TASK_PATH [--switch-only|--picker-only] [--local-only] [--harness-refresh|--harness-only]")
+        print("Usage: system-config-deploy TASK_PATH [--switch-only] [--local-only] [--harness-refresh|--harness-only]")
         return 0
     mode, repo = sys.argv[1], Path(sys.argv[2]).resolve()
     directory = state_dir()
     if mode == "apply":
-        allowed = {"--switch-only", "--picker-only", "--local-only", "--harness-refresh", "--harness-only"}
+        allowed = {"--switch-only", "--local-only", "--harness-refresh", "--harness-only"}
         flags = sys.argv[3:]
         if any(flag not in allowed for flag in flags):
             raise RuntimeError("Unknown deployment flag")

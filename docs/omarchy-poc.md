@@ -15,7 +15,7 @@ home: `/home/johna`. This is not a NixOS conversion.
 The `johna@omarchy` flake output imports only `hosts/omarchy.nix`, not the
 shared package/dotfile suite. It installs Nix-managed `jq` and the Home Manager
 CLI, and links `~/.config/nix-home-manager-poc/status.json`; the current profile
-also opts into the agent, VNC, Herdr and Fish modules linked in this guide.
+also opts into the agent, VNC and Fish modules linked in this guide.
 Home Manager also creates its profile/session-variable support and XDG `.keep`
 placeholders.
 The original POC excluded shell configuration and user systemd management;

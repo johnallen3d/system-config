@@ -17,7 +17,6 @@
     (import ./bin/find-and-replace.nix {inherit pkgs;})
     (import ./bin/fixup.nix {inherit pkgs;})
     (import ./bin/flac-to-mp3.nix {inherit pkgs;})
-    (import ./bin/herdr-open-wt.nix {inherit pkgs;})
     (import ./bin/md-to-doc.nix {inherit pkgs;})
     (import ./bin/pi-model-usage-dashboard.nix {inherit pkgs;})
     (import ./bin/pi-model-usage.nix {inherit pkgs;})
@@ -100,7 +99,6 @@ in {
       gnugrep
       gotop
       harper
-      herdr
       home-manager
       # hurl
       imagemagick

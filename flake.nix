@@ -12,10 +12,6 @@
       url = "github:nix-community/home-manager/fae6e9e42c3b762ab47635cddcfaf6f52374a61b";
       inputs.nixpkgs.follows = "omarchyNixpkgs";
     };
-    omarchyHerdrProjectPicker = {
-      url = "github:johnallen3d/herdr-project-picker/70219b8e1157f85dab8a8b9cf3b67907e6ca969d";
-      flake = false;
-    };
     home-manager = {
       # Stay on Home Manager master while nixpkgs tracks nixos-unstable.
       url = "github:nix-community/home-manager";
@@ -34,10 +30,6 @@
       url = "git+https://github.com/johnallen3d/cue.git?ref=main";
       flake = false;
     };
-    herdrProjectPicker = {
-      url = "github:johnallen3d/herdr-project-picker";
-      flake = false;
-    };
     rex = {
       # Pre-release; fetching needs the netrc from modules/home-manager/nix-netrc.nix.
       url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
@@ -48,14 +40,12 @@
   outputs = {
     credits,
     home-manager,
-    herdrProjectPicker,
     lop,
     nix-darwin,
     nixpkgs,
     yem,
     omarchyNixpkgs,
     omarchyHomeManager,
-    omarchyHerdrProjectPicker,
     rex,
     ...
   }: let
@@ -63,10 +53,10 @@
     full_name = "John Allen";
 
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
-      inherit credits home-manager herdrProjectPicker lop nix-darwin nixpkgs yem user full_name;
+      inherit credits home-manager lop nix-darwin nixpkgs yem user full_name;
     };
     makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
-      inherit home-manager herdrProjectPicker lop nixpkgs yem user full_name;
+      inherit home-manager lop nixpkgs yem user full_name;
     };
   in {
     darwinConfigurations = {
@@ -92,7 +82,6 @@
           };
           extraSpecialArgs = {
             inherit credits full_name host lop rex;
-            herdrProjectPicker = omarchyHerdrProjectPicker;
           };
           modules = [./hosts/${host}.nix];
         };

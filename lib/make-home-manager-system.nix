@@ -1,6 +1,5 @@
 {
   home-manager,
-  herdrProjectPicker,
   lop,
   nixpkgs,
   yem,
@@ -21,7 +20,7 @@ in
     inherit pkgs;
 
     extraSpecialArgs = {
-      inherit herdrProjectPicker home lop yem user full_name;
+      inherit home lop yem user full_name;
       op_path = "${pkgs._1password-cli}/bin/op";
     };
 

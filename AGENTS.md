@@ -20,7 +20,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Omarchy (Arch Linux, not NixOS) hosts already use this repo's standalone Home Manager: `homeConfigurations."johna@omarchy"` (`hosts/omarchy.nix`), `homeConfigurations."johna@miller"` (`hosts/miller.nix`), and `homeConfigurations."johna@drummer"` (`hosts/drummer.nix`) — Omarchy is a mini PC; Miller and Drummer are 2013 Mac Pros (hardware: `docs/hosts-hardware.md`) — sharing `hosts/omarchy-common.nix`. Only Omarchy runs the singletons (Pi Pocket, subscription proxy server, credits, Syncthing LAN forwarder); home `/home/johna`. Don't ask whether it uses Home Manager.
 - Keep host modules opt-in, leave Omarchy's native desktop config alone, and never run macOS rebuild tasks there. Shared project declarations and user automation belong in Nix/Home Manager, not separate mise tasks; project dependencies use mise.
 - `~/dev/src/amfaro/mise.toml` is Home Manager-owned profile context on every host (`modules/home-manager/agent-projects.nix`). Use plain `pi`/`claude` (no named launchers), `mise exec` for noninteractive work commands, and respect `PI_CODING_AGENT_DIR` and `CLAUDE_CONFIG_DIR`.
-- See `docs/omarchy-agents.md` (activation, profiles) and `docs/omarchy-herdr.md` (Herdr, remote access).
+- See `docs/omarchy-agents.md` (activation, profiles).
 
 ## Theme
 
@@ -29,7 +29,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 ## Commands
 
-- `mise update-system` (macOS): updates inputs, then deploys Mac, Omarchy, Miller, and Drummer in parallel. Flags: `--switch-only` (no input update), `--picker-only`, `--local-only` (skip Linux hosts), `--harness-refresh` (refresh Pi packages and the work Claude plugin after deploys succeed), `--harness-only`. Any host failing returns nonzero and reports a partial deployment.
+- `mise update-system` (macOS): updates inputs, then deploys Mac, Omarchy, Miller, and Drummer in parallel. Flags: `--switch-only` (no input update), `--local-only` (skip Linux hosts), `--harness-refresh` (refresh Pi packages and the work Claude plugin after deploys succeed), `--harness-only`. Any host failing returns nonzero and reports a partial deployment.
 - `mise run harness-refresh` refreshes every host from Mac (host-local on Linux); it doesn't update Claude's binary or activate Home Manager. Restart Claude Code after a plugin update.
 - Mac-only rebuild without Pi: `mise run nix-rebuild`.
 - Check: `nix flake check`; search: `nix search nixpkgs <name>`.
@@ -39,7 +39,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Never run `darwin-rebuild` or `nix flake update` directly; use the commands above.
 - Rebuilds print `nix-rebuild log: <path>`. Inspect logs only on failure or request with targeted `rg -i 'error|fail|warning' "$log"`; never stream a whole log.
 - Prefer Nix to Homebrew. Search first, then add alphabetically to `modules/home-manager/packages/default.nix` (all), `darwin.nix`, or `linux.nix`.
-- Apply Nix-managed script/config/package changes immediately (`--switch-only` when inputs are unchanged). Rebuilding doesn't reload app config: after Herdr changes run `herdr server reload-config`; reload running Ghostty instances as `.mise/tasks/theme-switch` does (AppleScript on macOS, `SIGUSR2` on Linux; skip if not running).
+- Apply Nix-managed script/config/package changes immediately (`--switch-only` when inputs are unchanged). Rebuilding doesn't reload app config: reload running Ghostty instances as `.mise/tasks/theme-switch` does (AppleScript on macOS, `SIGUSR2` on Linux; skip if not running).
 - Never commit unless explicitly requested.
 
 ## Deployment
@@ -51,7 +51,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Missing or drifted provenance blocks activation. Adoption needs verified ownership and an exact evaluated-output match to the installed generation — never guess from timestamps or build success. Reconcile out-of-band rollbacks explicitly. Details: `docs/concurrent-deployments.md`.
 - Authorized deployment includes clean fast-forward sync of each Linux host's `main` to reviewed, integrated local `main`, without separate merge permission. Stop on dirty source, divergence, conflicts, or uncertain ownership; preserve unrelated remote edits and credentials. Carrying layers or syncing never authorizes commits, merges, rebases, pushes, worktree removal, agent restarts, or card closure.
 - SSH is `johna@omarchy` / `johna@miller` / `johna@drummer` with a Fish login shell: run Bash via `bash -s`, work-profile commands via `mise -C ~/dev/src/amfaro exec -- ...` with absolute script paths.
-- Verify installed config and effective runtime on each host independently. Don't restart active agents or Herdr servers just to refresh environment; report needed restarts. If a host is unreachable or verification fails, the deployment is **partial**: keep the card open, name the pending host/action, and never report it as done. Documentation-only changes need no activation.
+- Verify installed config and effective runtime on each host independently. Don't restart active agents just to refresh environment; report needed restarts. If a host is unreachable or verification fails, the deployment is **partial**: keep the card open, name the pending host/action, and never report it as done. Documentation-only changes need no activation.
 - Pi Pocket (`pi-pocket.service`, `docs/pi-pocket.md`) is the production personal assistant.
 
 ## Issue tracking

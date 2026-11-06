@@ -8,10 +8,10 @@ rex.bind("cmd+-", "client.font.decrease")
 rex.bind("cmd+0", "client.font.reset")
 rex.bind("cmd+ctrl+=", "pane.balance")
 
--- Herdr workspaces
+-- Sessions sidebar
 rex.bind("cmd+s", "client.sidebar.toggle")
 
--- Herdr tabs and panes
+-- Tabs and panes
 rex.bind("cmd+t", "client.tab.new")
 rex.bind("ctrl+tab", "client.tab.next")
 rex.bind("ctrl+shift+tab", "client.tab.previous")

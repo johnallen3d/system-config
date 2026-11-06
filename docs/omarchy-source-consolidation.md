@@ -42,8 +42,8 @@ only Omarchy's Home Manager output uses these additional, exact inputs:
 | --- | --- |
 | `omarchyNixpkgs` | `151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4` |
 | `omarchyHomeManager` | `fae6e9e42c3b762ab47635cddcfaf6f52374a61b` |
-| `omarchyHerdrProjectPicker` | `70219b8e1157f85dab8a8b9cf3b67907e6ca969d` |
 
+A third pin, `omarchyHerdrProjectPicker`, was dropped with Herdr in #953.
 The Omarchy Home Manager input follows `omarchyNixpkgs`. Mac and other hosts
 continue using their existing shared inputs. These pins preserve deployed
 package/unit identities without downgrading other hosts; upgrading them is a

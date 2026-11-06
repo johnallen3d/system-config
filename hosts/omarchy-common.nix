@@ -31,7 +31,7 @@
     palette = rexPalette;
   };
   lopPath =
-    lib.makeBinPath [pkgs.coreutils pkgs.git pkgs.herdr pkgs.openssh pkgs.worktrunk]
+    lib.makeBinPath [pkgs.coreutils pkgs.git pkgs.openssh pkgs.worktrunk]
     + ":${homeDir}/.local/bin:${homeDir}/.nix-profile/bin:/usr/local/bin:/usr/bin:/bin";
 in {
   # Shared by every Omarchy (Arch) host. Host files add their singletons.
@@ -41,7 +41,6 @@ in {
     ../modules/home-manager/git
     ../modules/home-manager/omarchy-beszel.nix
     ../modules/home-manager/omarchy-fish.nix
-    ../modules/home-manager/omarchy-herdr.nix
     ../modules/home-manager/omarchy-nvim.nix
     ../modules/home-manager/omarchy-paddleocr.nix
     ../modules/home-manager/omarchy-vnc.nix

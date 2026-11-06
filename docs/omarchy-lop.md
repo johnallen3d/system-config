@@ -20,9 +20,9 @@ journalctl --user -u lop.service -n 30 --no-pager
 ```
 
 The timer starts on activation/startup and runs every minute. Its oneshot service
-cannot overlap itself. Existing Lop integration, dirty/locked-worktree, and
-Herdr activity safety gates remain intact. Herdr, Git, Worktrunk, and SSH are
-explicitly available in the service PATH. Credentials remain machine-local;
+cannot overlap itself. Existing Lop integration and dirty/locked-worktree
+safety gates remain intact; Lop's optional Herdr gate is skipped because Herdr
+is not installed. Git, Worktrunk, and SSH are explicitly available in the service PATH. Credentials remain machine-local;
 fetches are noninteractive, using Omarchy's existing Git credential helpers.
 No Mac SSH socket or credentials are copied. Omarchy already has user lingering
 enabled, so the timer does not depend on an open SSH connection.

@@ -5,7 +5,7 @@ default-shell correction in [#697](https://app.fizzy.do/6284043/cards/697).
 
 ## Use it
 
-Fish must be the **account login shell**, not merely a Herdr pane setting.
+Fish must be the **account login shell**.
 After Home Manager activation, run the installed helper once as `johna`:
 
 ```bash
@@ -21,7 +21,7 @@ The helper does not grant passwordless sudo or edit authentication policy.
 
 Fresh SSH logins then start Fish. Log out and back into the desktop once so
 applications inherit the new account shell instead of a cached Bash `SHELL`.
-New Herdr panes also use Fish. Existing shells keep running; replace an idle
+Existing shells keep running; replace an idle
 one with `exec ~/.nix-profile/bin/fish`, or open a new terminal. No Ghostty
 override is required: leave its default shell selection alone.
 
@@ -64,7 +64,6 @@ nix build --no-write-lock-file \
 DRY_RUN=1 ./result-fish/activate
 ./result-fish/activate
 ~/.nix-profile/bin/omarchy-fish-default-shell
-~/.local/bin/herdr server reload-config
 
 # Read-only confirmation; no sudo needed.
 ~/.nix-profile/bin/omarchy-fish-default-shell --check
@@ -73,7 +72,6 @@ getent passwd johna
 
 Do not force unexpected file collisions or use automatic backups to overwrite
 an existing Fish/Television configuration. Build and review the dry run first.
-Reloading Herdr affects new panes only; it does not interrupt running agents.
 
 The original Fish installation passed live shell/helper and repeat activation
 checks, but incorrectly left the account shell as Bash. The default-shell
@@ -90,7 +88,6 @@ sudo /usr/bin/chsh -s /usr/bin/bash johna
 getent passwd johna
 ```
 
-Then remove the Fish module import, rebuild and activate the host profile,
-and reload Herdr. New Herdr panes fall back to the existing
-Bash wrapper; do not uninstall the entire Home Manager profile, which also owns
+Then remove the Fish module import and rebuild and activate the host profile;
+new logins use Bash. Do not uninstall the entire Home Manager profile, which also owns
 agents and services. See the [standalone guide](omarchy-poc.md).

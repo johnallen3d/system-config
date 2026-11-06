@@ -76,7 +76,7 @@ systemctl --user is-enabled beszel-agent
 systemctl --user is-active beszel-agent
 ```
 
-No coding-agent or Herdr restart is required. Removing this module and activating
+No coding-agent restart is required. Removing this module and activating
 the previous configuration stops monitoring, but intentionally does not delete
 machine-local pairing/state or the Beszel system record.
 

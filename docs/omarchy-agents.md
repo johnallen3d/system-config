@@ -3,7 +3,6 @@
 Tracked in [Fizzy #692](https://app.fizzy.do/6284043/cards/692), with shared work
 footer parity in [#706](https://app.fizzy.do/6284043/cards/706).
 Builds on the [standalone Home Manager setup](omarchy-poc.md); this is not NixOS.
-For persistent sessions and Mac remote access, see the [Herdr guide](omarchy-herdr.md).
 For centralized Codex/Claude/Go credentials and Tailscale client access, see
 [the subscription proxy guide](omarchy-subscription-proxy.md). Pi routes stay native until central accounts are provisioned and client selection
 is verified. Work Claude Code uses the work proxy as its managed default on both
@@ -347,8 +346,7 @@ in parallel**, including from task worktrees with older deployment scripts. Curr
 [concurrent deployment ownership and recovery](concurrent-deployments.md) and inspect
 both hosts' lock/provenance status before activation. Without
 `--switch-only`, inputs are updated once on Mac before either build starts.
-`--picker-only` updates only the shared Herdr picker; `--local-only` explicitly
-skips Omarchy. `--harness-refresh` runs after both requested deployments succeed;
+`--local-only` explicitly skips Omarchy. `--harness-refresh` runs after both requested deployments succeed;
 `--harness-only` still refreshes agent packages/plugins without activation.
 
 The updater sends integrated local `main` history and a binary patch representing
@@ -373,7 +371,7 @@ Matching legacy deployment worktrees are safely retired after snapshot-based
 activation succeeds; changed or unrelated worktrees are never reset/deleted. Build/activation log paths
 are printed; inspect failure logs with targeted searches, not a full log dump.
 The active generation and installed managed entries are verified after activation.
-No agent or Herdr restart is explicitly requested by the updater; Home Manager
+No agent restart is explicitly requested by the updater; Home Manager
 retains its ordinary changed-service activation behavior.
 
 Durable source belongs to Omarchy's `~/dev/src/system-config` Git object database;
@@ -402,7 +400,7 @@ mise -C ~/dev/src/amfaro exec -- sh -c 'printf "PI_CODING_AGENT_DIR=%s\nCLAUDE_C
 Verify installed config and effective profile behavior on each host after
 activation. Report the two host statuses separately, plus any agent restarts
 required to pick up launch-time environment. Do not silently restart active
-agents or Herdr servers. An unreachable or unverified host means a partial
+agents. An unreachable or unverified host means a partial
 deployment: keep its Fizzy card open and hand off the missing host/action.
 Documentation-only changes need no activation.
 
@@ -454,8 +452,7 @@ from the Mac):
    a unique `services.rex.tailscale.hostname = "rex-$h"`; add
    `"johna@$h" = makeOmarchyHome "$h";` to `flake.nix`; append `$h` to `HOSTS`
    in `update-system-omarchy`, and to `linux_hosts`/`linux_labels` in
-   `.mise/tasks/update-system` and `.mise/tasks/harness-refresh`; add it to the
-   machine list in `herdr-omarchy-setup.nix`.
+   `.mise/tasks/update-system` and `.mise/tasks/harness-refresh`.
 2. On `$h` (John, sudo): install Nix with the official multi-user installer
    (`curl -L https://nixos.org/nix/install | sh -s -- --daemon --yes`), then
    apply `omarchy-nix-system` (above) from a seeded checkout.
@@ -463,13 +460,12 @@ from the Mac):
    Mac bundle of `refs/heads/main`, then set `origin` to GitHub HTTPS.
 4. Provision before first activation (activation fails without them):
    `~/.config/subscription-proxy/credentials.json` (mode 0600, copied host to
-   host, never through chat), `~/.local/share/herdr/project-seeds/pi-cielo.bundle`
-   (see [the Herdr projects guide](herdr-favorite-projects.md)), and
+   host, never through chat) and
    `gh auth login` with access to the private `amfaro` repositories.
 5. Bootstrap once (the coordinator needs an existing generation): create a task
    worktree on `$h` holding the exact task tree, build its
    `johna@$h` activation package, move any colliding stock files (Omarchy ships
-   `~/.config/git/config`, `~/.config/herdr/config.toml`, and a LazyVim
+   `~/.config/git/config` and a LazyVim
    `~/.config/nvim`) into `~/.local/state/system-config/pre-home-manager-backup/`,
    run `<generation>/activate`, then `deployment_state.py adopt <repo> <task
    worktree> <task branch>` (exact evaluated-output match required).
@@ -478,10 +474,7 @@ from the Mac):
    for the Rex user service.
 7. Deploy normally from the Mac task worktree (`mise update-system
    --switch-only`; the installed `system-config-deploy` only knows the hosts it
-   was built with until that deploy lands). If Omarchy's stock `/usr/bin/herdr
-   server` is already running, `herdr.service` loops on "already running":
-   stop the stock server so the managed one starts, then rerun
-   `herdr-omarchy-setup` on the Mac.
+   was built with until that deploy lands).
 8. Log in the host's Rex tailnet node: `rex.service` runs, but its `rex-$h`
    tsnet node stays unauthenticated (the Mac app cannot connect) until John
    opens the login link it repeats every few seconds

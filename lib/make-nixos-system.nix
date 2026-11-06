@@ -1,6 +1,5 @@
 {
   home-manager,
-  herdrProjectPicker,
   lop,
   nixpkgs,
   yem,
@@ -36,7 +35,7 @@ in
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.extraSpecialArgs = {
-            inherit herdrProjectPicker lop yem user full_name;
+            inherit lop yem user full_name;
             op_path = "${pkgs._1password-cli}/bin/op";
           };
 
