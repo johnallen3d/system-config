@@ -78,8 +78,11 @@ out-of-band commands or a privileged process killing a deployment's process tree
   there is no speculative auto-merge.
 - Main changes already identical to an active layer are absorbed and retired
   from that layer (including individual files in a multi-file layer). Later
-  integrated edits are not mistaken for an unfinished task. Other overlaps with
-  newer main stop; unrelated main changes are retained without rebasing a task.
+  integrated edits are not mistaken for an unfinished task. When main integrates
+  a layer and then edits its files again before the next deployment, all active
+  layers are retired only if a commit after the active main evaluates to the
+  exact installed generation. Other overlaps with newer main stop; unrelated
+  main changes are retained without rebasing a task.
 - Composite source is checked out into the lock owner's OS temporary directory,
   without a `.git` directory, linked worktree, or deployment branch. It contains
   the complete recorded tree, including files marked `export-ignore`. The owner

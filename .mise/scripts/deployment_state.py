@@ -222,6 +222,31 @@ def retire_formatted_integrations(repo, main, layers, generation):
     return remaining
 
 
+def retire_superseded_integrations(repo, main, previous):
+    """Retire active layers that main integrated and then edited further.
+
+    File-level composition reports an overlap when main both integrates a layer
+    and changes one of its files again before the next deployment. Retire every
+    active layer only if a commit after the active main evaluates to the exact
+    installed generation: main then already contains everything the layers
+    contributed to this host. Never merge files or rewrite active receipts.
+    """
+    layers = previous["layers"]
+    try:
+        compose(repo, main, layers)
+        return layers
+    except RuntimeError:
+        pass
+    commits = git(repo, "rev-list", "--ancestry-path", f"{previous['main']}..{main}").splitlines()
+    for commit in commits:
+        candidate = materialize(repo, commit, git(repo, "rev-parse", f"{commit}^{{tree}}"))
+        if evaluated_generation(candidate) == previous["generation"]:
+            for item in layers:
+                print(f"[deployment] Verified {commit[:12]} integrates {item['owner']} as the exact installed generation", file=sys.stderr, flush=True)
+            return []
+    return layers
+
+
 @contextmanager
 def temporary_sources():
     # The lock owner outlives all build/activation children. Its finally block
@@ -347,7 +372,8 @@ def plan(repo, directory, incoming=None):
     # Reconcile only already-active, fully integrated layers, before considering
     # this task's incoming changes. Active/pending receipts remain untouched.
     preserved = retire_formatted_integrations(repo, main, previous["layers"], previous["generation"])
-    layers = [item for item in preserved if item["owner"] != incoming["owner"]] + [incoming]
+    preserved = retire_superseded_integrations(repo, main, dict(previous, layers=preserved))
+    layers =[item for item in preserved if item["owner"] != incoming["owner"]] + [incoming]
     tree = compose(repo, main, layers)
     layers = normalize(repo, main, layers)
     source = materialize(repo, main, tree)
