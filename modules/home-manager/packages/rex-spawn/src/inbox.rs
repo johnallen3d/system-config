@@ -40,7 +40,6 @@ struct Task {
     project: String,
     name: String,
     profile: String,
-    work_item: String,
     /// Uncommitted files in the worktree, and the first few of their paths.
     dirty: u64,
     dirty_files: Vec<String>,
@@ -82,7 +81,6 @@ fn parse(json: &str) -> Result<Vec<Task>, String> {
             project: s(t, "project"),
             name: s(t, "name"),
             profile: s(t, "profile"),
-            work_item: s(t, "work_item"),
             dirty: t["dirty_count"].as_u64().unwrap_or(0),
             dirty_files: t["dirty_files"]
                 .as_array()
@@ -168,11 +166,11 @@ impl Inbox {
                 self.hits.push(Vec::new());
                 continue;
             }
-            // Match on the label, with host and work item as extra haystack
+            // Match on the label, with host as extra haystack
             // (status messages are free text and match too loosely); only
             // label hits are highlighted.
             let label = t.label();
-            let hay = format!("{label}  {}  {}", t.host, t.work_item);
+            let hay = format!("{label}  {}", t.host);
             if pattern.score(Utf32Str::new(&hay, &mut buf), &mut self.matcher).is_none() {
                 continue;
             }
@@ -403,16 +401,13 @@ impl Inbox {
         }
     }
 
-    /// The right side of a row, [dirty] [work item] [host chip] [state age],
+    /// The right side of a row, [dirty] [host chip] [state age],
     /// and its width.
     fn right_spans(&self, t: &Task, bg: Color, verb: &str) -> (Vec<Span<'static>>, usize) {
         let p = &self.p;
         let mut right: Vec<Span> = Vec::new();
         if t.dirty > 0 {
             right.push(Span::styled(format!("✎{}  ", t.dirty), Style::new().fg(p.gold).bg(bg)));
-        }
-        if !t.work_item.is_empty() {
-            right.push(Span::styled(format!("{}  ", t.work_item), Style::new().fg(p.iris).bg(bg)));
         }
         let chip_fg = if t.profile == "work" { p.gold } else { p.subtle };
         right.push(Span::styled(CAP_L, Style::new().fg(p.surface).bg(bg)));

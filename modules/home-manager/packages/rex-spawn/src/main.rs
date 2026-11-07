@@ -3,16 +3,15 @@
 //! Three modes, one binary on every host:
 //!
 //! - Picker (default): runs in the float on the focused session's host. Pick
-//!   a catalog project, name the work and optionally give its work item (a
-//!   GitHub issue or PR); the host defaults to `auto` and the harness to
-//!   Claude, both overridable with ctrl-o and ctrl-t. The picker reports the
-//!   choice in the terminal title as `rex-spawn:HOST/PATH/NAME/HARNESS/WORK`
-//!   (host, path, name and work item hex encoded);
+//!   a catalog project and name the work; the host defaults to `auto` and
+//!   the harness to Claude, both overridable with ctrl-o and ctrl-t. The
+//!   picker reports the choice in the terminal title as
+//!   `rex-spawn:HOST/PATH/NAME/HARNESS` (host, path and name hex encoded);
 //!   the config's `spawn` mode turns Enter into the launch and Escape into
 //!   closing the float, as with rex-tab-picker. Titles are capped at about
 //!   1 KiB, which is why there is no prompt field: the prompt is typed into
 //!   the agent itself.
-//! - `--launch HOST PATH NAME HARNESS [WORK]`: runs on the config host (the
+//! - `--launch HOST PATH NAME HARNESS`: runs on the config host (the
 //!   Mac), which can reach every Rex host. HOST `auto` picks from the
 //!   project's host pool (see `pool`), least busy first. Finds or creates the project's session on
 //!   the host, opens a tab running `--run` there, records the task (see
@@ -147,10 +146,6 @@ const CAP_R: &str = "\u{e0b4}";
 
 const HARNESSES: [&str; 2] = ["claude", "pi"];
 
-/// Longest work item the picker takes; the title protocol caps the whole
-/// pick at about 1 KiB, hex doubling each field.
-const WORK_MAX: usize = 160;
-
 // ---------------------------------------------------------------- catalog
 
 #[derive(Clone)]
@@ -265,7 +260,6 @@ fn hex(s: &str) -> String {
 enum Focus {
     Project,
     Name,
-    Work,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -288,7 +282,6 @@ struct App {
     focus: Focus,
     query: String,
     name: String,
-    work: String,
     matcher: Matcher,
     rows: Vec<Item>,
     hits: HashMap<usize, (Vec<usize>, Vec<usize>)>,
@@ -317,7 +310,6 @@ impl App {
             focus: Focus::Project,
             query: String::new(),
             name: String::new(),
-            work: String::new(),
             matcher: Matcher::new(Config::DEFAULT.match_paths()),
             rows: Vec::new(),
             hits: HashMap::new(),
@@ -422,11 +414,10 @@ impl App {
         self.selected = Some(at);
     }
 
-    fn toggle_focus(&mut self, forward: bool) {
-        self.focus = match (self.focus, forward) {
-            (Focus::Project, true) | (Focus::Work, false) => Focus::Name,
-            (Focus::Name, true) | (Focus::Project, false) => Focus::Work,
-            (Focus::Work, true) | (Focus::Name, false) => Focus::Project,
+    fn toggle_focus(&mut self) {
+        self.focus = match self.focus {
+            Focus::Project => Focus::Name,
+            Focus::Name => Focus::Project,
         };
     }
 
@@ -440,12 +431,11 @@ impl App {
             return String::new();
         }
         format!(
-            "{}/{}/{}/{}/{}",
+            "{}/{}/{}/{}",
             hex(host),
             hex(&project.path),
             hex(&self.name),
-            HARNESSES[self.harness],
-            hex(&self.work)
+            HARNESSES[self.harness]
         )
     }
 
@@ -466,8 +456,7 @@ impl App {
         let page = (self.list_area.height as isize - 2).max(1);
         match k.code {
             KeyCode::Char('c') if ctrl => return false,
-            KeyCode::Tab => self.toggle_focus(true),
-            KeyCode::BackTab => self.toggle_focus(false),
+            KeyCode::Tab | KeyCode::BackTab => self.toggle_focus(),
             // Overrides for the defaults: host starts at auto, harness at claude.
             KeyCode::Char('o') if ctrl => self.host = (self.host + 1) % self.hosts.len().max(1),
             KeyCode::Char('t') if ctrl => self.harness = (self.harness + 1) % HARNESSES.len(),
@@ -514,23 +503,7 @@ impl App {
                             self.name.push(c);
                         }
                     }
-                    KeyCode::Up => self.toggle_focus(false),
-                    KeyCode::Down => self.toggle_focus(true),
-                    _ => {}
-                },
-                Focus::Work => match k.code {
-                    KeyCode::Char('u') if ctrl => self.work.clear(),
-                    KeyCode::Char('w') if ctrl => delete_word(&mut self.work),
-                    KeyCode::Backspace if alt || ctrl => delete_word(&mut self.work),
-                    KeyCode::Backspace => {
-                        self.work.pop();
-                    }
-                    KeyCode::Char(c) if !ctrl && !alt && !c.is_whitespace() && !c.is_control() => {
-                        if self.work.chars().count() < WORK_MAX {
-                            self.work.push(c);
-                        }
-                    }
-                    KeyCode::Up => self.toggle_focus(false),
+                    KeyCode::Up => self.toggle_focus(),
                     _ => {}
                 },
             },
@@ -587,7 +560,7 @@ impl App {
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
-            Constraint::Length(3),
+            Constraint::Length(2),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
@@ -768,9 +741,8 @@ impl App {
     }
 
     fn draw_form(&mut self, f: &mut Frame, area: Rect) {
-        let [name_row, work_row, runs_row]: [Rect; 3] = Layout::vertical([Constraint::Length(1); 3]).areas(area);
+        let [name_row, runs_row]: [Rect; 2] = Layout::vertical([Constraint::Length(1); 2]).areas(area);
         self.field_areas.push((Focus::Name, name_row));
-        self.field_areas.push((Focus::Work, work_row));
         let p = &self.p;
         let label_w = 11u16;
         let focused = self.focus == Focus::Name;
@@ -808,32 +780,6 @@ impl App {
         };
         if let Some(hint) = candidates.into_iter().find(|h| str_width(h) <= room) {
             f.render_widget(Line::from(Span::styled(hint, Style::new().fg(color))).right_aligned(), name_row);
-        }
-
-        // Optional work item, recorded with the task for the inbox.
-        let focused = self.focus == Focus::Work;
-        let mut spans = vec![
-            Span::styled(if focused { "▎" } else { " " }, Style::new().fg(p.iris)),
-            Span::styled(
-                format!("{:<width$}", "Work item", width = label_w as usize - 1),
-                if focused { Style::new().fg(p.iris).add_modifier(Modifier::BOLD) } else { Style::new().fg(p.subtle) },
-            ),
-        ];
-        if self.work.is_empty() {
-            spans.push(Span::styled(
-                if focused { "#123, owner/repo#123, issue or PR URL" } else { "—" },
-                Style::new().fg(p.muted),
-            ));
-        } else {
-            spans.push(Span::styled(self.work.clone(), Style::new().fg(p.text)));
-        }
-        f.render_widget(Line::from(spans), work_row);
-        if focused {
-            let x = work_row.x + label_w + str_width(&self.work) as u16;
-            if x < work_row.x + work_row.width {
-                f.set_cursor_position((x, work_row.y));
-            }
-            f.render_widget(Line::styled("optional ", Style::new().fg(p.muted)).right_aligned(), work_row);
         }
 
         // Where and how it runs: defaults, with their override keys.
@@ -878,8 +824,7 @@ impl App {
         let ready = !self.pick().is_empty();
         let next = match self.focus {
             Focus::Project => "name",
-            Focus::Name => "work item",
-            Focus::Work => "project",
+            Focus::Name => "project",
         };
         let mut hints: Vec<(&str, &str, Color)> = vec![("⇥", next, p.subtle)];
         let spawn_label = if ready { "spawn" } else { "spawn (name it first)" };
@@ -1145,7 +1090,7 @@ fn choose_host(project: &Project) -> Result<(String, String), String> {
     Ok((best.host.clone(), why))
 }
 
-fn launch(host: &str, path: &str, name: &str, harness: &str, work: &str) -> Result<(String, String, String), String> {
+fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, String, String), String> {
     let project = catalog()
         .into_iter()
         .find(|p| p.path == path)
@@ -1230,7 +1175,6 @@ fn launch(host: &str, path: &str, name: &str, harness: &str, work: &str) -> Resu
         // branch already had one elsewhere.
         "worktree": format!("{cwd}/.worktrees/{slug}"),
         "harness": harness,
-        "work_item": if work.is_empty() { serde_json::Value::Null } else { work.into() },
         "created_at": now(),
         "ended_at": null,
         "ended_reason": null,
@@ -1248,7 +1192,7 @@ fn launch(host: &str, path: &str, name: &str, harness: &str, work: &str) -> Resu
 // Rex host: a JSON array in $XDG_STATE_HOME/rex/spawn-tasks.json, one object
 // per spawned task (see `launch` for the fields). Rex has no custom metadata
 // for sessions or tabs, so this is what maps a tab back to its project,
-// branch, worktree and work item. Ended tasks are kept a while so the
+// branch and worktree. Ended tasks are kept a while so the
 // inbox can show recent finishes, then pruned.
 
 /// How long ended tasks stay in the registry.
@@ -1709,14 +1653,14 @@ fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str) ->
 // ---------------------------------------------------------------- main
 
 const USAGE: &str = "usage: rex-spawn [--local LABEL]
-       rex-spawn --launch HOST PATH NAME HARNESS [WORK_ITEM]
+       rex-spawn --launch HOST PATH NAME HARNESS
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL
        rex-spawn --tasks
        rex-spawn --inbox TASKS_JSON [SESSION_ID/WINDOW_ID]
        rex-spawn --act review|discard|force-discard HOST SESSION_ID WINDOW_ID
 
 Without a mode, shows the spawn picker and reports the choice in the
-terminal title as rex-spawn:HOST/PATH/NAME/HARNESS/WORK_ITEM. --local adds
+terminal title as rex-spawn:HOST/PATH/NAME/HARNESS. --local adds
 the config host's label to the dev hosts. --launch opens the work's tab on
 HOST (auto: the least busy dev host), records the task, and prints
 HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the worktree and runs the
@@ -1733,13 +1677,7 @@ fn main() -> io::Result<()> {
     let a: Vec<&str> = args.iter().map(String::as_str).collect();
     match a.as_slice() {
         ["-h"] | ["--help"] => println!("{USAGE}"),
-        ["--launch", host, path, name, harness, work @ ..] if work.len() <= 1 => match launch(
-            host,
-            path,
-            name,
-            harness,
-            work.first().copied().unwrap_or(""),
-        ) {
+        ["--launch", host, path, name, harness] => match launch(host, path, name, harness) {
             Ok((host, session, window)) => print!("{host}\t{session}\t{window}"),
             Err(e) => {
                 eprintln!("rex-spawn: {e}");
