@@ -20,14 +20,13 @@ Multi-platform Nix flake managing macOS, NixOS, and Home Manager configurations.
 | macos-virtual  | macOS (darwin)  | `darwin-rebuild switch --impure --flake .` |
 | drummer        | NixOS           | `sudo nixos-rebuild switch --impure --flake .#` |
 | xcel           | Debian (HM)     | `home-manager switch -b backup --flake .#"john.allen@xcel" --impure` |
-| pi-01          | Debian/Pi (HM)  | `home-manager switch -b backup --flake .#"john.allen@pi-01"` |
 
 ## Commands
 
 ```bash
 # Build without applying
 nix build .#darwinConfigurations.m4-mbp.system
-nix build .#homeConfigurations."john.allen@pi-01"
+nix build .#homeConfigurations."john.allen@xcel".activationPackage --impure
 
 # Apply (macOS - repo-local mise task)
 mise update-system                         # updates flake first

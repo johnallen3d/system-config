@@ -93,10 +93,6 @@
         system = "aarch64-linux";
         host = "xcel";
       };
-      "john.allen@pi-01" = makeHomeManagerSystem {
-        system = "aarch64-linux";
-        host = "pi-01";
-      };
     };
   };
 }

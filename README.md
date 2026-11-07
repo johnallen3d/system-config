@@ -10,7 +10,6 @@ Set hostname to a known (configured) value:
 - macos-virtual (macOS)
 - drummer (NixOS)
 - xcel (Debian, Home Manager)
-- pi-01 (Debian/Pi, Home Manager)
 - omarchy (Arch/Omarchy, standalone Home Manager)
 
 For Omarchy, use the [standalone Home Manager guide](docs/omarchy-poc.md), not
@@ -84,9 +83,6 @@ mise update-system --harness-only
 
 # on NixOS
 sudo nixos-rebuild switch --impure --flake ~/dev/src/system-config/.#
-
-# on Debian/Pi (using home-manager)
-home-manager switch -b backup --flake ~/dev/src/system-config/.#john.allen@pi-01
 
 # on Debian/Orb (using home-manager)
 home-manager switch -b backup --flake ~/dev/src/system-config/.#john.allen@xcel --impure
