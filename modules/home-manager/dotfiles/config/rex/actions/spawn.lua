@@ -1,6 +1,6 @@
 -- Spawn agent work with rex-spawn: a catalog project, a work name and an
 -- optional work item (recorded in rex-spawn's task registry); the
--- host defaults to the least busy dev machine and the harness to Claude. The
+-- host defaults to the project's pool (see rex-spawn's `pool`) and the harness to Claude. The
 -- picker runs in a float on the focused session's host and reports its
 -- choice in the terminal title; Enter launches from this
 -- config host, the only one that can reach every Rex host. The new tab runs

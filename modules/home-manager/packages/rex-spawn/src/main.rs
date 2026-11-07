@@ -13,8 +13,8 @@
 //!   1 KiB, which is why there is no prompt field: the prompt is typed into
 //!   the agent itself.
 //! - `--launch HOST PATH NAME HARNESS [WORK]`: runs on the config host (the
-//!   Mac), which can reach every Rex host. HOST `auto` picks the least busy
-//!   dev host (see `choose_host`). Finds or creates the project's session on
+//!   Mac), which can reach every Rex host. HOST `auto` picks from the
+//!   project's host pool (see `pool`), least busy first. Finds or creates the project's session on
 //!   the host, opens a tab running `--run` there, records the task (see
 //!   "tasks" below), and prints `HOST<TAB>SESSION_ID<TAB>WINDOW_ID`.
 //! - `--tasks`: runs on the config host. Checks every recorded task against
@@ -158,9 +158,12 @@ struct Project {
     path: String,
     clone_url: String,
     name: String,
+    /// Pool override from projects.toml's `hosts`; empty uses the group's.
+    hosts: Vec<String>,
 }
 
-/// `PROFILE<TAB>PATH<TAB>CLONE_URL` rows compiled in from projects.toml.
+/// `PROFILE<TAB>PATH<TAB>CLONE_URL<TAB>HOSTS` rows compiled in from
+/// projects.toml (HOSTS space separated, often empty).
 fn catalog() -> Vec<Project> {
     let spec = std::env::var("RSP_PROJECTS")
         .ok()
@@ -170,12 +173,14 @@ fn catalog() -> Vec<Project> {
         .filter_map(|l| {
             let mut f = l.split('\t');
             let (profile, path, clone_url) = (f.next()?, f.next()?, f.next().unwrap_or(""));
+            let hosts = f.next().unwrap_or("").split_whitespace().map(String::from).collect();
             let name = path.trim_end_matches('/').rsplit('/').next().unwrap_or(path);
             Some(Project {
                 profile: profile.into(),
                 path: path.into(),
                 clone_url: clone_url.into(),
                 name: name.into(),
+                hosts,
             })
         })
         .collect()
@@ -183,19 +188,37 @@ fn catalog() -> Vec<Project> {
 
 const AUTO: &str = "auto";
 
-/// Dev hosts for `auto` as (label, score penalty), from `RSP_HOSTS`
-/// (`label[:penalty] ...`).
-fn dev_hosts() -> Vec<(String, f64)> {
-    std::env::var("RSP_HOSTS")
-        .ok()
-        .or(option_env!("RSP_HOSTS").map(String::from))
-        .unwrap_or_default()
+/// Pool entry for the config host (the Mac), resolved to its own label.
+const CONFIG: &str = "config";
+
+fn env_or_built(name: &str, built: Option<&str>) -> String {
+    std::env::var(name).ok().or(built.map(String::from)).unwrap_or_default()
+}
+
+/// Linux dev hosts the picker offers, from `RSP_HOSTS` (`label ...`).
+fn dev_hosts() -> Vec<String> {
+    env_or_built("RSP_HOSTS", option_env!("RSP_HOSTS")).split_whitespace().map(String::from).collect()
+}
+
+/// Hosts `auto` chooses from for a project: its own `hosts`, else its
+/// group's from `RSP_POOLS` (`group=label,label ...`), else every dev host.
+/// "config" stays unresolved here; see `resolve`.
+fn pool(project: &Project) -> Vec<String> {
+    if !project.hosts.is_empty() {
+        return project.hosts.clone();
+    }
+    env_or_built("RSP_POOLS", option_env!("RSP_POOLS"))
         .split_whitespace()
-        .map(|h| match h.split_once(':') {
-            Some((label, penalty)) => (label.to_string(), penalty.parse().unwrap_or(0.0)),
-            None => (h.to_string(), 0.0),
-        })
-        .collect()
+        .filter_map(|g| g.split_once('='))
+        .find(|(group, _)| *group == project.profile)
+        .map(|(_, hosts)| hosts.split(',').filter(|h| !h.is_empty()).map(String::from).collect())
+        .filter(|hosts: &Vec<String>| !hosts.is_empty())
+        .unwrap_or_else(dev_hosts)
+}
+
+/// A pool entry as a Rex host label; only called on the config host.
+fn resolve(host: &str) -> String {
+    if host == CONFIG { local_label() } else { host.to_string() }
 }
 
 // ---------------------------------------------------------------- naming
@@ -809,7 +832,15 @@ impl App {
 
         // Where and how it runs: defaults, with their override keys.
         let host = self.hosts.get(self.host).map(String::as_str).unwrap_or(AUTO);
-        let host_text = if host == AUTO { "least busy host".to_string() } else { host.to_string() };
+        let host_text = match self.project() {
+            _ if host != AUTO => host.to_string(),
+            Some(project) => {
+                let hosts: Vec<String> =
+                    pool(project).iter().map(|h| if h == CONFIG { "Mac".to_string() } else { h.clone() }).collect();
+                if hosts.len() == 1 { hosts[0].clone() } else { format!("least busy of {}", hosts.join(", ")) }
+            }
+            None => "auto".to_string(),
+        };
         let value = |text: String, changed: bool| {
             Span::styled(text, Style::new().fg(if changed { p.gold } else { p.text }))
         };
@@ -1023,7 +1054,7 @@ struct Probe {
 /// Measure one dev host: load per CPU and free memory over SSH (by its Rex
 /// label, as the project picker does), busy agents and an existing project
 /// session over Rex. None when the host can't be reached.
-fn probe(host: &str, penalty: f64, project: &str) -> Option<Probe> {
+fn probe(host: &str, project: &str) -> Option<Probe> {
     let out = Command::new("ssh")
         .args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=3", host])
         .arg("cat /proc/loadavg; nproc; grep MemAvailable /proc/meminfo")
@@ -1052,10 +1083,9 @@ fn probe(host: &str, penalty: f64, project: &str) -> Option<Probe> {
     let mem_gib = mem_kib / 1024.0 / 1024.0;
     // Lower is better. Each busy agent counts like half the CPUs being busy;
     // a host already holding the project is slightly preferred (warm
-    // checkout and build cache); low memory and the host penalty push away.
+    // checkout and build cache); low memory pushes away.
     let score = load + 0.5 * agents as f64 - if warm { 0.25 } else { 0.0 }
-        + if mem_gib < 4.0 { 1.0 } else { 0.0 }
-        + penalty;
+        + if mem_gib < 4.0 { 1.0 } else { 0.0 };
     Some(Probe { host: host.to_string(), score, load, mem_gib, agents, warm })
 }
 
@@ -1073,18 +1103,23 @@ fn log(line: &str) {
     }
 }
 
-/// The least busy reachable dev host, with a one-line reason for the log.
-fn choose_host(project: &str) -> Result<(String, String), String> {
-    let handles: Vec<_> = dev_hosts()
+/// The project's host, or the least busy reachable one when its pool has
+/// several (probing is Linux only), with a one-line reason for the log.
+fn choose_host(project: &Project) -> Result<(String, String), String> {
+    let hosts = pool(project);
+    if let [only] = hosts.as_slice() {
+        return Ok((resolve(only), format!("the only host for {}", project.name)));
+    }
+    let handles: Vec<_> = hosts
         .into_iter()
-        .map(|(host, penalty)| {
-            let project = project.to_string();
-            std::thread::spawn(move || probe(&host, penalty, &project))
+        .map(|host| {
+            let (host, project) = (resolve(&host), project.name.clone());
+            std::thread::spawn(move || probe(&host, &project))
         })
         .collect();
     let mut probes: Vec<Probe> = handles.into_iter().filter_map(|h| h.join().ok().flatten()).collect();
     probes.sort_by(|a, b| a.score.total_cmp(&b.score));
-    let best = probes.first().ok_or("no dev host is reachable")?;
+    let best = probes.first().ok_or_else(|| format!("no host for {} is reachable", project.name))?;
     let why = probes
         .iter()
         .map(|p| {
@@ -1117,7 +1152,7 @@ fn launch(host: &str, path: &str, name: &str, harness: &str, work: &str) -> Resu
     }
     let (branch, slug) = branch_and_slug(name);
     let host = if host == AUTO {
-        let (chosen, why) = choose_host(&project.name)?;
+        let (chosen, why) = choose_host(&project)?;
         log(&format!("auto chose {chosen} for {}/{name}: {why}", project.name));
         chosen
     } else {
@@ -1726,7 +1761,7 @@ fn main() -> io::Result<()> {
         },
         rest => {
             let mut hosts: Vec<String> = std::iter::once(AUTO.to_string())
-                .chain(dev_hosts().into_iter().map(|(h, _)| h))
+                .chain(dev_hosts())
                 .collect();
             if let ["--local", label] = rest {
                 if !hosts.iter().any(|h| h == label) {

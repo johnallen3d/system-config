@@ -3,10 +3,15 @@
 # ~/dev/src/amfaro's mise env, personal uses the default profile. clone_url is
 # only used when the path is missing on the chosen host; existing checkouts are
 # never touched.
+#
+# rex-spawn's "auto" host comes from the group's pool (RSP_POOLS in
+# ../packages/rex-spawn.nix); a project's optional `hosts` list overrides it,
+# where "config" means the config host (the Mac).
 
 [[personal]]
 path = "~/dev/src/system-config"
 clone_url = "https://github.com/johnallen3d/system-config.git"
+hosts = ["config"]
 
 [[personal]]
 path = "~/dev/src/playground/credits"

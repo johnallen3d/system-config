@@ -9,7 +9,9 @@
 }: let
   inherit (pkgs) lib;
   catalog = builtins.fromTOML (builtins.readFile ../agent-projects/projects.toml);
-  rows = profile: map (p: "${profile}\t${p.path}\t${p.clone_url}") (catalog.${profile} or []);
+  rows = profile:
+    map (p: "${profile}\t${p.path}\t${p.clone_url}\t${lib.concatStringsSep " " (p.hosts or [])}")
+    (catalog.${profile} or []);
 in
   pkgs.rustPlatform.buildRustPackage {
     pname = "rex-spawn";
@@ -21,11 +23,12 @@ in
     cargoLock.lockFile = ./rex-spawn/Cargo.lock;
     env = {
       RSP_PROJECTS = lib.concatStringsSep "\n" (rows "personal" ++ rows "work");
-      # Rex host labels of the Linux dev machines that "auto" chooses from,
-      # each with an optional score penalty: Omarchy runs the singletons
-      # (Pi Pocket, proxy, Syncthing forwarder). The Mac is added at runtime
-      # as the config host's own label, for explicit picks only.
-      RSP_HOSTS = "miller drummer omarchy:0.5";
+      # Rex host labels of the Linux dev machines the picker offers (ctrl+o).
+      # The Mac is added at runtime as the config host's own label.
+      RSP_HOSTS = "miller drummer omarchy";
+      # Hosts "auto" chooses from per group (least busy wins when there are
+      # several); a project's `hosts` in projects.toml overrides its group.
+      RSP_POOLS = "personal=omarchy work=miller,drummer";
       # Rosé Pine names for the managed theme's colours, as in rex-tab-picker.
       RTP_PALETTE = lib.concatStringsSep ";" (lib.mapAttrsToList (name: key: "${name}=${palette.${key}}") {
         base = "bg";
