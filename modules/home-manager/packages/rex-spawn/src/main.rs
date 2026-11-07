@@ -3,19 +3,23 @@
 //! Three modes, one binary on every host:
 //!
 //! - Picker (default): runs in the float on the focused session's host. Pick
-//!   a catalog project and name the work; the host defaults to `auto` and
-//!   the harness to Claude, both overridable with ctrl-o and ctrl-t. The
-//!   picker reports the choice in the terminal title as
-//!   `rex-spawn:HOST/PATH/NAME/HARNESS` (host, path and name hex encoded);
+//!   a catalog project, name the work and optionally give its work item (a
+//!   GitHub issue or PR); the host defaults to `auto` and the harness to
+//!   Claude, both overridable with ctrl-o and ctrl-t. The picker reports the
+//!   choice in the terminal title as `rex-spawn:HOST/PATH/NAME/HARNESS/WORK`
+//!   (host, path, name and work item hex encoded);
 //!   the config's `spawn` mode turns Enter into the launch and Escape into
 //!   closing the float, as with rex-tab-picker. Titles are capped at about
 //!   1 KiB, which is why there is no prompt field: the prompt is typed into
 //!   the agent itself.
-//! - `--launch HOST PATH NAME HARNESS`: runs on the config host (the Mac),
-//!   which can reach every Rex host. HOST `auto` picks the least busy dev
-//!   host (see `choose_host`). Finds or creates the project's session on the
-//!   host, opens a tab running `--run` there, and prints
-//!   `HOST<TAB>SESSION_ID<TAB>WINDOW_ID`.
+//! - `--launch HOST PATH NAME HARNESS [WORK]`: runs on the config host (the
+//!   Mac), which can reach every Rex host. HOST `auto` picks the least busy
+//!   dev host (see `choose_host`). Finds or creates the project's session on
+//!   the host, opens a tab running `--run` there, records the task (see
+//!   "tasks" below), and prints `HOST<TAB>SESSION_ID<TAB>WINDOW_ID`.
+//! - `--tasks`: runs on the config host. Checks every recorded task against
+//!   its host, marks the ones whose tab or worktree is gone as ended, and
+//!   prints the registry as JSON.
 //! - `--run PROFILE PATH NAME HARNESS CLONE_URL`: runs in that tab. Clones a
 //!   missing project, creates or reuses the worktree with Worktrunk, runs the
 //!   harness, then leaves a shell open.
@@ -135,6 +139,10 @@ const CAP_R: &str = "\u{e0b4}";
 
 const HARNESSES: [&str; 2] = ["claude", "pi"];
 
+/// Longest work item the picker takes; the title protocol caps the whole
+/// pick at about 1 KiB, hex doubling each field.
+const WORK_MAX: usize = 160;
+
 // ---------------------------------------------------------------- catalog
 
 #[derive(Clone)]
@@ -226,6 +234,7 @@ fn hex(s: &str) -> String {
 enum Focus {
     Project,
     Name,
+    Work,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -248,6 +257,7 @@ struct App {
     focus: Focus,
     query: String,
     name: String,
+    work: String,
     matcher: Matcher,
     rows: Vec<Item>,
     hits: HashMap<usize, (Vec<usize>, Vec<usize>)>,
@@ -276,6 +286,7 @@ impl App {
             focus: Focus::Project,
             query: String::new(),
             name: String::new(),
+            work: String::new(),
             matcher: Matcher::new(Config::DEFAULT.match_paths()),
             rows: Vec::new(),
             hits: HashMap::new(),
@@ -380,10 +391,11 @@ impl App {
         self.selected = Some(at);
     }
 
-    fn toggle_focus(&mut self) {
-        self.focus = match self.focus {
-            Focus::Project => Focus::Name,
-            Focus::Name => Focus::Project,
+    fn toggle_focus(&mut self, forward: bool) {
+        self.focus = match (self.focus, forward) {
+            (Focus::Project, true) | (Focus::Work, false) => Focus::Name,
+            (Focus::Name, true) | (Focus::Project, false) => Focus::Work,
+            (Focus::Work, true) | (Focus::Name, false) => Focus::Project,
         };
     }
 
@@ -397,11 +409,12 @@ impl App {
             return String::new();
         }
         format!(
-            "{}/{}/{}/{}",
+            "{}/{}/{}/{}/{}",
             hex(host),
             hex(&project.path),
             hex(&self.name),
-            HARNESSES[self.harness]
+            HARNESSES[self.harness],
+            hex(&self.work)
         )
     }
 
@@ -422,7 +435,8 @@ impl App {
         let page = (self.list_area.height as isize - 2).max(1);
         match k.code {
             KeyCode::Char('c') if ctrl => return false,
-            KeyCode::Tab | KeyCode::BackTab => self.toggle_focus(),
+            KeyCode::Tab => self.toggle_focus(true),
+            KeyCode::BackTab => self.toggle_focus(false),
             // Overrides for the defaults: host starts at auto, harness at claude.
             KeyCode::Char('o') if ctrl => self.host = (self.host + 1) % self.hosts.len().max(1),
             KeyCode::Char('t') if ctrl => self.harness = (self.harness + 1) % HARNESSES.len(),
@@ -469,7 +483,23 @@ impl App {
                             self.name.push(c);
                         }
                     }
-                    KeyCode::Up => self.toggle_focus(),
+                    KeyCode::Up => self.toggle_focus(false),
+                    KeyCode::Down => self.toggle_focus(true),
+                    _ => {}
+                },
+                Focus::Work => match k.code {
+                    KeyCode::Char('u') if ctrl => self.work.clear(),
+                    KeyCode::Char('w') if ctrl => delete_word(&mut self.work),
+                    KeyCode::Backspace if alt || ctrl => delete_word(&mut self.work),
+                    KeyCode::Backspace => {
+                        self.work.pop();
+                    }
+                    KeyCode::Char(c) if !ctrl && !alt && !c.is_whitespace() && !c.is_control() => {
+                        if self.work.chars().count() < WORK_MAX {
+                            self.work.push(c);
+                        }
+                    }
+                    KeyCode::Up => self.toggle_focus(false),
                     _ => {}
                 },
             },
@@ -526,7 +556,7 @@ impl App {
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
-            Constraint::Length(2),
+            Constraint::Length(3),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
@@ -707,10 +737,11 @@ impl App {
     }
 
     fn draw_form(&mut self, f: &mut Frame, area: Rect) {
-        let [name_row, runs_row]: [Rect; 2] = Layout::vertical([Constraint::Length(1); 2]).areas(area);
+        let [name_row, work_row, runs_row]: [Rect; 3] = Layout::vertical([Constraint::Length(1); 3]).areas(area);
         self.field_areas.push((Focus::Name, name_row));
+        self.field_areas.push((Focus::Work, work_row));
         let p = &self.p;
-        let label_w = 10u16;
+        let label_w = 11u16;
         let focused = self.focus == Focus::Name;
 
         // Name, with the branch and worktree it becomes.
@@ -742,6 +773,32 @@ impl App {
             }
         };
         f.render_widget(Line::from(hint).right_aligned(), name_row);
+
+        // Optional work item, recorded with the task for the inbox.
+        let focused = self.focus == Focus::Work;
+        let mut spans = vec![
+            Span::styled(if focused { "▎" } else { " " }, Style::new().fg(p.iris)),
+            Span::styled(
+                format!("{:<width$}", "Work item", width = label_w as usize - 1),
+                if focused { Style::new().fg(p.iris).add_modifier(Modifier::BOLD) } else { Style::new().fg(p.subtle) },
+            ),
+        ];
+        if self.work.is_empty() {
+            spans.push(Span::styled(
+                if focused { "#123, owner/repo#123, issue or PR URL" } else { "—" },
+                Style::new().fg(p.muted),
+            ));
+        } else {
+            spans.push(Span::styled(self.work.clone(), Style::new().fg(p.text)));
+        }
+        f.render_widget(Line::from(spans), work_row);
+        if focused {
+            let x = work_row.x + label_w + str_width(&self.work) as u16;
+            if x < work_row.x + work_row.width {
+                f.set_cursor_position((x, work_row.y));
+            }
+            f.render_widget(Line::styled("optional ", Style::new().fg(p.muted)).right_aligned(), work_row);
+        }
 
         // Where and how it runs: defaults, with their override keys.
         let host = self.hosts.get(self.host).map(String::as_str).unwrap_or(AUTO);
@@ -775,11 +832,12 @@ impl App {
             ]
         };
         let ready = !self.pick().is_empty();
-        let mut hints: Vec<(&str, &str, Color)> = vec![(
-            "⇥",
-            if self.focus == Focus::Project { "name" } else { "project" },
-            p.subtle,
-        )];
+        let next = match self.focus {
+            Focus::Project => "name",
+            Focus::Name => "work item",
+            Focus::Work => "project",
+        };
+        let mut hints: Vec<(&str, &str, Color)> = vec![("⇥", next, p.subtle)];
         let spawn_label = if ready { "spawn" } else { "spawn (name it first)" };
         hints.push(("⏎", spawn_label, if ready { p.pine } else { p.muted }));
         hints.push(("⌃O", "host", p.subtle));
@@ -1039,7 +1097,7 @@ fn choose_host(project: &str) -> Result<(String, String), String> {
     Ok((best.host.clone(), why))
 }
 
-fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, String, String), String> {
+fn launch(host: &str, path: &str, name: &str, harness: &str, work: &str) -> Result<(String, String, String), String> {
     let project = catalog()
         .into_iter()
         .find(|p| p.path == path)
@@ -1050,7 +1108,7 @@ fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, 
     if !HARNESSES.contains(&harness) {
         return Err(format!("unknown harness {harness}"));
     }
-    let (_, slug) = branch_and_slug(name);
+    let (branch, slug) = branch_and_slug(name);
     let host = if host == AUTO {
         let (chosen, why) = choose_host(&project.name)?;
         log(&format!("auto chose {chosen} for {}/{name}: {why}", project.name));
@@ -1111,7 +1169,224 @@ fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, 
             (session.to_string(), window_id.to_string())
         }
     };
+    let task = serde_json::json!({
+        "host": host,
+        "session_id": session,
+        "window_id": window_id,
+        "project": project.name,
+        "profile": project.profile,
+        "repo": cwd,
+        "name": name,
+        "branch": branch,
+        // Where `--run` puts a new worktree; `--tasks` corrects it when the
+        // branch already had one elsewhere.
+        "worktree": format!("{cwd}/.worktrees/{slug}"),
+        "harness": harness,
+        "work_item": if work.is_empty() { serde_json::Value::Null } else { work.into() },
+        "created_at": now(),
+        "ended_at": null,
+        "ended_reason": null,
+    });
+    // The tab is already open: a registry failure only costs the inbox entry.
+    if let Err(e) = record_task(task) {
+        log(&format!("could not record {}/{name}: {e}", project.name));
+    }
     Ok((host.to_string(), session, window_id))
+}
+
+// ---------------------------------------------------------------- tasks
+
+// The registry lives on the config host, the only one that reaches every
+// Rex host: a JSON array in $XDG_STATE_HOME/rex/spawn-tasks.json, one object
+// per spawned task (see `launch` for the fields). Rex has no custom metadata
+// for sessions or tabs, so this is what maps a tab back to its project,
+// branch, worktree and work item. Ended tasks are kept a while so the
+// inbox can show recent finishes, then pruned.
+
+/// How long ended tasks stay in the registry.
+const ENDED_KEEP_SECS: u64 = 14 * 24 * 60 * 60;
+
+fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+fn tasks_path() -> PathBuf {
+    std::env::var("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| home().join(".local/state"))
+        .join("rex/spawn-tasks.json")
+}
+
+fn load_tasks() -> Result<Vec<serde_json::Value>, String> {
+    let path = tasks_path();
+    match std::fs::read(&path) {
+        Ok(bytes) => serde_json::from_slice(&bytes).map_err(|e| format!("{}: {e}", path.display())),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) => Err(format!("{}: {e}", path.display())),
+    }
+}
+
+/// Replace the registry atomically, so a reader never sees half a file.
+fn save_tasks(tasks: &[serde_json::Value]) -> Result<(), String> {
+    let path = tasks_path();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    let tmp = path.with_extension(format!("json.{}", std::process::id()));
+    let mut text = serde_json::to_string_pretty(tasks).map_err(|e| e.to_string())?;
+    text.push('\n');
+    std::fs::write(&tmp, text).map_err(|e| format!("{}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+fn record_task(task: serde_json::Value) -> Result<(), String> {
+    let mut tasks = load_tasks()?;
+    tasks.push(task);
+    save_tasks(&tasks)
+}
+
+/// Every window id on a host's Rex server, or None when it can't be reached.
+const WINDOWS_SCRIPT: &str = r#"
+local ids = {}
+local list = rex.call("session.list")
+for _, s in ipairs((list and list.sessions) or {}) do
+  rex.session.attach{ session_id = s.session_id }
+  local view = rex.session.view{ session_id = s.session_id }
+  for _, w in ipairs((view and view.windows) or {}) do ids[#ids + 1] = w.window_id end
+end
+return table.concat(ids, "\n")
+"#;
+
+fn host_windows(host: &str) -> Option<Vec<String>> {
+    let mut cmd = Command::new("rex");
+    if host != local_label() {
+        cmd.args(["-S", host]);
+    }
+    let out = cmd
+        .args(["do", "-e", WINDOWS_SCRIPT])
+        .stdin(Stdio::null())
+        .output()
+        .ok()
+        .filter(|o| o.status.success())?;
+    let reply: String = serde_json::from_slice(&out.stdout).ok()?;
+    Some(reply.lines().map(String::from).collect())
+}
+
+/// For each (repo, branch), the branch's worktree path on `host`, or "" when
+/// the repo is there but the branch has no worktree; None for a repo that
+/// can't be read. None overall when the host can't be reached. One script
+/// per host on stdin: `bash -s` over SSH by Rex label (as `probe` reaches
+/// hosts; their login shell is Fish), or locally for the config host.
+fn host_worktrees(host: &str, pairs: &[(String, String)]) -> Option<Vec<Option<String>>> {
+    // One line per pair: the worktree path, "-" for none, "?" for no repo.
+    let mut script = String::from(
+        r#"while IFS="$(printf '\t')" read -r repo branch; do
+  if list=$(git -C "$repo" worktree list --porcelain 2>/dev/null); then
+    printf '%s\n' "$list" | awk -v want="branch refs/heads/$branch" '
+      /^worktree / { path = substr($0, 10) }
+      $0 == want { print path; found = 1; exit }
+      END { if (!found) print "-" }'
+  else
+    echo "?"
+  fi
+done <<'RSP_PAIRS'
+"#,
+    );
+    for (repo, branch) in pairs {
+        script.push_str(&format!("{repo}\t{branch}\n"));
+    }
+    script.push_str("RSP_PAIRS\n");
+    let mut cmd = if host == local_label() {
+        let mut c = Command::new("bash");
+        c.arg("-s");
+        c
+    } else {
+        let mut c = Command::new("ssh");
+        c.args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=3", host, "bash -s"]);
+        c
+    };
+    let mut child = cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().ok()?;
+    child.stdin.take()?.write_all(script.as_bytes()).ok()?;
+    let out = child.wait_with_output().ok().filter(|o| o.status.success())?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let lines: Vec<&str> = text.lines().collect();
+    if lines.len() != pairs.len() {
+        return None;
+    }
+    Some(
+        lines
+            .into_iter()
+            .map(|l| match l {
+                "?" => None,
+                "-" => Some(String::new()),
+                path => Some(path.to_string()),
+            })
+            .collect(),
+    )
+}
+
+/// Check the open tasks against their hosts, end the ones whose tab or
+/// worktree is gone, prune old ended ones, and return the registry. A host
+/// that can't be reached leaves its tasks as they were.
+fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
+    let mut tasks = load_tasks()?;
+    let before = serde_json::to_string(&tasks).map_err(|e| e.to_string())?;
+    let field = |t: &serde_json::Value, k: &str| t[k].as_str().unwrap_or("").to_string();
+    let mut hosts: Vec<String> = tasks
+        .iter()
+        .filter(|t| t["ended_at"].is_null())
+        .map(|t| field(t, "host"))
+        .collect();
+    hosts.sort();
+    hosts.dedup();
+    let checks: Vec<_> = hosts
+        .into_iter()
+        .map(|host| {
+            let pairs: Vec<(String, String)> = tasks
+                .iter()
+                .filter(|t| t["ended_at"].is_null() && field(t, "host") == host)
+                .map(|t| (field(t, "repo"), field(t, "branch")))
+                .collect();
+            std::thread::spawn(move || {
+                let windows = host_windows(&host);
+                let worktrees = host_worktrees(&host, &pairs);
+                (host, windows, worktrees)
+            })
+        })
+        .collect();
+    let stamp = now();
+    for handle in checks {
+        let Ok((host, windows, worktrees)) = handle.join() else { continue };
+        let open = tasks
+            .iter_mut()
+            .filter(|t| t["ended_at"].is_null() && t["host"].as_str() == Some(host.as_str()));
+        for (i, task) in open.enumerate() {
+            let tab_gone = windows
+                .as_ref()
+                .is_some_and(|w| !w.iter().any(|id| task["window_id"].as_str() == Some(id.as_str())));
+            let worktree = worktrees.as_ref().and_then(|w| w.get(i).cloned().flatten());
+            match worktree.as_deref() {
+                Some("") => {
+                    task["ended_at"] = stamp.into();
+                    task["ended_reason"] = "worktree removed".into();
+                }
+                Some(path) => task["worktree"] = path.into(),
+                None => {}
+            }
+            if tab_gone && task["ended_at"].is_null() {
+                task["ended_at"] = stamp.into();
+                task["ended_reason"] = "tab closed".into();
+            }
+        }
+    }
+    tasks.retain(|t| t["ended_at"].as_u64().is_none_or(|ended| stamp.saturating_sub(ended) < ENDED_KEEP_SECS));
+    if serde_json::to_string(&tasks).map_err(|e| e.to_string())? != before {
+        save_tasks(&tasks)?;
+    }
+    Ok(tasks)
 }
 
 // ---------------------------------------------------------------- run
@@ -1256,21 +1531,30 @@ fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str) ->
 // ---------------------------------------------------------------- main
 
 const USAGE: &str = "usage: rex-spawn [--local LABEL]
-       rex-spawn --launch HOST PATH NAME HARNESS
+       rex-spawn --launch HOST PATH NAME HARNESS [WORK_ITEM]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL
+       rex-spawn --tasks
 
 Without a mode, shows the spawn picker and reports the choice in the
-terminal title as rex-spawn:HOST/PATH/NAME/HARNESS. --local adds the config
-host's label to the dev hosts. --launch opens the work's tab on HOST (auto:
-the least busy dev host) and prints HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the worktree and runs the
-harness in the current tab.";
+terminal title as rex-spawn:HOST/PATH/NAME/HARNESS/WORK_ITEM. --local adds
+the config host's label to the dev hosts. --launch opens the work's tab on
+HOST (auto: the least busy dev host), records the task, and prints
+HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the worktree and runs the
+harness in the current tab. --tasks checks recorded tasks against their
+hosts and prints them as JSON.";
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let a: Vec<&str> = args.iter().map(String::as_str).collect();
     match a.as_slice() {
         ["-h"] | ["--help"] => println!("{USAGE}"),
-        ["--launch", host, path, name, harness] => match launch(host, path, name, harness) {
+        ["--launch", host, path, name, harness, work @ ..] if work.len() <= 1 => match launch(
+            host,
+            path,
+            name,
+            harness,
+            work.first().copied().unwrap_or(""),
+        ) {
             Ok((host, session, window)) => print!("{host}\t{session}\t{window}"),
             Err(e) => {
                 eprintln!("rex-spawn: {e}");
@@ -1278,6 +1562,13 @@ fn main() -> io::Result<()> {
             }
         },
         ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url),
+        ["--tasks"] => match reconcile_tasks() {
+            Ok(tasks) => println!("{}", serde_json::Value::from(tasks)),
+            Err(e) => {
+                eprintln!("rex-spawn: {e}");
+                std::process::exit(1);
+            }
+        },
         rest => {
             let mut hosts: Vec<String> = std::iter::once(AUTO.to_string())
                 .chain(dev_hosts().into_iter().map(|(h, _)| h))

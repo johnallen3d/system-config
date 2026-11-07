@@ -1,4 +1,5 @@
--- Spawn agent work with rex-spawn: a catalog project and a work name; the
+-- Spawn agent work with rex-spawn: a catalog project, a work name and an
+-- optional work item (recorded in rex-spawn's task registry); the
 -- host defaults to the least busy dev machine and the harness to Claude. The
 -- picker runs in a float on the focused session's host and reports its
 -- choice in the terminal title; Enter launches from this
@@ -50,14 +51,15 @@ rex.action{
     local pick = rex.block.call("com.superlogical.terminal", "title", {
       session_id = ctx.session_id, block_id = block_id,
     })
-    local host, path, name, harness = ((pick and pick.title) or "")
-      :match("^rex%-spawn:(%x+)/(%x+)/(%x+)/(%a+)$")
+    local host, path, name, harness, work = ((pick and pick.title) or "")
+      :match("^rex%-spawn:(%x+)/(%x+)/(%x+)/(%a+)/(%x*)$")
     -- An incomplete form reports nothing; keep the float open.
     if host == nil then return end
     close_picker(ctx)
     host = util.unhex(host)
     local env = util.cli_env()
-    local r, err = rex.exec({ "rex-spawn", "--launch", host, util.unhex(path), util.unhex(name), harness },
+    local r, err = rex.exec({ "rex-spawn", "--launch", host, util.unhex(path), util.unhex(name), harness,
+      util.unhex(work) },
       { env = env })
     if r == nil then error(err, 0) end
     if not r.ok then error(r.stderr, 0) end
