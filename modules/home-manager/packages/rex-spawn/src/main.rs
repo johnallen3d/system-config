@@ -19,7 +19,9 @@
 //!   "tasks" below), and prints `HOST<TAB>SESSION_ID<TAB>WINDOW_ID`.
 //! - `--tasks`: runs on the config host. Checks every recorded task against
 //!   its host, marks the ones whose tab or worktree is gone as ended, and
-//!   prints the registry as JSON.
+//!   prints the registry as JSON with each open task's live agent status.
+//! - `--inbox JSON`: the cmd+i task inbox float, fed `--tasks` output by the
+//!   config (see inbox.rs).
 //! - `--run PROFILE PATH NAME HARNESS CLONE_URL`: runs in that tab. Clones a
 //!   missing project, creates or reuses the worktree with Worktrunk, runs the
 //!   harness, then leaves a shell open.
@@ -28,6 +30,8 @@
 //! branch `feature/api-work` in `.worktrees/api-work` with tab `api-work`; a
 //! name with a slash is used as the branch as is, its slug replacing `/`
 //! with `-`.
+
+mod inbox;
 
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -1248,19 +1252,77 @@ fn record_task(task: serde_json::Value) -> Result<(), String> {
     save_tasks(&tasks)
 }
 
-/// Every window id on a host's Rex server, or None when it can't be reached.
+/// Every window on a host's Rex server with its most urgent agent status, as
+/// `WINDOW_ID<TAB>STATE<TAB>UPDATED_AT<TAB>MSG` lines (the last three empty
+/// for a tab with no status). A tab shows its most urgent pane, as in the
+/// cmd+k tab picker.
 const WINDOWS_SCRIPT: &str = r#"
-local ids = {}
+local T = "com.superlogical.terminal"
+local urgency = { idle = 1, done = 2, working = 3, error = 4, blocked = 5 }
+local lines = {}
+local function clean(s) return (tostring(s or ""):gsub("[\t\r\n]", " ")) end
 local list = rex.call("session.list")
 for _, s in ipairs((list and list.sessions) or {}) do
   rex.session.attach{ session_id = s.session_id }
   local view = rex.session.view{ session_id = s.session_id }
-  for _, w in ipairs((view and view.windows) or {}) do ids[#ids + 1] = w.window_id end
+  for _, w in ipairs((view and view.windows) or {}) do
+    local best
+    for _, l in ipairs(w.layers or {}) do
+      if l.kind == "tiled" then
+        for _, b in ipairs(l.blocks or {}) do
+          local st = rex.block.call(T, "program_status", { session_id = s.session_id, block_id = b.block_id })
+          for _, r in ipairs((st and st.records) or {}) do
+            if best == nil or (urgency[r.state] or 0) > (urgency[best.state] or 0) then best = r end
+          end
+        end
+      end
+    end
+    best = best or {}
+    lines[#lines + 1] = table.concat({ w.window_id, clean(best.state), clean(best.updated_at), clean(best.msg) }, "\t")
+  end
 end
-return table.concat(ids, "\n")
+return table.concat(lines, "\n")
 "#;
 
-fn host_windows(host: &str) -> Option<Vec<String>> {
+/// A tab's live agent status: state, when it last changed (Unix seconds,
+/// 0 when unknown) and the agent's message.
+#[derive(Clone, Default)]
+struct TabStatus {
+    state: String,
+    at: u64,
+    msg: String,
+}
+
+/// Seconds since the Unix epoch for an RFC 3339 timestamp such as
+/// `2026-11-07T15:40:18.294391-05:00`, as Rex reports status changes.
+fn rfc3339_secs(s: &str) -> Option<u64> {
+    let num = |r: std::ops::Range<usize>| s.get(r)?.parse::<i64>().ok();
+    let (y, mo, d) = (num(0..4)?, num(5..7)?, num(8..10)?);
+    let (h, mi, sec) = (num(11..13)?, num(14..16)?, num(17..19)?);
+    let mut rest = &s[19..];
+    if let Some(frac) = rest.strip_prefix('.') {
+        rest = frac.trim_start_matches(|c: char| c.is_ascii_digit());
+    }
+    let offset = match rest.as_bytes().first()? {
+        b'Z' | b'z' => 0,
+        sign @ (b'+' | b'-') => {
+            let oh: i64 = rest.get(1..3)?.parse().ok()?;
+            let om: i64 = rest.get(4..6)?.parse().ok()?;
+            (oh * 3600 + om * 60) * if *sign == b'-' { -1 } else { 1 }
+        }
+        _ => return None,
+    };
+    // Days from the civil date (Howard Hinnant's algorithm).
+    let y = if mo <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * (mo + if mo > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146097 + doe - 719468;
+    u64::try_from(days * 86400 + h * 3600 + mi * 60 + sec - offset).ok()
+}
+
+fn host_windows(host: &str) -> Option<HashMap<String, TabStatus>> {
     let mut cmd = Command::new("rex");
     if host != local_label() {
         cmd.args(["-S", host]);
@@ -1272,7 +1334,19 @@ fn host_windows(host: &str) -> Option<Vec<String>> {
         .ok()
         .filter(|o| o.status.success())?;
     let reply: String = serde_json::from_slice(&out.stdout).ok()?;
-    Some(reply.lines().map(String::from).collect())
+    Some(
+        reply
+            .lines()
+            .map(|line| {
+                let mut f = line.split('\t');
+                let id = f.next().unwrap_or("").to_string();
+                let state = f.next().unwrap_or("").to_string();
+                let at = rfc3339_secs(f.next().unwrap_or("")).unwrap_or(0);
+                let msg = f.next().unwrap_or("").to_string();
+                (id, TabStatus { state, at, msg })
+            })
+            .collect(),
+    )
 }
 
 /// For each (repo, branch), the branch's worktree path on `host`, or "" when
@@ -1329,8 +1403,10 @@ done <<'RSP_PAIRS'
 }
 
 /// Check the open tasks against their hosts, end the ones whose tab or
-/// worktree is gone, prune old ended ones, and return the registry. A host
-/// that can't be reached leaves its tasks as they were.
+/// worktree is gone, prune old ended ones, and return the registry. Open
+/// tasks also get their tab's live agent status (`status`, `status_at`,
+/// `status_msg`), which is not saved. A host that can't be reached leaves its
+/// tasks as they were, without status.
 fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
     let mut tasks = load_tasks()?;
     let before = serde_json::to_string(&tasks).map_err(|e| e.to_string())?;
@@ -1358,15 +1434,19 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
         })
         .collect();
     let stamp = now();
+    let mut live: HashMap<String, TabStatus> = HashMap::new();
     for handle in checks {
         let Ok((host, windows, worktrees)) = handle.join() else { continue };
         let open = tasks
             .iter_mut()
             .filter(|t| t["ended_at"].is_null() && t["host"].as_str() == Some(host.as_str()));
         for (i, task) in open.enumerate() {
-            let tab_gone = windows
-                .as_ref()
-                .is_some_and(|w| !w.iter().any(|id| task["window_id"].as_str() == Some(id.as_str())));
+            let window_id = task["window_id"].as_str().unwrap_or("");
+            let tab = windows.as_ref().map(|w| w.get(window_id));
+            let tab_gone = matches!(tab, Some(None));
+            if let Some(Some(status)) = tab {
+                live.insert(window_id.to_string(), status.clone());
+            }
             let worktree = worktrees.as_ref().and_then(|w| w.get(i).cloned().flatten());
             match worktree.as_deref() {
                 Some("") => {
@@ -1385,6 +1465,13 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
     tasks.retain(|t| t["ended_at"].as_u64().is_none_or(|ended| stamp.saturating_sub(ended) < ENDED_KEEP_SECS));
     if serde_json::to_string(&tasks).map_err(|e| e.to_string())? != before {
         save_tasks(&tasks)?;
+    }
+    for task in tasks.iter_mut().filter(|t| t["ended_at"].is_null()) {
+        if let Some(status) = task["window_id"].as_str().and_then(|id| live.get(id)) {
+            task["status"] = status.state.clone().into();
+            task["status_at"] = status.at.into();
+            task["status_msg"] = status.msg.clone().into();
+        }
     }
     Ok(tasks)
 }
@@ -1534,6 +1621,7 @@ const USAGE: &str = "usage: rex-spawn [--local LABEL]
        rex-spawn --launch HOST PATH NAME HARNESS [WORK_ITEM]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL
        rex-spawn --tasks
+       rex-spawn --inbox TASKS_JSON
 
 Without a mode, shows the spawn picker and reports the choice in the
 terminal title as rex-spawn:HOST/PATH/NAME/HARNESS/WORK_ITEM. --local adds
@@ -1541,7 +1629,9 @@ the config host's label to the dev hosts. --launch opens the work's tab on
 HOST (auto: the least busy dev host), records the task, and prints
 HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the worktree and runs the
 harness in the current tab. --tasks checks recorded tasks against their
-hosts and prints them as JSON.";
+hosts and prints them as JSON with live agent status. --inbox shows open
+tasks from that JSON, most urgent first, and reports the highlighted one as
+rex-spawn-inbox:HOST/SESSION_ID/WINDOW_ID.";
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -1562,6 +1652,7 @@ fn main() -> io::Result<()> {
             }
         },
         ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url),
+        ["--inbox", json] => inbox::run(json)?,
         ["--tasks"] => match reconcile_tasks() {
             Ok(tasks) => println!("{}", serde_json::Value::from(tasks)),
             Err(e) => {
