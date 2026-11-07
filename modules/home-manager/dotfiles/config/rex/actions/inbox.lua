@@ -28,6 +28,10 @@ rex.action{
     local r, err = rex.exec({ "rex-spawn", "--tasks" }, { env = util.cli_env() })
     if r == nil then error(err, 0) end
     if not r.ok then error(r.stderr, 0) end
+    -- Start on the current tab's task. Key actions carry no window_id, so
+    -- fall back to the session's active tab.
+    local view = ctx.window_id == nil and rex.session.view{ session_id = ctx.session_id } or nil
+    local current = ctx.session_id .. "/" .. (ctx.window_id or (view and view.active_window_id) or "")
     local _, layer_err = rex.session.new_layer{
       session_id = ctx.session_id,
       bounds     = { 0.12, 0.12, 0.76, 0.6 },
@@ -35,7 +39,7 @@ rex.action{
       layout     = rex.layout.block{
         flavor  = "com.superlogical.terminal.shell",
         label   = label,
-        options = { command = util.float_command("rex-spawn", "--inbox", r.stdout) },
+        options = { command = util.float_command("rex-spawn", "--inbox", r.stdout, current) },
       },
     }
     if layer_err ~= nil then error(layer_err, 0) end

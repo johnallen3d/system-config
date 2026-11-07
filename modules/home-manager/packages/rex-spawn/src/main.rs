@@ -20,8 +20,9 @@
 //! - `--tasks`: runs on the config host. Checks every recorded task against
 //!   its host, marks the ones whose tab or worktree is gone as ended, and
 //!   prints the registry as JSON with each open task's live agent status.
-//! - `--inbox JSON`: the cmd+i task inbox float, fed `--tasks` output by the
-//!   config (see inbox.rs).
+//! - `--inbox JSON [SESSION_ID/WINDOW_ID]`: the cmd+i task inbox float, fed
+//!   `--tasks` output by the config (see inbox.rs), starting on the task in
+//!   the given tab, if any.
 //! - `--act ACTION HOST SESSION WINDOW`: runs on the config host. Reviews or
 //!   discards the task in that tab (see actions.rs).
 //! - `--run PROFILE PATH NAME HARNESS CLONE_URL`: runs in that tab. Clones a
@@ -1711,7 +1712,7 @@ const USAGE: &str = "usage: rex-spawn [--local LABEL]
        rex-spawn --launch HOST PATH NAME HARNESS [WORK_ITEM]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL
        rex-spawn --tasks
-       rex-spawn --inbox TASKS_JSON
+       rex-spawn --inbox TASKS_JSON [SESSION_ID/WINDOW_ID]
        rex-spawn --act review|discard|force-discard HOST SESSION_ID WINDOW_ID
 
 Without a mode, shows the spawn picker and reports the choice in the
@@ -1721,7 +1722,8 @@ HOST (auto: the least busy dev host), records the task, and prints
 HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the worktree and runs the
 harness in the current tab. --tasks checks recorded tasks against their
 hosts and prints them as JSON with live agent status. --inbox shows open
-tasks from that JSON, most urgent first, and reports the highlighted one as
+tasks from that JSON, most urgent first (starting on the given tab's task),
+and reports the highlighted one as
 rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID. --act reviews or
 discards the task in a tab; force-discard also throws away uncommitted
 changes.";
@@ -1745,7 +1747,8 @@ fn main() -> io::Result<()> {
             }
         },
         ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url),
-        ["--inbox", json] => inbox::run(json)?,
+        ["--inbox", json] => inbox::run(json, None)?,
+        ["--inbox", json, current] => inbox::run(json, Some(current))?,
         ["--act", action, host, session, window] => match actions::act(action, host, session, window) {
             Ok(msg) => {
                 log(&msg);

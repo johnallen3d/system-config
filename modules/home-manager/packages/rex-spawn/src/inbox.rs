@@ -520,9 +520,15 @@ impl Inbox {
     }
 }
 
-pub fn run(json: &str) -> io::Result<()> {
+/// `current` is the tab the inbox opened from, as `SESSION_ID/WINDOW_ID`;
+/// its task, if it is one, starts highlighted.
+pub fn run(json: &str, current: Option<&str>) -> io::Result<()> {
     let tasks = parse(json).map_err(io::Error::other)?;
     let mut inbox = Inbox::new(tasks);
+    if let Some((session, window)) = current.and_then(|c| c.split_once('/')) {
+        let at = inbox.rows.iter().position(|&i| inbox.tasks[i].session_id == session && inbox.tasks[i].window_id == window);
+        inbox.selected = at.unwrap_or(0);
+    }
     let mut term = ratatui::init();
     let _ = execute!(io::stdout(), EnableMouseCapture);
     let result = run_loop(&mut term, &mut inbox);
