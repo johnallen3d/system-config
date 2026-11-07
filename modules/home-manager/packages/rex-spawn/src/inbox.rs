@@ -3,9 +3,14 @@
 //! The config's `inbox` action runs `rex-spawn --tasks` on the config host
 //! and passes its JSON here; this float may run on another host, so it never
 //! reads the registry itself. It reports the highlighted task in the terminal
-//! title as `rex-spawn-inbox:HOST/SESSION_ID/WINDOW_ID` (host hex encoded),
-//! and the config's `inbox` mode turns Enter into the jump and Escape into
-//! closing the float, as with the other pickers.
+//! title as `rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID` (host hex
+//! encoded). ACTION is `go`; or after ctrl-x, `discard` for a clean worktree
+//! and `ask` for one with uncommitted changes; or `force-discard` once the
+//! discard of a dirty worktree is confirmed. Any other key disarms. The
+//! config's `inbox` mode turns Enter into ACTION, ctrl-r into review (see
+//! actions.rs), and Escape into closing the float. For `ask` it keeps the
+//! float open and types ctrl-x into it, which moves the float on to the
+//! "are you sure" step.
 
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
@@ -36,6 +41,9 @@ struct Task {
     name: String,
     profile: String,
     work_item: String,
+    /// Uncommitted files in the worktree, and the first few of their paths.
+    dirty: u64,
+    dirty_files: Vec<String>,
     state: String,
     msg: String,
     /// When the status last changed, or when the task started if unknown.
@@ -75,6 +83,11 @@ fn parse(json: &str) -> Result<Vec<Task>, String> {
             name: s(t, "name"),
             profile: s(t, "profile"),
             work_item: s(t, "work_item"),
+            dirty: t["dirty_count"].as_u64().unwrap_or(0),
+            dirty_files: t["dirty_files"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|f| f.as_str().map(String::from)).collect())
+                .unwrap_or_default(),
             state: s(t, "status"),
             msg: s(t, "status_msg"),
             since: t["status_at"]
@@ -98,6 +111,13 @@ fn age(secs: u64) -> String {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Armed {
+    No,
+    Discard,
+    Force,
+}
+
 struct Inbox {
     p: Palette,
     tasks: Vec<Task>,
@@ -108,6 +128,8 @@ struct Inbox {
     hits: Vec<Vec<usize>>,
     selected: usize,
     offset: usize,
+    /// What ctrl-x has armed for the selected task; Enter confirms it.
+    armed: Armed,
     list_area: Rect,
     reported: Option<String>,
     started: Instant,
@@ -125,6 +147,7 @@ impl Inbox {
             hits: Vec::new(),
             selected: 0,
             offset: 0,
+            armed: Armed::No,
             list_area: Rect::default(),
             reported: None,
             started: Instant::now(),
@@ -175,8 +198,15 @@ impl Inbox {
     }
 
     fn pick(&self) -> String {
+        let dirty = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].dirty > 0);
+        let action = match self.armed {
+            Armed::No => "go",
+            Armed::Discard if dirty => "ask",
+            Armed::Discard => "discard",
+            Armed::Force => "force-discard",
+        };
         match self.rows.get(self.selected).map(|&i| &self.tasks[i]) {
-            Some(t) => format!("{}/{}/{}", hex(&t.host), t.session_id, t.window_id),
+            Some(t) => format!("{action}:{}/{}/{}", hex(&t.host), t.session_id, t.window_id),
             None => String::new(),
         }
     }
@@ -196,6 +226,21 @@ impl Inbox {
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         let alt = k.modifiers.contains(KeyModifiers::ALT);
         let page = (self.list_area.height as isize - 1).max(1);
+        // ctrl-x arms a discard; on a worktree with uncommitted changes, the
+        // next ctrl-x (typed by the config when Enter answers `ask`) moves on
+        // to "are you sure". Any other key disarms (Enter and Escape never
+        // get here: the config's inbox mode takes them).
+        if matches!(k.code, KeyCode::Char('x') if ctrl) {
+            let dirty = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].dirty > 0);
+            self.armed = match self.armed {
+                _ if self.rows.is_empty() => Armed::No,
+                Armed::No => Armed::Discard,
+                Armed::Discard | Armed::Force if dirty => Armed::Force,
+                armed => armed,
+            };
+            return true;
+        }
+        self.armed = Armed::No;
         match k.code {
             KeyCode::Char('c') if ctrl => return false,
             KeyCode::Char('p') | KeyCode::Char('k') if ctrl => self.step(-1),
@@ -353,7 +398,8 @@ impl Inbox {
 
     fn draw_row(&self, f: &mut Frame, r: Rect, t: &Task, hits: &[usize], selected: bool, tick: usize) {
         let p = &self.p;
-        let bg = if selected { p.overlay } else { p.base };
+        let doomed = selected && self.armed != Armed::No;
+        let bg = if doomed { p.hl_med } else if selected { p.overlay } else { p.base };
         f.buffer_mut().set_style(r, Style::new().bg(bg));
         let (glyph, color, verb) = match t.state.as_str() {
             "working" => (SPINNER[tick % SPINNER.len()], p.foam, "working"),
@@ -367,6 +413,9 @@ impl Inbox {
         // Right side first, so the label and message get what is left:
         // [work item] [host chip] [state age].
         let mut right: Vec<Span> = Vec::new();
+        if t.dirty > 0 {
+            right.push(Span::styled(format!("✎{}  ", t.dirty), Style::new().fg(p.gold).bg(bg)));
+        }
         if !t.work_item.is_empty() {
             right.push(Span::styled(format!("{}  ", t.work_item), Style::new().fg(p.iris).bg(bg)));
         }
@@ -378,7 +427,9 @@ impl Inbox {
         right.push(Span::styled(format!("  {verb:>9}{when:>4} "), Style::new().fg(p.muted).bg(bg)));
         let right_w: usize = right.iter().map(|s| str_width(&s.content)).sum();
 
-        let edge = if selected { Span::styled("▎", Style::new().fg(p.iris).bg(bg)) } else { Span::styled(" ", Style::new().bg(bg)) };
+        let edge = if doomed {
+            Span::styled("▎", Style::new().fg(p.love).bg(bg))
+        } else if selected { Span::styled("▎", Style::new().fg(p.iris).bg(bg)) } else { Span::styled(" ", Style::new().bg(bg)) };
         let mut left = vec![
             edge,
             Span::styled(format!("{glyph} "), Style::new().fg(color).bg(bg)),
@@ -406,7 +457,38 @@ impl Inbox {
     fn draw_footer(&self, f: &mut Frame, area: Rect) {
         let p = &self.p;
         let mut spans = vec![Span::raw(" ")];
-        for (k, label) in [("⏎", "go to tab"), ("↑↓", "move"), ("⌃U", "clear"), ("esc", "close")] {
+        if let (true, Some(t)) = (self.armed != Armed::No, self.rows.get(self.selected).map(|&i| &self.tasks[i])) {
+            let key = Style::new().fg(p.love).add_modifier(Modifier::BOLD);
+            let files = || {
+                let mut list = t.dirty_files.join(", ");
+                if t.dirty > t.dirty_files.len() as u64 {
+                    list.push_str(&format!(" +{}", t.dirty - t.dirty_files.len() as u64));
+                }
+                list
+            };
+            match self.armed {
+                Armed::Discard if t.dirty > 0 => {
+                    spans.push(Span::styled("⏎", key));
+                    spans.push(Span::styled(format!(" discard {}", t.label()), Style::new().fg(p.love)));
+                    spans.push(Span::styled(format!(" (uncommitted: {})", files()), Style::new().fg(p.gold)));
+                    spans.push(Span::styled(" · other keys cancel", Style::new().fg(p.muted)));
+                }
+                Armed::Force => {
+                    spans.push(Span::styled("Are you sure? ", Style::new().fg(p.love).add_modifier(Modifier::BOLD)));
+                    spans.push(Span::styled("⏎", key));
+                    spans.push(Span::styled(format!(" throws away {}", files()), Style::new().fg(p.love)));
+                    spans.push(Span::styled(" · other keys cancel", Style::new().fg(p.muted)));
+                }
+                _ => {
+                    spans.push(Span::styled("⏎", key));
+                    spans.push(Span::styled(format!(" discard {}", t.label()), Style::new().fg(p.love)));
+                    spans.push(Span::styled(": closes tab, removes worktree · other keys cancel", Style::new().fg(p.muted)));
+                }
+            }
+            f.render_widget(Line::from(spans), area);
+            return;
+        }
+        for (k, label) in [("⏎", "go"), ("⌃R", "review"), ("⌃X", "discard"), ("esc", "close")] {
             spans.push(Span::styled(k, Style::new().fg(p.subtle).add_modifier(Modifier::BOLD)));
             spans.push(Span::styled(format!(" {label}   "), Style::new().fg(p.muted)));
         }

@@ -22,6 +22,8 @@
 //!   prints the registry as JSON with each open task's live agent status.
 //! - `--inbox JSON`: the cmd+i task inbox float, fed `--tasks` output by the
 //!   config (see inbox.rs).
+//! - `--act ACTION HOST SESSION WINDOW`: runs on the config host. Reviews or
+//!   discards the task in that tab (see actions.rs).
 //! - `--run PROFILE PATH NAME HARNESS CLONE_URL`: runs in that tab. Clones a
 //!   missing project, creates or reuses the worktree with Worktrunk, runs the
 //!   harness, then leaves a shell open.
@@ -31,6 +33,7 @@
 //! name with a slash is used as the branch as is, its slug replacing `/`
 //! with `-`.
 
+mod actions;
 mod inbox;
 
 use std::collections::HashMap;
@@ -1349,20 +1352,29 @@ fn host_windows(host: &str) -> Option<HashMap<String, TabStatus>> {
     )
 }
 
-/// For each (repo, branch), the branch's worktree path on `host`, or "" when
+/// For each (repo, branch), the branch's worktree on `host` with its
+/// uncommitted files (count, and the first few paths), or an empty path when
 /// the repo is there but the branch has no worktree; None for a repo that
 /// can't be read. None overall when the host can't be reached. One script
 /// per host on stdin: `bash -s` over SSH by Rex label (as `probe` reaches
 /// hosts; their login shell is Fish), or locally for the config host.
-fn host_worktrees(host: &str, pairs: &[(String, String)]) -> Option<Vec<Option<String>>> {
-    // One line per pair: the worktree path, "-" for none, "?" for no repo.
+fn host_worktrees(host: &str, pairs: &[(String, String)]) -> Option<Vec<Option<Worktree>>> {
+    // One line per pair: PATH<TAB>COUNT<TAB>FILE..., "-" for no worktree,
+    // "?" for no repo.
     let mut script = String::from(
         r#"while IFS="$(printf '\t')" read -r repo branch; do
   if list=$(git -C "$repo" worktree list --porcelain 2>/dev/null); then
-    printf '%s\n' "$list" | awk -v want="branch refs/heads/$branch" '
+    path=$(printf '%s\n' "$list" | awk -v want="branch refs/heads/$branch" '
       /^worktree / { path = substr($0, 10) }
       $0 == want { print path; found = 1; exit }
-      END { if (!found) print "-" }'
+      END { if (!found) print "-" }')
+    if [ "$path" = "-" ]; then
+      echo "-"
+    else
+      files=$(git -C "$path" status --porcelain 2>/dev/null | cut -c4-)
+      count=$(printf '%s' "$files" | grep -c .)
+      printf '%s\t%s\t%s\n' "$path" "$count" "$(printf '%s\n' "$files" | head -5 | paste -s -d '\t' -)"
+    fi
   else
     echo "?"
   fi
@@ -1373,6 +1385,44 @@ done <<'RSP_PAIRS'
         script.push_str(&format!("{repo}\t{branch}\n"));
     }
     script.push_str("RSP_PAIRS\n");
+    let out = host_bash(host, &script).filter(|o| o.status.success())?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let lines: Vec<&str> = text.lines().collect();
+    if lines.len() != pairs.len() {
+        return None;
+    }
+    Some(
+        lines
+            .into_iter()
+            .map(|l| match l {
+                "?" => None,
+                "-" => Some(Worktree::default()),
+                line => {
+                    let mut f = line.split('\t');
+                    let path = f.next().unwrap_or("").to_string();
+                    let dirty = f.next().and_then(|n| n.parse().ok()).unwrap_or(0);
+                    let files = f.filter(|s| !s.is_empty()).map(String::from).collect();
+                    Some(Worktree { path, dirty, files })
+                }
+            })
+            .collect(),
+    )
+}
+
+/// A task's worktree on its host; an empty path means it has none.
+#[derive(Clone, Default)]
+struct Worktree {
+    path: String,
+    /// Uncommitted files, and the first few of their paths.
+    dirty: u64,
+    files: Vec<String>,
+}
+
+/// Run a Bash script on `host` from stdin: over SSH by Rex label (as `probe`
+/// reaches hosts; their login shell is Fish), or locally for the config
+/// host. None when it can't be started or the host can't be reached;
+/// otherwise the output whatever the script's exit status.
+fn host_bash(host: &str, script: &str) -> Option<std::process::Output> {
     let mut cmd = if host == local_label() {
         let mut c = Command::new("bash");
         c.arg("-s");
@@ -1384,28 +1434,19 @@ done <<'RSP_PAIRS'
     };
     let mut child = cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().ok()?;
     child.stdin.take()?.write_all(script.as_bytes()).ok()?;
-    let out = child.wait_with_output().ok().filter(|o| o.status.success())?;
-    let text = String::from_utf8_lossy(&out.stdout);
-    let lines: Vec<&str> = text.lines().collect();
-    if lines.len() != pairs.len() {
+    let out = child.wait_with_output().ok()?;
+    // ssh exits 255 when it can't connect.
+    if host != local_label() && out.status.code() == Some(255) {
         return None;
     }
-    Some(
-        lines
-            .into_iter()
-            .map(|l| match l {
-                "?" => None,
-                "-" => Some(String::new()),
-                path => Some(path.to_string()),
-            })
-            .collect(),
-    )
+    Some(out)
 }
 
 /// Check the open tasks against their hosts, end the ones whose tab or
 /// worktree is gone, prune old ended ones, and return the registry. Open
 /// tasks also get their tab's live agent status (`status`, `status_at`,
-/// `status_msg`), which is not saved. A host that can't be reached leaves its
+/// `status_msg`) and their worktree's uncommitted files (`dirty_count`,
+/// `dirty_files`), which are not saved. A host that can't be reached leaves its
 /// tasks as they were, without status.
 fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
     let mut tasks = load_tasks()?;
@@ -1435,25 +1476,30 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
         .collect();
     let stamp = now();
     let mut live: HashMap<String, TabStatus> = HashMap::new();
+    let mut dirty: HashMap<String, Worktree> = HashMap::new();
     for handle in checks {
         let Ok((host, windows, worktrees)) = handle.join() else { continue };
         let open = tasks
             .iter_mut()
             .filter(|t| t["ended_at"].is_null() && t["host"].as_str() == Some(host.as_str()));
         for (i, task) in open.enumerate() {
-            let window_id = task["window_id"].as_str().unwrap_or("");
+            let window_id = task["window_id"].as_str().unwrap_or("").to_string();
+            let window_id = window_id.as_str();
             let tab = windows.as_ref().map(|w| w.get(window_id));
             let tab_gone = matches!(tab, Some(None));
             if let Some(Some(status)) = tab {
                 live.insert(window_id.to_string(), status.clone());
             }
             let worktree = worktrees.as_ref().and_then(|w| w.get(i).cloned().flatten());
-            match worktree.as_deref() {
-                Some("") => {
+            match worktree {
+                Some(w) if w.path.is_empty() => {
                     task["ended_at"] = stamp.into();
                     task["ended_reason"] = "worktree removed".into();
                 }
-                Some(path) => task["worktree"] = path.into(),
+                Some(w) => {
+                    task["worktree"] = w.path.clone().into();
+                    dirty.insert(window_id.to_string(), w);
+                }
                 None => {}
             }
             if tab_gone && task["ended_at"].is_null() {
@@ -1471,6 +1517,10 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
             task["status"] = status.state.clone().into();
             task["status_at"] = status.at.into();
             task["status_msg"] = status.msg.clone().into();
+        }
+        if let Some(w) = task["window_id"].as_str().and_then(|id| dirty.get(id)) {
+            task["dirty_count"] = w.dirty.into();
+            task["dirty_files"] = w.files.clone().into();
         }
     }
     Ok(tasks)
@@ -1622,6 +1672,7 @@ const USAGE: &str = "usage: rex-spawn [--local LABEL]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL
        rex-spawn --tasks
        rex-spawn --inbox TASKS_JSON
+       rex-spawn --act review|discard|force-discard HOST SESSION_ID WINDOW_ID
 
 Without a mode, shows the spawn picker and reports the choice in the
 terminal title as rex-spawn:HOST/PATH/NAME/HARNESS/WORK_ITEM. --local adds
@@ -1631,7 +1682,9 @@ HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the worktree and runs the
 harness in the current tab. --tasks checks recorded tasks against their
 hosts and prints them as JSON with live agent status. --inbox shows open
 tasks from that JSON, most urgent first, and reports the highlighted one as
-rex-spawn-inbox:HOST/SESSION_ID/WINDOW_ID.";
+rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID. --act reviews or
+discards the task in a tab; force-discard also throws away uncommitted
+changes.";
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -1653,6 +1706,17 @@ fn main() -> io::Result<()> {
         },
         ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url),
         ["--inbox", json] => inbox::run(json)?,
+        ["--act", action, host, session, window] => match actions::act(action, host, session, window) {
+            Ok(msg) => {
+                log(&msg);
+                println!("{msg}");
+            }
+            Err(e) => {
+                log(&format!("{action} failed: {e}"));
+                eprintln!("rex-spawn: {e}");
+                std::process::exit(1);
+            }
+        },
         ["--tasks"] => match reconcile_tasks() {
             Ok(tasks) => println!("{}", serde_json::Value::from(tasks)),
             Err(e) => {
