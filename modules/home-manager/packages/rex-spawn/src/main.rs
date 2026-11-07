@@ -794,15 +794,20 @@ impl App {
                 f.set_cursor_position((x, name_row.y));
             }
         }
-        let hint = match name_problem(&self.name) {
-            Some(problem) if !self.name.is_empty() => Span::styled(format!("{problem} "), Style::new().fg(p.love)),
-            Some(_) => Span::raw(""),
+        // Right-aligned hint, shortened or dropped so it never covers the name.
+        let typed_w = if self.name.is_empty() { 0 } else { str_width(&self.name) };
+        let room = (name_row.width as usize).saturating_sub(label_w as usize + typed_w + 2);
+        let (candidates, color) = match name_problem(&self.name) {
+            Some(problem) if !self.name.is_empty() => (vec![format!("{problem} ")], p.love),
+            Some(_) => (vec![], p.muted),
             None => {
                 let (branch, slug) = branch_and_slug(&self.name);
-                Span::styled(format!("{branch} · .worktrees/{slug} "), Style::new().fg(p.muted))
+                (vec![format!("{branch} · .worktrees/{slug} "), format!("{branch} ")], p.muted)
             }
         };
-        f.render_widget(Line::from(hint).right_aligned(), name_row);
+        if let Some(hint) = candidates.into_iter().find(|h| str_width(h) <= room) {
+            f.render_widget(Line::from(Span::styled(hint, Style::new().fg(color))).right_aligned(), name_row);
+        }
 
         // Optional work item, recorded with the task for the inbox.
         let focused = self.focus == Focus::Work;
