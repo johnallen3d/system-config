@@ -89,8 +89,8 @@ end
 return table.concat(lines, "\n") .. "\n"
 ]==]
 
-local function tab_entries(path)
-  local r, err = rex.exec({ "rex", "do", "-e", tab_list_script }, { env = { PATH = path } })
+local function tab_entries()
+  local r, err = rex.exec({ "rex", "do", "-e", tab_list_script }, { env = util.cli_env() })
   if r == nil then error(err, 0) end
   if not r.ok then error(r.stderr, 0) end
   return rex.json.decode(r.stdout)
@@ -108,7 +108,7 @@ rex.action{
   title = "Go to Tab…",
   run   = function(ctx, args)
     if util.find_float(ctx, label) ~= nil then return close_picker(ctx) end
-    local entries = tab_entries(util.user_path())
+    local entries = tab_entries()
     local _, layer_err = rex.session.new_layer{
       session_id = ctx.session_id,
       bounds     = { 0.12, 0.1, 0.76, 0.75 },
