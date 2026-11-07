@@ -5,6 +5,8 @@
     exec ${pkgs.uv}/bin/uv tool run --from jarify==0.14.0 jarify "$@"
   '';
 in {
+  # No Nix gcc: Arch's /usr/bin/cc must win so native builds (Rust, tree-sitter)
+  # link against the Arch libraries pkg-config finds.
   home.packages = with pkgs; [
     alejandra
     basedpyright
@@ -12,7 +14,6 @@ in {
     curl
     duckdb
     fd
-    gcc
     harper
     jarify
     kcl
