@@ -23,7 +23,7 @@ use ratatui::crossterm::event::{
 };
 use ratatui::crossterm::execute;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType};
 use ratatui::{DefaultTerminal, Frame};
@@ -301,7 +301,7 @@ impl Inbox {
             )
             .title_top(Line::from(Span::styled(" ⌘I ", Style::new().fg(p.muted))).right_aligned())
             .style(Style::new().bg(p.base));
-        let inner = frame.inner(area).inner(Margin::new(2, 1));
+        let inner = frame.inner(area).inner(Margin::new(1, 1));
         f.render_widget(frame, area);
         let [search, rule, _, body, _, footer] = Layout::vertical([
             Constraint::Length(1),
@@ -390,28 +390,23 @@ impl Inbox {
             self.offset = self.selected + 1 - h;
         }
         let tick = (self.started.elapsed().as_millis() / 90) as usize;
+        // Project and feature columns line up across rows: size them for the
+        // widest values, within what the busiest right side leaves.
+        let shown = || self.rows.iter().map(|&i| &self.tasks[i]);
+        let right_w = shown().map(|t| self.right_spans(t, self.p.base, "").1).max().unwrap_or(0);
+        let room = (area.width as usize).saturating_sub(3 + right_w + 1);
+        let proj_w = shown().map(|t| str_width(&t.project)).max().unwrap_or(0).min(room / 4);
+        let name_w = shown().map(|t| str_width(&t.name)).max().unwrap_or(0).min(room.saturating_sub(proj_w + 2) * 2 / 3);
         for (row, &i) in self.rows.iter().enumerate().skip(self.offset).take(h) {
             let r = Rect { y: area.y + (row - self.offset) as u16, height: 1, ..area };
-            self.draw_row(f, r, &self.tasks[i], &self.hits[row], row == self.selected, tick);
+            self.draw_row(f, r, &self.tasks[i], &self.hits[row], row == self.selected, tick, (proj_w, name_w));
         }
     }
 
-    fn draw_row(&self, f: &mut Frame, r: Rect, t: &Task, hits: &[usize], selected: bool, tick: usize) {
+    /// The right side of a row, [dirty] [work item] [host chip] [state age],
+    /// and its width.
+    fn right_spans(&self, t: &Task, bg: Color, verb: &str) -> (Vec<Span<'static>>, usize) {
         let p = &self.p;
-        let doomed = selected && self.armed != Armed::No;
-        let bg = if doomed { p.hl_med } else if selected { p.overlay } else { p.base };
-        f.buffer_mut().set_style(r, Style::new().bg(bg));
-        let (glyph, color, verb) = match t.state.as_str() {
-            "working" => (SPINNER[tick % SPINNER.len()], p.foam, "working"),
-            "blocked" => ("●", p.gold, "waiting"),
-            "done" => ("✓", p.pine, "done"),
-            "error" => ("✗", p.love, "failed"),
-            "idle" => ("·", p.muted, "idle"),
-            _ => ("?", p.muted, "no status"),
-        };
-
-        // Right side first, so the label and message get what is left:
-        // [work item] [host chip] [state age].
         let mut right: Vec<Span> = Vec::new();
         if t.dirty > 0 {
             right.push(Span::styled(format!("✎{}  ", t.dirty), Style::new().fg(p.gold).bg(bg)));
@@ -425,7 +420,27 @@ impl Inbox {
         right.push(Span::styled(CAP_R, Style::new().fg(p.surface).bg(bg)));
         let when = if t.since > 0 { format!(" {}", age(self.now.saturating_sub(t.since))) } else { String::new() };
         right.push(Span::styled(format!("  {verb:>9}{when:>4} "), Style::new().fg(p.muted).bg(bg)));
-        let right_w: usize = right.iter().map(|s| str_width(&s.content)).sum();
+        let w = right.iter().map(|s| str_width(&s.content)).sum();
+        (right, w)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_row(&self, f: &mut Frame, r: Rect, t: &Task, hits: &[usize], selected: bool, tick: usize, cols: (usize, usize)) {
+        let p = &self.p;
+        let doomed = selected && self.armed != Armed::No;
+        let bg = if doomed { p.hl_med } else if selected { p.overlay } else { p.base };
+        f.buffer_mut().set_style(r, Style::new().bg(bg));
+        let (glyph, color, verb) = match t.state.as_str() {
+            "working" => (SPINNER[tick % SPINNER.len()], p.foam, "working"),
+            "blocked" => ("●", p.gold, "waiting"),
+            "done" => ("✓", p.pine, "done"),
+            "error" => ("✗", p.love, "failed"),
+            "idle" => ("·", p.muted, "idle"),
+            _ => ("?", p.muted, "no status"),
+        };
+
+        // Right side first, so the columns and message get what is left.
+        let (right, right_w) = self.right_spans(t, bg, verb);
 
         let edge = if doomed {
             Span::styled("▎", Style::new().fg(p.love).bg(bg))
@@ -435,18 +450,27 @@ impl Inbox {
             Span::styled(format!("{glyph} "), Style::new().fg(color).bg(bg)),
         ];
         let room = (r.width as usize).saturating_sub(3 + right_w + 1);
-        let label = t.label();
-        let label_room = room.min(str_width(&label).max(room / 2));
+        let (proj_w, name_w) = cols;
         let name_style = if selected {
             Style::new().fg(p.text).bg(bg).add_modifier(Modifier::BOLD)
         } else {
             Style::new().fg(p.text).bg(bg)
         };
         let hl = Style::new().fg(p.rose).bg(bg).add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
-        left.extend(highlight(&label, hits, label_room, false, name_style, hl));
-        let msg_room = room.saturating_sub(str_width(&label).min(label_room) + 2);
+        // Hits index the "project/name" label; split them per column.
+        let split = t.project.chars().count();
+        let proj_hits: Vec<usize> = hits.iter().copied().filter(|&i| i < split).collect();
+        let name_hits: Vec<usize> = hits.iter().filter(|&&i| i > split).map(|&i| i - split - 1).collect();
+        let mut column = |text: &str, hits: &[usize], w: usize, style: Style| {
+            let spans = highlight(text, hits, w, false, style, hl);
+            let used: usize = spans.iter().map(|s| str_width(&s.content)).sum();
+            left.extend(spans);
+            left.push(Span::styled(" ".repeat(w.saturating_sub(used) + 2), Style::new().bg(bg)));
+        };
+        column(&t.project, &proj_hits, proj_w, Style::new().fg(p.subtle).bg(bg));
+        column(&t.name, &name_hits, name_w, name_style);
+        let msg_room = room.saturating_sub(proj_w + name_w + 4);
         if !t.msg.is_empty() && msg_room > 4 {
-            left.push(Span::styled("  ", Style::new().bg(bg)));
             let msg_style = Style::new().fg(if t.state == "blocked" { p.gold } else { p.subtle }).bg(bg);
             left.extend(highlight(&t.msg, &[], msg_room, false, msg_style, msg_style));
         }
