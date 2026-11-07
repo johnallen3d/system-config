@@ -33,6 +33,13 @@ force deletion, killing processes, or bypassing hooks/signing.
    contents require John. Recheck task identity, clean status (excluding ignored
    files), and containment in `main`; then use `wt remove --foreground` from
    primary. Never force. Verify this task's worktree and branch are gone.
+   **Rex spawn handoff:** if the session is anchored in the task worktree and
+   `$REX_SPAWN_WORKTREE` resolves to it, rex-spawn removes it after the agent
+   exits instead. Once every check above passes, write `git rev-parse HEAD`
+   followed by `git status --porcelain --ignored` (only `!!` lines) to
+   `$(git rev-parse --path-format=absolute --git-path rex-spawn-cleanup)`.
+   Report cleanup as handed off, not blocked: John exits the agent, and
+   rex-spawn rechecks everything, runs `wt remove`, and shows the result in the tab.
 4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
    separately. Close completed in-scope cards; keep blocked or partially deployed
    cards open. If the repository tracks work in Fizzy and no card covers this
