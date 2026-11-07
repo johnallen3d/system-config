@@ -145,6 +145,21 @@
     };
   };
 
+  # Slack's MCP server has no dynamic client registration; reuse the public
+  # OAuth client Slack publishes for Claude Code (see claude-prompts.nix):
+  # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
+  # Its registered redirect is Claude Code's localhost callback. Tokens stay in
+  # Pi's machine-local mcp-auth.json, never in Nix.
+  piWorkManagedMcpServers = {
+    slack = {
+      url = "https://mcp.slack.com/mcp";
+      oauth = {
+        clientId = "1601185624273.8899143856786";
+        callbackUrl = "http://localhost:3118/callback";
+      };
+    };
+  };
+
   piSystemMd = ''
     - ALWAYS RESPOND IN ENGLISH
     - My name is John
@@ -279,7 +294,8 @@ in {
   '';
 
   # Personal uses Pi 1.x's built-in MCP (codemode exposure by default). The
-  # work agent-kit owns its MCP integration; leave its configuration unchanged.
+  # work agent-kit registers its own MCP servers; piWorkMcp below adds only
+  # the managed work entries to the writable mcp.json.
   home.file.".config/pi/mcp.json".source = jsonFormat.generate "pi-mcp.json" (
     if pkgs.stdenv.hostPlatform.isDarwin
     then piMcpSettings
@@ -290,6 +306,39 @@ in {
     then piWorkMcpSettings
     else linuxWorkMcpSettings
   );
+
+  # Work Pi's built-in MCP reads the writable $PI_CODING_AGENT_DIR/mcp.json,
+  # which `pi mcp add|login` may also edit. Own only the managed entries.
+  home.activation.piWorkMcp = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    if [ -n "''${DRY_RUN:-}" ]; then
+      echo "Would merge managed MCP servers into ~/.config/pi-work/mcp.json"
+    else
+      (
+        config="$HOME/.config/pi-work/mcp.json"
+        if [ -L "$config" ]; then
+          echo "Refusing to replace symlinked Pi work MCP config" >&2
+          exit 1
+        fi
+        mkdir -p "$(dirname "$config")"
+        input="$config"
+        if [ ! -e "$config" ]; then
+          input=${pkgs.writeText "pi-empty-mcp.json" "{}"}
+        fi
+        tmp="$(${pkgs.coreutils}/bin/mktemp "$config.mcp-XXXXXX")"
+        trap 'rm -f "$tmp"' EXIT
+        if ! ${jq} -e --argjson servers ${lib.escapeShellArg (builtins.toJSON piWorkManagedMcpServers)} \
+          'if type != "object" then error("Pi MCP config must be an object")
+           elif has("mcpServers") and (.mcpServers | type) != "object"
+           then error("Pi mcpServers must be an object")
+           else .mcpServers = ((.mcpServers // {}) + $servers) end' \
+          "$input" > "$tmp"; then
+          exit 1
+        fi
+        chmod 0644 "$tmp"
+        mv "$tmp" "$config"
+      )
+    fi
+  '';
 
   # home.file handles all extension symlinks (nix store paths) for both contexts.
   # Themes are identical so pi-work just symlinks to the personal themes dir.
