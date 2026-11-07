@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+#MISE description="Apply standalone Home Manager to pi-cielo homelab hosts (separate from update-system)"
+#USAGE arg "[host]..." help="Homelab hosts (default: all)"
+# Run from the checkout or task worktree to deploy. The source must contain
+# local main, so deploying a task branch never drops integrated changes.
+set -euo pipefail
+
+# host -> SSH user; each has homeConfigurations."<user>@<host>".
+declare -A users=([nas]=beelink [pi-01]=pi [pi-02]=pi [pi-03]=pi)
+
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo"
+
+read -ra hosts <<<"${usage_host:-}"
+((${#hosts[@]})) || hosts=("${!users[@]}")
+for host in "${hosts[@]}"; do
+  [[ -n "${users[$host]:-}" ]] || { echo "Unknown homelab host: $host (known: ${!users[*]})" >&2; exit 2; }
+done
+
+git merge-base --is-ancestor main HEAD ||
+  { echo "Source does not contain local main; rebase the task branch first" >&2; exit 1; }
+
+# Tracked plus new nonignored files (as update-system deploys task layers).
+payload="$(mktemp)"
+trap 'rm -f "$payload"' EXIT
+git ls-files -z --cached --others --exclude-standard |
+  while IFS= read -r -d '' f; do [[ -e "$f" ]] && printf '%s\0' "$f"; done |
+  COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata --null -T - -czf "$payload"
+dirty=""
+[[ -z "$(git status --porcelain)" ]] || dirty="+dirty"
+source_id="$(git rev-parse --short HEAD)$dirty ($(git branch --show-current))"
+
+remote_script() {
+  local host=$1 user=$2
+  # Quoted heredocs: nothing local expands; host/user/source arrive as args.
+  cat <<'EOF'
+set -euo pipefail
+host=$1 user=$2 source_id=$3
+[ "$(hostname -s)" = "$host" ] && [ "$HOME" = "/home/$user" ] || { echo "Unexpected host/user" >&2; exit 1; }
+# Nix's daemon profile isn't on PATH for noninteractive SSH on Debian.
+. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+state=$HOME/.local/state/system-config
+mkdir -p "$state"
+exec 9>"$state/homelab-deploy.lock"
+flock -n 9 || { echo "[$host] Another homelab deploy is running" >&2; exit 1; }
+src=$(mktemp -d)
+trap 'rm -rf "$src"' EXIT
+base64 --decode <<'HOMELAB_PAYLOAD' | tar -xzf - -C "$src"
+EOF
+  base64 <"$payload"
+  cat <<'EOF'
+HOMELAB_PAYLOAD
+# An unthrottled build can starve Docker of I/O on SD-card hosts (#968).
+bash "$src/.mise/scripts/homelab-nix-system" check >&2 ||
+  { echo "[$host] Refusing to build; run: sudo bash .mise/scripts/homelab-nix-system apply" >&2; exit 1; }
+log=$state/homelab-deploy-$(date +%s).log
+echo "[$host] Build log: $log"
+generation=$(nix --extra-experimental-features 'nix-command flakes' build \
+  --no-link --print-out-paths --no-write-lock-file \
+  "path:$src#homeConfigurations.\"$user@$host\".activationPackage" 2>"$log") ||
+  { echo "[$host] Build failed; inspect $log" >&2; exit 1; }
+"$generation/activate" >>"$log" 2>&1 || { echo "[$host] Activation failed; inspect $log" >&2; exit 1; }
+[ "$(readlink -f "$HOME/.local/state/nix/profiles/home-manager")" = "$generation" ] ||
+  { echo "[$host] Activation did not select $generation" >&2; exit 1; }
+printf '%s %s\n' "$generation" "$source_id" >"$state/homelab-deployed"
+systemctl --user is-active --quiet rex.service || { echo "[$host] rex.service is not active" >&2; exit 1; }
+echo "[$host] Active generation: $generation"
+EOF
+}
+
+status=0
+for host in "${hosts[@]}"; do
+  user="${users[$host]}"
+  echo "[$host] Deploying $source_id"
+  if ! remote_script "$host" "$user" |
+    ssh -o BatchMode=yes -o ConnectTimeout=10 "$user@$host" \
+      "bash -s -- $(printf '%q ' "$host" "$user" "$source_id")"; then
+    echo "[$host] FAILED" >&2
+    status=1
+  fi
+done
+exit "$status"

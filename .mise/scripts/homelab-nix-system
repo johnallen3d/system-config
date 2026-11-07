@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Root-owned Nix daemon settings on pi-cielo homelab hosts (Debian). Standalone
+# Home Manager cannot manage /etc, so this script is their reviewed source.
+# Builds must yield to Docker: on pi-01's SD card, a Nix build starved dockerd
+# of I/O until it died (#968).
+#   sudo bash homelab-nix-system apply   # idempotent; restarts nix-daemon
+#   bash homelab-nix-system check        # unprivileged drift check
+set -euo pipefail
+
+drop_in=/etc/systemd/system/nix-daemon.service.d/idle.conf
+drop_in_text='[Service]
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle'
+effective=(Nice=19 CPUSchedulingPolicy=5 IOSchedulingClass=3)
+
+check() {
+  local drift=0 property
+  [ "$(cat "$drop_in" 2>/dev/null)" = "$drop_in_text" ] || { echo "differs or missing: $drop_in"; drift=1; }
+  for property in "${effective[@]}"; do
+    systemctl show nix-daemon.service -p "${property%%=*}" | grep -qxF -- "$property" ||
+      { echo "nix-daemon not running with $property (reload/restart pending?)"; drift=1; }
+  done
+  return "$drift"
+}
+
+apply() {
+  [ "$(id -u)" = 0 ] || { echo "apply must run as root" >&2; exit 1; }
+  install -d -m 0755 "${drop_in%/*}"
+  printf '%s\n' "$drop_in_text" >"$drop_in"
+  systemctl daemon-reload
+  systemctl restart nix-daemon.service
+  check && echo "Homelab Nix system settings applied"
+}
+
+case "${1:-}" in
+  apply) apply ;;
+  check) check ;;
+  *) echo "usage: $0 apply|check" >&2; exit 2 ;;
+esac

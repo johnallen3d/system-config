@@ -85,7 +85,38 @@
           };
           modules = [./hosts/${host}.nix];
         };
+      # pi-cielo homelab hosts (Debian): Rex server only, deployed separately.
+      makeHomelabHome = {
+        host,
+        user,
+        system,
+      }:
+        omarchyHomeManager.lib.homeManagerConfiguration {
+          pkgs = import omarchyNixpkgs {inherit system;};
+          extraSpecialArgs = {inherit host rex user;};
+          modules = [./hosts/homelab-common.nix];
+        };
     in {
+      "beelink@nas" = makeHomelabHome {
+        host = "nas";
+        user = "beelink";
+        system = "x86_64-linux";
+      };
+      "pi@pi-01" = makeHomelabHome {
+        host = "pi-01";
+        user = "pi";
+        system = "aarch64-linux";
+      };
+      "pi@pi-02" = makeHomelabHome {
+        host = "pi-02";
+        user = "pi";
+        system = "aarch64-linux";
+      };
+      "pi@pi-03" = makeHomelabHome {
+        host = "pi-03";
+        user = "pi";
+        system = "aarch64-linux";
+      };
       "johna@drummer" = makeOmarchyHome "drummer";
       "johna@miller" = makeOmarchyHome "miller";
       "johna@omarchy" = makeOmarchyHome "omarchy";

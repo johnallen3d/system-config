@@ -54,6 +54,12 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Verify installed config and effective runtime on each host independently. Don't restart active agents just to refresh environment; report needed restarts. If a host is unreachable or verification fails, the deployment is **partial**: keep the card open, name the pending host/action, and never report it as done. Documentation-only changes need no activation.
 - Pi Pocket (`pi-pocket.service`, `docs/pi-pocket.md`) is the production personal assistant.
 
+## Homelab hosts (separate deploy group)
+
+- pi-cielo homelab hosts (Debian; services stay in `~/dev/src/playground/pi-cielo`) run a slim standalone Home Manager profile (`hosts/homelab-common.nix`: Rex server only) as `homeConfigurations."<user>@<host>"`. Currently `pi@pi-01`, `pi@pi-02`, `pi@pi-03`, and `beelink@nas`. Home Assistant is excluded.
+- They are not "every host": shared changes don't deploy to them, and `update-system` and the coordinator never touch them. Deploy homelab changes with `mise run homelab-deploy [host...]` from the task worktree (source must contain local `main`); it verifies the active generation and `rex.service`.
+- Bring-up (sudo): official multi-user Nix installer, `sudo bash .mise/scripts/homelab-nix-system apply` (idle-priority builds; deploys refuse without it), `sudo loginctl enable-linger <user>`, add the host to `users` in `.mise/tasks/homelab-deploy` and `flake.nix`, deploy, then John opens the tsnet login link from `rex server status`.
+
 ## Issue tracking
 
 Use Fizzy only (board from `.fizzy.yaml`; use the CLI's `--jq`). Card commands take the card `number`.
