@@ -162,6 +162,9 @@
         "com.superlogical.rex" = {
           "Workspace.terminalFontName" = "JetBrainsMono Nerd Font Mono";
           "Workspace.terminalFontPointSize" = 15.5;
+          # The picker floats (inbox, tab, spawn, project) draw their own key
+          # footer, so Rex's mode pill only repeats it
+          "Workspace.showsKeySequenceHints" = false;
         };
       };
     };
