@@ -26,8 +26,7 @@
 //!   discards the task in that tab (see actions.rs).
 //! - `--run PROFILE PATH NAME HARNESS CLONE_URL`: runs in that tab. Clones a
 //!   missing project, creates or reuses the worktree with Worktrunk, runs the
-//!   harness, then leaves a shell open. If /wrap asked for it, removes the
-//!   worktree once the agent exits (see `wrap_cleanup`).
+//!   harness, then leaves a shell open.
 //!
 //! Naming follows the old herdr short-name convention: `api-work` becomes
 //! branch `feature/api-work` in `.worktrees/api-work` with tab `api-work`; a
@@ -1668,58 +1667,6 @@ fn work_env() -> Result<Vec<(String, String)>, String> {
     Ok(env.into_iter().filter_map(|(k, v)| Some((k, v.as_str()?.to_string()))).collect())
 }
 
-fn git_out(dir: &Path, args: &[&str]) -> Result<String, String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .output()
-        .map_err(|e| format!("git: {e}"))?;
-    if !out.status.success() {
-        return Err(format!("git {} failed: {}", args.join(" "), String::from_utf8_lossy(&out.stderr).trim()));
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-}
-
-/// Finish a /wrap whose session ran inside the worktree, which it can't
-/// delete while the agent runs. Once wrap has verified everything, it writes
-/// the request file `rex-spawn-cleanup` in the worktree's git dir: the
-/// validated HEAD, then `git status --porcelain --ignored` (only `!!` lines).
-/// After the agent exits, recheck the branch, HEAD, status and containment in
-/// `main`, then remove the worktree with Worktrunk from the repo. Ok(true)
-/// means it is gone; Ok(false) means no request.
-fn wrap_cleanup(repo: &Path, worktree: &Path, branch: &str) -> Result<bool, String> {
-    let request = git_out(worktree, &["rev-parse", "--path-format=absolute", "--git-path", "rex-spawn-cleanup"])?;
-    let request = PathBuf::from(request.trim());
-    let Ok(text) = std::fs::read_to_string(&request) else { return Ok(false) };
-    // Single use: a refused request doesn't apply to later work.
-    let _ = std::fs::remove_file(&request);
-    let (head, ignored) = text.split_once('\n').unwrap_or((text.as_str(), ""));
-    if ignored.lines().any(|l| !l.starts_with("!! ")) {
-        return Err("the cleanup request lists uncommitted changes".into());
-    }
-    let current = git_out(worktree, &["symbolic-ref", "--short", "HEAD"])?;
-    if current.trim() != branch {
-        return Err(format!("on {} instead of {branch}", current.trim()));
-    }
-    if git_out(worktree, &["rev-parse", "HEAD"])?.trim() != head.trim() {
-        return Err("HEAD moved after /wrap".into());
-    }
-    if git_out(worktree, &["status", "--porcelain", "--ignored"])? != ignored {
-        return Err("the worktree changed after /wrap".into());
-    }
-    git_out(repo, &["merge-base", "--is-ancestor", head.trim(), "main"]).map_err(|_| format!("{branch} is not in main"))?;
-    status(&format!("Removing {} after /wrap", worktree.display()));
-    let mut wt = Command::new("wt");
-    wt.arg("-C").arg(repo).args(["remove", "--foreground", branch]);
-    check(&mut wt, "wt remove")?;
-    if worktree.exists() || worktree_for(repo, branch).is_some() {
-        return Err("wt remove left the worktree".into());
-    }
-    log(&format!("wrap cleanup removed {} ({branch})", worktree.display()));
-    Ok(true)
-}
-
 fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str) -> ! {
     let dir = match prepare(path, name, clone_url) {
         Ok(worktree) => {
@@ -1741,22 +1688,10 @@ fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str) ->
                     Err(e) => eprintln!("\x1b[31mrex-spawn: work profile: {e}\x1b[0m"),
                 }
             }
-            // Tells /wrap this process can remove the worktree after the
-            // agent exits (see `wrap_cleanup`).
-            agent.env("REX_SPAWN_WORKTREE", &worktree);
             if let Err(e) = agent.current_dir(&worktree).status() {
                 eprintln!("\x1b[31m{harness}: {e}\x1b[0m");
             }
-            let repo = expand(path);
-            match wrap_cleanup(&repo, &worktree, &branch_and_slug(name).0) {
-                Ok(true) => repo,
-                Ok(false) => worktree,
-                Err(e) => {
-                    eprintln!("\x1b[31mrex-spawn: kept {}: {e}\x1b[0m", worktree.display());
-                    log(&format!("wrap cleanup kept {}: {e}", worktree.display()));
-                    worktree
-                }
-            }
+            worktree
         }
         Err((e, dir)) => {
             eprintln!("\x1b[31mrex-spawn: {e}\x1b[0m");

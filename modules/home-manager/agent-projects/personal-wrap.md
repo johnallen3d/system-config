@@ -23,23 +23,18 @@ force deletion, killing processes, or bypassing hooks/signing.
    integrate with `git merge --ff-only --no-overwrite-ignore`.
 3. **Clean up.** First return to the primary checkout. In Claude, run a standalone
    `cd "$repo_root"`, then verify the harness cwd and a fresh `pwd -P` in a separate
-   call. If the session was launched inside the task worktree, `cd` does not move
-   its anchor: require a verified resume/relaunch at the primary root before
-   removal. A subshell, command cwd override, `wt switch`, or Pi `process.chdir`
-   is not proof of a safe cwd. Never delete the running session's directory;
-   retain the worktree if the session anchor or cwd is uncertain. Wait for task
+   call. If the session was launched inside the task worktree (Rex spawn tabs
+   are), `cd` does not move its anchor: skip removal and report the worktree as
+   left for Rex inbox discard (cmd+i, ctrl-x), which closes the tab and removes
+   it. That is not a blocker once commit and integration succeed. A subshell,
+   command cwd override, `wt switch`, or Pi `process.chdir` is not proof of a
+   safe cwd. Never delete the running session's directory; retain the worktree
+   if the session anchor or cwd is uncertain. Wait for task
    jobs. Inspect ignored files: leave known disposable build output (`target/`,
    etc.) for worktree removal, not separate deletion. Unknown or valuable ignored
    contents require John. Recheck task identity, clean status (excluding ignored
    files), and containment in `main`; then use `wt remove --foreground` from
    primary. Never force. Verify this task's worktree and branch are gone.
-   **Rex spawn handoff:** if the session is anchored in the task worktree and
-   `$REX_SPAWN_WORKTREE` resolves to it, rex-spawn removes it after the agent
-   exits instead. Once every check above passes, write `git rev-parse HEAD`
-   followed by `git status --porcelain --ignored` (only `!!` lines) to
-   `$(git rev-parse --path-format=absolute --git-path rex-spawn-cleanup)`.
-   Report cleanup as handed off, not blocked: John exits the agent, and
-   rex-spawn rechecks everything, runs `wt remove`, and shows the result in the tab.
 4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
    separately. Close completed in-scope cards; keep blocked or partially deployed
    cards open. If the repository tracks work in Fizzy and no card covers this
