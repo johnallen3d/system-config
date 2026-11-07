@@ -22,9 +22,20 @@ rex.action{
   name  = "spawn",
   title = "Spawn Agent Work…",
   run   = function(ctx, args)
-    if util.find_float(ctx, label) ~= nil then return close_picker(ctx) end
+    local session_id = ctx.session_id
+    if session_id == nil then
+      -- With no session to float over, make one with a shell and switch to it.
+      local created, create_err = rex.call("session.create", {
+        initial_windows = { { layout = { block = { flavor = "com.superlogical.terminal.shell" } } } },
+      })
+      if created == nil then error(create_err, 0) end
+      session_id = created.session_id
+      rex.client.queue("session.select", { session_id = session_id })
+    elseif util.find_float(ctx, label) ~= nil then
+      return close_picker(ctx)
+    end
     local _, err = rex.session.new_layer{
-      session_id = ctx.session_id,
+      session_id = session_id,
       bounds     = { 0.12, 0.08, 0.76, 0.8 },
       focus      = true,
       layout     = rex.layout.block{
