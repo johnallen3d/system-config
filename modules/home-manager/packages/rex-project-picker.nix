@@ -1,4 +1,4 @@
-# The ctrl+cmd+n project picker for Rex (see ../dotfiles/config/rex/actions/project-picker.lua):
+# The cmd+shift+n project picker for Rex (see ../dotfiles/config/rex/actions/project-picker.lua):
 # pick a zoxide folder, on this host by default or another Rex host with Tab.
 # Like rex-tab-picker it runs in a float on the focused session's host, so it
 # is installed everywhere. A remote host's Rex server can't reach the config

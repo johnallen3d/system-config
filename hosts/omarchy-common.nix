@@ -19,14 +19,19 @@
           --replace-fail '/bin/cat' '${pkgs.coreutils}/bin/cat'
       '';
   });
-  # The Mac's cmd+k tab and cmd+shift+n project pickers open their floats here
-  # when an Omarchy session is focused.
+  # The Mac's cmd+k tab, cmd+shift+n project and ctrl+cmd+n spawn pickers open
+  # their floats here when an Omarchy session is focused; spawned work also
+  # runs `rex-spawn --run` here, which needs wt.
   rexPalette = (import ../modules/home-manager/managed-theme.nix {inherit lib;}).activePalette;
   rexTabPicker = import ../modules/home-manager/packages/rex-tab-picker.nix {
     inherit pkgs;
     palette = rexPalette;
   };
   rexProjectPicker = import ../modules/home-manager/packages/rex-project-picker.nix {
+    inherit pkgs;
+    palette = rexPalette;
+  };
+  rexSpawn = import ../modules/home-manager/packages/rex-spawn.nix {
     inherit pkgs;
     palette = rexPalette;
   };
@@ -83,7 +88,7 @@ in {
     username = "johna";
     homeDirectory = "/home/johna";
     stateVersion = "26.05";
-    packages = [lopPackage rexProjectPicker rexTabPicker];
+    packages = [lopPackage pkgs.worktrunk rexProjectPicker rexSpawn rexTabPicker];
   };
 
   targets.genericLinux = {

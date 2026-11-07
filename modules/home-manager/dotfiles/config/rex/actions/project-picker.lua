@@ -80,7 +80,6 @@ rex.action{
   run   = function(ctx, args) close_picker(ctx) end,
 }
 
-rex.bind("cmd+ctrl+n", "project_session")
-rex.unbind("cmd+shift+n") -- drop the native new-session shortcut for now
+rex.bind("cmd+shift+n", "project_session")
 rex.bind("project_picker/enter", "project_session_go")
 rex.bind("project_picker/escape", "project_session_cancel")

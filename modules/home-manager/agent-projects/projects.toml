@@ -1,0 +1,50 @@
+# Projects that rex-spawn (ctrl+cmd+n) offers on every host. Revived from the
+# old herdr picker catalog. The group sets the agent profile: work runs through
+# ~/dev/src/amfaro's mise env, personal uses the default profile. clone_url is
+# only used when the path is missing on the chosen host; existing checkouts are
+# never touched.
+
+[[personal]]
+path = "~/dev/src/system-config"
+clone_url = "https://github.com/johnallen3d/system-config.git"
+
+[[personal]]
+path = "~/dev/src/playground/credits"
+clone_url = "https://github.com/johnallen3d/credits.git"
+
+[[personal]]
+path = "~/dev/src/playground/pi-cielo"
+# No remote: a machine-local bundle seeded from the Mac.
+clone_url = "~/.local/share/herdr/project-seeds/pi-cielo.bundle"
+
+[[personal]]
+path = "~/dev/src/playground/home-assistant"
+clone_url = "https://github.com/johnallen3d/home-assistant.git"
+
+[[work]]
+path = "~/dev/src/amfaro/actions"
+clone_url = "https://github.com/amfaro/actions.git"
+
+[[work]]
+path = "~/dev/src/amfaro/agent-kit"
+clone_url = "https://github.com/amfaro/agent-kit.git"
+
+[[work]]
+path = "~/dev/src/amfaro/calc"
+clone_url = "https://github.com/amfaro/calc.git"
+
+[[work]]
+path = "~/dev/src/amfaro/dataops"
+clone_url = "https://github.com/amfaro/dataops.git"
+
+[[work]]
+path = "~/dev/src/amfaro/duckdb-embedded"
+clone_url = "https://github.com/amfaro/duckdb-embedded.git"
+
+[[work]]
+path = "~/dev/src/amfaro/global-catalog"
+clone_url = "https://github.com/amfaro/global-catalog.git"
+
+[[work]]
+path = "~/dev/src/amfaro/llm-usage"
+clone_url = "https://github.com/amfaro/llm-usage.git"

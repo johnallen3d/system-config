@@ -8,5 +8,6 @@
 require("config.keymaps")
 
 require("actions.project-picker")
+require("actions.spawn")
 require("actions.tab-picker")
 require("actions.yem")
