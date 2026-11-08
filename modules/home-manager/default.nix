@@ -85,6 +85,21 @@ in {
       fi
     '');
 
+  # A running Rex server keeps the config it loaded; reread the managed
+  # ~/.config/rex (Mac-only, below). Exit 4 means no server is running.
+  home.activation.rexConfigReload = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
+    (lib.hm.dag.entryAfter ["linkGeneration"] ''
+      rex=${lib.escapeShellArg "${config.home.homeDirectory}/.local/bin/rex"}
+      if [ -z "''${DRY_RUN:-}" ] && [ -x "$rex" ]; then
+        status=0
+        out=$(env -u REX_SERVER "$rex" --autostart=false --timeout 5s config reload 2>&1) || status=$?
+        if [ "$status" -ne 0 ] && [ "$status" -ne 4 ]; then
+          echo "warning: rex config reload failed (exit $status); press shift+cmd+r in Rex" >&2
+          printf '%s\n' "$out" >&2
+        fi
+      fi
+    '');
+
   launchd.agents.llm-usage = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
     enable = true;
     config = {
