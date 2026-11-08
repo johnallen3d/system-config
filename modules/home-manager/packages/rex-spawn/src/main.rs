@@ -57,7 +57,7 @@ use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 use ratatui::crossterm::event::{
     self, DisableBracketedPaste, DisableFocusChange, EnableBracketedPaste, EnableFocusChange, Event, KeyCode, KeyEvent,
-    KeyEventKind, KeyModifiers,
+    KeyEventKind, KeyModifiers, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use ratatui::crossterm::execute;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
@@ -1321,10 +1321,17 @@ fn run_picker(hosts: Vec<String>) -> io::Result<()> {
     if let Some(cell) = app.cell {
         app.corners = chrome::Corners::new(cell, &[app.p.overlay, app.p.surface], &mut io::stdout()).ok();
     }
-    // No mouse capture, so the terminal's own selection and copy work.
-    let _ = execute!(io::stdout(), EnableBracketedPaste, EnableFocusChange);
+    // No mouse capture, so the terminal's own selection and copy work. Kitty
+    // key reporting makes shift-Enter arrive as one crossterm can decode;
+    // without it Rex sends xterm's `CSI 27;2;13~`, which crossterm drops.
+    let _ = execute!(
+        io::stdout(),
+        EnableBracketedPaste,
+        EnableFocusChange,
+        PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+    );
     let result = picker_loop(&mut term, &mut app);
-    let _ = execute!(io::stdout(), DisableBracketedPaste, DisableFocusChange);
+    let _ = execute!(io::stdout(), PopKeyboardEnhancementFlags, DisableBracketedPaste, DisableFocusChange);
     if let Some(corners) = &app.corners {
         let _ = corners.delete(&mut io::stdout());
     }
@@ -1390,7 +1397,7 @@ fn edit_prompt(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
         .stderr(Stdio::null())
         .status();
     let mut out = io::stdout();
-    let _ = execute!(out, DisableBracketedPaste, DisableFocusChange);
+    let _ = execute!(out, PopKeyboardEnhancementFlags, DisableBracketedPaste, DisableFocusChange);
     if let Some(corners) = app.corners.take() {
         let _ = corners.delete(&mut out);
     }
@@ -1409,7 +1416,12 @@ fn edit_prompt(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
     if let Some(cell) = app.cell {
         app.corners = chrome::Corners::new(cell, &[app.p.overlay, app.p.surface], &mut out).ok();
     }
-    let _ = execute!(out, EnableBracketedPaste, EnableFocusChange);
+    let _ = execute!(
+        out,
+        EnableBracketedPaste,
+        EnableFocusChange,
+        PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+    );
     app.away = true;
     app.rearm_mode();
     let edited = match status {
