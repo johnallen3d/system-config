@@ -27,11 +27,14 @@
 //!   `--tasks` output by the config (see inbox.rs), starting on the task in
 //!   the given tab, if any.
 //! - `--act ACTION HOST SESSION WINDOW`: runs on the config host. Reviews or
-//!   discards the task in that tab (see actions.rs).
-//! - `--run PROFILE PATH NAME HARNESS CLONE_URL [PROMPT]`: runs in that tab.
-//!   Clones a missing project, creates or reuses the worktree with
-//!   Worktrunk, runs the harness (with the prompt as its first message),
-//!   then leaves a shell open.
+//!   archives the task in that tab, or resumes an ended one (see actions.rs).
+//! - `--run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION MODE] [PROMPT]`:
+//!   runs in that tab. Clones a missing project, creates or reuses the
+//!   worktree with Worktrunk, starts (MODE `new`, with the prompt as its
+//!   first message) or resumes (`resume`) the harness's session, then
+//!   leaves a shell open.
+//! - `--session-of PROFILE HARNESS WORKTREE`: runs on a task's host. Prints
+//!   the newest agent session for the worktree (see "agent sessions").
 //!
 //! Naming follows the old herdr short-name convention: `api-work` becomes
 //! branch `feature/api-work` in `.worktrees/api-work` with tab `api-work`; a
@@ -1414,12 +1417,16 @@ fn choose_host(project: &Project) -> Result<(String, String), String> {
     Ok((best.host.clone(), why))
 }
 
+/// Open the work's tab on `host` and record it. With `resume`, the tab
+/// resumes that agent session instead of starting a new one, and `host` is
+/// used as is (never `auto`: the session lives on that host).
 fn launch(
     host: &str,
     path: &str,
     name: &str,
     harness: &str,
     prompt_ref: Option<&str>,
+    resume: Option<&str>,
 ) -> Result<(String, String, String), String> {
     let project = catalog()
         .into_iter()
@@ -1470,8 +1477,13 @@ fn launch(
             .and_then(|s| s["session_id"].as_str())
             .map(String::from)
     });
+    // The agent's own session ID, chosen here so the registry knows it from
+    // the start; an archive later records the newest one (after /clear).
+    let agent_session = resume.map(String::from).unwrap_or_else(new_session_id);
+    let mode = if resume.is_some() { "resume" } else { "new" };
     let mut run = vec![
         "rex-spawn", "--run", &project.profile, &project.path, name, harness, &project.clone_url,
+        &agent_session, mode,
     ];
     if !prompt.is_empty() {
         run.push(&prompt);
@@ -1514,6 +1526,7 @@ fn launch(
         // branch already had one elsewhere.
         "worktree": format!("{cwd}/.worktrees/{slug}"),
         "harness": harness,
+        "agent_session": agent_session,
         "created_at": now(),
         "ended_at": null,
         "ended_reason": null,
@@ -1534,8 +1547,101 @@ fn launch(
 // branch and worktree. Ended tasks are kept a while so the
 // inbox can show recent finishes, then pruned.
 
-/// How long ended tasks stay in the registry.
-const ENDED_KEEP_SECS: u64 = 14 * 24 * 60 * 60;
+/// How long ended tasks stay in the registry, and so can be resumed from the
+/// inbox: Claude's default transcript cleanup (`cleanupPeriodDays`).
+const ENDED_KEEP_SECS: u64 = 30 * 24 * 60 * 60;
+
+// ---------------------------------------------------------------- agent sessions
+
+// Each task records its agent's session ID (`agent_session`) so an ended
+// task can be resumed in a new tab. Both harnesses keep sessions per working
+// directory, which is why a resume recreates the worktree at the same path.
+
+/// A random (v4) UUID, the form Claude requires for `--session-id`.
+fn new_session_id() -> String {
+    let mut b = [0u8; 16];
+    if std::fs::File::open("/dev/urandom").and_then(|mut f| io::Read::read_exact(&mut f, &mut b)).is_err() {
+        // Not expected; fall back on the clock and pid.
+        let seed = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+            ^ ((std::process::id() as u128) << 64);
+        b = seed.to_le_bytes();
+    }
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    let h: String = b.iter().map(|x| format!("{x:02x}")).collect();
+    format!("{}-{}-{}-{}-{}", &h[0..8], &h[8..12], &h[12..16], &h[16..20], &h[20..32])
+}
+
+/// The harness's session directory for `worktree` under `profile`, on this
+/// host: Claude's `$CLAUDE_CONFIG_DIR/projects/<path, non-alphanumerics as
+/// ->`, Pi's `$PI_CODING_AGENT_DIR/sessions/--<path, / as ->--`.
+fn session_dir(profile: &str, harness: &str, worktree: &str) -> PathBuf {
+    let work = if profile == "work" { work_env().unwrap_or_default() } else { Vec::new() };
+    let var = |k: &str| {
+        work.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone()).or_else(|| std::env::var(k).ok())
+    };
+    if harness == "pi" {
+        let root = var("PI_CODING_AGENT_DIR").map(PathBuf::from).unwrap_or_else(|| home().join(".config/pi"));
+        let flat = worktree.trim_start_matches('/').replace(['/', '\\', ':'], "-");
+        root.join("sessions").join(format!("--{flat}--"))
+    } else {
+        let root =
+            var("CLAUDE_CONFIG_DIR").map(PathBuf::from).unwrap_or_else(|| home().join(".config/claude-personal"));
+        let flat: String = worktree.chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
+        root.join("projects").join(flat)
+    }
+}
+
+/// The newest agent session for `worktree` on this host, by file time:
+/// Claude names its files `ID.jsonl`, Pi `TIMESTAMP_ID.jsonl`.
+fn newest_session_here(profile: &str, harness: &str, worktree: &str) -> Option<String> {
+    let dir = session_dir(profile, harness, worktree);
+    let newest = std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().is_some_and(|x| x == "jsonl"))
+        .filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path())))
+        .max_by_key(|(t, _)| *t)?
+        .1;
+    let stem = newest.file_stem()?.to_str()?;
+    Some(stem.rsplit_once('_').map_or(stem, |(_, id)| id).to_string())
+}
+
+/// Whether this host has the agent session for `worktree`.
+fn session_exists_here(profile: &str, harness: &str, worktree: &str, id: &str) -> bool {
+    let dir = session_dir(profile, harness, worktree);
+    std::fs::read_dir(dir).is_ok_and(|entries| {
+        entries.filter_map(Result::ok).any(|e| {
+            let name = e.file_name();
+            let name = name.to_string_lossy();
+            name == format!("{id}.jsonl") || name.ends_with(&format!("_{id}.jsonl"))
+        })
+    })
+}
+
+/// The newest agent session for a task's worktree, asked of its host
+/// (`rex-spawn --session-of`). None when there is none or the host can't
+/// be reached.
+fn newest_session(task: &serde_json::Value) -> Option<String> {
+    let f = |k: &str| task[k].as_str().unwrap_or("").to_string();
+    let host = f("host");
+    let harness = match f("harness").as_str() {
+        "" => "claude".to_string(),
+        h => h.to_string(),
+    };
+    let script = format!(
+        "rex-spawn --session-of {} {} {}",
+        actions::sh_quote(&f("profile")),
+        actions::sh_quote(&harness),
+        actions::sh_quote(&f("worktree"))
+    );
+    let out = host_bash(&host, &script).filter(|o| o.status.success())?;
+    let id = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!id.is_empty()).then_some(id)
+}
 
 fn now() -> u64 {
     std::time::SystemTime::now()
@@ -1832,6 +1938,21 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
             }
         }
     }
+    // Tasks that ended on their own just now keep their newest agent session
+    // (after a /clear it is no longer the one spawn chose), for a resume.
+    let ended_now: Vec<usize> = (0..tasks.len()).filter(|&i| tasks[i]["ended_at"].as_u64() == Some(stamp)).collect();
+    let found: Vec<_> = ended_now
+        .iter()
+        .map(|&i| {
+            let task = tasks[i].clone();
+            std::thread::spawn(move || newest_session(&task))
+        })
+        .collect();
+    for (&i, handle) in ended_now.iter().zip(found) {
+        if let Ok(Some(id)) = handle.join() {
+            tasks[i]["agent_session"] = id.into();
+        }
+    }
     tasks.retain(|t| t["ended_at"].as_u64().is_none_or(|ended| stamp.saturating_sub(ended) < ENDED_KEEP_SECS));
     if serde_json::to_string(&tasks).map_err(|e| e.to_string())? != before {
         save_tasks(&tasks)?;
@@ -1951,7 +2072,18 @@ fn work_env() -> Result<Vec<(String, String)>, String> {
     Ok(env.into_iter().filter_map(|(k, v)| Some((k, v.as_str()?.to_string()))).collect())
 }
 
-fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str, prompt: &str) -> ! {
+/// `session` is the agent session to start (`mode` "new") or resume
+/// ("resume"); None for a tab opened by an older `--launch`. A new session
+/// starts on `prompt` when there is one.
+fn run(
+    profile: &str,
+    path: &str,
+    name: &str,
+    harness: &str,
+    clone_url: &str,
+    session: Option<(&str, &str)>,
+    prompt: &str,
+) -> ! {
     let dir = match prepare(path, name, clone_url) {
         Ok(worktree) => {
             // Move this process too: it is the tab's program while the agent
@@ -1972,11 +2104,27 @@ fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str, pr
                     Err(e) => eprintln!("\x1b[31mrex-spawn: work profile: {e}\x1b[0m"),
                 }
             }
+            let mut resuming = false;
+            if let Some((id, mode)) = session {
+                let here = worktree.display().to_string();
+                if mode == "resume" && !session_exists_here(profile, harness, &here, id) {
+                    eprintln!("\x1b[33mrex-spawn: agent session {id} is gone; starting a new one\x1b[0m");
+                    agent.args(["--session-id", &new_session_id()]);
+                } else if mode == "resume" && harness == "claude" {
+                    resuming = true;
+                    agent.args(["--resume", id]);
+                } else {
+                    // Pi's --session-id reopens the directory's session with
+                    // that ID or creates it; Claude's starts a new one.
+                    resuming = mode == "resume";
+                    agent.args(["--session-id", id]);
+                }
+            }
             // Both harnesses start interactively with a positional prompt as
             // the first message; `--` keeps one starting with - as text. Pi
             // reads an argument starting with @ as a file even after `--`,
             // so a leading space keeps that one text too.
-            if !prompt.is_empty() {
+            if !prompt.is_empty() && !resuming {
                 let prompt = if harness == "pi" && prompt.starts_with('@') { format!(" {prompt}") } else { prompt.to_string() };
                 agent.arg("--").arg(prompt);
             }
@@ -2001,10 +2149,11 @@ fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str, pr
 
 const USAGE: &str = "usage: rex-spawn [--local LABEL]
        rex-spawn --launch HOST PATH NAME HARNESS [PROMPT_REF]
-       rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL [PROMPT]
+       rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION new|resume] [PROMPT]
        rex-spawn --tasks
        rex-spawn --inbox TASKS_JSON [SESSION_ID/WINDOW_ID]
-       rex-spawn --act review|discard|force-discard HOST SESSION_ID WINDOW_ID
+       rex-spawn --act review|archive|force-archive|resume HOST SESSION_ID WINDOW_ID
+       rex-spawn --session-of PROFILE HARNESS WORKTREE
 
 Without a mode, shows the spawn picker and reports the choice in the
 terminal title as rex-spawn:HOST/PATH/NAME/HARNESS[/PROMPT_REF], keeping
@@ -2012,29 +2161,42 @@ a typed prompt in a file named by PROMPT_REF (LABEL:ID). --local adds
 the config host's label to the dev hosts. --launch collects the prompt,
 opens the work's tab on HOST (auto: the least busy dev host), records the
 task, and prints HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the
-worktree and runs the harness in the current tab, with PROMPT as its first
-message. --tasks checks recorded tasks against their
+worktree and runs the harness in the current tab, starting AGENT_SESSION
+with PROMPT as its first message or resuming it. --tasks checks recorded tasks against their
 hosts and prints them as JSON with live agent status. --inbox shows open
 tasks from that JSON, most urgent first (starting on the given tab's task),
 and reports the highlighted one as
 rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID. --act reviews or
-discards the task in a tab; force-discard also throws away uncommitted
-changes.";
+archives the task in a tab (force-archive also throws away uncommitted
+changes), or resumes an ended task's agent session in a new tab and prints
+it as --launch does. --session-of prints the newest agent session for a
+worktree on this host.";
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let a: Vec<&str> = args.iter().map(String::as_str).collect();
     match a.as_slice() {
         ["-h"] | ["--help"] => println!("{USAGE}"),
-        ["--launch", host, path, name, harness, prompt_ref @ ..] if prompt_ref.len() <= 1 => match launch(host, path, name, harness, prompt_ref.first().copied()) {
+        ["--launch", host, path, name, harness, prompt_ref @ ..] if prompt_ref.len() <= 1 => match launch(host, path, name, harness, prompt_ref.first().copied(), None) {
             Ok((host, session, window)) => print!("{host}\t{session}\t{window}"),
             Err(e) => {
                 eprintln!("rex-spawn: {e}");
                 std::process::exit(1);
             }
         },
-        ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url, ""),
-        ["--run", profile, path, name, harness, clone_url, prompt] => run(profile, path, name, harness, clone_url, prompt),
+        ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url, None, ""),
+        // From a --launch before agent sessions were recorded.
+        ["--run", profile, path, name, harness, clone_url, prompt] => {
+            run(profile, path, name, harness, clone_url, None, prompt)
+        }
+        ["--run", profile, path, name, harness, clone_url, session, mode, prompt @ ..] if prompt.len() <= 1 => {
+            run(profile, path, name, harness, clone_url, Some((session, mode)), prompt.first().copied().unwrap_or(""))
+        }
+        ["--session-of", profile, harness, worktree] => {
+            if let Some(id) = newest_session_here(profile, harness, worktree) {
+                println!("{id}");
+            }
+        }
         ["--inbox", json] => inbox::run(json, None)?,
         ["--inbox", json, current] => inbox::run(json, Some(current))?,
         ["--act", action, host, session, window] => match actions::act(action, host, session, window) {

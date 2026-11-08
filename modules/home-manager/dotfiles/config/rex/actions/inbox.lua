@@ -4,10 +4,11 @@
 -- each task's tab and worktree and adds the tab's live agent status. Its JSON
 -- goes to the float, which may run on another host, as the tab picker's rows
 -- do. The float reports the highlighted task in its terminal title, and the
--- inbox mode turns Enter into the jump (or a discard armed with ctrl+x in the
+-- inbox mode turns Enter into the jump (or an archive armed with ctrl+x in the
 -- float, with an extra "are you sure" Enter when that throws away uncommitted
--- changes) and ctrl+r into review. See
--- packages/rex-spawn/src/inbox.rs and actions.rs.
+-- changes) and ctrl+r into review. In the float's archive view (ctrl+a),
+-- Enter resumes the ended task's agent session in a new tab on its host and
+-- jumps there. See packages/rex-spawn/src/inbox.rs and actions.rs.
 local util = require("lib.util")
 
 local label = "rex-inbox"
@@ -47,7 +48,7 @@ rex.action{
   end,
 }
 
--- The float's pick: action ("go", or an armed "discard", "ask" or "force-discard"), host, session and
+-- The float's pick: action ("go", "resume", or an armed "archive", "ask" or "force-archive"), host, session and
 -- window. Keys pressed with the float not focused fall through to the pane.
 local function read_pick(ctx, key)
   local _, block_id = util.find_float(ctx, label)
@@ -74,24 +75,32 @@ local function jump(pick)
   util.select_on_host(pick.host, "inbox.log", util.cli_env(), pick.session_id, pick.window_id)
 end
 
--- Run `rex-spawn --act` for the pick; a refusal (such as a dirty worktree)
--- comes back as the action's error.
+-- Run `rex-spawn --act` for the pick and return its output; a refusal (such
+-- as a dirty worktree) comes back as the action's error.
 local function act(action, pick)
   local r, err = rex.exec({ "rex-spawn", "--act", action, pick.host, pick.session_id, pick.window_id },
     { env = util.cli_env() })
   if r == nil then error(err, 0) end
   if not r.ok then error((r.stderr:gsub("^rex%-spawn: ", "")), 0) end
+  return r.stdout
+end
+
+-- Resume prints the new tab as HOST<TAB>SESSION_ID<TAB>WINDOW_ID.
+local function resume(pick)
+  local host, session_id, window_id = act("resume", pick):match("^([^\t]+)\t([^\t]+)\t([^\t\n]+)")
+  if host == nil then error("rex-spawn --act resume printed no tab", 0) end
+  jump({ host = host, session_id = session_id, window_id = window_id })
 end
 
 rex.action{
   name  = "inbox_go",
-  title = "Go to or Discard Picked Task",
+  title = "Go to, Archive or Resume Picked Task",
   run   = function(ctx, args)
     local pick = read_pick(ctx, "enter")
     -- Nothing picked (empty inbox); keep the float open.
     if pick == nil then return end
     -- A dirty worktree: keep the float open and type ctrl-x into it, which
-    -- moves it on to "are you sure"; the next Enter answers force-discard.
+    -- moves it on to "are you sure"; the next Enter answers force-archive.
     if pick.action == "ask" then
       rex.block.call("com.superlogical.terminal", "write", {
         session_id = ctx.session_id, block_id = pick.float, data = "\24",
@@ -99,7 +108,8 @@ rex.action{
       return
     end
     close_inbox(ctx)
-    if pick.action == "discard" or pick.action == "force-discard" then return act(pick.action, pick) end
+    if pick.action == "archive" or pick.action == "force-archive" then return act(pick.action, pick) end
+    if pick.action == "resume" then return resume(pick) end
     jump(pick)
   end,
 }
@@ -110,7 +120,8 @@ rex.action{
   title = "Review Picked Task",
   run   = function(ctx, args)
     local pick = read_pick(ctx, "ctrl+r")
-    if pick == nil then return end
+    -- Ended tasks have nothing to review.
+    if pick == nil or pick.action == "resume" then return end
     close_inbox(ctx)
     act("review", pick)
     jump(pick)

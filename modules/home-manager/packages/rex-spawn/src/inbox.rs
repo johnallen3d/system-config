@@ -4,9 +4,11 @@
 //! and passes its JSON here; this float may run on another host, so it never
 //! reads the registry itself. It reports the highlighted task in the terminal
 //! title as `rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID` (host hex
-//! encoded). ACTION is `go`; or after ctrl-x, `discard` for a clean worktree
-//! and `ask` for one with uncommitted changes; or `force-discard` once the
-//! discard of a dirty worktree is confirmed. Any other key disarms. The
+//! encoded). ACTION is `go`; or after ctrl-x, `archive` for a clean worktree
+//! and `ask` for one with uncommitted changes; or `force-archive` once the
+//! archive of a dirty worktree is confirmed. Any other key disarms. ctrl-a
+//! switches to the archive, the ended tasks (archived, or their tab or
+//! worktree gone), most recent first, where ACTION is `resume`. The
 //! config's `inbox` mode turns Enter into ACTION, ctrl-r into review (see
 //! actions.rs), and Escape into closing the float. For `ask` it keeps the
 //! float open and types ctrl-x into it, which moves the float on to the
@@ -45,8 +47,11 @@ struct Task {
     dirty_files: Vec<String>,
     state: String,
     msg: String,
-    /// When the status last changed, or when the task started if unknown.
+    /// When the status last changed, or when the task started if unknown;
+    /// for an ended task, when it ended.
     since: u64,
+    /// Why an ended task ended (`archived`, `tab closed`, ...); None while open.
+    ended: Option<String>,
 }
 
 impl Task {
@@ -67,13 +72,13 @@ impl Task {
     }
 }
 
-/// Open tasks from `rex-spawn --tasks` output.
+/// Every task from `rex-spawn --tasks` output, open and ended, in display
+/// order: open ones most urgent first, ended ones most recent first.
 fn parse(json: &str) -> Result<Vec<Task>, String> {
     let all: Vec<serde_json::Value> = serde_json::from_str(json).map_err(|e| format!("tasks: {e}"))?;
     let s = |t: &serde_json::Value, k: &str| t[k].as_str().unwrap_or("").to_string();
     let mut tasks: Vec<Task> = all
         .iter()
-        .filter(|t| t["ended_at"].is_null())
         .map(|t| Task {
             host: s(t, "host"),
             session_id: s(t, "session_id"),
@@ -88,15 +93,25 @@ fn parse(json: &str) -> Result<Vec<Task>, String> {
                 .unwrap_or_default(),
             state: s(t, "status"),
             msg: s(t, "status_msg"),
-            since: t["status_at"]
+            since: t["ended_at"]
                 .as_u64()
-                .filter(|&at| at > 0)
+                .or(t["status_at"].as_u64().filter(|&at| at > 0))
                 .or(t["created_at"].as_u64())
                 .unwrap_or(0),
+            ended: (!t["ended_at"].is_null()).then(|| match s(t, "ended_reason") {
+                r if r.is_empty() => "ended".to_string(),
+                r => r,
+            }),
         })
         .collect();
-    // Most urgent first; within a state, the one waiting longest first.
-    tasks.sort_by(|a, b| b.urgency().cmp(&a.urgency()).then(a.since.cmp(&b.since)));
+    // Open first, most urgent first and, within a state, the one waiting
+    // longest first; then ended, most recent first.
+    tasks.sort_by(|a, b| match (&a.ended, &b.ended) {
+        (None, None) => b.urgency().cmp(&a.urgency()).then(a.since.cmp(&b.since)),
+        (Some(_), Some(_)) => b.since.cmp(&a.since),
+        (None, Some(_)) => std::cmp::Ordering::Less,
+        (Some(_), None) => std::cmp::Ordering::Greater,
+    });
     Ok(tasks)
 }
 
@@ -112,12 +127,16 @@ fn age(secs: u64) -> String {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Armed {
     No,
-    Discard,
+    Archive,
     Force,
 }
 
 struct Inbox {
     p: Palette,
+    /// Every task; `tasks` is the current view's share of them.
+    all: Vec<Task>,
+    /// Showing ended tasks (ctrl-a) rather than open ones.
+    archived: bool,
     tasks: Vec<Task>,
     query: String,
     matcher: Matcher,
@@ -135,10 +154,12 @@ struct Inbox {
 }
 
 impl Inbox {
-    fn new(tasks: Vec<Task>) -> Self {
+    fn new(all: Vec<Task>) -> Self {
         let mut inbox = Inbox {
             p: Palette::load(),
-            tasks,
+            all,
+            archived: false,
+            tasks: Vec::new(),
             query: String::new(),
             matcher: Matcher::new(Config::DEFAULT),
             rows: Vec::new(),
@@ -151,8 +172,25 @@ impl Inbox {
             started: Instant::now(),
             now: now(),
         };
-        inbox.refilter();
+        inbox.show(false);
         inbox
+    }
+
+    /// Switch between the open tasks and the archive.
+    fn show(&mut self, archived: bool) {
+        self.archived = archived;
+        let (view, rest): (Vec<Task>, Vec<Task>) =
+            std::mem::take(&mut self.all).into_iter().chain(std::mem::take(&mut self.tasks)).partition(|t| t.ended.is_some() == archived);
+        self.tasks = view;
+        self.all = rest;
+        // Keep the display order parse gave (the partition mixes the halves).
+        if archived {
+            self.tasks.sort_by(|a, b| b.since.cmp(&a.since));
+        } else {
+            self.tasks.sort_by(|a, b| b.urgency().cmp(&a.urgency()).then(a.since.cmp(&b.since)));
+        }
+        self.armed = Armed::No;
+        self.refilter();
     }
 
     fn refilter(&mut self) {
@@ -198,10 +236,11 @@ impl Inbox {
     fn pick(&self) -> String {
         let dirty = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].dirty > 0);
         let action = match self.armed {
+            _ if self.archived => "resume",
             Armed::No => "go",
-            Armed::Discard if dirty => "ask",
-            Armed::Discard => "discard",
-            Armed::Force => "force-discard",
+            Armed::Archive if dirty => "ask",
+            Armed::Archive => "archive",
+            Armed::Force => "force-archive",
         };
         match self.rows.get(self.selected).map(|&i| &self.tasks[i]) {
             Some(t) => format!("{action}:{}/{}/{}", hex(&t.host), t.session_id, t.window_id),
@@ -224,16 +263,21 @@ impl Inbox {
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         let alt = k.modifiers.contains(KeyModifiers::ALT);
         let page = (self.list_area.height as isize - 1).max(1);
-        // ctrl-x arms a discard; on a worktree with uncommitted changes, the
+        if matches!(k.code, KeyCode::Char('a') if ctrl) {
+            let archived = !self.archived;
+            self.show(archived);
+            return true;
+        }
+        // ctrl-x arms an archive; on a worktree with uncommitted changes, the
         // next ctrl-x (typed by the config when Enter answers `ask`) moves on
         // to "are you sure". Any other key disarms (Enter and Escape never
         // get here: the config's inbox mode takes them).
         if matches!(k.code, KeyCode::Char('x') if ctrl) {
             let dirty = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].dirty > 0);
             self.armed = match self.armed {
-                _ if self.rows.is_empty() => Armed::No,
-                Armed::No => Armed::Discard,
-                Armed::Discard | Armed::Force if dirty => Armed::Force,
+                _ if self.rows.is_empty() || self.archived => Armed::No,
+                Armed::No => Armed::Archive,
+                Armed::Archive | Armed::Force if dirty => Armed::Force,
                 armed => armed,
             };
             return true;
@@ -292,7 +336,10 @@ impl Inbox {
             .title_top(
                 Line::from(vec![
                     Span::raw(" "),
-                    Span::styled("Tasks", Style::new().fg(p.iris).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        if self.archived { "Archive" } else { "Tasks" },
+                        Style::new().fg(p.iris).add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" "),
                 ])
                 .left_aligned(),
@@ -321,7 +368,7 @@ impl Inbox {
         let prompt = format!(" {ICON_SEARCH}  ");
         let prompt_w = str_width(&prompt) as u16;
         let text = if self.query.is_empty() {
-            Span::styled("Filter tasks", Style::new().fg(p.muted))
+            Span::styled(if self.archived { "Filter archived tasks" } else { "Filter tasks" }, Style::new().fg(p.muted))
         } else {
             Span::styled(self.query.clone(), Style::new().fg(p.text))
         };
@@ -346,7 +393,8 @@ impl Inbox {
         }
         if chips.is_empty() {
             let n = self.tasks.len();
-            chips.push(Span::styled(format!("{n} task{}  ", if n == 1 { "" } else { "s" }), Style::new().fg(p.muted)));
+            let kind = if self.archived { "ended" } else { "open" };
+            chips.push(Span::styled(format!("{n} {kind}  "), Style::new().fg(p.muted)));
         }
         f.render_widget(Line::from(chips).right_aligned(), area);
     }
@@ -356,7 +404,17 @@ impl Inbox {
         let h = area.height as usize;
         if self.rows.is_empty() {
             let p = &self.p;
-            let lines = if self.tasks.is_empty() {
+            let lines = if self.tasks.is_empty() && self.archived {
+                vec![
+                    Line::styled(ICON_INBOX, Style::new().fg(p.hl_high)),
+                    Line::from(""),
+                    Line::styled("No ended tasks", Style::new().fg(p.subtle)),
+                    Line::from(vec![
+                        Span::styled("⌃A", Style::new().fg(p.subtle).bg(p.overlay)),
+                        Span::styled(" shows open ones", Style::new().fg(p.muted)),
+                    ]),
+                ]
+            } else if self.tasks.is_empty() {
                 vec![
                     Line::styled(ICON_INBOX, Style::new().fg(p.hl_high)),
                     Line::from(""),
@@ -425,13 +483,19 @@ impl Inbox {
         let doomed = selected && self.armed != Armed::No;
         let bg = if doomed { p.hl_med } else if selected { p.overlay } else { p.base };
         f.buffer_mut().set_style(r, Style::new().bg(bg));
-        let (glyph, color, verb) = match t.state.as_str() {
-            "working" => (SPINNER[tick % SPINNER.len()], p.foam, "working"),
-            "blocked" => ("●", p.gold, "waiting"),
-            "done" => ("✓", p.pine, "done"),
-            "error" => ("✗", p.love, "failed"),
-            "idle" => ("·", p.muted, "idle"),
-            _ => ("?", p.muted, "no status"),
+        let (glyph, color, verb) = match (t.ended.as_deref(), t.state.as_str()) {
+            (Some("archived" | "force-archived"), _) => ("▢", p.iris, "archived"),
+            // Discards from before archive, which still resume.
+            (Some("discarded" | "force-discarded"), _) => ("▢", p.iris, "archived"),
+            (Some("tab closed"), _) => ("▢", p.muted, "closed"),
+            (Some("worktree removed"), _) => ("▢", p.muted, "removed"),
+            (Some(_), _) => ("▢", p.muted, "ended"),
+            (None, "working") => (SPINNER[tick % SPINNER.len()], p.foam, "working"),
+            (None, "blocked") => ("●", p.gold, "waiting"),
+            (None, "done") => ("✓", p.pine, "done"),
+            (None, "error") => ("✗", p.love, "failed"),
+            (None, "idle") => ("·", p.muted, "idle"),
+            (None, _) => ("?", p.muted, "no status"),
         };
 
         // Right side first, so the columns and message get what is left.
@@ -486,9 +550,9 @@ impl Inbox {
                 list
             };
             match self.armed {
-                Armed::Discard if t.dirty > 0 => {
+                Armed::Archive if t.dirty > 0 => {
                     spans.push(Span::styled("⏎", key));
-                    spans.push(Span::styled(format!(" discard {}", t.label()), Style::new().fg(p.love)));
+                    spans.push(Span::styled(format!(" archive {}", t.label()), Style::new().fg(p.love)));
                     spans.push(Span::styled(format!(" (uncommitted: {})", files()), Style::new().fg(p.gold)));
                     spans.push(Span::styled(" · other keys cancel", Style::new().fg(p.muted)));
                 }
@@ -500,14 +564,19 @@ impl Inbox {
                 }
                 _ => {
                     spans.push(Span::styled("⏎", key));
-                    spans.push(Span::styled(format!(" discard {}", t.label()), Style::new().fg(p.love)));
+                    spans.push(Span::styled(format!(" archive {}", t.label()), Style::new().fg(p.love)));
                     spans.push(Span::styled(": closes tab, removes worktree · other keys cancel", Style::new().fg(p.muted)));
                 }
             }
             f.render_widget(Line::from(spans), area);
             return;
         }
-        for (k, label) in [("⏎", "go"), ("⌃R", "review"), ("⌃X", "discard"), ("esc", "close")] {
+        let keys: &[(&str, &str)] = if self.archived {
+            &[("⏎", "resume"), ("⌃A", "open tasks"), ("esc", "close")]
+        } else {
+            &[("⏎", "go"), ("⌃R", "review"), ("⌃X", "archive"), ("⌃A", "archive view"), ("esc", "close")]
+        };
+        for &(k, label) in keys {
             spans.push(Span::styled(k, Style::new().fg(p.subtle).add_modifier(Modifier::BOLD)));
             spans.push(Span::styled(format!(" {label}   "), Style::new().fg(p.muted)));
         }
@@ -537,7 +606,7 @@ fn run_loop(term: &mut DefaultTerminal, inbox: &mut Inbox) -> io::Result<()> {
         inbox.now = now();
         term.draw(|f| inbox.draw(f))?;
         inbox.report()?;
-        let animate = inbox.tasks.iter().any(|t| t.state == "working");
+        let animate = !inbox.archived && inbox.tasks.iter().any(|t| t.state == "working");
         if !event::poll(Duration::from_millis(if animate { 90 } else { 250 }))? {
             continue;
         }
