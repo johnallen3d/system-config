@@ -47,5 +47,9 @@ in
         iris = "purple";
       });
     };
+    # The task inbox, standalone in a shell (see src/inbox.rs).
+    postInstall = ''
+      ln -s rex-spawn $out/bin/rex-inbox
+    '';
     meta.mainProgram = "rex-spawn";
   }

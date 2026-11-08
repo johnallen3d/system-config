@@ -16,8 +16,17 @@
 //! actions.rs), and Escape into closing the float. For `ask` it keeps the
 //! float open and types ctrl-x into it, which moves the float on to the
 //! "are you sure" step.
+//!
+//! Run bare (`rex-inbox`, or `rex-spawn --inbox` with no JSON) from a shell
+//! on the config host, it works without the float: it fetches the tasks
+//! itself and handles Enter, ctrl-r and Escape the way the config's inbox
+//! mode does, through actions.rs and `rex do session.select`. It stays open
+//! after every action, showing the outcome and refreshing the tasks; only
+//! Escape (or ctrl-c) closes it.
 
 use std::io::{self, Write};
+use std::process::{Command, Stdio};
+use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
@@ -33,7 +42,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType};
 use ratatui::{DefaultTerminal, Frame};
 
-use crate::{CAP_L, CAP_R, ICON_SEARCH, Palette, delete_word, hex, highlight, now, str_width};
+use crate::{CAP_L, CAP_R, ICON_SEARCH, Palette, actions, delete_word, hex, highlight, local_label, now, str_width};
 
 /// A bracketed paste starting with this carries tasks JSON (`rex-data:live`
 /// before the worktree check, `rex-data:tasks` after it) or a failure to get
@@ -171,6 +180,14 @@ struct Inbox {
     load: Load,
     /// The tab the inbox opened from, until the first tasks arrive.
     current: Option<(String, String)>,
+    /// Run from a shell rather than in the config's float: Enter, ctrl-r
+    /// and Escape reach the inbox, which acts on them itself.
+    standalone: bool,
+    /// The last standalone action's outcome (and whether it failed), shown
+    /// in the footer until the next key.
+    note: Option<(String, bool)>,
+    /// Standalone task fetches, as the float's pastes would carry them.
+    fetch: Option<Receiver<String>>,
 }
 
 impl Inbox {
@@ -193,6 +210,9 @@ impl Inbox {
             now: now(),
             load: Load::Ready,
             current: None,
+            standalone: false,
+            note: None,
+            fetch: None,
         };
         inbox.show(false);
         inbox
@@ -630,6 +650,11 @@ impl Inbox {
     fn draw_footer(&self, f: &mut Frame, area: Rect) {
         let p = &self.p;
         let mut spans = vec![Span::raw(" ")];
+        if let Some((msg, failed)) = &self.note {
+            spans.push(Span::styled(msg.clone(), Style::new().fg(if *failed { p.love } else { p.pine })));
+            f.render_widget(Line::from(spans), area);
+            return;
+        }
         if let (true, Some(t)) = (self.armed != Armed::No, self.rows.get(self.selected).map(|&i| &self.tasks[i])) {
             let key = Style::new().fg(p.love).add_modifier(Modifier::BOLD);
             let files = || {
@@ -685,16 +710,210 @@ pub fn run(json: &str, current: Option<&str>) -> io::Result<()> {
     } else {
         inbox.set_tasks(parse(json).map_err(io::Error::other)?);
     }
+    show(&mut inbox)
+}
+
+/// The inbox run from a shell on the config host (see the module docs).
+pub fn run_standalone() -> io::Result<()> {
+    if !cfg!(target_os = "macos") {
+        return Err(io::Error::other(
+            "the task registry is on the Mac; run rex-inbox there, or press cmd+i in Rex",
+        ));
+    }
+    // Act as the config's float does: rex CLI calls name their own targets
+    // rather than inheriting this shell's Rex session. Set before any thread.
+    for var in ["REX_SERVER", "REX_CLIENT", "REX_SESSION", "REX_BLOCK"] {
+        // SAFETY: still single-threaded.
+        unsafe { std::env::remove_var(var) };
+    }
+    let mut inbox = Inbox::new(Vec::new());
+    inbox.standalone = true;
+    inbox.load = Load::Waiting;
+    inbox.refetch();
+    show(&mut inbox)
+}
+
+fn show(inbox: &mut Inbox) -> io::Result<()> {
     let mut term = ratatui::init();
     let _ = execute!(io::stdout(), EnableMouseCapture);
-    let result = run_loop(&mut term, &mut inbox);
+    let result = run_loop(&mut term, inbox);
     let _ = execute!(io::stdout(), DisableMouseCapture);
     ratatui::restore();
+    // Leave the shell's title as it was before the picks.
+    if inbox.standalone {
+        let _ = write!(io::stdout(), "\x1b]2;\x07");
+    }
     result
+}
+
+/// What a standalone key did.
+enum Outcome {
+    Stay,
+    Exit,
+}
+
+impl Inbox {
+    /// Fetch the tasks in the background, live status first and then with
+    /// worktrees checked, as the config's fill script does for the float.
+    fn refetch(&mut self) {
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            for kind in ["live", "tasks"] {
+                let got = if kind == "live" { crate::live_tasks() } else { crate::reconcile_tasks() };
+                let (msg, failed) = match got {
+                    Ok(tasks) => (format!("{DATA}{kind}\n{}", serde_json::Value::from(tasks)), false),
+                    Err(e) => (format!("{DATA}error\n{e}"), true),
+                };
+                if tx.send(msg).is_err() || failed {
+                    return;
+                }
+            }
+        });
+        self.fetch = Some(rx);
+    }
+
+    /// Fetched tasks that have arrived, taken as the float takes pastes.
+    fn take_fetched(&mut self) {
+        let Some(rx) = &self.fetch else { return };
+        let got: Vec<String> = rx.try_iter().collect();
+        for text in got {
+            self.paste(&text);
+        }
+    }
+
+    /// Enter, ctrl-r and Escape in a standalone inbox; None for other keys.
+    fn standalone_key(&mut self, k: KeyEvent, term: &mut DefaultTerminal) -> Option<Outcome> {
+        let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
+        let review = matches!(k.code, KeyCode::Char('r') if ctrl);
+        if !review && !matches!(k.code, KeyCode::Enter | KeyCode::Esc) {
+            return None;
+        }
+        self.note = None;
+        if k.code == KeyCode::Esc {
+            return Some(Outcome::Exit);
+        }
+        let pick = self.pick();
+        let Some((action, target)) = pick.split_once(':') else { return Some(Outcome::Stay) };
+        let mut parts = target.splitn(3, '/');
+        let (Some(host), Some(session), Some(window)) = (parts.next(), parts.next(), parts.next()) else {
+            return Some(Outcome::Stay);
+        };
+        let host = crate::unhex(host);
+        if review {
+            // Ended tasks have nothing to review.
+            if self.archived {
+                return Some(Outcome::Stay);
+            }
+            self.armed = Armed::No;
+            return Some(self.act_then_jump("review", &host, session, window, term, |_| None));
+        }
+        match action {
+            // As the config types ctrl-x for `ask`: on to "are you sure".
+            "ask" => self.armed = Armed::Force,
+            "go" => {
+                let msg = format!("showed {}", self.selected_label());
+                return Some(self.finish(select(&host, session, window), msg));
+            }
+            "resume" => {
+                return Some(self.act_then_jump("resume", &host, session, window, term, |out| {
+                    let mut f = out.trim_end().splitn(3, '\t');
+                    Some((f.next()?.to_string(), f.next()?.to_string(), f.next()?.to_string()))
+                }));
+            }
+            "archive" | "force-archive" => {
+                self.armed = Armed::No;
+                self.busy(term, format!("Archiving on {host}…"));
+                self.note = Some(match actions::act(action, &host, session, window) {
+                    Ok(msg) => {
+                        crate::log(&msg);
+                        (msg, false)
+                    }
+                    Err(e) => {
+                        crate::log(&format!("{action} failed: {e}"));
+                        (e, true)
+                    }
+                });
+                self.refetch();
+            }
+            _ => {}
+        }
+        Some(Outcome::Stay)
+    }
+
+    /// Run `action` on the task, then jump to the tab `tab` reads from its
+    /// output (or the task's own tab when it reads none).
+    fn act_then_jump(
+        &mut self,
+        action: &str,
+        host: &str,
+        session: &str,
+        window: &str,
+        term: &mut DefaultTerminal,
+        tab: impl Fn(&str) -> Option<(String, String, String)>,
+    ) -> Outcome {
+        let label = self.selected_label();
+        self.busy(term, format!("{}…", if action == "review" { "Opening review" } else { "Resuming" }));
+        match actions::act(action, host, session, window) {
+            Ok(out) => {
+                crate::log(&out);
+                let jumped = match tab(&out) {
+                    Some((h, s, w)) => select(&h, &s, &w),
+                    None if action == "resume" => Err(format!("rex-spawn --act resume printed no tab: {out}")),
+                    None => select(host, session, window),
+                };
+                let msg = if action == "review" { format!("reviewing {label}") } else { format!("resumed {label}") };
+                self.finish(jumped, msg)
+            }
+            Err(e) => {
+                crate::log(&format!("{action} failed: {e}"));
+                self.note = Some((e, true));
+                Outcome::Stay
+            }
+        }
+    }
+
+    /// After a jump, show `msg` (or why it failed) and refresh the tasks,
+    /// whose status the action may have changed.
+    fn finish(&mut self, jumped: Result<(), String>, msg: String) -> Outcome {
+        self.note = Some(match jumped {
+            Ok(()) => (msg, false),
+            Err(e) => (e, true),
+        });
+        self.refetch();
+        Outcome::Stay
+    }
+
+    fn selected_label(&self) -> String {
+        self.rows.get(self.selected).map(|&i| self.tasks[i].label()).unwrap_or_default()
+    }
+
+    /// Show `msg` in the footer while a slow action runs.
+    fn busy(&mut self, term: &mut DefaultTerminal, msg: String) {
+        self.note = Some((msg, false));
+        let _ = term.draw(|f| self.draw(f));
+    }
+}
+
+/// Show the tab in its host's Rex app, as the config's jump does.
+fn select(host: &str, session: &str, window: &str) -> Result<(), String> {
+    let mut cmd = Command::new("rex");
+    if host != local_label() {
+        cmd.args(["-S", host]);
+    }
+    let out = cmd
+        .args(["do", "session.select", &format!("session_id={session}"), &format!("window_id={window}")])
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| format!("rex: {e}"))?;
+    if !out.status.success() {
+        return Err(format!("can't show the tab on {host}: {}", String::from_utf8_lossy(&out.stderr).trim()));
+    }
+    Ok(())
 }
 
 fn run_loop(term: &mut DefaultTerminal, inbox: &mut Inbox) -> io::Result<()> {
     loop {
+        inbox.take_fetched();
         inbox.now = now();
         term.draw(|f| inbox.draw(f))?;
         inbox.report()?;
@@ -705,11 +924,18 @@ fn run_loop(term: &mut DefaultTerminal, inbox: &mut Inbox) -> io::Result<()> {
         }
         match event::read()? {
             Event::Key(k) if k.kind != KeyEventKind::Release => {
+                if inbox.standalone {
+                    match inbox.standalone_key(k, term) {
+                        Some(Outcome::Exit) => return Ok(()),
+                        Some(Outcome::Stay) => continue,
+                        None => inbox.note = None,
+                    }
+                }
                 if !inbox.key(k) {
                     return Ok(());
                 }
             }
-            Event::Paste(text) => inbox.paste(&text),
+            Event::Paste(text) if !inbox.standalone => inbox.paste(&text),
             Event::Mouse(m) => match m.kind {
                 MouseEventKind::ScrollUp => inbox.step(-1),
                 MouseEventKind::ScrollDown => inbox.step(1),

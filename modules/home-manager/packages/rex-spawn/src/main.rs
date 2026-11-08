@@ -26,7 +26,9 @@
 //!   prints the registry as JSON with each open task's live agent status.
 //! - `--inbox JSON [SESSION_ID/WINDOW_ID]`: the cmd+i task inbox float, fed
 //!   `--tasks` output by the config (see inbox.rs), starting on the task in
-//!   the given tab, if any.
+//!   the given tab, if any. Without JSON (or run as `rex-inbox`, a symlink
+//!   to this binary), the same inbox standalone in a shell on the config
+//!   host: it fetches the tasks and acts on its picks itself.
 //! - `--act ACTION HOST SESSION WINDOW`: runs on the config host. Reviews or
 //!   archives the task in that tab, or resumes an ended one (see actions.rs).
 //! - `--run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION MODE] [PROMPT]`:
@@ -264,6 +266,11 @@ fn branch_and_slug(name: &str) -> (String, String) {
 
 fn hex(s: &str) -> String {
     s.bytes().map(|b| format!("{b:02x}")).collect()
+}
+
+fn unhex(s: &str) -> String {
+    let bytes: Vec<u8> = (0..s.len() / 2).filter_map(|i| u8::from_str_radix(s.get(2 * i..2 * i + 2)?, 16).ok()).collect();
+    String::from_utf8_lossy(&bytes).into_owned()
 }
 
 // ---------------------------------------------------------------- prompts
@@ -2355,7 +2362,8 @@ const USAGE: &str = "usage: rex-spawn [--local LABEL]
        rex-spawn --launch HOST PATH NAME HARNESS [PROMPT_REF]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION new|resume] [PROMPT]
        rex-spawn --tasks [--live]
-       rex-spawn --inbox TASKS_JSON|- [SESSION_ID/WINDOW_ID]
+       rex-spawn --inbox [TASKS_JSON|- [SESSION_ID/WINDOW_ID]]
+       rex-inbox
        rex-spawn --act review|archive|force-archive|resume HOST SESSION_ID WINDOW_ID
        rex-spawn --session-of PROFILE HARNESS WORKTREE
 
@@ -2372,17 +2380,30 @@ adds the status, without checking worktrees or ending tasks. --inbox shows
 open tasks from that JSON (with -, from bracketed pastes typed into it
 later), most urgent first (starting on the given tab's task),
 and reports the highlighted one as
-rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID. --act reviews or
+rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID. Bare --inbox, or
+rex-inbox, runs it standalone from a shell on the config host, fetching the
+tasks and acting on Enter, ctrl-r and Escape itself. --act reviews or
 archives the task in a tab (force-archive also throws away uncommitted
 changes), or resumes an ended task's agent session in a new tab and prints
 it as --launch does. --session-of prints the newest agent session for a
 worktree on this host.";
 
 fn main() -> io::Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().collect();
+    let argv0 = args.remove(0);
+    // rex-inbox is this binary under another name: the standalone inbox.
+    if Path::new(&argv0).file_name().is_some_and(|n| n == "rex-inbox") && args.is_empty() {
+        args.push("--inbox".into());
+    }
     let a: Vec<&str> = args.iter().map(String::as_str).collect();
     match a.as_slice() {
         ["-h"] | ["--help"] => println!("{USAGE}"),
+        ["--inbox"] => {
+            if let Err(e) = inbox::run_standalone() {
+                eprintln!("rex-inbox: {e}");
+                std::process::exit(1);
+            }
+        }
         ["--launch", host, path, name, harness, prompt_ref @ ..] if prompt_ref.len() <= 1 => match launch(host, path, name, harness, prompt_ref.first().copied(), None) {
             Ok((host, session, window)) => print!("{host}\t{session}\t{window}"),
             Err(e) => {
