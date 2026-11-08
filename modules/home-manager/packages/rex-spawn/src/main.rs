@@ -382,6 +382,12 @@ struct App {
     away: bool,
     /// Whether Escape was pressed once with a prompt, so the next one closes.
     confirm_close: bool,
+    /// Whether ctrl-x was just pressed in the prompt, so ctrl-e edits it.
+    ctrl_x: bool,
+    /// Whether ctrl-x ctrl-e asked for the prompt in `$EDITOR`.
+    edit_requested: bool,
+    /// The terminal's cell size, to send the corner images again.
+    cell: Option<chrome::CellSize>,
 }
 
 impl App {
@@ -416,6 +422,9 @@ impl App {
             corners: None,
             away: false,
             confirm_close: false,
+            ctrl_x: false,
+            edit_requested: false,
+            cell: None,
         };
         app.refilter();
         app
@@ -642,6 +651,12 @@ impl App {
         if !(k.code == KeyCode::Esc || (ctrl && k.code == KeyCode::Char('c'))) {
             self.confirm_close = false;
         }
+        // ctrl-x ctrl-e hands the prompt to $EDITOR, as in a shell; any
+        // other key after ctrl-x just does what it does.
+        if std::mem::take(&mut self.ctrl_x) && ctrl && k.code == KeyCode::Char('e') && self.focus == Focus::Prompt {
+            self.edit_requested = true;
+            return true;
+        }
         let page = (self.list_area.height as isize - 2).max(1);
         // The prompt keeps ctrl-n/p/j/k as readline's line keys; elsewhere
         // they move through the project list, like the tab picker. The name
@@ -652,6 +667,7 @@ impl App {
             Focus::Prompt => false,
         };
         match k.code {
+            KeyCode::Char('x') if ctrl && self.focus == Focus::Prompt => self.ctrl_x = true,
             // As in a shell, ctrl-c in the prompt throws its text away (ctrl-z
             // brings it back); with nothing to clear, it closes the picker.
             KeyCode::Char('c') if ctrl && self.focus == Focus::Prompt && !self.prompt.is_empty() => {
@@ -1123,6 +1139,7 @@ impl App {
         hints.push(("⏎", spawn_label, if ready { p.pine } else { p.muted }));
         if self.focus == Focus::Prompt {
             hints.push(("⌥⏎", "newline", p.subtle));
+            hints.push(("⌃X⌃E", "editor", p.subtle));
         }
         hints.push(("⌃O", "host", p.subtle));
         hints.push(("⌃T", "harness", p.subtle));
@@ -1300,7 +1317,8 @@ fn run_picker(hosts: Vec<String>) -> io::Result<()> {
     let mut app = App::new(catalog(), hosts);
     let mut term = ratatui::init();
     // Raw mode is on and nothing has read stdin yet: ask about graphics now.
-    if let Some(cell) = chrome::detect(Duration::from_millis(300)) {
+    app.cell = chrome::detect(Duration::from_millis(300));
+    if let Some(cell) = app.cell {
         app.corners = chrome::Corners::new(cell, &[app.p.overlay, app.p.surface], &mut io::stdout()).ok();
     }
     // No mouse capture, so the terminal's own selection and copy work.
@@ -1339,6 +1357,9 @@ fn picker_loop(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
                 if !app.key(k) {
                     return Ok(());
                 }
+                if std::mem::take(&mut app.edit_requested) {
+                    edit_prompt(term, app)?;
+                }
             }
             Event::Paste(text) => app.paste(&text),
             Event::FocusLost => app.away = true,
@@ -1346,6 +1367,68 @@ fn picker_loop(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
             _ => {}
         }
     }
+}
+
+/// Edit the prompt in `$VISUAL` or `$EDITOR` (else nvim or vi), taking the
+/// float over until it exits, then put the saved text back in the field
+/// (ctrl-z undoes that). An editor that fails, such as nvim's `:cq`, keeps
+/// the prompt as it was.
+fn edit_prompt(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
+    let Ok((_, id)) = parse_prompt_ref(&app.prompt_ref) else { return Ok(()) };
+    let dir = prompt_dir();
+    let path = dir.join(format!("{id}.edit.md"));
+    let before = app.prompt.lines().join("\n");
+    if let Err(e) = std::fs::create_dir_all(&dir).and_then(|_| std::fs::write(&path, format!("{before}\n"))) {
+        log(&format!("could not write the prompt for the editor: {e}"));
+        return Ok(());
+    }
+    // Rex's spawn mode would take the editor's Enter as the launch.
+    let _ = Command::new("rex")
+        .args(["do", "client.mode.exit_all"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    let mut out = io::stdout();
+    let _ = execute!(out, DisableBracketedPaste, DisableFocusChange);
+    if let Some(corners) = app.corners.take() {
+        let _ = corners.delete(&mut out);
+    }
+    ratatui::restore();
+    let status = Command::new("sh")
+        .args([
+            "-c",
+            r#"e=${VISUAL:-$EDITOR}; [ -n "$e" ] || e=$(command -v nvim-editor || command -v nvim || echo vi); exec $e "$1""#,
+            "sh",
+        ])
+        .arg(&path)
+        .status();
+    ratatui::crossterm::terminal::enable_raw_mode()?;
+    execute!(out, ratatui::crossterm::terminal::EnterAlternateScreen)?;
+    term.clear()?;
+    if let Some(cell) = app.cell {
+        app.corners = chrome::Corners::new(cell, &[app.p.overlay, app.p.surface], &mut out).ok();
+    }
+    let _ = execute!(out, EnableBracketedPaste, EnableFocusChange);
+    app.away = true;
+    app.rearm_mode();
+    let edited = match status {
+        Ok(s) if s.success() => std::fs::read_to_string(&path).ok(),
+        Ok(_) => None,
+        Err(e) => {
+            log(&format!("could not run the editor: {e}"));
+            None
+        }
+    };
+    let _ = std::fs::remove_file(&path);
+    if let Some(text) = edited {
+        let text = text.trim_end_matches(['\n', '\r']);
+        if text != before {
+            app.prompt.clear();
+            app.paste(text);
+        }
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------- launch
