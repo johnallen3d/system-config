@@ -13,7 +13,10 @@
 //!   capped at about 1 KiB, too little for a prompt, so the optional prompt
 //!   lives in a file on the picker's host (see `prompt_dir`), rewritten as
 //!   it is typed because the picker never sees the Enter that launches, and
-//!   the title carries only its `LABEL:ID` reference.
+//!   the title carries only its `LABEL:ID` reference. The float always
+//!   passes `--local LABEL`; run bare from a shell on the config host, the
+//!   picker is standalone instead: Enter reaches it, and it launches the
+//!   work itself (as `--launch` below) and shows the new tab.
 //! - `--launch HOST PATH NAME HARNESS [PROMPT_REF]`: runs on the config host
 //!   (the Mac), which can reach every Rex host. HOST `auto` picks from the
 //!   project's host pool (see `pool`), least busy first. Reads the prompt
@@ -393,6 +396,16 @@ struct App {
     edit_requested: bool,
     /// The terminal's cell size, to send the corner images again.
     cell: Option<chrome::CellSize>,
+    /// Run from a shell rather than in the config's float: Enter reaches the
+    /// picker, which launches the work itself (see `standalone_launch`).
+    standalone: bool,
+    /// Whether a standalone Enter asked for the launch.
+    launch_requested: bool,
+    /// The last standalone launch's progress or failure (and whether it
+    /// failed), shown in the footer until the next key.
+    note: Option<(String, bool)>,
+    /// Printed once the picker has closed: a launch that couldn't show its tab.
+    exit_note: Option<String>,
 }
 
 impl App {
@@ -429,6 +442,10 @@ impl App {
             confirm_close: false,
             edit_requested: false,
             cell: None,
+            standalone: false,
+            launch_requested: false,
+            note: None,
+            exit_note: None,
         };
         app.refilter();
         app
@@ -603,7 +620,7 @@ impl App {
     /// Enter reaches the picker instead of the config's launch action.
     /// Enter the mode again once the terminal has focus back.
     fn rearm_mode(&mut self) {
-        if !std::mem::take(&mut self.away) {
+        if !std::mem::take(&mut self.away) || self.standalone {
             return;
         }
         let child = Command::new("rex")
@@ -652,6 +669,8 @@ impl App {
     fn key(&mut self, k: KeyEvent) -> bool {
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         let alt = k.modifiers.contains(KeyModifiers::ALT);
+        let shift = k.modifiers.contains(KeyModifiers::SHIFT);
+        self.note = None;
         if !(k.code == KeyCode::Esc || (ctrl && k.code == KeyCode::Char('c'))) {
             self.confirm_close = false;
         }
@@ -665,6 +684,12 @@ impl App {
             Focus::Prompt => false,
         };
         match k.code {
+            // Standalone, plain Enter launches from any field, as the config's
+            // spawn mode makes it do in the float.
+            KeyCode::Enter if self.standalone && !alt && !shift && !ctrl => {
+                self.launch_requested = true;
+                return true;
+            }
             // ctrl-g hands the prompt to $EDITOR, as in other harnesses.
             KeyCode::Char('g') if ctrl && self.focus == Focus::Prompt => {
                 self.edit_requested = true;
@@ -1151,6 +1176,11 @@ impl App {
             hints.push(("esc", "close", p.subtle));
         }
         let mut spans = vec![Span::raw(" ")];
+        if let Some((msg, failed)) = &self.note {
+            spans.push(Span::styled(msg.clone(), Style::new().fg(if *failed { p.love } else { p.pine })));
+            f.render_widget(Line::from(spans), area);
+            return;
+        }
         let mut used = 1;
         for (k, label, key) in hints {
             let h = hint(k, label, key);
@@ -1314,9 +1344,10 @@ fn highlight(text: &str, hits: &[usize], room: usize, keep_end: bool, base: Styl
     spans
 }
 
-fn run_picker(hosts: Vec<String>) -> io::Result<()> {
+fn run_picker(hosts: Vec<String>, standalone: bool) -> io::Result<()> {
     prune_prompts();
     let mut app = App::new(catalog(), hosts);
+    app.standalone = standalone;
     let mut term = ratatui::init();
     // Raw mode is on and nothing has read stdin yet: ask about graphics now.
     app.cell = chrome::detect(Duration::from_millis(300));
@@ -1344,14 +1375,101 @@ fn run_picker(hosts: Vec<String>) -> io::Result<()> {
         if let Ok((_, id)) = parse_prompt_ref(&app.prompt_ref) {
             let _ = std::fs::remove_file(prompt_dir().join(id));
         }
-        let _ = Command::new("rex")
-            .args(["do", "client.mode.exit_all"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
+        if app.standalone {
+            // Leave the shell's title as it was before the picks.
+            let _ = write!(io::stdout(), "\x1b]2;\x07");
+            if let Some(note) = &app.exit_note {
+                eprintln!("rex-spawn: {note}");
+            }
+        } else {
+            let _ = Command::new("rex")
+                .args(["do", "client.mode.exit_all"])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        }
     }
     result
+}
+
+/// The picker run from a shell on the config host, which is where launches
+/// run (the task registry lives there and it reaches every Rex host).
+fn run_standalone() -> io::Result<()> {
+    if !cfg!(target_os = "macos") {
+        return Err(io::Error::other(
+            "spawning runs on the Mac; run rex-spawn there, or press ctrl+cmd+n in Rex",
+        ));
+    }
+    // Act as the config's launch does: rex CLI calls name their own targets
+    // rather than inheriting this shell's Rex session.
+    for var in ["REX_SERVER", "REX_CLIENT", "REX_SESSION", "REX_BLOCK"] {
+        // SAFETY: still single-threaded.
+        unsafe { std::env::remove_var(var) };
+    }
+    let mut hosts: Vec<String> = std::iter::once(AUTO.to_string()).chain(dev_hosts()).collect();
+    let here = local_label();
+    if !hosts.contains(&here) {
+        hosts.push(here);
+    }
+    run_picker(hosts, true)
+}
+
+/// Show a tab in its host's Rex app, as the config's `spawn_go` does.
+fn show_tab(host: &str, session: &str, window: &str) -> Result<(), String> {
+    let mut cmd = Command::new("rex");
+    if host != local_label() {
+        cmd.args(["-S", host]);
+    }
+    let out = cmd
+        .args(["do", "session.select", &format!("session_id={session}"), &format!("window_id={window}")])
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| format!("rex: {e}"))?;
+    if !out.status.success() {
+        return Err(format!("spawned, but can't show the tab on {host}: {}", String::from_utf8_lossy(&out.stderr).trim()));
+    }
+    Ok(())
+}
+
+/// Launch the picked work as the config's `spawn_go` does, then show its
+/// tab. Ok(true) when it launched and the picker should close; failures stay
+/// in the footer.
+fn standalone_launch(term: &mut DefaultTerminal, app: &mut App) -> io::Result<bool> {
+    app.save_prompt();
+    let Some(project) = app.project().cloned() else {
+        app.note = Some(("pick a project first".into(), true));
+        return Ok(false);
+    };
+    let name = app.name_text();
+    if let Some(problem) = name_problem(&name) {
+        app.note = Some((problem.into(), true));
+        return Ok(false);
+    }
+    let prompt_ref = if app.prompt_text().is_empty() {
+        None
+    } else if app.prompt_saved {
+        Some(app.prompt_ref.clone())
+    } else {
+        app.note = Some(("the prompt couldn't be saved".into(), true));
+        return Ok(false);
+    };
+    let host = app.hosts.get(app.host).cloned().unwrap_or_else(|| AUTO.into());
+    app.note = Some((format!("Spawning {}/{name} on {host}…", project.name), false));
+    term.draw(|f| app.draw(f))?;
+    match launch(&host, &project.path, &name, HARNESSES[app.harness], prompt_ref.as_deref(), None) {
+        // Launched: close even if the tab can't be shown, so a second Enter
+        // doesn't spawn the work twice.
+        Ok((host, session, window)) => {
+            app.exit_note = show_tab(&host, &session, &window).err();
+            Ok(true)
+        }
+        Err(e) => {
+            log(&format!("standalone launch of {}/{name} failed: {e}", project.name));
+            app.note = Some((e, true));
+            Ok(false)
+        }
+    }
 }
 
 fn picker_loop(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
@@ -1364,6 +1482,9 @@ fn picker_loop(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
         match event::read()? {
             Event::Key(k) if k.kind != KeyEventKind::Release => {
                 if !app.key(k) {
+                    return Ok(());
+                }
+                if std::mem::take(&mut app.launch_requested) && standalone_launch(term, app)? {
                     return Ok(());
                 }
                 if std::mem::take(&mut app.edit_requested) {
@@ -1392,12 +1513,14 @@ fn edit_prompt(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
         return Ok(());
     }
     // Rex's spawn mode would take the editor's Enter as the launch.
-    let _ = Command::new("rex")
-        .args(["do", "client.mode.exit_all"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    if !app.standalone {
+        let _ = Command::new("rex")
+            .args(["do", "client.mode.exit_all"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
     let mut out = io::stdout();
     let _ = execute!(out, PopKeyboardEnhancementFlags, DisableBracketedPaste, DisableFocusChange);
     if let Some(corners) = app.corners.take() {
@@ -2371,6 +2494,7 @@ fn run(
 // ---------------------------------------------------------------- main
 
 const USAGE: &str = "usage: rex-spawn [--local LABEL]
+       rex-spawn
        rex-spawn --launch HOST PATH NAME HARNESS [PROMPT_REF]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION new|resume] [PROMPT]
        rex-spawn --tasks [--live]
@@ -2382,7 +2506,9 @@ const USAGE: &str = "usage: rex-spawn [--local LABEL]
 Without a mode, shows the spawn picker and reports the choice in the
 terminal title as rex-spawn:HOST/PATH/NAME/HARNESS[/PROMPT_REF], keeping
 a typed prompt in a file named by PROMPT_REF (LABEL:ID). --local adds
-the config host's label to the dev hosts. --launch collects the prompt,
+the config host's label to the dev hosts. Bare, from a shell on the
+config host, the picker runs standalone: Enter launches the work itself
+and shows its tab. --launch collects the prompt,
 opens the work's tab on HOST (auto: the least busy dev host), records the
 task, and prints HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the
 worktree and runs the harness in the current tab, starting AGENT_SESSION
@@ -2413,6 +2539,12 @@ fn main() -> io::Result<()> {
         ["--inbox"] => {
             if let Err(e) = inbox::run_standalone() {
                 eprintln!("rex-inbox: {e}");
+                std::process::exit(1);
+            }
+        }
+        [] => {
+            if let Err(e) = run_standalone() {
+                eprintln!("rex-spawn: {e}");
                 std::process::exit(1);
             }
         }
@@ -2468,7 +2600,7 @@ fn main() -> io::Result<()> {
                 eprintln!("{USAGE}");
                 std::process::exit(2);
             }
-            run_picker(hosts)?;
+            run_picker(hosts, false)?;
         }
     }
     Ok(())
