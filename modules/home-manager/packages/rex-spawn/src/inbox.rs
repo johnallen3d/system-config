@@ -13,7 +13,9 @@
 //! switches to the archive, the ended tasks (archived, or their tab or
 //! worktree gone), most recent first, where ACTION is `resume`; there
 //! ctrl-x arms the same archive for a task whose tab was closed without
-//! one, which leaves its worktree behind. The
+//! one, which leaves its worktree behind. Tab cycles a profile filter
+//! (all, personal, work) in either view, and in the archive ctrl-f hides
+//! the archived tasks, leaving those that ended without one. The
 //! config's `inbox` mode turns Enter into ACTION, ctrl-r into review (see
 //! actions.rs), and Escape into closing the float. For `ask` it keeps the
 //! float open and types ctrl-x into it, which moves the float on to the
@@ -100,6 +102,42 @@ impl Task {
     fn label(&self) -> String {
         format!("{}/{}", self.project, self.name)
     }
+
+    fn work(&self) -> bool {
+        self.profile == "work"
+    }
+
+    /// Ended by an archive (or a discard, its old name) rather than by its
+    /// tab closing or worktree going away.
+    fn archived(&self) -> bool {
+        matches!(self.ended.as_deref(), Some("archived" | "force-archived" | "discarded" | "force-discarded"))
+    }
+}
+
+/// Which profile's tasks to show; tab cycles through them.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Profile {
+    All,
+    Personal,
+    Work,
+}
+
+impl Profile {
+    fn next(self) -> Self {
+        match self {
+            Profile::All => Profile::Personal,
+            Profile::Personal => Profile::Work,
+            Profile::Work => Profile::All,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Profile::All => "all",
+            Profile::Personal => "personal",
+            Profile::Work => "work",
+        }
+    }
 }
 
 /// Every task from `rex-spawn --tasks` output, open and ended, in display
@@ -168,6 +206,11 @@ struct Inbox {
     all: Vec<Task>,
     /// Showing ended tasks (ctrl-a) rather than open ones.
     archived: bool,
+    /// Only this profile's tasks (tab), in either view.
+    profile: Profile,
+    /// In the archive, hide the tasks ctrl-x archived (ctrl-f), leaving the
+    /// ones whose tab closed or worktree went away without one.
+    kept: bool,
     tasks: Vec<Task>,
     query: String,
     matcher: Matcher,
@@ -201,6 +244,8 @@ impl Inbox {
             p: Palette::load(),
             all,
             archived: false,
+            profile: Profile::All,
+            kept: false,
             tasks: Vec::new(),
             query: String::new(),
             matcher: Matcher::new(Config::DEFAULT),
@@ -291,12 +336,25 @@ impl Inbox {
         self.refilter();
     }
 
+    /// Whether the profile and archive filters let `t` through.
+    fn passes(&self, t: &Task) -> bool {
+        let profile = match self.profile {
+            Profile::All => true,
+            Profile::Personal => !t.work(),
+            Profile::Work => t.work(),
+        };
+        profile && !(self.archived && self.kept && t.archived())
+    }
+
     fn refilter(&mut self) {
         self.rows.clear();
         self.hits.clear();
         let pattern = Pattern::parse(&self.query, CaseMatching::Smart, Normalization::Smart);
         let mut buf = Vec::new();
         for (i, t) in self.tasks.iter().enumerate() {
+            if !self.passes(t) {
+                continue;
+            }
             if self.query.trim().is_empty() {
                 self.rows.push(i);
                 self.hits.push(Vec::new());
@@ -364,6 +422,18 @@ impl Inbox {
         if matches!(k.code, KeyCode::Char('a') if ctrl) {
             let archived = !self.archived;
             self.show(archived);
+            return true;
+        }
+        if k.code == KeyCode::Tab {
+            self.profile = self.profile.next();
+            self.armed = Armed::No;
+            self.refilter();
+            return true;
+        }
+        if matches!(k.code, KeyCode::Char('f') if ctrl) && self.archived {
+            self.kept = !self.kept;
+            self.armed = Armed::No;
+            self.refilter();
             return true;
         }
         // ctrl-x arms an archive; on a worktree with uncommitted changes, the
@@ -442,7 +512,10 @@ impl Inbox {
                         Style::new().fg(p.iris).add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(" "),
-                ])
+                ]
+                .into_iter()
+                .chain(self.filter_spans())
+                .collect::<Vec<_>>())
                 .left_aligned(),
             )
             .title_top(Line::from(Span::styled(" ⌘I ", Style::new().fg(p.muted))).right_aligned())
@@ -464,6 +537,27 @@ impl Inbox {
         self.draw_footer(f, footer);
     }
 
+    /// The active filters, for the frame's title.
+    fn filter_spans(&self) -> Vec<Span<'static>> {
+        let p = &self.p;
+        let mut spans = Vec::new();
+        let mut chip = |text: &str, fg: Color| {
+            spans.push(Span::styled(CAP_L, Style::new().fg(p.surface).bg(p.base)));
+            spans.push(Span::styled(text.to_string(), Style::new().fg(fg).bg(p.surface)));
+            spans.push(Span::styled(CAP_R, Style::new().fg(p.surface).bg(p.base)));
+            spans.push(Span::raw(" "));
+        };
+        match self.profile {
+            Profile::All => {}
+            Profile::Work => chip("work", p.gold),
+            Profile::Personal => chip("personal", p.subtle),
+        }
+        if self.archived && self.kept {
+            chip("not archived", p.foam);
+        }
+        spans
+    }
+
     fn draw_search(&self, f: &mut Frame, area: Rect) {
         let p = &self.p;
         let prompt = format!(" {ICON_SEARCH}  ");
@@ -479,7 +573,8 @@ impl Inbox {
             f.set_cursor_position((x, area.y));
         }
         // Counts by what needs attention, like the tab picker's chips.
-        let count = |st: &str| self.tasks.iter().filter(|t| t.state == st).count();
+        let shown = || self.tasks.iter().filter(|t| self.passes(t));
+        let count = |st: &str| shown().filter(|t| t.state == st).count();
         let mut chips = Vec::new();
         for (n, label, color) in [
             (count("blocked"), "waiting", p.gold),
@@ -496,7 +591,7 @@ impl Inbox {
             let tick = (self.started.elapsed().as_millis() / 90) as usize;
             chips.insert(0, Span::styled(format!("{} checking worktrees  ", SPINNER[tick % SPINNER.len()]), Style::new().fg(p.muted)));
         } else if chips.is_empty() {
-            let n = self.tasks.len();
+            let n = shown().count();
             let kind = if self.archived { "ended" } else { "open" };
             chips.push(Span::styled(format!("{n} {kind}  "), Style::new().fg(p.muted)));
         }
@@ -540,6 +635,21 @@ impl Inbox {
                     Line::from(vec![
                         Span::styled("⌃⌘N", Style::new().fg(p.subtle).bg(p.overlay)),
                         Span::styled(" spawns one", Style::new().fg(p.muted)),
+                    ]),
+                ]
+            } else if self.query.trim().is_empty() {
+                let what = match (self.profile, self.archived && self.kept) {
+                    (Profile::All, _) => "No tasks ended without an archive".to_string(),
+                    (profile, false) => format!("No {} tasks", profile.name()),
+                    (profile, true) => format!("No {} tasks ended without an archive", profile.name()),
+                };
+                vec![
+                    Line::styled(ICON_INBOX, Style::new().fg(p.hl_high)),
+                    Line::from(""),
+                    Line::styled(what, Style::new().fg(p.subtle)),
+                    Line::from(vec![
+                        Span::styled("⇥", Style::new().fg(p.subtle).bg(p.overlay)),
+                        Span::styled(" changes profile", Style::new().fg(p.muted)),
                     ]),
                 ]
             } else {
@@ -698,14 +808,20 @@ impl Inbox {
             return;
         }
         let left = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].left);
-        let keys: &[(&str, &str)] = if self.archived && left {
-            &[("⏎", "resume"), ("⌃X", "remove worktree"), ("⌃A", "open tasks"), ("esc", "close")]
+        let mut keys: Vec<(&str, &str)> = if self.archived && left {
+            vec![("⏎", "resume"), ("⌃X", "remove worktree")]
         } else if self.archived {
-            &[("⏎", "resume"), ("⌃A", "open tasks"), ("esc", "close")]
+            vec![("⏎", "resume")]
         } else {
-            &[("⏎", "go"), ("⌃R", "review"), ("⌃X", "archive"), ("⌃A", "archive view"), ("esc", "close")]
+            vec![("⏎", "go"), ("⌃R", "review"), ("⌃X", "archive")]
         };
-        for &(k, label) in keys {
+        keys.push(("⇥", self.profile.next().name()));
+        if self.archived {
+            keys.push(("⌃F", if self.kept { "show archived" } else { "hide archived" }));
+        }
+        keys.push(("⌃A", if self.archived { "open tasks" } else { "archive view" }));
+        keys.push(("esc", "close"));
+        for (k, label) in keys {
             spans.push(Span::styled(k, Style::new().fg(p.subtle).add_modifier(Modifier::BOLD)));
             spans.push(Span::styled(format!(" {label}   "), Style::new().fg(p.muted)));
         }
