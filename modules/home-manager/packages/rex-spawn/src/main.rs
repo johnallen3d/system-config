@@ -2104,6 +2104,10 @@ fn run(
                     Err(e) => eprintln!("\x1b[31mrex-spawn: work profile: {e}\x1b[0m"),
                 }
             }
+            // Spawned Claude tasks always run without permission prompts.
+            if harness == "claude" {
+                agent.arg("--dangerously-skip-permissions");
+            }
             let mut resuming = false;
             if let Some((id, mode)) = session {
                 let here = worktree.display().to_string();
