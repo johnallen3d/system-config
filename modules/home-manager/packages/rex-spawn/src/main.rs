@@ -6,16 +6,20 @@
 //!   a catalog project and name the work; the host defaults to `auto` and
 //!   the harness to Claude, both overridable with ctrl-o and ctrl-t. The
 //!   picker reports the choice in the terminal title as
-//!   `rex-spawn:HOST/PATH/NAME/HARNESS` (host, path and name hex encoded);
-//!   the config's `spawn` mode turns Enter into the launch and Escape into
-//!   closing the float, as with rex-tab-picker. Titles are capped at about
-//!   1 KiB, which is why there is no prompt field: the prompt is typed into
-//!   the agent itself.
-//! - `--launch HOST PATH NAME HARNESS`: runs on the config host (the
-//!   Mac), which can reach every Rex host. HOST `auto` picks from the
-//!   project's host pool (see `pool`), least busy first. Finds or creates the project's session on
-//!   the host, opens a tab running `--run` there, records the task (see
-//!   "tasks" below), and prints `HOST<TAB>SESSION_ID<TAB>WINDOW_ID`.
+//!   `rex-spawn:HOST/PATH/NAME/HARNESS[/PROMPT_REF]` (all but the harness
+//!   hex encoded); the config's `spawn` mode turns Enter into the launch and
+//!   Escape into closing the float, as with rex-tab-picker. Titles are
+//!   capped at about 1 KiB, too little for a prompt, so the optional prompt
+//!   lives in a file on the picker's host (see `prompt_dir`), rewritten as
+//!   it is typed because the picker never sees the Enter that launches, and
+//!   the title carries only its `LABEL:ID` reference.
+//! - `--launch HOST PATH NAME HARNESS [PROMPT_REF]`: runs on the config host
+//!   (the Mac), which can reach every Rex host. HOST `auto` picks from the
+//!   project's host pool (see `pool`), least busy first. Reads the prompt
+//!   from the picker's host, finds or creates the project's session on
+//!   the host, opens a tab running `--run` there, deletes the prompt file,
+//!   records the task (see "tasks" below), and prints
+//!   `HOST<TAB>SESSION_ID<TAB>WINDOW_ID`.
 //! - `--tasks`: runs on the config host. Checks every recorded task against
 //!   its host, marks the ones whose tab or worktree is gone as ended, and
 //!   prints the registry as JSON with each open task's live agent status.
@@ -24,9 +28,10 @@
 //!   the given tab, if any.
 //! - `--act ACTION HOST SESSION WINDOW`: runs on the config host. Reviews or
 //!   discards the task in that tab (see actions.rs).
-//! - `--run PROFILE PATH NAME HARNESS CLONE_URL`: runs in that tab. Clones a
-//!   missing project, creates or reuses the worktree with Worktrunk, runs the
-//!   harness, then leaves a shell open.
+//! - `--run PROFILE PATH NAME HARNESS CLONE_URL [PROMPT]`: runs in that tab.
+//!   Clones a missing project, creates or reuses the worktree with
+//!   Worktrunk, runs the harness (with the prompt as its first message),
+//!   then leaves a shell open.
 //!
 //! Naming follows the old herdr short-name convention: `api-work` becomes
 //! branch `feature/api-work` in `.worktrees/api-work` with tab `api-work`; a
@@ -34,6 +39,7 @@
 //! with `-`.
 
 mod actions;
+mod chrome;
 mod inbox;
 
 use std::collections::HashMap;
@@ -46,8 +52,8 @@ use std::time::Duration;
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 use ratatui::crossterm::event::{
-    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
-    KeyModifiers, MouseButton, MouseEventKind,
+    self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+    Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEventKind,
 };
 use ratatui::crossterm::execute;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
@@ -254,13 +260,81 @@ fn hex(s: &str) -> String {
     s.bytes().map(|b| format!("{b:02x}")).collect()
 }
 
+// ---------------------------------------------------------------- prompts
+
+/// Where the picker keeps prompts until `--launch` collects them, relative
+/// to the state directory (`$XDG_STATE_HOME`, else ~/.local/state).
+const PROMPT_DIR: &str = "rex/spawn-prompts";
+
+/// Prompts left by pickers closed without spawning are pruned after this.
+const PROMPT_KEEP_SECS: u64 = 24 * 60 * 60;
+
+fn prompt_dir() -> PathBuf {
+    std::env::var("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| home().join(".local/state"))
+        .join(PROMPT_DIR)
+}
+
+fn prune_prompts() {
+    let Ok(entries) = std::fs::read_dir(prompt_dir()) else { return };
+    let keep = Duration::from_secs(PROMPT_KEEP_SECS);
+    for entry in entries.flatten() {
+        let old = entry.metadata().and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok());
+        if old.is_some_and(|age| age > keep) {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
+/// Split a `LABEL:ID` prompt reference, refusing anything that isn't a
+/// plain host label and picker id, since both end up in a path and a script.
+fn parse_prompt_ref(r: &str) -> Result<(&str, &str), String> {
+    let bad = || format!("bad prompt reference {r:?}");
+    let (label, id) = r.split_once(':').ok_or_else(bad)?;
+    let label_ok = !label.is_empty()
+        && !label.starts_with(['-', '.'])
+        && label.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_'));
+    let id_ok = !id.is_empty() && id.chars().all(|c| c.is_ascii_digit() || c == '-');
+    if label_ok && id_ok { Ok((label, id)) } else { Err(bad()) }
+}
+
+/// The script reading or removing a prompt file on its host, for `host_bash`.
+fn prompt_script(cmd: &str, id: &str) -> String {
+    format!("{cmd} \"${{XDG_STATE_HOME:-$HOME/.local/state}}/{PROMPT_DIR}/{id}\"\n")
+}
+
+fn fetch_prompt(prompt_ref: &str) -> Result<String, String> {
+    let (label, id) = parse_prompt_ref(prompt_ref)?;
+    let out = host_bash(label, &prompt_script("cat", id)).ok_or_else(|| format!("can't reach {label} for the prompt"))?;
+    if !out.status.success() {
+        return Err(format!("prompt {id} is missing on {label}"));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+fn discard_prompt(prompt_ref: &str) {
+    let Ok((label, id)) = parse_prompt_ref(prompt_ref) else { return };
+    if !host_bash(label, &prompt_script("rm -f", id)).is_some_and(|o| o.status.success()) {
+        log(&format!("could not remove prompt {id} on {label}"));
+    }
+}
+
 // ---------------------------------------------------------------- picker
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Focus {
     Project,
     Name,
+    Prompt,
 }
+
+/// Text rows the prompt box grows between; longer prompts scroll to their end.
+const PROMPT_MIN_ROWS: u16 = 3;
+const PROMPT_MAX_ROWS: u16 = 6;
+/// The prompt box around its text: soft top and bottom edges, a gap and the
+/// chip row.
+const PROMPT_CHROME_ROWS: u16 = 4;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Item {
@@ -282,6 +356,12 @@ struct App {
     focus: Focus,
     query: String,
     name: String,
+    prompt: String,
+    /// This picker's prompt file reference, `LABEL:ID`.
+    prompt_ref: String,
+    /// The prompt as last saved, and whether saving it worked.
+    saved_prompt: String,
+    prompt_saved: bool,
     matcher: Matcher,
     rows: Vec<Item>,
     hits: HashMap<usize, (Vec<usize>, Vec<usize>)>,
@@ -290,6 +370,8 @@ struct App {
     list_area: Rect,
     field_areas: Vec<(Focus, Rect)>,
     reported: Option<String>,
+    /// Smooth prompt-box corners, when the terminal does kitty graphics.
+    corners: Option<chrome::Corners>,
 }
 
 impl App {
@@ -310,7 +392,11 @@ impl App {
             focus: Focus::Project,
             query: String::new(),
             name: String::new(),
-            matcher: Matcher::new(Config::DEFAULT.match_paths()),
+            prompt: String::new(),
+            prompt_ref: format!("{}:{}-{}", local_label(), std::process::id(), now()),
+            saved_prompt: String::new(),
+            prompt_saved: true,
+            matcher:Matcher::new(Config::DEFAULT.match_paths()),
             rows: Vec::new(),
             hits: HashMap::new(),
             selected: None,
@@ -318,6 +404,7 @@ impl App {
             list_area: Rect::default(),
             field_areas: Vec::new(),
             reported: None,
+            corners: None,
         };
         app.refilter();
         app
@@ -414,15 +501,21 @@ impl App {
         self.selected = Some(at);
     }
 
-    fn toggle_focus(&mut self) {
-        self.focus = match self.focus {
-            Focus::Project => Focus::Name,
-            Focus::Name => Focus::Project,
+    fn next_focus(&mut self, forward: bool) {
+        self.focus = match (self.focus, forward) {
+            (Focus::Project, true) | (Focus::Prompt, false) => Focus::Name,
+            (Focus::Name, true) | (Focus::Project, false) => Focus::Prompt,
+            (Focus::Prompt, true) | (Focus::Name, false) => Focus::Project,
         };
     }
 
+    /// The prompt as sent: surrounding blank space dropped.
+    fn prompt_text(&self) -> &str {
+        self.prompt.trim()
+    }
+
     /// What Enter would spawn, as the config's title protocol expects; empty
-    /// while the form is incomplete.
+    /// while the form is incomplete or the prompt couldn't be saved.
     fn pick(&self) -> String {
         let (Some(project), Some(host)) = (self.project(), self.hosts.get(self.host)) else {
             return String::new();
@@ -430,16 +523,69 @@ impl App {
         if name_problem(&self.name).is_some() {
             return String::new();
         }
-        format!(
+        let mut pick = format!(
             "{}/{}/{}/{}",
             hex(host),
             hex(&project.path),
             hex(&self.name),
             HARNESSES[self.harness]
-        )
+        );
+        if !self.prompt_text().is_empty() {
+            if !self.prompt_saved {
+                return String::new();
+            }
+            pick = format!("{pick}/{}", hex(&self.prompt_ref));
+        }
+        pick
+    }
+
+    /// Keep the prompt file in step with the field; an empty prompt has none.
+    fn save_prompt(&mut self) {
+        let text = self.prompt_text().to_string();
+        if text == self.saved_prompt {
+            return;
+        }
+        let Ok((_, id)) = parse_prompt_ref(&self.prompt_ref) else {
+            self.prompt_saved = false;
+            return;
+        };
+        let dir = prompt_dir();
+        let path = dir.join(id);
+        self.prompt_saved = if text.is_empty() {
+            match std::fs::remove_file(&path) {
+                Err(e) if e.kind() != io::ErrorKind::NotFound => false,
+                _ => true,
+            }
+        } else {
+            // Atomically, so a launch never reads half a prompt.
+            let tmp = dir.join(format!("{id}.tmp"));
+            std::fs::create_dir_all(&dir)
+                .and_then(|_| std::fs::write(&tmp, &text))
+                .and_then(|_| std::fs::rename(&tmp, &path))
+                .is_ok()
+        };
+        if self.prompt_saved {
+            self.saved_prompt = text;
+        }
+    }
+
+    fn paste(&mut self, text: &str) {
+        let text = text.replace("\r\n", "\n").replace('\r', "\n");
+        match self.focus {
+            Focus::Project => {
+                self.query.extend(text.chars().filter(|c| !c.is_control()));
+                self.refilter();
+            }
+            Focus::Name => self.name.extend(text.chars().filter_map(name_char)),
+            Focus::Prompt => {
+                let text = text.replace('\t', "    ");
+                self.prompt.extend(text.chars().filter(|&c| c == '\n' || !c.is_control()));
+            }
+        }
     }
 
     fn report(&mut self) -> io::Result<()> {
+        self.save_prompt();
         let pick = self.pick();
         if self.reported.as_deref() != Some(&pick) {
             let mut out = io::stdout();
@@ -456,7 +602,8 @@ impl App {
         let page = (self.list_area.height as isize - 2).max(1);
         match k.code {
             KeyCode::Char('c') if ctrl => return false,
-            KeyCode::Tab | KeyCode::BackTab => self.toggle_focus(),
+            KeyCode::Tab => self.next_focus(true),
+            KeyCode::BackTab => self.next_focus(false),
             // Overrides for the defaults: host starts at auto, harness at claude.
             KeyCode::Char('o') if ctrl => self.host = (self.host + 1) % self.hosts.len().max(1),
             KeyCode::Char('t') if ctrl => self.harness = (self.harness + 1) % HARNESSES.len(),
@@ -503,7 +650,22 @@ impl App {
                             self.name.push(c);
                         }
                     }
-                    KeyCode::Up => self.toggle_focus(),
+                    KeyCode::Up => self.focus = Focus::Project,
+                    KeyCode::Down => self.focus = Focus::Prompt,
+                    _ => {}
+                },
+                // Rex's spawn mode takes plain Enter to launch, so a newline
+                // is alt- or shift-Enter (or arrives in a paste).
+                Focus::Prompt => match k.code {
+                    KeyCode::Char('u') if ctrl => self.prompt.clear(),
+                    KeyCode::Char('w') if ctrl => delete_word(&mut self.prompt),
+                    KeyCode::Backspace if alt || ctrl => delete_word(&mut self.prompt),
+                    KeyCode::Backspace => {
+                        self.prompt.pop();
+                    }
+                    KeyCode::Enter => self.prompt.push('\n'),
+                    KeyCode::Char(c) if !ctrl && !alt => self.prompt.push(c),
+                    KeyCode::Up => self.focus = Focus::Name,
                     _ => {}
                 },
             },
@@ -552,6 +714,10 @@ impl App {
             .style(Style::new().bg(p.base));
         let inner = frame.inner(area).inner(Margin::new(2, 1));
         f.render_widget(frame, area);
+        // Everything but the list (at least 3 rows) and the prompt's text is
+        // fixed; the prompt box grows only into what the list can spare.
+        let spare = inner.height.saturating_sub(10 + 3 + PROMPT_CHROME_ROWS);
+        let prompt_rows = self.prompt_rows(prompt_width(inner.width)).min(spare.max(1));
         let [search, rule1, _, body, _, rule2, _, form, _, footer] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Length(1),
@@ -560,7 +726,7 @@ impl App {
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
-            Constraint::Length(2),
+            Constraint::Length(2 + prompt_rows + PROMPT_CHROME_ROWS),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
@@ -571,7 +737,7 @@ impl App {
         self.field_areas.clear();
         self.draw_search(f, search);
         self.draw_list(f, body);
-        self.draw_form(f, form);
+        self.draw_form(f, form, prompt_rows);
         self.draw_footer(f, footer);
     }
 
@@ -740,9 +906,20 @@ impl App {
         }
     }
 
-    fn draw_form(&mut self, f: &mut Frame, area: Rect) {
-        let [name_row, runs_row]: [Rect; 2] = Layout::vertical([Constraint::Length(1); 2]).areas(area);
+    /// Text rows the prompt box needs for its prompt at `width` columns.
+    fn prompt_rows(&self, width: usize) -> u16 {
+        (wrap(&self.prompt, width).len() as u16).clamp(PROMPT_MIN_ROWS, PROMPT_MAX_ROWS)
+    }
+
+    fn draw_form(&mut self, f: &mut Frame, area: Rect, prompt_rows: u16) {
+        let [name_row, _, card]: [Rect; 3] = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(prompt_rows + PROMPT_CHROME_ROWS),
+        ])
+        .areas(area);
         self.field_areas.push((Focus::Name, name_row));
+        self.field_areas.push((Focus::Prompt, card));
         let p = &self.p;
         let label_w = 11u16;
         let focused = self.focus == Focus::Name;
@@ -782,7 +959,71 @@ impl App {
             f.render_widget(Line::from(Span::styled(hint, Style::new().fg(color))).right_aligned(), name_row);
         }
 
-        // Where and how it runs: defaults, with their override keys.
+        self.draw_prompt(f, card, prompt_rows);
+    }
+
+    /// The prompt box: a filled card with soft half-block edges holding the
+    /// prompt, wrapped and scrolled so its end (the cursor) stays in view,
+    /// over a row of chips for where and how the work runs and the spawn
+    /// button.
+    fn draw_prompt(&self, f: &mut Frame, card: Rect, rows: u16) {
+        let p = &self.p;
+        if card.height < PROMPT_CHROME_ROWS + 1 {
+            return;
+        }
+        let rows = rows.min(card.height - PROMPT_CHROME_ROWS);
+        let focused = self.focus == Focus::Prompt;
+        let fill = if focused { p.overlay } else { p.surface };
+        let w = card.width as usize;
+        if w < 4 {
+            return;
+        }
+        let buf = f.buffer_mut();
+        buf.set_style(Rect { y: card.y + 1, height: card.height - 2, ..card }, Style::new().bg(fill));
+        let edge = |l: &str, mid: &str, r: &str| {
+            Line::from(vec![
+                Span::styled(l.to_string(), Style::new().fg(fill).bg(p.base)),
+                Span::styled(mid.repeat(w - 2), Style::new().fg(fill).bg(p.base)),
+                Span::styled(r.to_string(), Style::new().fg(fill).bg(p.base)),
+            ])
+        };
+        // Square corners unless the terminal can show rounded ones; quadrant
+        // blocks would leave a step.
+        f.render_widget(edge("▄", "▄", "▄"), Rect { height: 1, ..card });
+        let bottom = card.y + card.height - 1;
+        f.render_widget(edge("▀", "▀", "▀"), Rect { y: bottom, height: 1, ..card });
+        if let Some(corners) = &self.corners {
+            let right = card.x + card.width - 1;
+            for (x, y, corner) in [
+                (card.x, card.y, chrome::Corner::TopLeft),
+                (right, card.y, chrome::Corner::TopRight),
+                (card.x, bottom, chrome::Corner::BottomLeft),
+                (right, bottom, chrome::Corner::BottomRight),
+            ] {
+                corners.put(f.buffer_mut(), x, y, corner, fill, p.base);
+            }
+        }
+
+        let text = Rect { x: card.x + 2, y: card.y + 1, width: card.width.saturating_sub(4), height: rows };
+        let lines = wrap(&self.prompt, prompt_width(card.width));
+        let skip = lines.len().saturating_sub(rows as usize);
+        if self.prompt.is_empty() {
+            let hint = "What should the agent do? (optional)";
+            f.render_widget(Line::styled(hint, Style::new().fg(p.muted).bg(fill)), Rect { height: 1, ..text });
+        }
+        for (i, line) in lines.iter().skip(skip).take(rows as usize).enumerate() {
+            let row = Rect { y: text.y + i as u16, height: 1, ..text };
+            f.render_widget(Line::styled(line.clone(), Style::new().fg(p.text).bg(fill)), row);
+        }
+        if focused {
+            let row = lines.len() - 1 - skip;
+            let col = str_width(lines.last().map(String::as_str).unwrap_or(""));
+            f.set_cursor_position((text.x + col as u16, text.y + row as u16));
+        }
+
+        // Chips: where and how it runs (changed defaults in gold), the
+        // profile, and the spawn button on the right.
+        let chips = Rect { x: card.x + 1, y: card.y + 2 + rows, width: card.width.saturating_sub(2), height: 1 };
         let host = self.hosts.get(self.host).map(String::as_str).unwrap_or(AUTO);
         let host_text = match self.project() {
             _ if host != AUTO => host.to_string(),
@@ -793,23 +1034,41 @@ impl App {
             }
             None => "auto".to_string(),
         };
-        let value = |text: String, changed: bool| {
-            Span::styled(text, Style::new().fg(if changed { p.gold } else { p.text }))
-        };
-        let dim = |text: &str| Span::styled(text.to_string(), Style::new().fg(p.muted));
-        let mut spans = vec![
-            Span::raw(" "),
-            Span::styled(format!("{:<width$}", "Runs on", width = label_w as usize - 1), Style::new().fg(p.subtle)),
-            value(host_text, host != AUTO),
-            dim(" with "),
-            value(HARNESSES[self.harness].to_string(), self.harness != 0),
-        ];
+        let chip_bg = p.hl_med;
+        let changed = |on: bool| Style::new().fg(if on { p.gold } else { p.text });
+        let mut left = pill(
+            vec![Span::styled("\u{f048b} ", Style::new().fg(p.iris)), Span::styled(host_text, changed(host != AUTO))],
+            chip_bg,
+            fill,
+        );
+        left.push(Span::raw(" "));
+        left.extend(pill(
+            vec![Span::styled(HARNESSES[self.harness].to_string(), changed(self.harness != 0))],
+            chip_bg,
+            fill,
+        ));
         if let Some(project) = self.project() {
             let color = if project.profile == "work" { p.gold } else { p.foam };
-            spans.push(dim(" as "));
-            spans.push(Span::styled(project.profile.clone(), Style::new().fg(color)));
+            left.push(Span::raw(" "));
+            left.extend(pill(vec![Span::styled(project.profile.clone(), Style::new().fg(color))], chip_bg, fill));
         }
-        f.render_widget(Line::from(spans), runs_row);
+        let ready = !self.pick().is_empty();
+        let (send_bg, send_fg) = if ready { (p.pine, p.text) } else { (chip_bg, p.muted) };
+        let mut right = Vec::new();
+        if skip > 0 {
+            right.push(Span::styled(format!("+{skip} lines above  "), Style::new().fg(p.muted)));
+        }
+        right.extend(pill(
+            vec![Span::styled("⏎ spawn", Style::new().fg(send_fg).add_modifier(Modifier::BOLD))],
+            send_bg,
+            fill,
+        ));
+        let left_w: usize = left.iter().map(|s| str_width(&s.content)).sum();
+        let right_w: usize = right.iter().map(|s| str_width(&s.content)).sum();
+        if left_w + right_w < chips.width as usize {
+            f.render_widget(Line::from(right).right_aligned(), chips);
+        }
+        f.render_widget(Line::from(left), chips);
     }
 
     fn draw_footer(&self, f: &mut Frame, area: Rect) {
@@ -824,11 +1083,21 @@ impl App {
         let ready = !self.pick().is_empty();
         let next = match self.focus {
             Focus::Project => "name",
-            Focus::Name => "project",
+            Focus::Name => "prompt",
+            Focus::Prompt => "project",
         };
         let mut hints: Vec<(&str, &str, Color)> = vec![("⇥", next, p.subtle)];
-        let spawn_label = if ready { "spawn" } else { "spawn (name it first)" };
+        let spawn_label = if ready {
+            "spawn"
+        } else if !self.prompt_saved {
+            "spawn (prompt not saved)"
+        } else {
+            "spawn (name it first)"
+        };
         hints.push(("⏎", spawn_label, if ready { p.pine } else { p.muted }));
+        if self.focus == Focus::Prompt {
+            hints.push(("⌥⏎", "newline", p.subtle));
+        }
         hints.push(("⌃O", "host", p.subtle));
         hints.push(("⌃T", "harness", p.subtle));
         hints.push(("esc", "close", p.subtle));
@@ -857,6 +1126,52 @@ fn delete_name_word(s: &mut String) {
     let trimmed = s.trim_end_matches(['-', '/']);
     let cut = trimmed.rfind(['-', '/']).map(|i| i + 1).unwrap_or(0);
     s.truncate(cut);
+}
+
+/// Columns of prompt text in a prompt box `card_width` wide: two of padding
+/// on each side, plus one so the cursor fits after a full row.
+fn prompt_width(card_width: u16) -> usize {
+    (card_width as usize).saturating_sub(5).max(1)
+}
+
+/// A rounded chip around `spans`, filled `bg`, sitting on `on`.
+fn pill(spans: Vec<Span<'static>>, bg: Color, on: Color) -> Vec<Span<'static>> {
+    let mut out = vec![Span::styled(CAP_L, Style::new().fg(bg).bg(on))];
+    out.extend(spans.into_iter().map(|s| {
+        let style = s.style.bg(bg);
+        s.style(style)
+    }));
+    out.push(Span::styled(CAP_R, Style::new().fg(bg).bg(on)));
+    out
+}
+
+/// `text` word-wrapped into display rows of at most `width` columns,
+/// newlines starting new rows; a word longer than a row is split. Spaces
+/// stay at the end of the row they follow, so the rows join back into the
+/// text. A full last row gets an empty one after it, where the cursor goes.
+fn wrap(text: &str, width: usize) -> Vec<String> {
+    let mut rows = Vec::new();
+    for line in text.split('\n') {
+        let mut row = String::new();
+        for c in line.chars() {
+            if str_width(&row) + c.width().unwrap_or(0) > width && !row.is_empty() && c != ' ' {
+                // Break after the row's last space, unless that leaves nothing.
+                match row.rfind(' ').map(|i| i + 1).filter(|&i| i < row.len()) {
+                    Some(i) if !row[..i].trim().is_empty() => {
+                        let rest = row.split_off(i);
+                        rows.push(std::mem::replace(&mut row, rest));
+                    }
+                    _ => rows.push(std::mem::take(&mut row)),
+                }
+            }
+            row.push(c);
+        }
+        rows.push(row);
+    }
+    if rows.last().is_some_and(|r| str_width(r) >= width) {
+        rows.push(String::new());
+    }
+    rows
 }
 
 fn str_width(s: &str) -> usize {
@@ -912,11 +1227,19 @@ fn highlight(text: &str, hits: &[usize], room: usize, keep_end: bool, base: Styl
 }
 
 fn run_picker(hosts: Vec<String>) -> io::Result<()> {
+    prune_prompts();
     let mut app = App::new(catalog(), hosts);
     let mut term = ratatui::init();
-    let _ = execute!(io::stdout(), EnableMouseCapture);
+    // Raw mode is on and nothing has read stdin yet: ask about graphics now.
+    if let Some(cell) = chrome::detect(Duration::from_millis(300)) {
+        app.corners = chrome::Corners::new(cell, &[app.p.overlay, app.p.surface], &mut io::stdout()).ok();
+    }
+    let _ = execute!(io::stdout(), EnableMouseCapture, EnableBracketedPaste);
     let result = picker_loop(&mut term, &mut app);
-    let _ = execute!(io::stdout(), DisableMouseCapture);
+    let _ = execute!(io::stdout(), DisableMouseCapture, DisableBracketedPaste);
+    if let Some(corners) = &app.corners {
+        let _ = corners.delete(&mut io::stdout());
+    }
     ratatui::restore();
     result
 }
@@ -940,6 +1263,7 @@ fn picker_loop(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
                 MouseEventKind::Down(MouseButton::Left) => app.click(m.column, m.row),
                 _ => {}
             },
+            Event::Paste(text) => app.paste(&text),
             _ => {}
         }
     }
@@ -1090,7 +1414,13 @@ fn choose_host(project: &Project) -> Result<(String, String), String> {
     Ok((best.host.clone(), why))
 }
 
-fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, String, String), String> {
+fn launch(
+    host: &str,
+    path: &str,
+    name: &str,
+    harness: &str,
+    prompt_ref: Option<&str>,
+) -> Result<(String, String, String), String> {
     let project = catalog()
         .into_iter()
         .find(|p| p.path == path)
@@ -1101,6 +1431,8 @@ fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, 
     if !HARNESSES.contains(&harness) {
         return Err(format!("unknown harness {harness}"));
     }
+    // Fetch the prompt first: without it the agent would start on nothing.
+    let prompt = prompt_ref.map(fetch_prompt).transpose()?.unwrap_or_default();
     let (branch, slug) = branch_and_slug(name);
     let host = if host == AUTO {
         let (chosen, why) = choose_host(&project)?;
@@ -1138,22 +1470,25 @@ fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, 
             .and_then(|s| s["session_id"].as_str())
             .map(String::from)
     });
-    let run = [
+    let mut run = vec![
         "rex-spawn", "--run", &project.profile, &project.path, name, harness, &project.clone_url,
     ];
+    if !prompt.is_empty() {
+        run.push(&prompt);
+    }
     // A new session gets the work as its first tab, not beside a default
     // shell tab.
     let (session, window_id) = match existing {
         Some(session) => {
             let mut args = vec!["window", "new", "-s", &session, &slug, "-c", &cwd, "--json", "--"];
-            args.extend(run);
+            args.extend(&run);
             let window = rex_json(host, &args)?;
             let window_id = window["window_id"].as_str().ok_or("rex window new returned no window_id")?;
             (session.clone(), window_id.to_string())
         }
         None => {
             let mut args = vec!["new", &project.name, "--window", &slug, "-c", &cwd, "--json", "--"];
-            args.extend(run);
+            args.extend(&run);
             let created = rex_json(host, &args)?;
             let session = created["session_id"].as_str().ok_or("rex new returned no session_id")?;
             let window_id = created["initial_windows"][0]["window_id"]
@@ -1162,6 +1497,10 @@ fn launch(host: &str, path: &str, name: &str, harness: &str) -> Result<(String, 
             (session.to_string(), window_id.to_string())
         }
     };
+    // The tab holds the prompt now.
+    if let Some(r) = prompt_ref {
+        discard_prompt(r);
+    }
     let task = serde_json::json!({
         "host": host,
         "session_id": session,
@@ -1612,7 +1951,7 @@ fn work_env() -> Result<Vec<(String, String)>, String> {
     Ok(env.into_iter().filter_map(|(k, v)| Some((k, v.as_str()?.to_string()))).collect())
 }
 
-fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str) -> ! {
+fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str, prompt: &str) -> ! {
     let dir = match prepare(path, name, clone_url) {
         Ok(worktree) => {
             // Move this process too: it is the tab's program while the agent
@@ -1632,6 +1971,14 @@ fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str) ->
                     }
                     Err(e) => eprintln!("\x1b[31mrex-spawn: work profile: {e}\x1b[0m"),
                 }
+            }
+            // Both harnesses start interactively with a positional prompt as
+            // the first message; `--` keeps one starting with - as text. Pi
+            // reads an argument starting with @ as a file even after `--`,
+            // so a leading space keeps that one text too.
+            if !prompt.is_empty() {
+                let prompt = if harness == "pi" && prompt.starts_with('@') { format!(" {prompt}") } else { prompt.to_string() };
+                agent.arg("--").arg(prompt);
             }
             if let Err(e) = agent.current_dir(&worktree).status() {
                 eprintln!("\x1b[31m{harness}: {e}\x1b[0m");
@@ -1653,18 +2000,20 @@ fn run(profile: &str, path: &str, name: &str, harness: &str, clone_url: &str) ->
 // ---------------------------------------------------------------- main
 
 const USAGE: &str = "usage: rex-spawn [--local LABEL]
-       rex-spawn --launch HOST PATH NAME HARNESS
-       rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL
+       rex-spawn --launch HOST PATH NAME HARNESS [PROMPT_REF]
+       rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL [PROMPT]
        rex-spawn --tasks
        rex-spawn --inbox TASKS_JSON [SESSION_ID/WINDOW_ID]
        rex-spawn --act review|discard|force-discard HOST SESSION_ID WINDOW_ID
 
 Without a mode, shows the spawn picker and reports the choice in the
-terminal title as rex-spawn:HOST/PATH/NAME/HARNESS. --local adds
-the config host's label to the dev hosts. --launch opens the work's tab on
-HOST (auto: the least busy dev host), records the task, and prints
-HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the worktree and runs the
-harness in the current tab. --tasks checks recorded tasks against their
+terminal title as rex-spawn:HOST/PATH/NAME/HARNESS[/PROMPT_REF], keeping
+a typed prompt in a file named by PROMPT_REF (LABEL:ID). --local adds
+the config host's label to the dev hosts. --launch collects the prompt,
+opens the work's tab on HOST (auto: the least busy dev host), records the
+task, and prints HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the
+worktree and runs the harness in the current tab, with PROMPT as its first
+message. --tasks checks recorded tasks against their
 hosts and prints them as JSON with live agent status. --inbox shows open
 tasks from that JSON, most urgent first (starting on the given tab's task),
 and reports the highlighted one as
@@ -1677,14 +2026,15 @@ fn main() -> io::Result<()> {
     let a: Vec<&str> = args.iter().map(String::as_str).collect();
     match a.as_slice() {
         ["-h"] | ["--help"] => println!("{USAGE}"),
-        ["--launch", host, path, name, harness] => match launch(host, path, name, harness) {
+        ["--launch", host, path, name, harness, prompt_ref @ ..] if prompt_ref.len() <= 1 => match launch(host, path, name, harness, prompt_ref.first().copied()) {
             Ok((host, session, window)) => print!("{host}\t{session}\t{window}"),
             Err(e) => {
                 eprintln!("rex-spawn: {e}");
                 std::process::exit(1);
             }
         },
-        ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url),
+        ["--run", profile, path, name, harness, clone_url] => run(profile, path, name, harness, clone_url, ""),
+        ["--run", profile, path, name, harness, clone_url, prompt] => run(profile, path, name, harness, clone_url, prompt),
         ["--inbox", json] => inbox::run(json, None)?,
         ["--inbox", json, current] => inbox::run(json, Some(current))?,
         ["--act", action, host, session, window] => match actions::act(action, host, session, window) {

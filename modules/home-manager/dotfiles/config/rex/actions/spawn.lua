@@ -1,7 +1,8 @@
--- Spawn agent work with rex-spawn: a catalog project and a work name; the
--- host defaults to the project's pool (see rex-spawn's `pool`) and the harness to Claude. The
+-- Spawn agent work with rex-spawn: a catalog project, a work name and an
+-- optional first prompt for the agent; the host defaults to the project's pool (see rex-spawn's `pool`) and the harness to Claude. The
 -- picker runs in a float on the focused session's host and reports its
--- choice in the terminal title; Enter launches from this
+-- choice in the terminal title (a prompt as a reference to a file on the
+-- picker's host, which --launch collects); Enter launches from this
 -- config host, the only one that can reach every Rex host. The new tab runs
 -- `rex-spawn --run` on the target host, which makes the worktree with wt and
 -- starts the agent there. See packages/rex-spawn/src/main.rs.
@@ -61,15 +62,20 @@ rex.action{
     local pick = rex.block.call("com.superlogical.terminal", "title", {
       session_id = ctx.session_id, block_id = block_id,
     })
-    local host, path, name, harness = ((pick and pick.title) or "")
-      :match("^rex%-spawn:(%x+)/(%x+)/(%x+)/(%a+)$")
+    local title = (pick and pick.title) or ""
+    local host, path, name, harness = title:match("^rex%-spawn:(%x+)/(%x+)/(%x+)/(%a+)$")
+    local prompt_ref
+    if host == nil then
+      host, path, name, harness, prompt_ref = title:match("^rex%-spawn:(%x+)/(%x+)/(%x+)/(%a+)/(%x+)$")
+    end
     -- An incomplete form reports nothing; keep the float open.
     if host == nil then return end
     close_picker(ctx)
     host = util.unhex(host)
     local env = util.cli_env()
-    local r, err = rex.exec({ "rex-spawn", "--launch", host, util.unhex(path), util.unhex(name), harness },
-      { env = env })
+    local argv = { "rex-spawn", "--launch", host, util.unhex(path), util.unhex(name), harness }
+    if prompt_ref ~= nil then table.insert(argv, util.unhex(prompt_ref)) end
+    local r, err = rex.exec(argv, { env = env })
     if r == nil then error(err, 0) end
     if not r.ok then error(r.stderr, 0) end
     -- With host "auto", --launch picks the host and reports it first.
