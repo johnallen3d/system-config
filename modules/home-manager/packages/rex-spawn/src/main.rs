@@ -7,8 +7,9 @@
 //!   the harness to Claude, both overridable with ctrl-o and ctrl-t. The
 //!   picker reports the choice in the terminal title as
 //!   `rex-spawn:HOST/PATH/NAME/HARNESS[/PROMPT_REF]` (all but the harness
-//!   hex encoded); the config's `spawn` mode turns Enter into the launch and
-//!   Escape into closing the float, as with rex-tab-picker. Titles are
+//!   hex encoded); the config's `spawn` mode turns Enter into the launch, as
+//!   with rex-tab-picker. Escape reaches the picker, which exits (closing
+//!   the float) but asks first when the prompt has text. Titles are
 //!   capped at about 1 KiB, too little for a prompt, so the optional prompt
 //!   lives in a file on the picker's host (see `prompt_dir`), rewritten as
 //!   it is typed because the picker never sees the Enter that launches, and
@@ -55,8 +56,8 @@ use std::time::Duration;
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 use ratatui::crossterm::event::{
-    self, DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-    EnableFocusChange, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEventKind,
+    self, DisableBracketedPaste, DisableFocusChange, EnableBracketedPaste, EnableFocusChange, Event, KeyCode, KeyEvent,
+    KeyEventKind, KeyModifiers,
 };
 use ratatui::crossterm::execute;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
@@ -64,6 +65,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType};
 use ratatui::{DefaultTerminal, Frame};
+use ratatui_textarea::{CursorMove, TextArea, WrapMode};
 use unicode_width::UnicodeWidthChar;
 
 // ---------------------------------------------------------------- palette
@@ -71,6 +73,7 @@ use unicode_width::UnicodeWidthChar;
 /// Colours come from the managed theme at build time (`RTP_PALETTE`), as in
 /// rex-tab-picker. Every cell gets an explicit background: a Rex float shows
 /// the pane beneath through cells left on the default background.
+#[derive(Clone, Copy)]
 struct Palette {
     base: Color,
     surface: Color,
@@ -358,8 +361,9 @@ struct App {
     harness: usize,
     focus: Focus,
     query: String,
-    name: String,
-    prompt: String,
+    /// The name and prompt fields: readline-style editors (see `text_key`).
+    name: TextArea<'static>,
+    prompt: TextArea<'static>,
     /// This picker's prompt file reference, `LABEL:ID`.
     prompt_ref: String,
     /// The prompt as last saved, and whether saving it worked.
@@ -371,14 +375,13 @@ struct App {
     selected: Option<usize>,
     offset: usize,
     list_area: Rect,
-    field_areas: Vec<(Focus, Rect)>,
     reported: Option<String>,
     /// Smooth prompt-box corners, when the terminal does kitty graphics.
     corners: Option<chrome::Corners>,
-    /// Whether the prompt was just copied, for the footer.
-    copied: bool,
     /// Whether the terminal lost focus since spawn mode was last entered.
     away: bool,
+    /// Whether Escape was pressed once with a prompt, so the next one closes.
+    confirm_close: bool,
 }
 
 impl App {
@@ -398,8 +401,8 @@ impl App {
             harness: 0,
             focus: Focus::Project,
             query: String::new(),
-            name: String::new(),
-            prompt: String::new(),
+            name: text_field(),
+            prompt: text_field(),
             prompt_ref: format!("{}:{}-{}", local_label(), std::process::id(), now()),
             saved_prompt: String::new(),
             prompt_saved: true,
@@ -409,11 +412,10 @@ impl App {
             selected: None,
             offset: 0,
             list_area: Rect::default(),
-            field_areas: Vec::new(),
             reported: None,
             corners: None,
-            copied: false,
             away: false,
+            confirm_close: false,
         };
         app.refilter();
         app
@@ -518,9 +520,14 @@ impl App {
         };
     }
 
+    /// The work name as typed.
+    fn name_text(&self) -> String {
+        self.name.lines().concat()
+    }
+
     /// The prompt as sent: surrounding blank space dropped.
-    fn prompt_text(&self) -> &str {
-        self.prompt.trim()
+    fn prompt_text(&self) -> String {
+        self.prompt.lines().join("\n").trim().to_string()
     }
 
     /// What Enter would spawn, as the config's title protocol expects; empty
@@ -529,14 +536,15 @@ impl App {
         let (Some(project), Some(host)) = (self.project(), self.hosts.get(self.host)) else {
             return String::new();
         };
-        if name_problem(&self.name).is_some() {
+        let name = self.name_text();
+        if name_problem(&name).is_some() {
             return String::new();
         }
         let mut pick = format!(
             "{}/{}/{}/{}",
             hex(host),
             hex(&project.path),
-            hex(&self.name),
+            hex(&name),
             HARNESSES[self.harness]
         );
         if !self.prompt_text().is_empty() {
@@ -550,7 +558,7 @@ impl App {
 
     /// Keep the prompt file in step with the field; an empty prompt has none.
     fn save_prompt(&mut self) {
-        let text = self.prompt_text().to_string();
+        let text = self.prompt_text();
         if text == self.saved_prompt {
             return;
         }
@@ -578,59 +586,8 @@ impl App {
         }
     }
 
-    /// Bring back the prompt of a picker that exited without spawning, such
-    /// as one closed with ctrl-c. Its file moves to this picker's id when
-    /// the prompt is next saved. Files younger than a few seconds may belong
-    /// to a launch that hasn't collected them yet, so they're left alone.
-    fn recover_prompt(&mut self) {
-        let Ok((_, own)) = parse_prompt_ref(&self.prompt_ref) else { return };
-        let Ok(entries) = std::fs::read_dir(prompt_dir()) else { return };
-        let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            let Some(pid) = name.split_once('-').and_then(|(pid, rest)| {
-                rest.chars().all(|c| c.is_ascii_digit()).then(|| pid.parse::<i32>().ok()).flatten()
-            }) else {
-                continue;
-            };
-            if name == own || pid_alive(pid) {
-                continue;
-            }
-            let Ok(modified) = entry.metadata().and_then(|m| m.modified()) else { continue };
-            if modified.elapsed().is_ok_and(|age| age < Duration::from_secs(10)) {
-                continue;
-            }
-            if newest.as_ref().is_none_or(|(t, _)| modified > *t) {
-                newest = Some((modified, entry.path()));
-            }
-        }
-        let Some((_, path)) = newest else { return };
-        if let Ok(text) = std::fs::read_to_string(&path) {
-            if !text.trim().is_empty() {
-                self.prompt = text;
-                self.save_prompt();
-                if self.prompt_saved {
-                    let _ = std::fs::remove_file(&path);
-                }
-            }
-        }
-    }
-
-    /// Copy the prompt to the clipboard with OSC 52.
-    fn copy_prompt(&mut self) -> io::Result<()> {
-        let text = self.prompt_text();
-        if text.is_empty() {
-            return Ok(());
-        }
-        let mut out = io::stdout();
-        write!(out, "\x1b]52;c;{}\x07", chrome::base64(text.as_bytes()))?;
-        out.flush()?;
-        self.copied = true;
-        Ok(())
-    }
-
     /// Switching away from Rex drops the app's spawn mode, and without it
-    /// Enter and Escape reach the picker instead of the config's actions.
+    /// Enter reaches the picker instead of the config's launch action.
     /// Enter the mode again once the terminal has focus back.
     fn rearm_mode(&mut self) {
         if !std::mem::take(&mut self.away) {
@@ -657,10 +614,12 @@ impl App {
                 self.query.extend(text.chars().filter(|c| !c.is_control()));
                 self.refilter();
             }
-            Focus::Name => self.name.extend(text.chars().filter_map(name_char)),
+            Focus::Name => {
+                self.name.insert_str(text.chars().filter_map(name_char).collect::<String>());
+            }
             Focus::Prompt => {
                 let text = text.replace('\t', "    ");
-                self.prompt.extend(text.chars().filter(|&c| c == '\n' || !c.is_control()));
+                self.prompt.insert_str(text.chars().filter(|&c| c == '\n' || !c.is_control()).collect::<String>());
             }
         }
     }
@@ -680,23 +639,39 @@ impl App {
     fn key(&mut self, k: KeyEvent) -> bool {
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         let alt = k.modifiers.contains(KeyModifiers::ALT);
+        if !(k.code == KeyCode::Esc || (ctrl && k.code == KeyCode::Char('c'))) {
+            self.confirm_close = false;
+        }
         let page = (self.list_area.height as isize - 2).max(1);
-        self.copied = false;
+        // The prompt keeps ctrl-n/p/j/k as readline's line keys; elsewhere
+        // they move through the project list, like the tab picker. The name
+        // keeps ctrl-k for deleting to the end.
+        let list_key = match self.focus {
+            Focus::Project => matches!(k.code, KeyCode::Char('n' | 'p' | 'j' | 'k')),
+            Focus::Name => matches!(k.code, KeyCode::Char('n' | 'p' | 'j')),
+            Focus::Prompt => false,
+        };
         match k.code {
-            KeyCode::Char('c') if ctrl => return false,
-            // Spawn mode takes Escape; reaching here means the mode is gone.
-            KeyCode::Esc => return false,
-            KeyCode::Char('y') if ctrl => {
-                let _ = self.copy_prompt();
+            // As in a shell, ctrl-c in the prompt throws its text away (ctrl-z
+            // brings it back); with nothing to clear, it closes the picker.
+            KeyCode::Char('c') if ctrl && self.focus == Focus::Prompt && !self.prompt.is_empty() => {
+                self.prompt.clear();
+            }
+            // Escape (or ctrl-c outside a non-empty prompt) closes, but a
+            // prompt would be lost, so then it takes a second press.
+            KeyCode::Esc | KeyCode::Char('c') if k.code == KeyCode::Esc || ctrl => {
+                if self.prompt_text().is_empty() || std::mem::take(&mut self.confirm_close) {
+                    return false;
+                }
+                self.confirm_close = true;
             }
             KeyCode::Tab => self.next_focus(true),
             KeyCode::BackTab => self.next_focus(false),
             // Overrides for the defaults: host starts at auto, harness at claude.
             KeyCode::Char('o') if ctrl => self.host = (self.host + 1) % self.hosts.len().max(1),
             KeyCode::Char('t') if ctrl => self.harness = (self.harness + 1) % HARNESSES.len(),
-            // The project list keeps ctrl-n/p everywhere, like the tab picker.
-            KeyCode::Char('p') | KeyCode::Char('k') if ctrl => self.step(-1),
-            KeyCode::Char('n') | KeyCode::Char('j') if ctrl => self.step(1),
+            KeyCode::Char('p' | 'k') if ctrl && list_key => self.step(-1),
+            KeyCode::Char('n' | 'j') if ctrl && list_key => self.step(1),
             _ => match self.focus {
                 Focus::Project => match k.code {
                     KeyCode::Char('u') if ctrl => {
@@ -726,58 +701,25 @@ impl App {
                     _ => {}
                 },
                 Focus::Name => match k.code {
-                    KeyCode::Char('u') if ctrl => self.name.clear(),
-                    KeyCode::Char('w') if ctrl => delete_name_word(&mut self.name),
-                    KeyCode::Backspace if alt || ctrl => delete_name_word(&mut self.name),
-                    KeyCode::Backspace => {
-                        self.name.pop();
-                    }
-                    KeyCode::Char(c) if !ctrl && !alt => {
-                        if let Some(c) = name_char(c) {
-                            self.name.push(c);
-                        }
-                    }
                     KeyCode::Up => self.focus = Focus::Project,
                     KeyCode::Down => self.focus = Focus::Prompt,
-                    _ => {}
+                    KeyCode::Enter => {}
+                    KeyCode::Char(c) if !ctrl && !alt => {
+                        if let Some(c) = name_char(c) {
+                            self.name.insert_char(c);
+                        }
+                    }
+                    _ => text_key(&mut self.name, k),
                 },
                 // Rex's spawn mode takes plain Enter to launch, so a newline
                 // is alt- or shift-Enter (or arrives in a paste).
                 Focus::Prompt => match k.code {
-                    KeyCode::Char('u') if ctrl => self.prompt.clear(),
-                    KeyCode::Char('w') if ctrl => delete_word(&mut self.prompt),
-                    KeyCode::Backspace if alt || ctrl => delete_word(&mut self.prompt),
-                    KeyCode::Backspace => {
-                        self.prompt.pop();
-                    }
-                    KeyCode::Enter => self.prompt.push('\n'),
-                    KeyCode::Char(c) if !ctrl && !alt => self.prompt.push(c),
-                    KeyCode::Up => self.focus = Focus::Name,
-                    _ => {}
+                    KeyCode::Up if self.prompt.screen_cursor().row == 0 => self.focus = Focus::Name,
+                    _ => text_key(&mut self.prompt, k),
                 },
             },
         }
         true
-    }
-
-    fn click(&mut self, x: u16, y: u16) {
-        let inside = |a: Rect| x >= a.x && x < a.x + a.width && y >= a.y && y < a.y + a.height;
-        if let Some((focus, _)) = self.field_areas.iter().find(|(_, a)| inside(*a)).copied() {
-            self.focus = focus;
-            return;
-        }
-        let a = self.list_area;
-        if !inside(a) {
-            return;
-        }
-        let mut row = self.offset + (y - a.y) as usize;
-        if matches!(self.rows.get(row), Some(Item::Group(_))) {
-            row += 1;
-        }
-        if self.rows.get(row).is_some_and(is_project) {
-            self.selected = Some(row);
-            self.focus = Focus::Project;
-        }
     }
 
     // ------------------------------------------------------------ drawing
@@ -821,7 +763,6 @@ impl App {
         let rule = Style::new().fg(self.p.overlay);
         f.render_widget(Line::styled("─".repeat(rule1.width as usize), rule), rule1);
         f.render_widget(Line::styled("─".repeat(rule2.width as usize), rule), rule2);
-        self.field_areas.clear();
         self.draw_search(f, search);
         self.draw_list(f, body);
         self.draw_form(f, form, prompt_rows);
@@ -829,7 +770,6 @@ impl App {
     }
 
     fn draw_search(&mut self, f: &mut Frame, area: Rect) {
-        self.field_areas.push((Focus::Project, area));
         let p = &self.p;
         let focused = self.focus == Focus::Project;
         let typing = !self.query.is_empty();
@@ -995,7 +935,7 @@ impl App {
 
     /// Text rows the prompt box needs for its prompt at `width` columns.
     fn prompt_rows(&self, width: usize) -> u16 {
-        (wrap(&self.prompt, width).len() as u16).clamp(PROMPT_MIN_ROWS, PROMPT_MAX_ROWS)
+        (wrap(&self.prompt.lines().join("\n"), width).len() as u16).clamp(PROMPT_MIN_ROWS, PROMPT_MAX_ROWS)
     }
 
     fn draw_form(&mut self, f: &mut Frame, area: Rect, prompt_rows: u16) {
@@ -1005,9 +945,7 @@ impl App {
             Constraint::Length(prompt_rows + PROMPT_CHROME_ROWS),
         ])
         .areas(area);
-        self.field_areas.push((Focus::Name, name_row));
-        self.field_areas.push((Focus::Prompt, card));
-        let p = &self.p;
+        let p = self.p;
         let label_w = 11u16;
         let focused = self.focus == Focus::Name;
 
@@ -1019,31 +957,39 @@ impl App {
                 if focused { Style::new().fg(p.iris).add_modifier(Modifier::BOLD) } else { Style::new().fg(p.subtle) },
             ),
         ];
-        if self.name.is_empty() {
-            spans.push(Span::styled(if focused { "api-work, fix/login …" } else { "—" }, Style::new().fg(p.muted)));
-        } else {
-            spans.push(Span::styled(self.name.clone(), Style::new().fg(p.text)));
+        let name = self.name_text();
+        if name.is_empty() && !focused {
+            spans.push(Span::styled("—", Style::new().fg(p.muted)));
         }
         f.render_widget(Line::from(spans), name_row);
-        if focused {
-            let x = name_row.x + label_w + str_width(&self.name) as u16;
-            if x < name_row.x + name_row.width {
-                f.set_cursor_position((x, name_row.y));
-            }
-        }
         // Right-aligned hint, shortened or dropped so it never covers the name.
-        let typed_w = if self.name.is_empty() { 0 } else { str_width(&self.name) };
-        let room = (name_row.width as usize).saturating_sub(label_w as usize + typed_w + 2);
-        let (candidates, color) = match name_problem(&self.name) {
-            Some(problem) if !self.name.is_empty() => (vec![format!("{problem} ")], p.love),
+        let room = (name_row.width as usize).saturating_sub(label_w as usize + str_width(&name) + 2);
+        let (candidates, color) = match name_problem(&name) {
+            Some(problem) if !name.is_empty() => (vec![format!("{problem} ")], p.love),
             Some(_) => (vec![], p.muted),
             None => {
-                let (branch, slug) = branch_and_slug(&self.name);
+                let (branch, slug) = branch_and_slug(&name);
                 (vec![format!("{branch} · .worktrees/{slug} "), format!("{branch} ")], p.muted)
             }
         };
-        if let Some(hint) = candidates.into_iter().find(|h| str_width(h) <= room) {
+        let hint = candidates.into_iter().find(|h| str_width(h) <= room);
+        let hint_w = hint.as_deref().map(str_width).unwrap_or(0) as u16;
+        if let Some(hint) = hint {
             f.render_widget(Line::from(Span::styled(hint, Style::new().fg(color))).right_aligned(), name_row);
+        }
+        if focused || !name.is_empty() {
+            let field = Rect {
+                x: name_row.x + label_w,
+                width: name_row.width.saturating_sub(label_w + hint_w),
+                ..name_row
+            };
+            self.name.set_style(Style::new().fg(p.text).bg(p.base));
+            self.name.set_placeholder_text("api-work, fix/login …");
+            self.name.set_placeholder_style(Style::new().fg(p.muted).bg(p.base));
+            f.render_widget(&self.name, field);
+            if focused {
+                place_cursor(f, &self.name, field);
+            }
         }
 
         self.draw_prompt(f, card, prompt_rows);
@@ -1053,8 +999,8 @@ impl App {
     /// prompt, wrapped and scrolled so its end (the cursor) stays in view,
     /// over a row of chips for where and how the work runs and the spawn
     /// button.
-    fn draw_prompt(&self, f: &mut Frame, card: Rect, rows: u16) {
-        let p = &self.p;
+    fn draw_prompt(&mut self, f: &mut Frame, card: Rect, rows: u16) {
+        let p = self.p;
         if card.height < PROMPT_CHROME_ROWS + 1 {
             return;
         }
@@ -1092,21 +1038,14 @@ impl App {
         }
 
         let text = Rect { x: card.x + 2, y: card.y + 1, width: card.width.saturating_sub(4), height: rows };
-        let lines = wrap(&self.prompt, prompt_width(card.width));
-        let skip = lines.len().saturating_sub(rows as usize);
-        if self.prompt.is_empty() {
-            let hint = "What should the agent do? (optional)";
-            f.render_widget(Line::styled(hint, Style::new().fg(p.muted).bg(fill)), Rect { height: 1, ..text });
-        }
-        for (i, line) in lines.iter().skip(skip).take(rows as usize).enumerate() {
-            let row = Rect { y: text.y + i as u16, height: 1, ..text };
-            f.render_widget(Line::styled(line.clone(), Style::new().fg(p.text).bg(fill)), row);
-        }
+        self.prompt.set_style(Style::new().fg(p.text).bg(fill));
+        self.prompt.set_placeholder_text("What should the agent do? (optional)");
+        self.prompt.set_placeholder_style(Style::new().fg(p.muted).bg(fill));
+        f.render_widget(&self.prompt, text);
         if focused {
-            let row = lines.len() - 1 - skip;
-            let col = str_width(lines.last().map(String::as_str).unwrap_or(""));
-            f.set_cursor_position((text.x + col as u16, text.y + row as u16));
+            place_cursor(f, &self.prompt, text);
         }
+        let skip = self.prompt.scroll_offset().0;
 
         // Chips: where and how it runs (changed defaults in gold), the
         // profile, and the spawn button on the right.
@@ -1185,14 +1124,13 @@ impl App {
         if self.focus == Focus::Prompt {
             hints.push(("⌥⏎", "newline", p.subtle));
         }
-        if self.copied {
-            hints.push(("⌃Y", "copied", p.pine));
-        } else if !self.prompt_text().is_empty() {
-            hints.push(("⌃Y", "copy", p.subtle));
-        }
         hints.push(("⌃O", "host", p.subtle));
         hints.push(("⌃T", "harness", p.subtle));
-        hints.push(("esc", "close", p.subtle));
+        if self.confirm_close {
+            hints.insert(0, ("esc", "again to discard the prompt", p.love));
+        } else {
+            hints.push(("esc", "close", p.subtle));
+        }
         let mut spans = vec![Span::raw(" ")];
         let mut used = 1;
         for (k, label, key) in hints {
@@ -1214,10 +1152,49 @@ fn delete_word(s: &mut String) {
     s.truncate(cut);
 }
 
-fn delete_name_word(s: &mut String) {
-    let trimmed = s.trim_end_matches(['-', '/']);
-    let cut = trimmed.rfind(['-', '/']).map(|i| i + 1).unwrap_or(0);
-    s.truncate(cut);
+/// An empty name or prompt field: word-wrapped, with no line highlight or
+/// drawn cursor (the terminal's own cursor is placed instead).
+fn text_field() -> TextArea<'static> {
+    let mut t = TextArea::default();
+    t.set_wrap_mode(WrapMode::WordOrGlyph);
+    t.set_cursor_line_style(Style::default());
+    t.set_cursor_style(Style::default());
+    t
+}
+
+/// Edit a field with ratatui-textarea's emacs/readline keys (ctrl-a/e/b/f,
+/// alt-b/f, ctrl-k, ctrl-w, ctrl-y to yank, …), except that ctrl-u deletes
+/// to the line start as in a shell, so undo moves to ctrl-z or ctrl-_.
+fn text_key(field: &mut TextArea<'static>, k: KeyEvent) {
+    let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
+    match k.code {
+        KeyCode::Char('u') if ctrl => {
+            field.delete_line_by_head();
+        }
+        // ctrl-_ arrives as ctrl-7 from terminals without key reporting.
+        KeyCode::Char('z' | '_' | '/' | '7') if ctrl => {
+            field.undo();
+        }
+        // The textarea has no alt-e; make it end of word, just past its
+        // last character as in a shell (WordEnd stops on that character).
+        KeyCode::Char('e') if k.modifiers.contains(KeyModifiers::ALT) => {
+            field.move_cursor(CursorMove::WordEnd);
+            field.move_cursor(CursorMove::Forward);
+        }
+        _ => {
+            field.input(k);
+        }
+    }
+}
+
+/// Put the terminal cursor where `field`, drawn in `area`, has its cursor.
+fn place_cursor(f: &mut Frame, field: &TextArea, area: Rect) {
+    let c = field.screen_cursor();
+    let (top, left) = field.scroll_offset();
+    let (row, col) = (c.row.saturating_sub(top as usize) as u16, c.col.saturating_sub(left as usize) as u16);
+    if row < area.height && col < area.width {
+        f.set_cursor_position((area.x + col, area.y + row));
+    }
 }
 
 /// Columns of prompt text in a prompt box `card_width` wide: two of padding
@@ -1321,19 +1298,32 @@ fn highlight(text: &str, hits: &[usize], room: usize, keep_end: bool, base: Styl
 fn run_picker(hosts: Vec<String>) -> io::Result<()> {
     prune_prompts();
     let mut app = App::new(catalog(), hosts);
-    app.recover_prompt();
     let mut term = ratatui::init();
     // Raw mode is on and nothing has read stdin yet: ask about graphics now.
     if let Some(cell) = chrome::detect(Duration::from_millis(300)) {
         app.corners = chrome::Corners::new(cell, &[app.p.overlay, app.p.surface], &mut io::stdout()).ok();
     }
-    let _ = execute!(io::stdout(), EnableMouseCapture, EnableBracketedPaste, EnableFocusChange);
+    // No mouse capture, so the terminal's own selection and copy work.
+    let _ = execute!(io::stdout(), EnableBracketedPaste, EnableFocusChange);
     let result = picker_loop(&mut term, &mut app);
-    let _ = execute!(io::stdout(), DisableMouseCapture, DisableBracketedPaste, DisableFocusChange);
+    let _ = execute!(io::stdout(), DisableBracketedPaste, DisableFocusChange);
     if let Some(corners) = &app.corners {
         let _ = corners.delete(&mut io::stdout());
     }
     ratatui::restore();
+    if result.is_ok() {
+        // Closed from the keyboard, not by a launch (which closes the float
+        // and may still need the prompt file): drop the prompt and the mode.
+        if let Ok((_, id)) = parse_prompt_ref(&app.prompt_ref) {
+            let _ = std::fs::remove_file(prompt_dir().join(id));
+        }
+        let _ = Command::new("rex")
+            .args(["do", "client.mode.exit_all"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
     result
 }
 
@@ -1350,23 +1340,12 @@ fn picker_loop(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
                     return Ok(());
                 }
             }
-            Event::Mouse(m) => match m.kind {
-                MouseEventKind::ScrollUp => app.step(-1),
-                MouseEventKind::ScrollDown => app.step(1),
-                MouseEventKind::Down(MouseButton::Left) => app.click(m.column, m.row),
-                _ => {}
-            },
             Event::Paste(text) => app.paste(&text),
             Event::FocusLost => app.away = true,
             Event::FocusGained => app.rearm_mode(),
             _ => {}
         }
     }
-}
-
-fn pid_alive(pid: i32) -> bool {
-    // SAFETY: signal 0 only checks that the process exists.
-    pid > 0 && (unsafe { libc::kill(pid, 0) } == 0 || io::Error::last_os_error().raw_os_error() == Some(libc::EPERM))
 }
 
 // ---------------------------------------------------------------- launch

@@ -98,4 +98,4 @@ rex.action{
 
 rex.bind("cmd+ctrl+n", "spawn")
 rex.bind("spawn/enter", "spawn_go")
-rex.bind("spawn/escape", "spawn_cancel")
+-- Escape is left to the picker, which asks before discarding a prompt.
