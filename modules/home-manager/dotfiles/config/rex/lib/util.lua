@@ -44,6 +44,83 @@ function M.cli_env()
   return { PATH = M.user_path(), REX_SERVER = false, REX_CLIENT = false, REX_SESSION = false, REX_BLOCK = false }
 end
 
+-- The start of a `rex do` script that fills a float opened before its data
+-- was ready. Run with session= and block= naming the float; the rest of the
+-- script fetches and calls deliver(kind, body), which types
+-- "rex-data:KIND\n" .. body into the float as a bracketed paste. Errors the
+-- rest raises are delivered as kind "error". The float may be on any host,
+-- so every server is asked for its session at once while the script fetches.
+M.deliver_prelude = [==[
+local T = "com.superlogical.terminal"
+local float = { session_id = rex.args.session, block_id = rex.args.block }
+local lookups = {}
+for _, host in ipairs(rex.servers()) do
+  lookups[#lookups + 1] = { host = host, job = rex.exec.start({ "rex", "-S", host, "do", "-e",
+    -- `rex do` prints nothing for a boolean, so answer with a string.
+    'local _, err = rex.session.attach{ session_id = rex.args.session } return err == nil and "found" or ""',
+    "session=" .. float.session_id }) }
+end
+local server
+local function float_server()
+  if server ~= nil then return server end
+  local _, err = rex.session.attach{ session_id = float.session_id }
+  if err == nil then server = rex return server end
+  for _, l in ipairs(lookups) do
+    if (l.job:wait().stdout or ""):match("found") then
+      server = rex.server(l.host)
+      server.session.attach{ session_id = float.session_id }
+      return server
+    end
+  end
+  error("can't find the float's session " .. float.session_id, 0)
+end
+local function deliver(kind, body)
+  local s = float_server()
+  -- Wait (up to 5s) for the float program to take the terminal raw, so the
+  -- paste isn't echoed or line-edited; give up if the float has closed.
+  for _ = 1, 100 do
+    local mode = s.block.call(T, "input_mode", float)
+    if mode == nil then return end
+    if not mode.canonical and not mode.echo then break end
+    rex.sleep(0.05)
+  end
+  -- An escape in the body could end the paste early.
+  local data = "\27[200~rex-data:" .. kind .. "\n" .. tostring(body):gsub("\27", "") .. "\27[201~"
+  s.block.call(T, "write", { session_id = float.session_id, block_id = float.block_id, data = data })
+end
+local function main(fetch)
+  local ok, err = pcall(fetch)
+  if not ok then pcall(deliver, "error", tostring(err)) error(err, 0) end
+end
+]==]
+
+-- Open a float running command at once and fill it in the background: a
+-- detached `rex do` on this config host runs deliver_prelude .. script
+-- against it, logging failures to log_name. Waiting in the action instead
+-- would hold up the app's keys until the slowest host answered.
+function M.open_filled_float(ctx, opts)
+  local layer, layer_err = rex.session.new_layer{
+    session_id = ctx.session_id,
+    bounds     = opts.bounds,
+    focus      = true,
+    layout     = rex.layout.block{
+      flavor  = "com.superlogical.terminal.shell",
+      label   = opts.label,
+      options = { command = opts.command },
+    },
+  }
+  if layer == nil then error(layer_err, 0) end
+  local block_id = (layer.block_ids or {})[1]
+  if block_id == nil then error("new float has no block", 0) end
+  rex.client.queue("client.mode.enter", { name = opts.mode })
+  local job, err = rex.exec.start({
+    "sh", "-c", 'umask 077; log="${XDG_STATE_HOME:-$HOME/.local/state}/rex/' .. opts.log_name .. '"; mkdir -p "${log%/*}" || exit; exec "$@" >> "$log" 2>&1',
+    "sh", "rex", "do", "-e", M.deliver_prelude .. opts.script,
+    "session=" .. ctx.session_id, "block=" .. block_id,
+  }, { detach = true, env = M.cli_env() })
+  if job == nil then error(err, 0) end
+end
+
 -- Pickers hex-encode values so they survive the terminal-title payload.
 function M.unhex(s)
   return (s:gsub("%x%x", function(pair) return string.char(tonumber(pair, 16)) end))

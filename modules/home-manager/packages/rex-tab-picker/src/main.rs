@@ -1,7 +1,8 @@
 //! A tab picker for Rex's cmd+k float.
 //!
 //! Rex's Lua config lists every tab across sessions and hosts and passes the
-//! rows here. The picker reports the highlighted tab in the terminal title as
+//! rows here, either as an argument or, with `--wait`, typed into the float
+//! as a bracketed paste once a background fetch finishes (see [`DATA`]). The picker reports the highlighted tab in the terminal title as
 //! `rex-tab-picker:TARGET/SESSION/WINDOW`; the config's `tab_picker` mode
 //! turns Enter into the jump and Escape into closing the float, so this
 //! program never talks back to Rex.
@@ -125,6 +126,19 @@ const ICON_SEARCH: &str = "\u{f0349}"; // nf-md-magnify
 const ICON_SESSION: &str = "\u{f0bdf}"; // nf-md-console_line
 const CAP_L: &str = "\u{e0b6}"; // powerline round caps
 const CAP_R: &str = "\u{e0b4}";
+/// A bracketed paste starting with this carries the rows (`rex-data:rows`)
+/// or a failure to fetch them (`rex-data:error`), then a newline and the
+/// body. The config types it into the float so the float can open before the
+/// rows are ready.
+const DATA: &str = "rex-data:";
+
+/// Whether the rows have arrived.
+enum Load {
+    Waiting,
+    Ready,
+    Failed(String),
+}
+
 const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 // ---------------------------------------------------------------- model
@@ -232,15 +246,15 @@ struct App {
     list_area: Rect,
     reported: Option<String>,
     started: Instant,
+    load: Load,
 }
 
 impl App {
-    fn new(input: &str, current: (String, String)) -> Self {
-        let (sessions, tabs) = parse(input);
+    fn new(input: Option<&str>, current: (String, String)) -> Self {
         let mut app = App {
             p: Palette::load(),
-            sessions,
-            tabs,
+            sessions: Vec::new(),
+            tabs: Vec::new(),
             current,
             query: String::new(),
             finished_only: false,
@@ -252,16 +266,40 @@ impl App {
             list_area: Rect::default(),
             reported: None,
             started: Instant::now(),
+            load: Load::Waiting,
         };
-        app.refilter();
-        // Start on the tab the picker was opened from, else the first tab.
-        let here = app.rows.iter().position(|r| match r {
-            Item::Tab(t) => app.is_current(*t),
+        if let Some(input) = input {
+            app.set_rows(input);
+        }
+        app
+    }
+
+    /// Take the rows, keeping the search, and start on the tab the picker
+    /// was opened from, else the first tab.
+    fn set_rows(&mut self, input: &str) {
+        let (sessions, tabs) = parse(input);
+        self.sessions = sessions;
+        self.tabs = tabs;
+        self.load = Load::Ready;
+        self.selected = None;
+        self.offset = 0;
+        self.refilter();
+        let here = self.rows.iter().position(|r| match r {
+            Item::Tab(t) => self.is_current(*t),
             _ => false,
         });
-        let first_tab = app.rows.iter().position(is_tab);
-        app.selected = here.or(first_tab).or(app.selected);
-        app
+        let first_tab = self.rows.iter().position(is_tab);
+        self.selected = here.or(first_tab).or(self.selected);
+    }
+
+    /// A bracketed paste: the rows or a fetch failure, else ignored.
+    fn paste(&mut self, text: &str) {
+        let Some((kind, body)) = text.strip_prefix(DATA).and_then(|t| t.split_once('\n')) else { return };
+        match kind {
+            "rows" => self.set_rows(body),
+            "error" => self.load = Load::Failed(body.trim().to_string()),
+            _ => {}
+        }
     }
 
     fn is_current(&self, t: usize) -> bool {
@@ -617,7 +655,21 @@ impl App {
 
     fn draw_empty(&self, f: &mut Frame, area: Rect) {
         let p = &self.p;
-        let lines = if self.tabs.is_empty() {
+        let lines = if let Load::Waiting = self.load {
+            let tick = (self.started.elapsed().as_millis() / 90) as usize;
+            vec![
+                Line::styled(SPINNER[tick % SPINNER.len()], Style::new().fg(p.foam)),
+                Line::from(""),
+                Line::styled("Loading tabs…", Style::new().fg(p.subtle)),
+            ]
+        } else if let Load::Failed(err) = &self.load {
+            vec![
+                Line::styled(ICON_SESSION, Style::new().fg(p.love)),
+                Line::from(""),
+                Line::styled("Couldn't list tabs", Style::new().fg(p.subtle)),
+                Line::styled(err.clone(), Style::new().fg(p.muted)),
+            ]
+        } else if self.tabs.is_empty() {
             vec![
                 Line::styled(ICON_SESSION, Style::new().fg(p.hl_high)),
                 Line::from(""),
@@ -859,17 +911,19 @@ fn highlight(text: &str, hits: &[usize], room: usize, keep_end: bool, base: Styl
 
 // ---------------------------------------------------------------- main
 
-const USAGE: &str = "usage: rex-tab-picker [--current SESSION/WINDOW] [ROWS | -]
+const USAGE: &str = "usage: rex-tab-picker [--current SESSION/WINDOW] [ROWS | - | --wait]
 
 Shows Rex tabs grouped by session and reports the highlighted one in
 the terminal title as rex-tab-picker:TARGET/SESSION/WINDOW. ROWS are the tab
-separated rows built by the Rex config; `-` or no argument reads stdin.";
+separated rows built by the Rex config; `-` or no argument reads stdin.
+--wait opens at once and takes the rows from a bracketed paste of
+rex-data:rows, a newline and the rows (or rex-data:error and a message).";
 
 fn run(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
     loop {
         term.draw(|f| app.draw(f))?;
         app.report()?;
-        let animate = app.tabs.iter().any(|t| t.state == State::Working);
+        let animate = matches!(app.load, Load::Waiting) || app.tabs.iter().any(|t| t.state == State::Working);
         let wait = if animate { Duration::from_millis(90) } else { Duration::from_millis(250) };
         if !event::poll(wait)? {
             continue;
@@ -880,6 +934,7 @@ fn run(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
                     return Ok(());
                 }
             }
+            Event::Paste(text) => app.paste(&text),
             Event::Mouse(m) => match m.kind {
                 MouseEventKind::ScrollUp => app.step(-1),
                 MouseEventKind::ScrollDown => app.step(1),
@@ -895,6 +950,7 @@ fn main() -> io::Result<()> {
     let mut args = std::env::args().skip(1);
     let mut current = (String::new(), String::new());
     let mut rows: Option<String> = None;
+    let mut wait = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-h" | "--help" => {
@@ -906,19 +962,21 @@ fn main() -> io::Result<()> {
                 let (s, w) = v.split_once('/').unwrap_or((&v, ""));
                 current = (s.to_string(), w.to_string());
             }
+            "--wait" => wait = true,
             "-" => rows = None,
             other => rows = Some(other.to_string()),
         }
     }
     let input = match rows {
-        Some(r) => r,
+        _ if wait => None,
+        Some(r) => Some(r),
         None => {
             let mut s = String::new();
             io::stdin().read_to_string(&mut s)?;
-            s
+            Some(s)
         }
     };
-    let mut app = App::new(&input, current);
+    let mut app = App::new(input.as_deref(), current);
     let mut term = ratatui::init();
     let _ = execute!(io::stdout(), EnableMouseCapture);
     let result = run(&mut term, &mut app);

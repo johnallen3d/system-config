@@ -1,9 +1,11 @@
 -- The cmd+i task inbox: work spawned with ctrl+cmd+n, on every host, with the
--- tasks that need John first. `rex-spawn --tasks` runs here on the config
--- host, which holds the task registry and reaches every Rex host; it checks
--- each task's tab and worktree and adds the tab's live agent status. Its JSON
--- goes to the float, which may run on another host, as the tab picker's rows
--- do. The float reports the highlighted task in its terminal title, and the
+-- tasks that need John first. The float opens at once, waiting; a
+-- background job on the config host, which holds the task registry and
+-- reaches every Rex host, types the tasks into it (see
+-- util.open_filled_float): first `rex-spawn --tasks --live`, the registry
+-- with each tab's live agent status from Rex, then `rex-spawn --tasks`, which
+-- also checks each task's worktree over SSH and ends the gone ones. The
+-- float, which may run on another host, reports the highlighted task in its terminal title, and the
 -- inbox mode turns Enter into the jump (or an archive armed with ctrl+x in the
 -- float, with an extra "are you sure" Enter when that throws away uncommitted
 -- changes) and ctrl+r into review. In the float's archive view (ctrl+a),
@@ -14,6 +16,18 @@ local util = require("lib.util")
 local label = "rex-inbox"
 
 local function close_inbox(ctx) util.close_float(ctx, label) end
+
+-- The rest of the background script that fills the float.
+local fill_script = [==[
+main(function()
+  for _, step in ipairs({ { "live", "--live" }, { "tasks" } }) do
+    local r, err = rex.exec({ "rex-spawn", "--tasks", step[2] })
+    if r == nil then error(err, 0) end
+    if not r.ok then error((r.stderr:gsub("^rex%-spawn: ", "")), 0) end
+    deliver(step[1], r.stdout)
+  end
+end)
+]==]
 
 local function host_label()
   return (rex.exec({ "hostname", "-s" }).stdout:gsub("%s+$", ""))
@@ -26,25 +40,18 @@ rex.action{
   title = "Task Inbox…",
   run   = function(ctx, args)
     if util.find_float(ctx, label) ~= nil then return close_inbox(ctx) end
-    local r, err = rex.exec({ "rex-spawn", "--tasks" }, { env = util.cli_env() })
-    if r == nil then error(err, 0) end
-    if not r.ok then error(r.stderr, 0) end
     -- Start on the current tab's task. Key actions carry no window_id, so
     -- fall back to the session's active tab.
     local view = ctx.window_id == nil and rex.session.view{ session_id = ctx.session_id } or nil
     local current = ctx.session_id .. "/" .. (ctx.window_id or (view and view.active_window_id) or "")
-    local _, layer_err = rex.session.new_layer{
-      session_id = ctx.session_id,
-      bounds     = { 0.12, 0.12, 0.76, 0.6 },
-      focus      = true,
-      layout     = rex.layout.block{
-        flavor  = "com.superlogical.terminal.shell",
-        label   = label,
-        options = { command = util.float_command("rex-spawn", "--inbox", r.stdout, current) },
-      },
-    }
-    if layer_err ~= nil then error(layer_err, 0) end
-    rex.client.queue("client.mode.enter", { name = "inbox" })
+    util.open_filled_float(ctx, {
+      label    = label,
+      mode     = "inbox",
+      bounds   = { 0.12, 0.12, 0.76, 0.6 },
+      command  = util.float_command("rex-spawn", "--inbox", "-", current),
+      script   = fill_script,
+      log_name = "inbox.log",
+    })
   end,
 }
 

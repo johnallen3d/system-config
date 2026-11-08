@@ -1,20 +1,29 @@
 -- Pick a tab across sessions and hosts with rex-tab-picker.
--- A `rex do` script can attach to every session on each configured server.
--- Pass its rows directly to the float: rex.exec runs on the config host,
--- while the float runs on the focused session's host. The picker records its
--- pick in the terminal title, which the action can read through the session
--- API. Each session gets a header row that picks its current tab.
+-- The float opens at once, waiting; a background `rex do` on the config host
+-- lists every server's tabs in parallel (one `rex do` per server, each
+-- attaching to all its sessions) and types the rows into the float, which
+-- runs on the focused session's host (see util.open_filled_float). The
+-- picker records its pick in the terminal title, which the action can read
+-- through the session API. Each session gets a header row that picks its
+-- current tab.
 local util = require("lib.util")
 
 local label = "tab-picker"
 
-local tab_list_script = [==[
+-- One server's rows, run as `rex [-S HOST] do host=HOST`, or for the config
+-- host `rex do host=local`, which also shows its home as ~. (`rex do` reads
+-- an argument value with a slash as a script path and one like 6e6173 as a
+-- number, so the script looks up $HOME and hex-encodes the label itself.)
+local host_rows_script = [==[
 local terminal = "com.superlogical.terminal"
-local home = rex.exec({ "sh", "-c", 'printf %s "$HOME"' }).stdout
+local server, host = rex, rex.args.host
+local home = host == "local" and rex.exec({ "sh", "-c", 'printf %s "$HOME"' }).stdout or ""
+-- Hex keeps arbitrary host labels safe inside the terminal-title payload.
+local target = host == "local" and "-" or host:gsub(".", function(c) return string.format("%02x", c:byte()) end)
 local groups = {}
 -- Agents report status per pane; a tab shows its most urgent one.
 local urgency = { done = 1, working = 2, error = 3, blocked = 4 }
-local function collect(server, host)
+do
   local list, err = server.call("session.list")
   if list == nil then error(host .. ": " .. tostring(err), 0) end
   for _, session in ipairs(list.sessions or {}) do
@@ -23,10 +32,6 @@ local function collect(server, host)
     local view, view_err = server.session.view{ session_id = session.session_id }
     if view == nil then error(view_err, 0) end
     local tabs = {}
-    -- Hex keeps arbitrary host labels safe inside the terminal-title payload.
-    local target = server == rex and "-" or host:gsub(".", function(c)
-      return string.format("%02x", c:byte())
-    end)
     groups[#groups + 1] = { session = session, tabs = tabs, host = host, target = target }
     for _, window in ipairs(view.windows or {}) do
       local blocks = {}
@@ -59,17 +64,13 @@ local function collect(server, host)
         end
         local pwd = server.block.call(terminal, "pwd", args)
         dir = ((pwd and pwd.pwd) or ""):gsub("^file://[^/]*", "")
-        if host == "local" and home ~= "" and dir:sub(1, #home) == home then
+        if home ~= "" and dir:sub(1, #home) == home then
           dir = "~" .. dir:sub(#home + 1)
         end
       end
       tabs[#tabs + 1] = { window_id = window.window_id, name = name, dir = dir, state = state }
     end
   end
-end
-collect(rex, "local")
-for _, host in ipairs(rex.servers()) do
-  collect(rex.server(host), host)
 end
 
 -- rex-tab-picker draws the rows; see its source for the format.
@@ -89,12 +90,25 @@ end
 return table.concat(lines, "\n") .. "\n"
 ]==]
 
-local function tab_entries()
-  local r, err = rex.exec({ "rex", "do", "-e", tab_list_script }, { env = util.cli_env() })
-  if r == nil then error(err, 0) end
-  if not r.ok then error(r.stderr, 0) end
-  return rex.json.decode(r.stdout)
-end
+-- The rest of the background script: every server's rows at once, in
+-- order (the config host first), delivered together.
+local fill_script = "local host_rows_script = " .. string.format("%q", host_rows_script) .. [==[
+
+main(function()
+  local jobs = { { host = "local", job = rex.exec.start({ "rex", "do", "-e", host_rows_script, "host=local" }) } }
+  for _, host in ipairs(rex.servers()) do
+    jobs[#jobs + 1] = { host = host, job = rex.exec.start({ "rex", "-S", host, "do", "-e", host_rows_script,
+      "host=" .. host }) }
+  end
+  local rows = {}
+  for _, j in ipairs(jobs) do
+    local r = j.job:wait()
+    if not r.ok then error(j.host .. ": " .. (r.stderr:gsub("%s+$", "")), 0) end
+    rows[#rows + 1] = rex.json.decode(r.stdout)
+  end
+  deliver("rows", table.concat(rows))
+end)
+]==]
 
 local function close_picker(ctx) util.close_float(ctx, label) end
 
@@ -108,20 +122,15 @@ rex.action{
   title = "Go to Tab…",
   run   = function(ctx, args)
     if util.find_float(ctx, label) ~= nil then return close_picker(ctx) end
-    local entries = tab_entries()
-    local _, layer_err = rex.session.new_layer{
-      session_id = ctx.session_id,
-      bounds     = { 0.12, 0.1, 0.76, 0.75 },
-      focus      = true,
-      layout     = rex.layout.block{
-        flavor  = "com.superlogical.terminal.shell",
-        label   = label,
-        options = { command = util.float_command("rex-tab-picker",
-          "--current", ctx.session_id .. "/" .. (ctx.window_id or ""), entries) },
-      },
-    }
-    if layer_err ~= nil then error(layer_err, 0) end
-    rex.client.queue("client.mode.enter", { name = "tab_picker" })
+    util.open_filled_float(ctx, {
+      label    = label,
+      mode     = "tab_picker",
+      bounds   = { 0.12, 0.1, 0.76, 0.75 },
+      command  = util.float_command("rex-tab-picker",
+        "--current", ctx.session_id .. "/" .. (ctx.window_id or ""), "--wait"),
+      script   = fill_script,
+      log_name = "tab-picker.log",
+    })
   end,
 }
 

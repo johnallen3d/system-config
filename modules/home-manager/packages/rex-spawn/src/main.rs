@@ -1969,6 +1969,35 @@ fn host_bash(host: &str, script: &str) -> Option<std::process::Output> {
     Some(out)
 }
 
+/// The registry with each open task's live agent status from its host's Rex
+/// server, as `reconcile_tasks` gives it but without checking worktrees over
+/// SSH or ending anything, so the inbox can show tasks before that check.
+fn live_tasks() -> Result<Vec<serde_json::Value>, String> {
+    let mut tasks = load_tasks()?;
+    let mut hosts: Vec<String> = tasks
+        .iter()
+        .filter(|t| t["ended_at"].is_null())
+        .filter_map(|t| t["host"].as_str().map(String::from))
+        .collect();
+    hosts.sort();
+    hosts.dedup();
+    let checks: Vec<_> = hosts.into_iter().map(|host| std::thread::spawn(move || host_windows(&host))).collect();
+    let mut live: HashMap<String, TabStatus> = HashMap::new();
+    for handle in checks {
+        if let Ok(Some(windows)) = handle.join() {
+            live.extend(windows);
+        }
+    }
+    for task in tasks.iter_mut().filter(|t| t["ended_at"].is_null()) {
+        if let Some(status) = task["window_id"].as_str().and_then(|id| live.get(id)) {
+            task["status"] = status.state.clone().into();
+            task["status_at"] = status.at.into();
+            task["status_msg"] = status.msg.clone().into();
+        }
+    }
+    Ok(tasks)
+}
+
 /// Check the open tasks against their hosts, end the ones whose tab or
 /// worktree is gone, prune old ended ones, and return the registry. Open
 /// tasks also get their tab's live agent status (`status`, `status_at`,
@@ -2251,8 +2280,8 @@ fn run(
 const USAGE: &str = "usage: rex-spawn [--local LABEL]
        rex-spawn --launch HOST PATH NAME HARNESS [PROMPT_REF]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION new|resume] [PROMPT]
-       rex-spawn --tasks
-       rex-spawn --inbox TASKS_JSON [SESSION_ID/WINDOW_ID]
+       rex-spawn --tasks [--live]
+       rex-spawn --inbox TASKS_JSON|- [SESSION_ID/WINDOW_ID]
        rex-spawn --act review|archive|force-archive|resume HOST SESSION_ID WINDOW_ID
        rex-spawn --session-of PROFILE HARNESS WORKTREE
 
@@ -2264,8 +2293,10 @@ opens the work's tab on HOST (auto: the least busy dev host), records the
 task, and prints HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the
 worktree and runs the harness in the current tab, starting AGENT_SESSION
 with PROMPT as its first message or resuming it. --tasks checks recorded tasks against their
-hosts and prints them as JSON with live agent status. --inbox shows open
-tasks from that JSON, most urgent first (starting on the given tab's task),
+hosts and prints them as JSON with live agent status; with --live it only
+adds the status, without checking worktrees or ending tasks. --inbox shows
+open tasks from that JSON (with -, from bracketed pastes typed into it
+later), most urgent first (starting on the given tab's task),
 and reports the highlighted one as
 rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID. --act reviews or
 archives the task in a tab (force-archive also throws away uncommitted
@@ -2311,7 +2342,7 @@ fn main() -> io::Result<()> {
                 std::process::exit(1);
             }
         },
-        ["--tasks"] => match reconcile_tasks() {
+        ["--tasks", live @ ..] if live.is_empty() || live == ["--live"] => match if live.is_empty() { reconcile_tasks() } else { live_tasks() } {
             Ok(tasks) => println!("{}", serde_json::Value::from(tasks)),
             Err(e) => {
                 eprintln!("rex-spawn: {e}");

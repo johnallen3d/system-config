@@ -1,8 +1,11 @@
 //! The cmd+i task inbox: spawned work on every host, most urgent first.
 //!
-//! The config's `inbox` action runs `rex-spawn --tasks` on the config host
-//! and passes its JSON here; this float may run on another host, so it never
-//! reads the registry itself. It reports the highlighted task in the terminal
+//! The config's `inbox` action opens this float at once (`--inbox -`) and
+//! then runs `rex-spawn --tasks --live` and `rex-spawn --tasks` on the config
+//! host, typing each one's JSON into the float as a bracketed paste (see
+//! [`DATA`]): first the tasks with their live agent status, then with their
+//! worktrees checked. This float may run on another host, so it never reads
+//! the registry itself. It reports the highlighted task in the terminal
 //! title as `rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID` (host hex
 //! encoded). ACTION is `go`; or after ctrl-x, `archive` for a clean worktree
 //! and `ask` for one with uncommitted changes; or `force-archive` once the
@@ -31,6 +34,20 @@ use ratatui::widgets::{Block, BorderType};
 use ratatui::{DefaultTerminal, Frame};
 
 use crate::{CAP_L, CAP_R, ICON_SEARCH, Palette, delete_word, hex, highlight, now, str_width};
+
+/// A bracketed paste starting with this carries tasks JSON (`rex-data:live`
+/// before the worktree check, `rex-data:tasks` after it) or a failure to get
+/// them (`rex-data:error`), then a newline and the body.
+const DATA: &str = "rex-data:";
+
+/// What has arrived so far.
+enum Load {
+    Waiting,
+    /// Tasks with live status; their worktrees are still being checked.
+    Live,
+    Ready,
+    Failed(String),
+}
 
 const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const ICON_INBOX: &str = "\u{f0e27}"; // nf-md-inbox_full
@@ -151,6 +168,9 @@ struct Inbox {
     reported: Option<String>,
     started: Instant,
     now: u64,
+    load: Load,
+    /// The tab the inbox opened from, until the first tasks arrive.
+    current: Option<(String, String)>,
 }
 
 impl Inbox {
@@ -171,9 +191,62 @@ impl Inbox {
             reported: None,
             started: Instant::now(),
             now: now(),
+            load: Load::Ready,
+            current: None,
         };
         inbox.show(false);
         inbox
+    }
+
+    /// Replace the tasks, keeping the view, the search, and the highlighted
+    /// task (or on the first tasks, the one for the tab the inbox opened
+    /// from) with what ctrl-x armed for it.
+    fn set_tasks(&mut self, all: Vec<Task>) {
+        let keep = self
+            .rows
+            .get(self.selected)
+            .map(|&i| (self.tasks[i].session_id.clone(), self.tasks[i].window_id.clone()))
+            .or(self.current.take());
+        let armed = self.armed;
+        self.all = all;
+        self.tasks.clear();
+        self.show(self.archived);
+        let at = keep.and_then(|(session, window)| {
+            self.rows.iter().position(|&i| self.tasks[i].session_id == session && self.tasks[i].window_id == window)
+        });
+        if at.is_some() {
+            self.armed = armed;
+        }
+        self.selected = at.unwrap_or(0);
+    }
+
+    /// A bracketed paste: tasks or a failure to get them, else ignored.
+    fn paste(&mut self, text: &str) {
+        let Some((kind, body)) = text.strip_prefix(DATA).and_then(|t| t.split_once('\n')) else { return };
+        let next = match kind {
+            "live" => Load::Live,
+            "tasks" => Load::Ready,
+            "error" => {
+                // After tasks have arrived, keep them; only their worktree check failed.
+                self.load = match self.load {
+                    Load::Waiting => Load::Failed(body.trim().to_string()),
+                    _ => Load::Ready,
+                };
+                return;
+            }
+            _ => return,
+        };
+        // The worktree check can't come before the live tasks it improves on.
+        if matches!((&self.load, &next), (Load::Ready, Load::Live)) {
+            return;
+        }
+        match parse(body) {
+            Ok(tasks) => {
+                self.set_tasks(tasks);
+                self.load = next;
+            }
+            Err(e) => self.load = Load::Failed(e),
+        }
     }
 
     /// Switch between the open tasks and the archive.
@@ -391,7 +464,10 @@ impl Inbox {
                 chips.push(Span::styled("  ", Style::new()));
             }
         }
-        if chips.is_empty() {
+        if let Load::Live = self.load {
+            let tick = (self.started.elapsed().as_millis() / 90) as usize;
+            chips.insert(0, Span::styled(format!("{} checking worktrees  ", SPINNER[tick % SPINNER.len()]), Style::new().fg(p.muted)));
+        } else if chips.is_empty() {
             let n = self.tasks.len();
             let kind = if self.archived { "ended" } else { "open" };
             chips.push(Span::styled(format!("{n} {kind}  "), Style::new().fg(p.muted)));
@@ -404,7 +480,21 @@ impl Inbox {
         let h = area.height as usize;
         if self.rows.is_empty() {
             let p = &self.p;
-            let lines = if self.tasks.is_empty() && self.archived {
+            let lines = if let Load::Waiting = self.load {
+                let tick = (self.started.elapsed().as_millis() / 90) as usize;
+                vec![
+                    Line::styled(SPINNER[tick % SPINNER.len()], Style::new().fg(p.foam)),
+                    Line::from(""),
+                    Line::styled("Loading tasks…", Style::new().fg(p.subtle)),
+                ]
+            } else if let Load::Failed(err) = &self.load {
+                vec![
+                    Line::styled(ICON_INBOX, Style::new().fg(p.love)),
+                    Line::from(""),
+                    Line::styled("Couldn't load tasks", Style::new().fg(p.subtle)),
+                    Line::styled(err.clone(), Style::new().fg(p.muted)),
+                ]
+            } else if self.tasks.is_empty() && self.archived {
                 vec![
                     Line::styled(ICON_INBOX, Style::new().fg(p.hl_high)),
                     Line::from(""),
@@ -584,14 +674,16 @@ impl Inbox {
     }
 }
 
-/// `current` is the tab the inbox opened from, as `SESSION_ID/WINDOW_ID`;
-/// its task, if it is one, starts highlighted.
+/// `json` is `rex-spawn --tasks` output, or `-` to open at once and take the
+/// tasks from bracketed pastes. `current` is the tab the inbox opened from,
+/// as `SESSION_ID/WINDOW_ID`; its task, if it is one, starts highlighted.
 pub fn run(json: &str, current: Option<&str>) -> io::Result<()> {
-    let tasks = parse(json).map_err(io::Error::other)?;
-    let mut inbox = Inbox::new(tasks);
-    if let Some((session, window)) = current.and_then(|c| c.split_once('/')) {
-        let at = inbox.rows.iter().position(|&i| inbox.tasks[i].session_id == session && inbox.tasks[i].window_id == window);
-        inbox.selected = at.unwrap_or(0);
+    let mut inbox = Inbox::new(Vec::new());
+    inbox.current = current.and_then(|c| c.split_once('/')).map(|(s, w)| (s.to_string(), w.to_string()));
+    if json == "-" {
+        inbox.load = Load::Waiting;
+    } else {
+        inbox.set_tasks(parse(json).map_err(io::Error::other)?);
     }
     let mut term = ratatui::init();
     let _ = execute!(io::stdout(), EnableMouseCapture);
@@ -606,7 +698,8 @@ fn run_loop(term: &mut DefaultTerminal, inbox: &mut Inbox) -> io::Result<()> {
         inbox.now = now();
         term.draw(|f| inbox.draw(f))?;
         inbox.report()?;
-        let animate = !inbox.archived && inbox.tasks.iter().any(|t| t.state == "working");
+        let animate = matches!(inbox.load, Load::Waiting | Load::Live)
+            || (!inbox.archived && inbox.tasks.iter().any(|t| t.state == "working"));
         if !event::poll(Duration::from_millis(if animate { 90 } else { 250 }))? {
             continue;
         }
@@ -616,6 +709,7 @@ fn run_loop(term: &mut DefaultTerminal, inbox: &mut Inbox) -> io::Result<()> {
                     return Ok(());
                 }
             }
+            Event::Paste(text) => inbox.paste(&text),
             Event::Mouse(m) => match m.kind {
                 MouseEventKind::ScrollUp => inbox.step(-1),
                 MouseEventKind::ScrollDown => inbox.step(1),
