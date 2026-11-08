@@ -8,6 +8,9 @@ GEMINI.md
 __pycache__/
 *.pyc
 
+# Rust/Cargo build output
+target/
+
 .worktrees/
 /result
 /result-*
