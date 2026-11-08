@@ -32,8 +32,8 @@
 //! - `--run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION MODE] [PROMPT]`:
 //!   runs in that tab. Clones a missing project, creates or reuses the
 //!   worktree with Worktrunk, starts (MODE `new`, with the prompt as its
-//!   first message) or resumes (`resume`) the harness's session, then
-//!   leaves a shell open.
+//!   first message) or resumes (`resume`) the harness's session as the
+//!   tab's process, so quitting it closes the tab.
 //! - `--session-of PROFILE HARNESS WORKTREE`: runs on a task's host. Prints
 //!   the newest agent session for the worktree (see "agent sessions").
 //!
@@ -2274,8 +2274,8 @@ fn run(
 ) -> ! {
     let dir = match prepare(path, name, clone_url) {
         Ok(worktree) => {
-            // Move this process too: it is the tab's program while the agent
-            // runs, and a split starts where the tab's program is.
+            // Move this process too: the agent it becomes is the tab's
+            // program, and a split starts where the tab's program is.
             let _ = std::env::set_current_dir(&worktree);
             // Work gets amfaro's mise env (CLAUDE_CONFIG_DIR and
             // PI_CODING_AGENT_DIR); personal uses the login defaults. Read
@@ -2320,9 +2320,9 @@ fn run(
                 let prompt = if harness == "pi" && prompt.starts_with('@') { format!(" {prompt}") } else { prompt.to_string() };
                 agent.arg("--").arg(prompt);
             }
-            if let Err(e) = agent.current_dir(&worktree).status() {
-                eprintln!("\x1b[31m{harness}: {e}\x1b[0m");
-            }
+            // The agent replaces this process, so quitting it closes the tab.
+            let e = agent.current_dir(&worktree).exec();
+            eprintln!("\x1b[31m{harness}: {e}\x1b[0m");
             worktree
         }
         Err((e, dir)) => {
@@ -2330,7 +2330,7 @@ fn run(
             dir
         }
     };
-    // Leave a shell in the worktree once the agent exits.
+    // Only reached on failure: keep a shell so the error stays readable.
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "sh".into());
     let err = Command::new(&shell).current_dir(&dir).env("PWD", &dir).exec();
     eprintln!("rex-spawn: {shell}: {err}");
