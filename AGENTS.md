@@ -51,7 +51,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - Missing or drifted provenance blocks activation. Adoption needs verified ownership and an exact evaluated-output match to the installed generation — never guess from timestamps or build success. Reconcile out-of-band rollbacks explicitly. Details: `docs/concurrent-deployments.md`.
 - Authorized deployment includes clean fast-forward sync of each Linux host's `main` to reviewed, integrated local `main`, without separate merge permission. Stop on dirty source, divergence, conflicts, or uncertain ownership; preserve unrelated remote edits and credentials. Carrying layers or syncing never authorizes commits, merges, rebases, pushes, worktree removal, agent restarts, or card closure.
 - SSH is `johna@omarchy` / `johna@miller` / `johna@drummer` with a Fish login shell: run Bash via `bash -s`, work-profile commands via `mise -C ~/dev/src/amfaro exec -- ...` with absolute script paths.
-- Verify installed config and effective runtime on each host independently. Don't restart active agents just to refresh environment; report needed restarts. If a host is unreachable or verification fails, the deployment is **partial**: keep the card open, name the pending host/action, and never report it as done. Documentation-only changes need no activation.
+- Verify installed config and effective runtime on each host independently. Don't restart active agents just to refresh environment; report needed restarts. Verification means confirming the new generation, binary, or config is installed and active, not hand-testing interactive behaviour on every host; report what was exercised where and let John judge. If a host is unreachable or verification fails, the deployment is **partial**: keep the card open, name the pending host/action, and never report it as done. Documentation-only changes need no activation.
 - Pi Pocket (`pi-pocket.service`, `docs/pi-pocket.md`) is the production personal assistant.
 
 ## Homelab hosts (separate deploy group)
@@ -68,7 +68,7 @@ Use Fizzy only (board from `.fizzy.yaml`; use the CLI's `--jq`). Card commands t
 2. Claim it with `fizzy card self-assign <number>` when appropriate. File discoveries with `fizzy card create --board <board-id> --title "..." --description "..."` and link them from the originating card.
 3. Add progress and completion comments.
 
-**Closing a card requires John's explicit request or an actual `/wrap` invocation** (its expanded prompt counts; mentioning, quoting, or reading the prompt file doesn't). Task completion, deployment, commits, "done", or "wrap up" never authorize closure. On `/wrap`, close completed in-scope cards after checking completion and deployment — never blocked or partially deployed work.
+**Closing a card requires John's explicit request or an actual `/wrap` invocation** (its expanded prompt counts; mentioning, quoting, or reading the prompt file doesn't). Outside an active `/wrap`, task completion, deployment, commits, "done", or "wrap up" never authorize closure; inside one, any go-ahead from John does. On `/wrap`, close completed in-scope cards after checking completion and deployment — never blocked or partially deployed work.
 
 ## Session completion
 

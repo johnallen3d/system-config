@@ -44,6 +44,20 @@ force deletion, killing processes, or bypassing hooks/signing.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.
 
+   **Testing gaps are John's call, not a blocker.** A deployment that succeeded
+   on every host, with the installed artifact or config confirmed, counts as
+   deployed. If behaviour was exercised on fewer hosts than it was deployed to
+   (e.g. an interactive picker tried by hand only on the Mac), close the card and
+   state in the handoff exactly what was tested where. Don't block the wrap, keep
+   the card open, or ask permission over it; John decides whether more testing
+   matters. Only an actual failure (failed deploy, unreachable host, a check
+   that ran and failed) makes deployment partial.
+
+   **Go-aheads count.** During an active `/wrap`, if you did stop to ask John,
+   any affirmative reply ("wrap it up", "just do it", "yes", "close it") answers
+   the pending question and authorizes finishing within this lifecycle's limits.
+   Don't ask for specific wording.
+
 ### Blocked outcome — make it impossible to mistake for success
 
 If a required lifecycle step fails, cannot safely proceed, or leaves required
