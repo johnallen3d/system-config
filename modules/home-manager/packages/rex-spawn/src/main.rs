@@ -389,9 +389,7 @@ struct App {
     away: bool,
     /// Whether Escape was pressed once with a prompt, so the next one closes.
     confirm_close: bool,
-    /// Whether ctrl-x was just pressed in the prompt, so ctrl-e edits it.
-    ctrl_x: bool,
-    /// Whether ctrl-x ctrl-e asked for the prompt in `$EDITOR`.
+    /// Whether ctrl-g asked for the prompt in `$EDITOR`.
     edit_requested: bool,
     /// The terminal's cell size, to send the corner images again.
     cell: Option<chrome::CellSize>,
@@ -429,7 +427,6 @@ impl App {
             corners: None,
             away: false,
             confirm_close: false,
-            ctrl_x: false,
             edit_requested: false,
             cell: None,
         };
@@ -658,12 +655,6 @@ impl App {
         if !(k.code == KeyCode::Esc || (ctrl && k.code == KeyCode::Char('c'))) {
             self.confirm_close = false;
         }
-        // ctrl-x ctrl-e hands the prompt to $EDITOR, as in a shell; any
-        // other key after ctrl-x just does what it does.
-        if std::mem::take(&mut self.ctrl_x) && ctrl && k.code == KeyCode::Char('e') && self.focus == Focus::Prompt {
-            self.edit_requested = true;
-            return true;
-        }
         let page = (self.list_area.height as isize - 2).max(1);
         // The prompt keeps ctrl-n/p/j/k as readline's line keys; elsewhere
         // they move through the project list, like the tab picker. The name
@@ -674,7 +665,11 @@ impl App {
             Focus::Prompt => false,
         };
         match k.code {
-            KeyCode::Char('x') if ctrl && self.focus == Focus::Prompt => self.ctrl_x = true,
+            // ctrl-g hands the prompt to $EDITOR, as in other harnesses.
+            KeyCode::Char('g') if ctrl && self.focus == Focus::Prompt => {
+                self.edit_requested = true;
+                return true;
+            }
             // As in a shell, ctrl-c in the prompt throws its text away (ctrl-z
             // brings it back); with nothing to clear, it closes the picker.
             KeyCode::Char('c') if ctrl && self.focus == Focus::Prompt && !self.prompt.is_empty() => {
