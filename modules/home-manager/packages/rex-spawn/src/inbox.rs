@@ -11,7 +11,9 @@
 //! and `ask` for one with uncommitted changes; or `force-archive` once the
 //! archive of a dirty worktree is confirmed. Any other key disarms. ctrl-a
 //! switches to the archive, the ended tasks (archived, or their tab or
-//! worktree gone), most recent first, where ACTION is `resume`. The
+//! worktree gone), most recent first, where ACTION is `resume`; there
+//! ctrl-x arms the same archive for a task whose tab was closed without
+//! one, which leaves its worktree behind. The
 //! config's `inbox` mode turns Enter into ACTION, ctrl-r into review (see
 //! actions.rs), and Escape into closing the float. For `ask` it keeps the
 //! float open and types ctrl-x into it, which moves the float on to the
@@ -78,6 +80,8 @@ struct Task {
     since: u64,
     /// Why an ended task ended (`archived`, `tab closed`, ...); None while open.
     ended: Option<String>,
+    /// An ended task whose worktree is still there, for ctrl-x to remove.
+    left: bool,
 }
 
 impl Task {
@@ -128,6 +132,7 @@ fn parse(json: &str) -> Result<Vec<Task>, String> {
                 r if r.is_empty() => "ended".to_string(),
                 r => r,
             }),
+            left: t["worktree_left"].as_bool().unwrap_or(false),
         })
         .collect();
     // Open first, most urgent first and, within a state, the one waiting
@@ -329,7 +334,7 @@ impl Inbox {
     fn pick(&self) -> String {
         let dirty = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].dirty > 0);
         let action = match self.armed {
-            _ if self.archived => "resume",
+            Armed::No if self.archived => "resume",
             Armed::No => "go",
             Armed::Archive if dirty => "ask",
             Armed::Archive => "archive",
@@ -366,9 +371,12 @@ impl Inbox {
         // to "are you sure". Any other key disarms (Enter and Escape never
         // get here: the config's inbox mode takes them).
         if matches!(k.code, KeyCode::Char('x') if ctrl) {
-            let dirty = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].dirty > 0);
+            let task = self.rows.get(self.selected).map(|&i| &self.tasks[i]);
+            let dirty = task.is_some_and(|t| t.dirty > 0);
+            // In the archive, only a task that left its worktree behind.
+            let armable = task.is_some_and(|t| !self.archived || t.left);
             self.armed = match self.armed {
-                _ if self.rows.is_empty() || self.archived => Armed::No,
+                _ if !armable => Armed::No,
                 Armed::No => Armed::Archive,
                 Armed::Archive | Armed::Force if dirty => Armed::Force,
                 armed => armed,
@@ -594,6 +602,8 @@ impl Inbox {
         let bg = if doomed { p.hl_med } else if selected { p.overlay } else { p.base };
         f.buffer_mut().set_style(r, Style::new().bg(bg));
         let (glyph, color, verb) = match (t.ended.as_deref(), t.state.as_str()) {
+            // Closed without an archive: the worktree is still there.
+            (Some(_), _) if t.left => ("▢", p.gold, "closed"),
             (Some("archived" | "force-archived"), _) => ("▢", p.iris, "archived"),
             // Discards from before archive, which still resume.
             (Some("discarded" | "force-discarded"), _) => ("▢", p.iris, "archived"),
@@ -678,15 +688,19 @@ impl Inbox {
                     spans.push(Span::styled(" · other keys cancel", Style::new().fg(p.muted)));
                 }
                 _ => {
+                    let what = if self.archived { "removes worktree" } else { "closes tab, removes worktree" };
                     spans.push(Span::styled("⏎", key));
                     spans.push(Span::styled(format!(" archive {}", t.label()), Style::new().fg(p.love)));
-                    spans.push(Span::styled(": closes tab, removes worktree · other keys cancel", Style::new().fg(p.muted)));
+                    spans.push(Span::styled(format!(": {what} · other keys cancel"), Style::new().fg(p.muted)));
                 }
             }
             f.render_widget(Line::from(spans), area);
             return;
         }
-        let keys: &[(&str, &str)] = if self.archived {
+        let left = self.rows.get(self.selected).is_some_and(|&i| self.tasks[i].left);
+        let keys: &[(&str, &str)] = if self.archived && left {
+            &[("⏎", "resume"), ("⌃X", "remove worktree"), ("⌃A", "open tasks"), ("esc", "close")]
+        } else if self.archived {
             &[("⏎", "resume"), ("⌃A", "open tasks"), ("esc", "close")]
         } else {
             &[("⏎", "go"), ("⌃R", "review"), ("⌃X", "archive"), ("⌃A", "archive view"), ("esc", "close")]

@@ -10,7 +10,9 @@
 -- float, with an extra "are you sure" Enter when that throws away uncommitted
 -- changes) and ctrl+r into review. In the float's archive view (ctrl+a),
 -- Enter resumes the ended task's agent session in a new tab on its host and
--- jumps there. See packages/rex-spawn/src/inbox.rs and actions.rs.
+-- jumps there, and ctrl+x arms an archive of a task whose tab was closed
+-- without one, which removes the worktree it left behind. See
+-- packages/rex-spawn/src/inbox.rs and actions.rs.
 local util = require("lib.util")
 
 local label = "rex-inbox"

@@ -2078,17 +2078,18 @@ fn live_tasks() -> Result<Vec<serde_json::Value>, String> {
 /// worktree is gone, prune old ended ones, and return the registry. Open
 /// tasks also get their tab's live agent status (`status`, `status_at`,
 /// `status_msg`) and their worktree's uncommitted files (`dirty_count`,
-/// `dirty_files`), which are not saved. A host that can't be reached leaves its
-/// tasks as they were, without status.
+/// `dirty_files`), which are not saved. Tasks that ended with their tab
+/// closed are checked too, since closing the tab leaves the worktree: one
+/// still there gets `worktree_left` and its uncommitted files (not saved),
+/// so the archive can clean it up, and one gone becomes "worktree removed".
+/// A host that can't be reached leaves its tasks as they were, without
+/// status.
 fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
     let mut tasks = load_tasks()?;
     let before = serde_json::to_string(&tasks).map_err(|e| e.to_string())?;
     let field = |t: &serde_json::Value, k: &str| t[k].as_str().unwrap_or("").to_string();
-    let mut hosts: Vec<String> = tasks
-        .iter()
-        .filter(|t| t["ended_at"].is_null())
-        .map(|t| field(t, "host"))
-        .collect();
+    let checked = |t: &serde_json::Value| t["ended_at"].is_null() || t["ended_reason"].as_str() == Some("tab closed");
+    let mut hosts: Vec<String> = tasks.iter().filter(|t| checked(t)).map(|t| field(t, "host")).collect();
     hosts.sort();
     hosts.dedup();
     let checks: Vec<_> = hosts
@@ -2096,7 +2097,7 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
         .map(|host| {
             let pairs: Vec<(String, String)> = tasks
                 .iter()
-                .filter(|t| t["ended_at"].is_null() && field(t, "host") == host)
+                .filter(|t| checked(t) && field(t, "host") == host)
                 .map(|t| (field(t, "repo"), field(t, "branch")))
                 .collect();
             std::thread::spawn(move || {
@@ -2108,21 +2109,32 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
         .collect();
     let stamp = now();
     let mut live: HashMap<String, TabStatus> = HashMap::new();
+    // Worktrees by HOST/WINDOW_ID.
     let mut dirty: HashMap<String, Worktree> = HashMap::new();
     for handle in checks {
         let Ok((host, windows, worktrees)) = handle.join() else { continue };
-        let open = tasks
-            .iter_mut()
-            .filter(|t| t["ended_at"].is_null() && t["host"].as_str() == Some(host.as_str()));
-        for (i, task) in open.enumerate() {
+        let mine = tasks.iter_mut().filter(|t| checked(t) && t["host"].as_str() == Some(host.as_str()));
+        for (i, task) in mine.enumerate() {
             let window_id = task["window_id"].as_str().unwrap_or("").to_string();
             let window_id = window_id.as_str();
+            let key = format!("{host}/{window_id}");
+            let worktree = worktrees.as_ref().and_then(|w| w.get(i).cloned().flatten());
+            if !task["ended_at"].is_null() {
+                match worktree {
+                    Some(w) if w.path.is_empty() => task["ended_reason"] = "worktree removed".into(),
+                    Some(w) => {
+                        task["worktree"] = w.path.clone().into();
+                        dirty.insert(key, w);
+                    }
+                    None => {}
+                }
+                continue;
+            }
             let tab = windows.as_ref().map(|w| w.get(window_id));
             let tab_gone = matches!(tab, Some(None));
             if let Some(Some(status)) = tab {
                 live.insert(window_id.to_string(), status.clone());
             }
-            let worktree = worktrees.as_ref().and_then(|w| w.get(i).cloned().flatten());
             match worktree {
                 Some(w) if w.path.is_empty() => {
                     task["ended_at"] = stamp.into();
@@ -2130,7 +2142,7 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
                 }
                 Some(w) => {
                     task["worktree"] = w.path.clone().into();
-                    dirty.insert(window_id.to_string(), w);
+                    dirty.insert(key, w);
                 }
                 None => {}
             }
@@ -2159,15 +2171,20 @@ fn reconcile_tasks() -> Result<Vec<serde_json::Value>, String> {
     if serde_json::to_string(&tasks).map_err(|e| e.to_string())? != before {
         save_tasks(&tasks)?;
     }
-    for task in tasks.iter_mut().filter(|t| t["ended_at"].is_null()) {
-        if let Some(status) = task["window_id"].as_str().and_then(|id| live.get(id)) {
+    for task in tasks.iter_mut() {
+        let open = task["ended_at"].is_null();
+        if let Some(status) = task["window_id"].as_str().and_then(|id| live.get(id)).filter(|_| open) {
             task["status"] = status.state.clone().into();
             task["status_at"] = status.at.into();
             task["status_msg"] = status.msg.clone().into();
         }
-        if let Some(w) = task["window_id"].as_str().and_then(|id| dirty.get(id)) {
+        let key = format!("{}/{}", field(task, "host"), field(task, "window_id"));
+        if let Some(w) = dirty.get(&key) {
             task["dirty_count"] = w.dirty.into();
             task["dirty_files"] = w.files.clone().into();
+            if !open {
+                task["worktree_left"] = true.into();
+            }
         }
     }
     Ok(tasks)

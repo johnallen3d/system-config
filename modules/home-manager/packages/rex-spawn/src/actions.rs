@@ -12,6 +12,10 @@
 //!   the task ended.
 //! - force-archive: the same, but throw away uncommitted changes
 //!   (`wt remove --force`).
+//!
+//!   Both also work on an ended task whose tab was closed without an
+//!   archive, which leaves its worktree behind: they remove the worktree
+//!   and mark the task archived.
 //! - resume: for an ended task (archived, or its tab or worktree gone), open
 //!   a new tab on the task's host that recreates the worktree on its branch
 //!   and resumes the agent session, replace the ended entry with the new
@@ -98,12 +102,15 @@ pub fn act(action: &str, host: &str, session: &str, window: &str) -> Result<Stri
         return resume(host, window);
     }
     let mut tasks = load_tasks()?;
-    let i = tasks
-        .iter()
-        .position(|t| {
-            t["ended_at"].is_null() && t["host"].as_str() == Some(host) && t["window_id"].as_str() == Some(window)
-        })
-        .ok_or("no open task for that tab")?;
+    let here = |t: &serde_json::Value| t["host"].as_str() == Some(host) && t["window_id"].as_str() == Some(window);
+    // An open task, or for an archive, the latest ended one (closing its tab
+    // left the worktree).
+    let i = match tasks.iter().position(|t| t["ended_at"].is_null() && here(t)) {
+        Some(i) => i,
+        None if action != "review" => tasks.iter().rposition(here).ok_or("no task for that tab")?,
+        None => return Err("no open task for that tab".into()),
+    };
+    let ended = !tasks[i]["ended_at"].is_null();
     let field = |k: &str| tasks[i][k].as_str().unwrap_or("").to_string();
     let (label, worktree, repo, branch) =
         (format!("{}/{}", field("project"), field("name")), field("worktree"), field("repo"), field("branch"));
@@ -139,13 +146,21 @@ pub fn act(action: &str, host: &str, session: &str, window: &str) -> Result<Stri
                      Press ⌃X, Enter, Enter in the inbox to throw them away."
                 ));
             }
-            // The newest session, not spawn's choice: a /clear starts another.
-            if let Some(id) = newest_session(&tasks[i]) {
+            if ended && !exists {
+                tasks[i]["ended_reason"] = "worktree removed".into();
+                save_tasks(&tasks)?;
+                return Err(format!("{label}: its worktree is already gone"));
+            }
+            // The newest session, not spawn's choice: a /clear starts
+            // another. An ended task recorded it when it ended.
+            if !ended && let Some(id) = newest_session(&tasks[i]) {
                 tasks[i]["agent_session"] = id.into();
             }
             // Close the tab first so the agent isn't left in a deleted
             // directory; a tab that is already gone is fine.
-            let _ = rex(host, &["window", "close", "-s", session, window]);
+            if !ended {
+                let _ = rex(host, &["window", "close", "-s", session, window]);
+            }
             let mut note = String::new();
             let mut failed = false;
             if exists {
@@ -171,7 +186,9 @@ pub fn act(action: &str, host: &str, session: &str, window: &str) -> Result<Stri
             {
                 let _ = rex(host, &["kill", session]);
             }
-            tasks[i]["ended_at"] = now().into();
+            if !ended {
+                tasks[i]["ended_at"] = now().into();
+            }
             tasks[i]["ended_reason"] = if force { "force-archived" } else { "archived" }.into();
             save_tasks(&tasks)?;
             if failed {
