@@ -55,8 +55,8 @@ use std::time::Duration;
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 use ratatui::crossterm::event::{
-    self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
-    Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEventKind,
+    self, DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+    EnableFocusChange, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEventKind,
 };
 use ratatui::crossterm::execute;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
@@ -375,6 +375,10 @@ struct App {
     reported: Option<String>,
     /// Smooth prompt-box corners, when the terminal does kitty graphics.
     corners: Option<chrome::Corners>,
+    /// Whether the prompt was just copied, for the footer.
+    copied: bool,
+    /// Whether the terminal lost focus since spawn mode was last entered.
+    away: bool,
 }
 
 impl App {
@@ -408,6 +412,8 @@ impl App {
             field_areas: Vec::new(),
             reported: None,
             corners: None,
+            copied: false,
+            away: false,
         };
         app.refilter();
         app
@@ -572,6 +578,78 @@ impl App {
         }
     }
 
+    /// Bring back the prompt of a picker that exited without spawning, such
+    /// as one closed with ctrl-c. Its file moves to this picker's id when
+    /// the prompt is next saved. Files younger than a few seconds may belong
+    /// to a launch that hasn't collected them yet, so they're left alone.
+    fn recover_prompt(&mut self) {
+        let Ok((_, own)) = parse_prompt_ref(&self.prompt_ref) else { return };
+        let Ok(entries) = std::fs::read_dir(prompt_dir()) else { return };
+        let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let Some(pid) = name.split_once('-').and_then(|(pid, rest)| {
+                rest.chars().all(|c| c.is_ascii_digit()).then(|| pid.parse::<i32>().ok()).flatten()
+            }) else {
+                continue;
+            };
+            if name == own || pid_alive(pid) {
+                continue;
+            }
+            let Ok(modified) = entry.metadata().and_then(|m| m.modified()) else { continue };
+            if modified.elapsed().is_ok_and(|age| age < Duration::from_secs(10)) {
+                continue;
+            }
+            if newest.as_ref().is_none_or(|(t, _)| modified > *t) {
+                newest = Some((modified, entry.path()));
+            }
+        }
+        let Some((_, path)) = newest else { return };
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            if !text.trim().is_empty() {
+                self.prompt = text;
+                self.save_prompt();
+                if self.prompt_saved {
+                    let _ = std::fs::remove_file(&path);
+                }
+            }
+        }
+    }
+
+    /// Copy the prompt to the clipboard with OSC 52.
+    fn copy_prompt(&mut self) -> io::Result<()> {
+        let text = self.prompt_text();
+        if text.is_empty() {
+            return Ok(());
+        }
+        let mut out = io::stdout();
+        write!(out, "\x1b]52;c;{}\x07", chrome::base64(text.as_bytes()))?;
+        out.flush()?;
+        self.copied = true;
+        Ok(())
+    }
+
+    /// Switching away from Rex drops the app's spawn mode, and without it
+    /// Enter and Escape reach the picker instead of the config's actions.
+    /// Enter the mode again once the terminal has focus back.
+    fn rearm_mode(&mut self) {
+        if !std::mem::take(&mut self.away) {
+            return;
+        }
+        let child = Command::new("rex")
+            .args(["do", "client.mode.enter", "name=spawn"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn();
+        match child {
+            Ok(mut child) => {
+                std::thread::spawn(move || child.wait());
+            }
+            Err(e) => log(&format!("could not re-enter spawn mode: {e}")),
+        }
+    }
+
     fn paste(&mut self, text: &str) {
         let text = text.replace("\r\n", "\n").replace('\r', "\n");
         match self.focus {
@@ -603,8 +681,14 @@ impl App {
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         let alt = k.modifiers.contains(KeyModifiers::ALT);
         let page = (self.list_area.height as isize - 2).max(1);
+        self.copied = false;
         match k.code {
             KeyCode::Char('c') if ctrl => return false,
+            // Spawn mode takes Escape; reaching here means the mode is gone.
+            KeyCode::Esc => return false,
+            KeyCode::Char('y') if ctrl => {
+                let _ = self.copy_prompt();
+            }
             KeyCode::Tab => self.next_focus(true),
             KeyCode::BackTab => self.next_focus(false),
             // Overrides for the defaults: host starts at auto, harness at claude.
@@ -1101,6 +1185,11 @@ impl App {
         if self.focus == Focus::Prompt {
             hints.push(("⌥⏎", "newline", p.subtle));
         }
+        if self.copied {
+            hints.push(("⌃Y", "copied", p.pine));
+        } else if !self.prompt_text().is_empty() {
+            hints.push(("⌃Y", "copy", p.subtle));
+        }
         hints.push(("⌃O", "host", p.subtle));
         hints.push(("⌃T", "harness", p.subtle));
         hints.push(("esc", "close", p.subtle));
@@ -1232,14 +1321,15 @@ fn highlight(text: &str, hits: &[usize], room: usize, keep_end: bool, base: Styl
 fn run_picker(hosts: Vec<String>) -> io::Result<()> {
     prune_prompts();
     let mut app = App::new(catalog(), hosts);
+    app.recover_prompt();
     let mut term = ratatui::init();
     // Raw mode is on and nothing has read stdin yet: ask about graphics now.
     if let Some(cell) = chrome::detect(Duration::from_millis(300)) {
         app.corners = chrome::Corners::new(cell, &[app.p.overlay, app.p.surface], &mut io::stdout()).ok();
     }
-    let _ = execute!(io::stdout(), EnableMouseCapture, EnableBracketedPaste);
+    let _ = execute!(io::stdout(), EnableMouseCapture, EnableBracketedPaste, EnableFocusChange);
     let result = picker_loop(&mut term, &mut app);
-    let _ = execute!(io::stdout(), DisableMouseCapture, DisableBracketedPaste);
+    let _ = execute!(io::stdout(), DisableMouseCapture, DisableBracketedPaste, DisableFocusChange);
     if let Some(corners) = &app.corners {
         let _ = corners.delete(&mut io::stdout());
     }
@@ -1267,9 +1357,16 @@ fn picker_loop(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
                 _ => {}
             },
             Event::Paste(text) => app.paste(&text),
+            Event::FocusLost => app.away = true,
+            Event::FocusGained => app.rearm_mode(),
             _ => {}
         }
     }
+}
+
+fn pid_alive(pid: i32) -> bool {
+    // SAFETY: signal 0 only checks that the process exists.
+    pid > 0 && (unsafe { libc::kill(pid, 0) } == 0 || io::Error::last_os_error().raw_os_error() == Some(libc::EPERM))
 }
 
 // ---------------------------------------------------------------- launch

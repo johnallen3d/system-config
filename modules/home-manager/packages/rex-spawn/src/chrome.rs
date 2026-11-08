@@ -142,7 +142,7 @@ fn transmit(out: &mut impl Write, id: u32, cell: CellSize, rgba: &[u8]) -> io::R
     Ok(())
 }
 
-fn base64(bytes: &[u8]) -> String {
+pub fn base64(bytes: &[u8]) -> String {
     const ABC: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut s = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for group in bytes.chunks(3) {
