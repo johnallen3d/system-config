@@ -18,9 +18,9 @@
 -- the float (archive, force-archive; for ask, a dirty worktree, it types
 -- ctrl+x back so the float asks "are you sure"); ctrl+r reviews a task.
 -- TARGET is "-" for this host or the hex-encoded host label. See
--- packages/switchyard/crates/tab-picker/src/main.rs and
--- crates/core/src/actions.rs.
-local util = require("lib.util")
+-- ../../crates/tab-picker/src/main.rs and
+-- ../../crates/core/src/actions.rs.
+local util = require("switchyard.float")
 
 local label = "tab-picker"
 

@@ -1,10 +1,10 @@
 # Switchyard, the Rex float tools (one Cargo workspace in ./switchyard):
 #
 # - rex-tab-picker: the cmd+k picker for tabs, agents (also cmd+i) and ended
-#   tasks (../dotfiles/config/rex/actions/tab-picker.lua).
-# - rex-spawn: the new-session picker (actions/new.lua), which opens a plain
-#   session in a zoxide folder (cmd+shift+n) or starts agent work in a new
-#   worktree of a catalog project (ctrl+cmd+n) on a chosen host. Its
+#   tasks (./switchyard/lua/switchyard/tab-picker.lua).
+# - rex-spawn: the new-session picker (lua/switchyard/new.lua), which opens
+#   a plain session in a zoxide folder (cmd+shift+n) or starts agent work in
+#   a new worktree of a catalog project (ctrl+cmd+n) on a chosen host. Its
 #   --launch and --run modes do the work, and it holds the task registry and
 #   actions behind the tab picker's tasks.
 #
@@ -21,7 +21,8 @@ in
     version = "0.1.0";
     src = lib.cleanSourceWith {
       src = ./switchyard;
-      filter = path: _: baseNameOf path != "target";
+      # The Rex Lua ships separately (./switchyard-rex.nix).
+      filter = path: _: !(builtins.elem (baseNameOf path) ["target" "lua"]);
     };
     cargoLock.lockFile = ./switchyard/Cargo.lock;
     nativeBuildInputs = [pkgs.makeWrapper];

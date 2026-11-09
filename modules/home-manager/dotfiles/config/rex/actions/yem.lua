@@ -5,7 +5,7 @@
 -- From a remote session, open the float in a local session instead and switch
 -- to it, creating a "yem" session if there is none. The remote session is
 -- remembered, so toggling the float closed jumps back to it.
-local util = require("lib.util")
+local util = require("switchyard.float")
 
 local label = "yem"
 local shell = "com.superlogical.terminal.shell"

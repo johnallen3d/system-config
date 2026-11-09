@@ -47,6 +47,7 @@ in {
     ../ripgrep
     ../starship
     ./switchyard-config.nix
+    ./switchyard-rex.nix
   ];
 
   home.packages = with pkgs;

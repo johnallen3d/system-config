@@ -1,4 +1,5 @@
--- Helpers shared by the floating pickers.
+-- Float helpers shared by the switchyard pickers and other Rex actions
+-- (yem.lua in system-config requires them as "switchyard.float").
 local M = {}
 
 -- Find a floating layer by its block label in the action's session.

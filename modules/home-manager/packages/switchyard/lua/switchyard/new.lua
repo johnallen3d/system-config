@@ -10,8 +10,8 @@
 -- host: a session opens with `rex-spawn --open`, and agent work launches
 -- with `rex-spawn --launch`, which opens a tab running `--run` on the target
 -- host (the worktree and the harness are made there). See
--- packages/switchyard/crates/spawn/src/main.rs.
-local util = require("lib.util")
+-- ../../crates/spawn/src/main.rs.
+local util = require("switchyard.float")
 
 local label = "new-picker"
 -- Labels the shell of a session made only to hold the picker, so a pick can
