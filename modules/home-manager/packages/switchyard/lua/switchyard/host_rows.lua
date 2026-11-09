@@ -1,3 +1,9 @@
+-- One server's rows, run as `rex [-S HOST] do -e SCRIPT host=HOST`, or for
+-- the config host `host=local`, which also shows its home as ~. The float
+-- (tab-picker.lua) reads this file; rex-tab-picker builds it in for its
+-- standalone mode. (`rex do` reads an argument value with a slash as a
+-- script path and one like 6e6173 as a number, so the script looks up $HOME
+-- and hex-encodes the label itself.)
 local terminal = "com.superlogical.terminal"
 local server, host = rex, rex.args.host
 local home = host == "local" and rex.exec({ "sh", "-c", 'printf %s "$HOME"' }).stdout or ""

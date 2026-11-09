@@ -18,9 +18,8 @@ use switchyard_core::rex::{local_label, log, select};
 use switchyard_core::tasks::{live_tasks, reconcile_tasks};
 use switchyard_ui::protocol::{DATA, unhex};
 
-/// One server's rows: the same script as the float's (tab-picker.lua's
-/// `host_rows_script`; keep the two the same).
-const HOST_ROWS: &str = include_str!("host_rows.lua");
+/// One server's rows: the script the float's tab-picker.lua reads.
+const HOST_ROWS: &str = include_str!("../../../lua/switchyard/host_rows.lua");
 
 /// Runs HOST_ROWS on this host's server and every server it knows, at
 /// once, and returns their rows together, as the fill script does.

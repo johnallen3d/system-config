@@ -21,8 +21,14 @@ in
     version = "0.1.0";
     src = lib.cleanSourceWith {
       src = ./switchyard;
-      # The Rex Lua ships separately (./switchyard-rex.nix).
-      filter = path: _: !(builtins.elem (baseNameOf path) ["target" "lua"]);
+      # The Rex Lua ships separately (./switchyard-rex.nix), except
+      # host_rows.lua, which rex-tab-picker builds in.
+      filter = path: _: let
+        rel = lib.removePrefix "${toString ./switchyard}/" (toString path);
+      in
+        baseNameOf path
+        != "target"
+        && (!lib.hasPrefix "lua" rel || builtins.elem rel ["lua" "lua/switchyard" "lua/switchyard/host_rows.lua"]);
     };
     cargoLock.lockFile = ./switchyard/Cargo.lock;
     nativeBuildInputs = [pkgs.makeWrapper];
