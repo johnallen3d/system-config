@@ -1,0 +1,11 @@
+[package]
+name = "switchyard-ui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+switchyard-core.workspace = true
+libc.workspace = true
+nucleo-matcher.workspace = true
+ratatui.workspace = true
+unicode-width.workspace = true

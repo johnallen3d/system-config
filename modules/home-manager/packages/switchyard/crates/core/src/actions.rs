@@ -24,28 +24,11 @@
 //! Archiving doesn't delete an unmerged branch: only uncommitted work can be
 //! lost, and a resume finds its commits again.
 
-use crate::{catalog, host_bash, launch, load_tasks, local_label, newest_session, now, rex_json, save_tasks};
-
-pub(crate) fn sh_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', "'\\''"))
-}
-
-/// Run the rex CLI against `host` and return an error with its stderr.
-fn rex(host: &str, args: &[&str]) -> Result<(), String> {
-    let mut cmd = std::process::Command::new("rex");
-    if host != local_label() {
-        cmd.args(["-S", host]);
-    }
-    let out = cmd
-        .args(args)
-        .stdin(std::process::Stdio::null())
-        .output()
-        .map_err(|e| format!("rex: {e}"))?;
-    if !out.status.success() {
-        return Err(format!("rex {}: {}", args[..2.min(args.len())].join(" "), String::from_utf8_lossy(&out.stderr).trim()));
-    }
-    Ok(())
-}
+use crate::hosts::catalog;
+use crate::launch::launch;
+use crate::rex::{host_bash, now, rex, rex_json, sh_quote};
+use crate::sessions::newest_session;
+use crate::tasks::{load_tasks, save_tasks};
 
 /// The tab's agent pane: the first pane of its tiled layer, which is where
 /// `--run` started the agent.
@@ -77,7 +60,7 @@ fn resume(host: &str, window: &str) -> Result<String, String> {
         id if !id.is_empty() => id,
         _ => newest_session(&task).ok_or_else(|| format!("{label}: no agent session found on {host}"))?,
     };
-    let project = catalog()
+    let project = catalog()?
         .into_iter()
         .find(|p| p.name == field("project"))
         .ok_or_else(|| format!("{} is no longer in the project catalog", field("project")))?;

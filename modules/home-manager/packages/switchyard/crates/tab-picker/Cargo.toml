@@ -1,0 +1,9 @@
+[package]
+name = "rex-tab-picker"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+switchyard-ui.workspace = true
+nucleo-matcher.workspace = true
+ratatui.workspace = true

@@ -12,7 +12,7 @@
 -- Enter resumes the ended task's agent session in a new tab on its host and
 -- jumps there, and ctrl+x arms an archive of a task whose tab was closed
 -- without one, which removes the worktree it left behind. See
--- packages/rex-spawn/src/inbox.rs and actions.rs.
+-- packages/switchyard/crates/spawn/src/inbox.rs and crates/core/src/actions.rs.
 local util = require("lib.util")
 
 local label = "rex-inbox"

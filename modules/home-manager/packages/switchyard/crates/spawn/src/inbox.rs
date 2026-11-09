@@ -28,8 +28,7 @@
 //! after every action, showing the outcome and refreshing the tasks; only
 //! Escape (or ctrl-c) closes it.
 
-use std::io::{self, Write};
-use std::process::{Command, Stdio};
+use std::io;
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
@@ -43,15 +42,17 @@ use ratatui::crossterm::execute;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType};
 use ratatui::{DefaultTerminal, Frame};
+use switchyard_core::actions;
+use switchyard_core::rex::{log, now, select};
+use switchyard_core::tasks::{live_tasks, reconcile_tasks};
+use switchyard_ui::Palette;
+use switchyard_ui::draw::{self, delete_word, highlight, pill, str_width};
+use switchyard_ui::glyphs::{ICON_SEARCH, SPINNER, tick};
+use switchyard_ui::protocol::{self, DATA, Title, clear_title, hex, unhex};
 
-use crate::{CAP_L, CAP_R, ICON_SEARCH, Palette, actions, delete_word, hex, highlight, local_label, now, str_width};
-
-/// A bracketed paste starting with this carries tasks JSON (`rex-data:live`
-/// before the worktree check, `rex-data:tasks` after it) or a failure to get
-/// them (`rex-data:error`), then a newline and the body.
-const DATA: &str = "rex-data:";
+// Data pastes (see `protocol::DATA`) carry tasks JSON (`live` before the
+// worktree check, `tasks` after it) or a failure to get them (`error`).
 
 /// What has arrived so far.
 enum Load {
@@ -62,7 +63,6 @@ enum Load {
     Failed(String),
 }
 
-const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const ICON_INBOX: &str = "\u{f0e27}"; // nf-md-inbox_full
 
 struct Task {
@@ -222,7 +222,7 @@ struct Inbox {
     /// What ctrl-x has armed for the selected task; Enter confirms it.
     armed: Armed,
     list_area: Rect,
-    reported: Option<String>,
+    title: Title,
     started: Instant,
     now: u64,
     load: Load,
@@ -255,7 +255,7 @@ impl Inbox {
             offset: 0,
             armed: Armed::No,
             list_area: Rect::default(),
-            reported: None,
+            title: Title::new("rex-spawn-inbox"),
             started: Instant::now(),
             now: now(),
             load: Load::Ready,
@@ -292,7 +292,7 @@ impl Inbox {
 
     /// A bracketed paste: tasks or a failure to get them, else ignored.
     fn paste(&mut self, text: &str) {
-        let Some((kind, body)) = text.strip_prefix(DATA).and_then(|t| t.split_once('\n')) else { return };
+        let Some((kind, body)) = protocol::data(text) else { return };
         let next = match kind {
             "live" => Load::Live,
             "tasks" => Load::Ready,
@@ -406,13 +406,7 @@ impl Inbox {
 
     fn report(&mut self) -> io::Result<()> {
         let pick = self.pick();
-        if self.reported.as_deref() != Some(&pick) {
-            let mut out = io::stdout();
-            write!(out, "\x1b]2;rex-spawn-inbox:{pick}\x07")?;
-            out.flush()?;
-            self.reported = Some(pick);
-        }
-        Ok(())
+        self.title.report(pick)
     }
 
     fn key(&mut self, k: KeyEvent) -> bool {
@@ -498,30 +492,8 @@ impl Inbox {
     }
 
     fn draw(&mut self, f: &mut Frame) {
-        let p = &self.p;
-        let area = f.area();
-        f.buffer_mut().set_style(area, Style::new().bg(p.base).fg(p.text));
-        let frame = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .border_style(Style::new().fg(p.hl_med).bg(p.base))
-            .title_top(
-                Line::from(vec![
-                    Span::raw(" "),
-                    Span::styled(
-                        if self.archived { "Archive" } else { "Tasks" },
-                        Style::new().fg(p.iris).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" "),
-                ]
-                .into_iter()
-                .chain(self.filter_spans())
-                .collect::<Vec<_>>())
-                .left_aligned(),
-            )
-            .title_top(Line::from(Span::styled(" ⌘I ", Style::new().fg(p.muted))).right_aligned())
-            .style(Style::new().bg(p.base));
-        let inner = frame.inner(area).inner(Margin::new(1, 1));
-        f.render_widget(frame, area);
+        let title = if self.archived { "Archive" } else { "Tasks" };
+        let inner = draw::frame(f, &self.p, title, self.filter_spans(), "⌘I", Margin::new(1, 1));
         let [search, rule, _, body, _, footer] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Length(1),
@@ -531,7 +503,7 @@ impl Inbox {
             Constraint::Length(1),
         ])
         .areas(inner);
-        f.render_widget(Line::styled("─".repeat(rule.width as usize), Style::new().fg(self.p.overlay)), rule);
+        draw::rule(f, &self.p, rule);
         self.draw_search(f, search);
         self.draw_list(f, body);
         self.draw_footer(f, footer);
@@ -542,9 +514,7 @@ impl Inbox {
         let p = &self.p;
         let mut spans = Vec::new();
         let mut chip = |text: &str, fg: Color| {
-            spans.push(Span::styled(CAP_L, Style::new().fg(p.surface).bg(p.base)));
-            spans.push(Span::styled(text.to_string(), Style::new().fg(fg).bg(p.surface)));
-            spans.push(Span::styled(CAP_R, Style::new().fg(p.surface).bg(p.base)));
+            spans.extend(pill(vec![Span::styled(text.to_string(), Style::new().fg(fg))], p.surface, p.base));
             spans.push(Span::raw(" "));
         };
         match self.profile {
@@ -560,18 +530,8 @@ impl Inbox {
 
     fn draw_search(&self, f: &mut Frame, area: Rect) {
         let p = &self.p;
-        let prompt = format!(" {ICON_SEARCH}  ");
-        let prompt_w = str_width(&prompt) as u16;
-        let text = if self.query.is_empty() {
-            Span::styled(if self.archived { "Filter archived tasks" } else { "Filter tasks" }, Style::new().fg(p.muted))
-        } else {
-            Span::styled(self.query.clone(), Style::new().fg(p.text))
-        };
-        f.render_widget(Line::from(vec![Span::styled(prompt, Style::new().fg(p.iris)), text]), area);
-        let x = area.x + prompt_w + str_width(&self.query) as u16;
-        if x < area.x + area.width {
-            f.set_cursor_position((x, area.y));
-        }
+        let placeholder = if self.archived { "Filter archived tasks" } else { "Filter tasks" };
+        draw::search(f, p, area, &self.query, placeholder, true, true);
         // Counts by what needs attention, like the tab picker's chips.
         let shown = || self.tasks.iter().filter(|t| self.passes(t));
         let count = |st: &str| shown().filter(|t| t.state == st).count();
@@ -588,7 +548,7 @@ impl Inbox {
             }
         }
         if let Load::Live = self.load {
-            let tick = (self.started.elapsed().as_millis() / 90) as usize;
+            let tick = tick(self.started);
             chips.insert(0, Span::styled(format!("{} checking worktrees  ", SPINNER[tick % SPINNER.len()]), Style::new().fg(p.muted)));
         } else if chips.is_empty() {
             let n = shown().count();
@@ -604,7 +564,7 @@ impl Inbox {
         if self.rows.is_empty() {
             let p = &self.p;
             let lines = if let Load::Waiting = self.load {
-                let tick = (self.started.elapsed().as_millis() / 90) as usize;
+                let tick = tick(self.started);
                 vec![
                     Line::styled(SPINNER[tick % SPINNER.len()], Style::new().fg(p.foam)),
                     Line::from(""),
@@ -622,20 +582,14 @@ impl Inbox {
                     Line::styled(ICON_INBOX, Style::new().fg(p.hl_high)),
                     Line::from(""),
                     Line::styled("No ended tasks", Style::new().fg(p.subtle)),
-                    Line::from(vec![
-                        Span::styled("⌃A", Style::new().fg(p.subtle).bg(p.overlay)),
-                        Span::styled(" shows open ones", Style::new().fg(p.muted)),
-                    ]),
+                    draw::key_hint(p, "⌃A", " shows open ones"),
                 ]
             } else if self.tasks.is_empty() {
                 vec![
                     Line::styled(ICON_INBOX, Style::new().fg(p.hl_high)),
                     Line::from(""),
                     Line::styled("No open tasks", Style::new().fg(p.subtle)),
-                    Line::from(vec![
-                        Span::styled("⌃⌘N", Style::new().fg(p.subtle).bg(p.overlay)),
-                        Span::styled(" spawns one", Style::new().fg(p.muted)),
-                    ]),
+                    draw::key_hint(p, "⌃⌘N", " spawns one"),
                 ]
             } else if self.query.trim().is_empty() {
                 let what = match (self.profile, self.archived && self.kept) {
@@ -647,10 +601,7 @@ impl Inbox {
                     Line::styled(ICON_INBOX, Style::new().fg(p.hl_high)),
                     Line::from(""),
                     Line::styled(what, Style::new().fg(p.subtle)),
-                    Line::from(vec![
-                        Span::styled("⇥", Style::new().fg(p.subtle).bg(p.overlay)),
-                        Span::styled(" changes profile", Style::new().fg(p.muted)),
-                    ]),
+                    draw::key_hint(p, "⇥", " changes profile"),
                 ]
             } else {
                 vec![
@@ -659,13 +610,7 @@ impl Inbox {
                     Line::styled(format!("Nothing matches “{}”", self.query), Style::new().fg(p.subtle)),
                 ]
             };
-            let top = area.y + area.height.saturating_sub(lines.len() as u16) / 3;
-            for (i, line) in lines.into_iter().enumerate() {
-                let y = top + i as u16;
-                if y < area.y + area.height {
-                    f.render_widget(line.centered(), Rect { y, height: 1, ..area });
-                }
-            }
+            draw::centered(f, area, lines);
             return;
         }
         if self.selected < self.offset {
@@ -673,7 +618,7 @@ impl Inbox {
         } else if self.selected >= self.offset + h {
             self.offset = self.selected + 1 - h;
         }
-        let tick = (self.started.elapsed().as_millis() / 90) as usize;
+        let tick = tick(self.started);
         // Project and feature columns line up across rows: size them for the
         // widest values, within what the busiest right side leaves.
         let shown = || self.rows.iter().map(|&i| &self.tasks[i]);
@@ -696,9 +641,7 @@ impl Inbox {
             right.push(Span::styled(format!("✎{}  ", t.dirty), Style::new().fg(p.gold).bg(bg)));
         }
         let chip_fg = if t.profile == "work" { p.gold } else { p.subtle };
-        right.push(Span::styled(CAP_L, Style::new().fg(p.surface).bg(bg)));
-        right.push(Span::styled(t.host.clone(), Style::new().fg(chip_fg).bg(p.surface)));
-        right.push(Span::styled(CAP_R, Style::new().fg(p.surface).bg(bg)));
+        right.extend(pill(vec![Span::styled(t.host.clone(), Style::new().fg(chip_fg))], p.surface, bg));
         let when = if t.since > 0 { format!(" {}", age(self.now.saturating_sub(t.since))) } else { String::new() };
         right.push(Span::styled(format!("  {verb:>9}{when:>4} "), Style::new().fg(p.muted).bg(bg)));
         let w = right.iter().map(|s| str_width(&s.content)).sum();
@@ -871,7 +814,7 @@ fn show(inbox: &mut Inbox) -> io::Result<()> {
     ratatui::restore();
     // Leave the shell's title as it was before the picks.
     if inbox.standalone {
-        let _ = write!(io::stdout(), "\x1b]2;\x07");
+        clear_title();
     }
     result
 }
@@ -889,7 +832,7 @@ impl Inbox {
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
             for kind in ["live", "tasks"] {
-                let got = if kind == "live" { crate::live_tasks() } else { crate::reconcile_tasks() };
+                let got = if kind == "live" { live_tasks() } else { reconcile_tasks() };
                 let (msg, failed) = match got {
                     Ok(tasks) => (format!("{DATA}{kind}\n{}", serde_json::Value::from(tasks)), false),
                     Err(e) => (format!("{DATA}error\n{e}"), true),
@@ -928,7 +871,7 @@ impl Inbox {
         let (Some(host), Some(session), Some(window)) = (parts.next(), parts.next(), parts.next()) else {
             return Some(Outcome::Stay);
         };
-        let host = crate::unhex(host);
+        let host = unhex(host);
         if review {
             // Ended tasks have nothing to review.
             if self.archived {
@@ -955,11 +898,11 @@ impl Inbox {
                 self.busy(term, format!("Archiving on {host}…"));
                 self.note = Some(match actions::act(action, &host, session, window) {
                     Ok(msg) => {
-                        crate::log(&msg);
+                        log(&msg);
                         (msg, false)
                     }
                     Err(e) => {
-                        crate::log(&format!("{action} failed: {e}"));
+                        log(&format!("{action} failed: {e}"));
                         (e, true)
                     }
                 });
@@ -985,7 +928,7 @@ impl Inbox {
         self.busy(term, format!("{}…", if action == "review" { "Opening review" } else { "Resuming" }));
         match actions::act(action, host, session, window) {
             Ok(out) => {
-                crate::log(&out);
+                log(&out);
                 let jumped = match tab(&out) {
                     Some((h, s, w)) => select(&h, &s, &w),
                     None if action == "resume" => Err(format!("rex-spawn --act resume printed no tab: {out}")),
@@ -995,7 +938,7 @@ impl Inbox {
                 self.finish(jumped, msg)
             }
             Err(e) => {
-                crate::log(&format!("{action} failed: {e}"));
+                log(&format!("{action} failed: {e}"));
                 self.note = Some((e, true));
                 Outcome::Stay
             }
@@ -1022,23 +965,6 @@ impl Inbox {
         self.note = Some((msg, false));
         let _ = term.draw(|f| self.draw(f));
     }
-}
-
-/// Show the tab in its host's Rex app, as the config's jump does.
-fn select(host: &str, session: &str, window: &str) -> Result<(), String> {
-    let mut cmd = Command::new("rex");
-    if host != local_label() {
-        cmd.args(["-S", host]);
-    }
-    let out = cmd
-        .args(["do", "session.select", &format!("session_id={session}"), &format!("window_id={window}")])
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|e| format!("rex: {e}"))?;
-    if !out.status.success() {
-        return Err(format!("can't show the tab on {host}: {}", String::from_utf8_lossy(&out.stderr).trim()));
-    }
-    Ok(())
 }
 
 fn run_loop(term: &mut DefaultTerminal, inbox: &mut Inbox) -> io::Result<()> {

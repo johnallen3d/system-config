@@ -1,0 +1,13 @@
+[package]
+name = "rex-spawn"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+switchyard-core.workspace = true
+switchyard-ui.workspace = true
+nucleo-matcher.workspace = true
+ratatui.workspace = true
+ratatui-textarea.workspace = true
+serde_json.workspace = true
+unicode-width.workspace = true

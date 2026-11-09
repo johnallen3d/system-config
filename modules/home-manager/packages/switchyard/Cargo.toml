@@ -1,0 +1,27 @@
+# Switchyard: the Rex float tools (see ../switchyard.nix). Library crates
+# hold what the tools share; each binary crate is one tool.
+#
+#   crates/ui          palette, glyphs, chrome, list drawing, float protocol
+#   crates/core        Rex and SSH calls, hosts and catalog, task registry,
+#                      launches and inbox actions
+#   crates/tab-picker  rex-tab-picker (cmd+k)
+#   crates/spawn       rex-spawn (ctrl+cmd+n, cmd+i inbox as rex-inbox)
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+switchyard-core = { path = "crates/core" }
+switchyard-ui = { path = "crates/ui" }
+libc = "0.2"
+nucleo-matcher = "0.3"
+ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
+ratatui-textarea = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
+unicode-width = "0.2"

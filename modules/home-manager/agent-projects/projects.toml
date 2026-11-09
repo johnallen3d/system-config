@@ -4,9 +4,10 @@
 # only used when the path is missing on the chosen host; existing checkouts are
 # never touched.
 #
-# rex-spawn's "auto" host comes from the group's pool (RSP_POOLS in
-# ../packages/rex-spawn.nix); a project's optional `hosts` list overrides it,
-# where "config" means the config host (the Mac).
+# rex-spawn's "auto" host comes from the group's pool (`pools` in
+# ../packages/switchyard-config.nix, which writes this catalog into
+# switchyard's runtime config); a project's optional `hosts` list overrides
+# it, where "config" means the config host (the Mac).
 
 [[personal]]
 path = "~/dev/src/system-config"

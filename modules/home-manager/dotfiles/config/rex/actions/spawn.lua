@@ -5,7 +5,7 @@
 -- picker's host, which --launch collects); Enter launches from this
 -- config host, the only one that can reach every Rex host. The new tab runs
 -- `rex-spawn --run` on the target host, which makes the worktree with wt and
--- starts the agent there. See packages/rex-spawn/src/main.rs.
+-- starts the agent there. See packages/switchyard/crates/spawn/src/main.rs.
 local util = require("lib.util")
 
 local label = "rex-spawn"
