@@ -4,7 +4,17 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+switchyard-core.workspace = true
 switchyard-ui.workspace = true
 nucleo-matcher.workspace = true
 ratatui.workspace = true
 serde_json.workspace = true
+
+[[bin]]
+name = "rex-tab-picker"
+path = "src/main.rs"
+
+# The standalone picker on the Agents view, as the old rex-inbox was.
+[[bin]]
+name = "rex-inbox"
+path = "src/inbox.rs"

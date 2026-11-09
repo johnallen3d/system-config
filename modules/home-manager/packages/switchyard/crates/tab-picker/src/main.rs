@@ -34,12 +34,19 @@
 //! ended task), or an armed `archive`, `ask` or `force-archive`. TARGET is
 //! `-` for the config host, else the hex-encoded host label; task rows with
 //! no listed tab use the registry host. The config's mode turns Enter,
-//! ctrl-r and Escape into the actions, so this program never talks to Rex.
+//! ctrl-r and Escape into the actions, so in the float this program never
+//! talks to Rex.
+//!
+//! Run bare from a shell (`rex-tab-picker`, or `rex-inbox` for the Agents
+//! view), it works without the float: it fetches the data and acts on its
+//! picks itself, staying open after each action (see standalone.rs).
 
 mod model;
+mod standalone;
 
 use std::collections::HashMap;
-use std::io::{self, Read};
+use std::io::{self, IsTerminal, Read};
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 use model::{Session, State, Tab, Task, age, link, now, parse_rows, parse_tasks, urgency, work_dir};
@@ -204,6 +211,14 @@ struct App {
     now: u64,
     load: Load,
     tasks_load: Tasks,
+    /// Run from a shell rather than in the config's float: Enter, ctrl-r
+    /// and Escape reach the picker, which acts on them itself.
+    standalone: bool,
+    /// The last standalone action's outcome (and whether it failed), shown
+    /// in the footer until the next key.
+    note: Option<(String, bool)>,
+    /// Standalone fetches, as the float's pastes would carry them.
+    fetch: Option<Receiver<String>>,
 }
 
 impl App {
@@ -231,6 +246,9 @@ impl App {
             now: now(),
             load: Load::Waiting,
             tasks_load: Tasks::Waiting,
+            standalone: false,
+            note: None,
+            fetch: None,
         }
     }
 
@@ -1122,6 +1140,11 @@ impl App {
 
     fn draw_footer(&self, f: &mut Frame, area: Rect) {
         let p = &self.p;
+        if let Some((msg, failed)) = &self.note {
+            let style = Style::new().fg(if *failed { p.love } else { p.pine });
+            f.render_widget(Line::from(vec![Span::raw(" "), Span::styled(msg.clone(), style)]), area);
+            return;
+        }
         if let (true, Some(t)) = (self.armed != Armed::No, self.selected_task()) {
             let mut spans = vec![Span::raw(" ")];
             let key = Style::new().fg(p.love).add_modifier(Modifier::BOLD);
@@ -1186,6 +1209,87 @@ impl App {
     }
 }
 
+// ---------------------------------------------------------------- standalone
+
+impl App {
+    /// Fetch the rows and tasks again, keeping what is shown until they come.
+    fn refetch(&mut self) {
+        if !matches!(self.tasks_load, Tasks::Failed) {
+            self.tasks_load = Tasks::Waiting;
+        }
+        self.fetch = Some(standalone::fetch());
+    }
+
+    /// Fetched data that has arrived, taken as the float takes pastes.
+    fn take_fetched(&mut self) {
+        let Some(rx) = &self.fetch else { return };
+        let got: Vec<String> = rx.try_iter().collect();
+        for text in got {
+            self.paste(&text);
+        }
+    }
+
+    /// Enter, ctrl-r and Escape in a standalone picker, as the config's
+    /// tab_picker mode handles them; false for other keys.
+    fn standalone_key(&mut self, k: KeyEvent, term: &mut DefaultTerminal) -> bool {
+        let review = matches!(k.code, KeyCode::Char('r') if k.modifiers.contains(KeyModifiers::CONTROL));
+        if !review && !matches!(k.code, KeyCode::Enter) {
+            return false;
+        }
+        self.note = None;
+        let Some(pick) = standalone::parse_pick(&self.pick()) else { return true };
+        let label = self.selected_label();
+        let done = |r: Result<(), String>, msg: String| match r {
+            Ok(()) => (msg, false),
+            Err(e) => (e, true),
+        };
+        let note = match pick.action.as_str() {
+            // Only open tasks have something to review.
+            _ if review && pick.action != "task" => return true,
+            _ if review => {
+                self.busy(term, format!("Opening review of {label}…"));
+                done(standalone::review(&pick), format!("reviewing {label}"))
+            }
+            // As the config types ctrl-x for `ask`: on to "are you sure".
+            "ask" => {
+                self.key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL));
+                return true;
+            }
+            "archive" | "force-archive" => {
+                self.armed = Armed::No;
+                self.busy(term, format!("Archiving {label} on {}…", pick.host));
+                match standalone::archive(&pick.action, &pick) {
+                    Ok(msg) => (msg, false),
+                    Err(e) => (e, true),
+                }
+            }
+            "resume" => {
+                self.busy(term, format!("Resuming {label}…"));
+                done(standalone::resume(&pick), format!("resumed {label}"))
+            }
+            _ => done(standalone::go(&pick), format!("showed {label}")),
+        };
+        self.note = Some(note);
+        self.refetch();
+        true
+    }
+
+    /// The highlighted row's name for an outcome: the task, or the tab.
+    fn selected_label(&self) -> String {
+        match self.selected_item() {
+            Some(Item::Tab(t)) if self.tabs[t].task.is_none() => self.tabs[t].name.clone(),
+            Some(item) => self.task_of(item).map(Task::label).unwrap_or_default(),
+            None => String::new(),
+        }
+    }
+
+    /// Show `msg` in the footer while a slow action runs.
+    fn busy(&mut self, term: &mut DefaultTerminal, msg: String) {
+        self.note = Some((msg, false));
+        let _ = term.draw(|f| self.draw(f));
+    }
+}
+
 // ---------------------------------------------------------------- main
 
 const USAGE: &str = "usage: rex-tab-picker [--current SESSION/WINDOW] [--view all|agents|archive] [ROWS | - | --wait]
@@ -1196,10 +1300,15 @@ rex-tab-picker:ACTION:TARGET/SESSION/WINDOW. ROWS are the tab separated rows
 built by the Rex config; `-` or no argument reads stdin. --wait opens at
 once and takes the data from bracketed pastes of rex-data:KIND, a newline
 and the body: KIND rows (or error and a message), live and tasks
-(rex-spawn --tasks JSON), or tasks-error.";
+(rex-spawn --tasks JSON), or tasks-error.
+
+Run bare from a terminal (or as rex-inbox, on the agents view), it fetches
+the tabs and tasks itself and acts on Enter and ctrl-r, staying open until
+Escape or ctrl-c.";
 
 fn run(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
     loop {
+        app.take_fetched();
         app.now = now();
         term.draw(|f| app.draw(f))?;
         app.report()?;
@@ -1212,11 +1321,20 @@ fn run(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
         }
         match event::read()? {
             Event::Key(k) if k.kind != KeyEventKind::Release => {
+                if app.standalone {
+                    if k.code == KeyCode::Esc {
+                        return Ok(());
+                    }
+                    if app.standalone_key(k, term) {
+                        continue;
+                    }
+                    app.note = None;
+                }
                 if !app.key(k) {
                     return Ok(());
                 }
             }
-            Event::Paste(text) => app.paste(&text),
+            Event::Paste(text) if !app.standalone => app.paste(&text),
             Event::Mouse(m) => match m.kind {
                 MouseEventKind::ScrollUp => app.step(-1),
                 MouseEventKind::ScrollDown => app.step(1),
@@ -1229,10 +1347,13 @@ fn run(term: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    let mut args = std::env::args().skip(1);
+    let mut args = std::env::args();
+    // rex-inbox is this binary under another name: standalone, on Agents.
+    let inbox = args.next().is_some_and(|a| a.rsplit('/').next() == Some("rex-inbox"));
     let mut current = (String::new(), String::new());
-    let mut view = View::All;
+    let mut view = if inbox { View::Agents } else { View::All };
     let mut rows: Option<String> = None;
+    let mut stdin = false;
     let mut wait = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -1257,12 +1378,17 @@ fn main() -> io::Result<()> {
                 }
             }
             "--wait" => wait = true,
-            "-" => rows = None,
+            "-" => {
+                rows = None;
+                stdin = true;
+            }
             other => rows = Some(other.to_string()),
         }
     }
+    // Nothing to read: the standalone picker.
+    let standalone = !wait && rows.is_none() && !stdin && (inbox || io::stdin().is_terminal());
     let input = match rows {
-        _ if wait => None,
+        _ if wait || standalone => None,
         Some(r) => Some(r),
         None => {
             let mut s = String::new();
@@ -1270,7 +1396,14 @@ fn main() -> io::Result<()> {
             Some(s)
         }
     };
+    if standalone {
+        standalone::detach_env();
+    }
     let mut app = App::new(current, view);
+    if standalone {
+        app.standalone = true;
+        app.refetch();
+    }
     if let Some(input) = input {
         app.tasks_load = Tasks::Failed;
         app.paste(&format!("{}rows\n{input}", protocol::DATA));
@@ -1280,5 +1413,9 @@ fn main() -> io::Result<()> {
     let result = run(&mut term, &mut app);
     let _ = execute!(io::stdout(), DisableMouseCapture);
     ratatui::restore();
+    // Leave the shell's title as it was before the picks.
+    if app.standalone {
+        protocol::clear_title();
+    }
     result
 }
