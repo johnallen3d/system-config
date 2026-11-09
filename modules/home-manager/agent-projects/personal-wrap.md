@@ -25,8 +25,8 @@ force deletion, killing processes, or bypassing hooks/signing.
    `cd "$repo_root"`, then verify the harness cwd and a fresh `pwd -P` in a separate
    call. If the session was launched inside the task worktree (Rex spawn tabs
    are), `cd` does not move its anchor: skip removal and report the worktree as
-   left for Rex inbox discard (cmd+i, ctrl-x), which closes the tab and removes
-   it. That is not a blocker once commit and integration succeed. A subshell,
+   left for archive from the Rex tab picker (cmd+k or cmd+i, ctrl-x), which
+   closes the tab and removes it. That is not a blocker once commit and integration succeed. A subshell,
    command cwd override, `wt switch`, or Pi `process.chdir` is not proof of a
    safe cwd. Never delete the running session's directory; retain the worktree
    if the session anchor or cwd is uncertain. Wait for task

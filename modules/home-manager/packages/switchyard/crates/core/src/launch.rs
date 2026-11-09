@@ -4,7 +4,7 @@
 use crate::hosts::{AUTO, catalog, choose_host};
 use crate::naming::{HARNESSES, branch_and_slug, name_problem};
 use crate::prompts::{discard_prompt, fetch_prompt};
-use crate::rex::{home, local_label, log, now, rex_json};
+use crate::rex::{host_home, log, now, rex_json};
 use crate::sessions::new_session_id;
 use crate::tasks::record_task;
 
@@ -47,14 +47,7 @@ pub fn launch(
     // project not cloned yet), so give it the host's absolute path. The
     // remote dev hosts are Linux, so home is /home/ACCOUNT for the account
     // its Rex server runs as.
-    let remote_home = if host == local_label() {
-        home().display().to_string()
-    } else {
-        rex_json(host, &["api", "call", "server.whoami"])?["account"]
-            .as_str()
-            .map(|account| format!("/home/{account}"))
-            .unwrap_or_default()
-    };
+    let remote_home = host_home(host)?;
     let cwd = match project.path.strip_prefix("~/") {
         Some(rest) if !remote_home.is_empty() => format!("{remote_home}/{rest}"),
         _ => project.path.clone(),

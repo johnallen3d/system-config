@@ -94,14 +94,30 @@ pub fn rex(host: &str, args: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-/// Show a tab in its host's Rex app, as the config's jumps do.
+/// The home directory of `host`'s account: this host's own, or a dev host's
+/// /home/ACCOUNT (the dev hosts are Linux and their Rex server's account is
+/// the one that works there). Empty when the account can't be read.
+pub fn host_home(host: &str) -> Result<String, String> {
+    if host == local_label() {
+        return Ok(home().display().to_string());
+    }
+    let account = rex_json(host, &["api", "call", "server.whoami"])?["account"].as_str().unwrap_or_default().to_string();
+    Ok(if account.is_empty() { String::new() } else { format!("/home/{account}") })
+}
+
+/// Show a tab in its host's Rex app, as the config's jumps do; with no
+/// window, the session's own.
 pub fn select(host: &str, session: &str, window: &str) -> Result<(), String> {
     let mut cmd = Command::new("rex");
     if host != local_label() {
         cmd.args(["-S", host]);
     }
+    let mut args = vec!["do".to_string(), "session.select".to_string(), format!("session_id={session}")];
+    if !window.is_empty() {
+        args.push(format!("window_id={window}"));
+    }
     let out = cmd
-        .args(["do", "session.select", &format!("session_id={session}"), &format!("window_id={window}")])
+        .args(&args)
         .stdin(Stdio::null())
         .output()
         .map_err(|e| format!("rex: {e}"))?;

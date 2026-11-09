@@ -4,6 +4,7 @@
 
 pub mod actions;
 pub mod config;
+pub mod folders;
 pub mod hosts;
 pub mod launch;
 pub mod naming;

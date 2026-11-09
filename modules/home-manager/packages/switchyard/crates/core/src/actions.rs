@@ -1,7 +1,7 @@
-//! Inbox actions on a spawned task: `rex-spawn --act ACTION HOST SESSION WINDOW`.
+//! Actions on a spawned task: `rex-spawn --act ACTION HOST SESSION WINDOW`.
 //!
 //! Runs on the config host, which holds the task registry and reaches every
-//! Rex host; the config's inbox mode calls it, then jumps to the task's tab
+//! Rex host; the config's tab_picker mode calls it, then jumps to the task's tab
 //! after a review.
 //!
 //! - review: split the task's tab with lazygit in the worktree (or a plain
@@ -126,7 +126,7 @@ pub fn act(action: &str, host: &str, session: &str, window: &str) -> Result<Stri
                 let more = if files.len() > 3 { format!(" and {} more", files.len() - 3) } else { String::new() };
                 return Err(format!(
                     "Archive refused: {label} has uncommitted changes in {shown}{more}. \
-                     Press ⌃X, Enter, Enter in the inbox to throw them away."
+                     Press ⌃X, Enter, Enter in the tab picker (⌘K) to throw them away."
                 ));
             }
             if ended && !exists {

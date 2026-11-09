@@ -1,22 +1,28 @@
-//! Spawn agent work for Rex's ctrl+cmd+n float.
+//! Rex's ctrl+cmd+n and cmd+shift+n float, and the tools behind it.
 //!
-//! Three modes, one binary on every host:
+//! Modes, one binary on every host:
 //!
-//! - Picker (default): runs in the float on the focused session's host. Pick
-//!   a catalog project and name the work; the host defaults to `auto` and
-//!   the harness to Claude, both overridable with ctrl-o and ctrl-t. The
-//!   picker reports the choice in the terminal title as
-//!   `rex-spawn:HOST/PATH/NAME/HARNESS[/PROMPT_REF]` (all but the harness
-//!   hex encoded); the config's `spawn` mode turns Enter into the launch, as
-//!   with rex-tab-picker. Escape reaches the picker, which exits (closing
-//!   the float) but asks first when the prompt has text. Titles are
+//! - Picker (default): runs in the float on the focused session's host. It
+//!   lists the catalog's projects and the zoxide folders of one host (ctrl-o
+//!   chooses the host), and takes either a plain session in the highlighted
+//!   folder or project, or agent work in a catalog project: a name, a
+//!   harness (ctrl-t, Claude by default) and an optional prompt. ctrl-s
+//!   switches the kind; `--kind` starts it (cmd+shift+n: session, ctrl+cmd+n:
+//!   agent). The picker reports the choice in the terminal title as
+//!   `rex-new:session/HOST/PATH` or `rex-new:agent/HOST/PATH/NAME/HARNESS[/PROMPT_REF]`
+//!   (fields hex encoded); the config's `new` mode turns Enter into the
+//!   action, as with rex-tab-picker. Escape reaches the picker, which exits
+//!   (closing the float) but asks first when the prompt has text. Titles are
 //!   capped at about 1 KiB, too little for a prompt, so the optional prompt
 //!   lives in a file on the picker's host (see core's `prompts`), rewritten as
 //!   it is typed because the picker never sees the Enter that launches, and
-//!   the title carries only its `LABEL:ID` reference. The float always
-//!   passes `--local LABEL`; run bare from a shell on the config host, the
-//!   picker is standalone instead: Enter reaches it, and it launches the
-//!   work itself (as `--launch` below) and shows the new tab.
+//!   the title carries only its `LABEL:ID` reference. The float passes
+//!   `--home LABEL FOLDERS`, the config host's label and zoxide folders;
+//!   run bare from a shell on the config host, the picker is standalone
+//!   instead: Enter reaches it, and it acts itself and shows the new tab.
+//! - `--open HOST DIR`: runs on the config host. Finds or creates the session
+//!   named after DIR on HOST (a ~/ path is expanded for HOST) and prints its
+//!   ID, as a session pick's action needs (see core's `folders`).
 //! - `--launch HOST PATH NAME HARNESS [PROMPT_REF]`: runs on the config host
 //!   (the Mac), which can reach every Rex host. HOST `auto` picks from the
 //!   project's host pool (see core's `hosts::pool`), least busy first. Reads the prompt
@@ -26,12 +32,8 @@
 //!   `HOST<TAB>SESSION_ID<TAB>WINDOW_ID`.
 //! - `--tasks`: runs on the config host. Checks every recorded task against
 //!   its host, marks the ones whose tab or worktree is gone as ended, and
-//!   prints the registry as JSON with each open task's live agent status.
-//! - `--inbox JSON [SESSION_ID/WINDOW_ID]`: the cmd+i task inbox float, fed
-//!   `--tasks` output by the config (see inbox.rs), starting on the task in
-//!   the given tab, if any. Without JSON (or run as `rex-inbox`, a symlink
-//!   to this binary), the same inbox standalone in a shell on the config
-//!   host: it fetches the tasks and acts on its picks itself.
+//!   prints the registry as JSON with each open task's live agent status,
+//!   for rex-tab-picker's agents and archive views (cmd+k, cmd+i).
 //! - `--act ACTION HOST SESSION WINDOW`: runs on the config host. Reviews or
 //!   archives the task in that tab, or resumes an ended one (see core's
 //!   `actions`).
@@ -44,83 +46,79 @@
 //!   the newest agent session for the worktree (see core's `sessions`).
 //!
 //! The work itself (catalog, work names, launches, the task registry and
-//! actions) is in switchyard-core; this crate holds the picker, the inbox and
-//! `--run`.
+//! actions) is in switchyard-core; this crate holds the picker and `--run`.
 
-mod inbox;
 mod picker;
 mod run;
 
 use std::io;
-use std::path::Path;
 
-use switchyard_core::hosts::{AUTO, dev_hosts};
+use switchyard_core::folders;
 use switchyard_core::launch::launch;
 use switchyard_core::rex::log;
 use switchyard_core::sessions::newest_session_here;
 use switchyard_core::tasks::{live_tasks, reconcile_tasks};
 use switchyard_core::actions;
 
-use crate::picker::{run_picker, run_standalone};
+use crate::picker::{Kind, run_picker, run_standalone};
 use crate::run::run;
 
-const USAGE: &str = "usage: rex-spawn [--local LABEL]
-       rex-spawn
+const USAGE: &str = "usage: rex-spawn [--kind agent|session] [--home LABEL FOLDERS]
+       rex-spawn --open HOST DIR
        rex-spawn --launch HOST PATH NAME HARNESS [PROMPT_REF]
        rex-spawn --run PROFILE PATH NAME HARNESS CLONE_URL [AGENT_SESSION new|resume] [PROMPT]
        rex-spawn --tasks [--live]
-       rex-spawn --inbox [TASKS_JSON|- [SESSION_ID/WINDOW_ID]]
-       rex-inbox
        rex-spawn --act review|archive|force-archive|resume HOST SESSION_ID WINDOW_ID
        rex-spawn --session-of PROFILE HARNESS WORKTREE
 
-Without a mode, shows the spawn picker and reports the choice in the
-terminal title as rex-spawn:HOST/PATH/NAME/HARNESS[/PROMPT_REF], keeping
-a typed prompt in a file named by PROMPT_REF (LABEL:ID). --local adds
-the config host's label to the dev hosts. Bare, from a shell on the
-config host, the picker runs standalone: Enter launches the work itself
-and shows its tab. --launch collects the prompt,
+Without a mode, shows the new-session picker (kind agent unless --kind
+session) and reports the choice in the terminal title as
+rex-new:session/HOST/PATH or rex-new:agent/HOST/PATH/NAME/HARNESS[/PROMPT_REF],
+keeping a typed prompt in a file named by PROMPT_REF (LABEL:ID). --home
+gives the config host's label and its zoxide folders, one per line. Bare,
+from a shell on the config host, the picker runs standalone: Enter opens
+the pick itself and shows its tab. --open finds or creates the session for
+DIR on HOST and prints its ID. --launch collects the prompt,
 opens the work's tab on HOST (auto: the least busy dev host), records the
 task, and prints HOST<TAB>SESSION_ID<TAB>WINDOW_ID. --run sets up the
 worktree and runs the harness in the current tab, starting AGENT_SESSION
 with PROMPT as its first message or resuming it. --tasks checks recorded tasks against their
 hosts and prints them as JSON with live agent status; with --live it only
-adds the status, without checking worktrees or ending tasks. --inbox shows
-open tasks from that JSON (with -, from bracketed pastes typed into it
-later), most urgent first (starting on the given tab's task),
-and reports the highlighted one as
-rex-spawn-inbox:ACTION:HOST/SESSION_ID/WINDOW_ID. Bare --inbox, or
-rex-inbox, runs it standalone from a shell on the config host, fetching the
-tasks and acting on Enter, ctrl-r and Escape itself. --act reviews or
+adds the status, without checking worktrees or ending tasks. --act reviews or
 archives the task in a tab (force-archive also throws away uncommitted
 changes), or resumes an ended task's agent session in a new tab and prints
 it as --launch does. --session-of prints the newest agent session for a
 worktree on this host.";
 
-fn main() -> io::Result<()> {
-    let mut args: Vec<String> = std::env::args().collect();
-    let argv0 = args.remove(0);
-    // rex-inbox is this binary under another name: the standalone inbox.
-    if Path::new(&argv0).file_name().is_some_and(|n| n == "rex-inbox") && args.is_empty() {
-        args.push("--inbox".into());
+/// The picker's options: `--kind KIND`, then from the float `--home LABEL
+/// FOLDERS` (the float's folders argument may be empty). None for any other
+/// arguments.
+fn picker_args(rest: &[&str]) -> Option<(Kind, Option<(String, String)>)> {
+    let (kind, rest) = match rest {
+        ["--kind", kind, rest @ ..] => (Kind::parse(kind)?, rest),
+        _ => (Kind::Agent, rest),
+    };
+    match rest {
+        [] => Some((kind, None)),
+        ["--home", label, folders] => Some((kind, Some(((*label).to_string(), (*folders).to_string())))),
+        _ => None,
     }
+}
+
+fn main() -> io::Result<()> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
     let a: Vec<&str> = args.iter().map(String::as_str).collect();
     match a.as_slice() {
         ["-h"] | ["--help"] => println!("{USAGE}"),
-        ["--inbox"] => {
-            if let Err(e) = inbox::run_standalone() {
-                eprintln!("rex-inbox: {e}");
-                std::process::exit(1);
-            }
-        }
-        [] => {
-            if let Err(e) = run_standalone() {
+        ["--launch", host, path, name, harness, prompt_ref @ ..] if prompt_ref.len() <= 1 => match launch(host, path, name, harness, prompt_ref.first().copied(), None) {
+            Ok((host, session, window)) => print!("{host}\t{session}\t{window}"),
+            Err(e) => {
                 eprintln!("rex-spawn: {e}");
                 std::process::exit(1);
             }
-        }
-        ["--launch", host, path, name, harness, prompt_ref @ ..] if prompt_ref.len() <= 1 => match launch(host, path, name, harness, prompt_ref.first().copied(), None) {
-            Ok((host, session, window)) => print!("{host}\t{session}\t{window}"),
+        },
+        ["--open", host, dir] => match folders::open(host, dir) {
+            Ok(id) => print!("{id}"),
             Err(e) => {
                 eprintln!("rex-spawn: {e}");
                 std::process::exit(1);
@@ -139,8 +137,6 @@ fn main() -> io::Result<()> {
                 println!("{id}");
             }
         }
-        ["--inbox", json] => inbox::run(json, None)?,
-        ["--inbox", json, current] => inbox::run(json, Some(current))?,
         ["--act", action, host, session, window] => match actions::act(action, host, session, window) {
             Ok(msg) => {
                 log(&msg);
@@ -159,20 +155,20 @@ fn main() -> io::Result<()> {
                 std::process::exit(1);
             }
         },
-        rest => {
-            let mut hosts: Vec<String> = std::iter::once(AUTO.to_string())
-                .chain(dev_hosts())
-                .collect();
-            if let ["--local", label] = rest {
-                if !hosts.iter().any(|h| h == label) {
-                    hosts.push(label.to_string());
+        rest => match picker_args(rest) {
+            // From the float: the config host's label and folders.
+            Some((kind, Some((home, folders)))) => run_picker(kind, home, folders, false)?,
+            Some((kind, None)) => {
+                if let Err(e) = run_standalone(kind) {
+                    eprintln!("rex-spawn: {e}");
+                    std::process::exit(1);
                 }
-            } else if !rest.is_empty() {
+            }
+            None => {
                 eprintln!("{USAGE}");
                 std::process::exit(2);
             }
-            run_picker(hosts, false)?;
-        }
+        },
     }
     Ok(())
 }

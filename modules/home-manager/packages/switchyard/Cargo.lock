@@ -554,16 +554,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rex-project-picker"
-version = "0.1.0"
-dependencies = [
- "nucleo-matcher",
- "ratatui",
- "switchyard-core",
- "switchyard-ui",
-]
-
-[[package]]
 name = "rex-spawn"
 version = "0.1.0"
 dependencies = [
@@ -582,6 +572,7 @@ version = "0.1.0"
 dependencies = [
  "nucleo-matcher",
  "ratatui",
+ "serde_json",
  "switchyard-ui",
 ]
 

@@ -3,9 +3,9 @@
 #
 #   crates/ui          palette, glyphs, chrome, list drawing, float protocol
 #   crates/core        Rex and SSH calls, hosts and catalog, task registry,
-#                      launches and inbox actions
-#   crates/tab-picker  rex-tab-picker (cmd+k)
-#   crates/spawn       rex-spawn (ctrl+cmd+n, cmd+i inbox as rex-inbox)
+#                      launches and task actions
+#   crates/tab-picker  rex-tab-picker (cmd+k tabs, agents and archive; cmd+i)
+#   crates/spawn       rex-spawn (cmd+shift+n, ctrl+cmd+n, plus --tasks and --act)
 [workspace]
 resolver = "3"
 members = ["crates/*"]

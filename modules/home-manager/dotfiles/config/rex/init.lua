@@ -7,8 +7,6 @@
 
 require("config.keymaps")
 
-require("actions.inbox")
-require("actions.project-picker")
-require("actions.spawn")
+require("actions.new")
 require("actions.tab-picker")
 require("actions.yem")

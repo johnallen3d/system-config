@@ -1,11 +1,12 @@
 # Switchyard, the Rex float tools (one Cargo workspace in ./switchyard):
 #
-# - rex-tab-picker: the cmd+k tab picker (../dotfiles/config/rex/actions/tab-picker.lua).
-# - rex-spawn: the ctrl+cmd+n spawn picker (actions/spawn.lua), which starts
-#   agent work in a new worktree of a catalog project on a chosen dev host,
-#   and the cmd+i task inbox (actions/inbox.lua), also as rex-inbox.
-# - rex-project-picker: the cmd+shift+n project picker (actions/project-picker.lua),
-#   which lists zoxide folders here or on another Rex host over SSH.
+# - rex-tab-picker: the cmd+k picker for tabs, agents (also cmd+i) and ended
+#   tasks (../dotfiles/config/rex/actions/tab-picker.lua).
+# - rex-spawn: the new-session picker (actions/new.lua), which opens a plain
+#   session in a zoxide folder (cmd+shift+n) or starts agent work in a new
+#   worktree of a catalog project (ctrl+cmd+n) on a chosen host. Its
+#   --launch and --run modes do the work, and it holds the task registry and
+#   actions behind the tab picker's tasks.
 #
 # The floats run on whichever host the focused session lives on, and
 # rex-spawn's --run mode runs in the new tab on the target host, so this is
@@ -24,12 +25,10 @@ in
     };
     cargoLock.lockFile = ./switchyard/Cargo.lock;
     nativeBuildInputs = [pkgs.makeWrapper];
-    # The task inbox, standalone in a shell (see crates/spawn/src/inbox.rs).
     postInstall = ''
-      ln -s rex-spawn $out/bin/rex-inbox
-      # The project picker lists this host's folders with zoxide; rex and ssh
-      # stay the caller's.
-      wrapProgram $out/bin/rex-project-picker --prefix PATH : ${lib.makeBinPath [pkgs.zoxide]}
+      # The picker lists this host's folders with zoxide; rex and ssh stay the
+      # caller's.
+      wrapProgram $out/bin/rex-spawn --prefix PATH : ${lib.makeBinPath [pkgs.zoxide]}
     '';
     meta.mainProgram = "rex-spawn";
   }
