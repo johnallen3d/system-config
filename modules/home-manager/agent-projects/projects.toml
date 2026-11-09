@@ -19,6 +19,10 @@ path = "~/dev/src/playground/credits"
 clone_url = "https://github.com/johnallen3d/credits.git"
 
 [[personal]]
+path = "~/dev/src/playground/switchyard"
+clone_url = "https://github.com/johnallen3d/switchyard.git"
+
+[[personal]]
 path = "~/dev/src/playground/pi-cielo"
 # No remote: a machine-local bundle seeded from the Mac.
 clone_url = "~/.local/share/herdr/project-seeds/pi-cielo.bundle"
