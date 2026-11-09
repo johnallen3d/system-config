@@ -39,6 +39,8 @@
     then theme.source
     else "${theme.pkg}/themes/${theme.file}";
 in {
+  imports = [./traces.nix];
+
   options.codingAgents = {
     enableCrossProfileUsageFooter = lib.mkOption {
       type = lib.types.bool;

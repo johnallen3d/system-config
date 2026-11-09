@@ -1,6 +1,7 @@
 # Small opt-in package set for standalone Linux agent hosts, not the desktop suite.
 {config, pkgs, ...}: let
   pi = import ./pi.nix {inherit pkgs;};
+  traces = import ./traces.nix {inherit pkgs;};
   # Haiku 5.5 needs Claude Code >= 2.1.293. Pin the official release manifest
   # independently of Omarchy's older nixpkgs lock; retain Nix's native wrapper.
   claudeCode = pkgs.claude-code.override {
@@ -72,12 +73,12 @@
     echo "Work agent-kit installed. Restart Claude Code."
   '';
   commands = {
-    inherit claude;
+    inherit claude traces;
     pi = managedPi;
     agent-work-setup = workSetup;
   };
 in {
-  nixpkgs.config.allowUnfreePredicate = pkg: pkgs.lib.getName pkg == "claude-code";
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (pkgs.lib.getName pkg) ["claude-code" "traces"];
 
   home.packages =
     pkgs.lib.attrValues commands

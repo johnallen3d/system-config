@@ -34,6 +34,7 @@
   nail-parquet = import ./nail-parquet.nix {inherit pkgs;};
   llm-usage = import ./llm-usage.nix {inherit pkgs;};
   pinned_yt_dlp = import ./yt-dlp.nix {inherit pkgs;};
+  traces = import ./traces.nix {inherit pkgs;};
   vlt = import ./vlt.nix {inherit pkgs;};
 in {
   imports = [
@@ -170,7 +171,7 @@ in {
       zellij
     ]
     ++ scripts
-    ++ [context-mode llm-usage nail-parquet pi vlt]
+    ++ [context-mode llm-usage nail-parquet pi traces vlt]
     ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ai-intercept yemPackage];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
