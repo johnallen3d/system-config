@@ -66,6 +66,15 @@ in {
   };
 
   xdg.configFile = {
+    # Shadow mise-bin's /usr/share/fish/vendor_conf.d/mise-activate.fish (Fish
+    # sources only the first conf.d file of a given name). Its unconditional
+    # `mise activate` costs 25-70 ms on every `ssh HOST CMD`. Noninteractive
+    # shells already reach mise tools through the shims Omarchy's
+    # env-bootstrap appends to PATH; interactive shells activate mise once in
+    # ./fish/config.fish.
+    "fish/conf.d/mise-activate.fish".text = ''
+      # Managed by Home Manager: disables the vendor mise activation snippet.
+    '';
     "television/config.toml".source = ./dotfiles/config/television/config.toml;
     "television/cable/fish-history.toml".source = ./dotfiles/config/television/cable/fish-history.toml;
   };
