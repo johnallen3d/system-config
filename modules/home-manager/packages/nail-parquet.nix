@@ -10,6 +10,9 @@ pkgs.rustPlatform.buildRustPackage rec {
 
   cargoHash = "sha256-aHVcVmRT1XfRBk4mXOXaEJ+VfydBJ9cEnCddFoR//6o=";
 
+  nativeBuildInputs = [pkgs.pkg-config];
+  buildInputs = [pkgs.zstd];
+
   # Tests require network access
   doCheck = false;
 

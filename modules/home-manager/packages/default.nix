@@ -127,9 +127,14 @@ in {
       poppler-utils
       postgresql
       prettier
-      rainfrog
+      (rainfrog.overrideAttrs (old: lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+        buildInputs = (old.buildInputs or []) ++ [sqlite];
+      }))
       qmk
-      qsv
+      (qsv.overrideAttrs (old: lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+        # Reuse system libraries and the Rust-compatible jemalloc setup hook.
+        buildInputs = (old.buildInputs or []) ++ [aws-lc rust-jemalloc-sys];
+      }))
       socat
       sqlite
       # this is quite outdated and under active development
@@ -137,10 +142,17 @@ in {
       stylua
       television
       tree-sitter
-      tuicr
+      (tuicr.overrideAttrs (old: lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+        # The Rust setup hook requires system libraries instead of vendored copies.
+        nativeBuildInputs = (old.nativeBuildInputs or []) ++ [pkg-config];
+        buildInputs = (old.buildInputs or []) ++ [libgit2 oniguruma zlib];
+      }))
       uv
       vals
-      viddy
+      (viddy.overrideAttrs (old: lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+        nativeBuildInputs = (old.nativeBuildInputs or []) ++ [pkg-config];
+        buildInputs = (old.buildInputs or []) ++ [sqlite];
+      }))
       viu
       vsce
       vscode-langservers-extracted
