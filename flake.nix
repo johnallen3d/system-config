@@ -35,6 +35,12 @@
       url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
       inputs.nixpkgs.follows = "omarchyNixpkgs";
     };
+    switchyard = {
+      # The Rex float tools (~/dev/src/playground/switchyard). Develop against
+      # the checkout with --override-input switchyard path:<checkout>.
+      url = "github:johnallen3d/switchyard";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -47,16 +53,17 @@
     omarchyNixpkgs,
     omarchyHomeManager,
     rex,
+    switchyard,
     ...
   }: let
     user = "john.allen";
     full_name = "John Allen";
 
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
-      inherit credits home-manager lop nix-darwin nixpkgs yem user full_name;
+      inherit credits home-manager lop nix-darwin nixpkgs switchyard yem user full_name;
     };
     makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
-      inherit home-manager lop nixpkgs yem user full_name;
+      inherit home-manager lop nixpkgs switchyard yem user full_name;
     };
   in {
     darwinConfigurations = {
@@ -81,7 +88,7 @@
             overlays = [(import ./lib/worktrunk-overlay.nix)];
           };
           extraSpecialArgs = {
-            inherit credits full_name host lop rex;
+            inherit credits full_name host lop rex switchyard;
           };
           modules = [./hosts/${host}.nix];
         };

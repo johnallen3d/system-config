@@ -19,10 +19,6 @@
           --replace-fail '/bin/cat' '${pkgs.coreutils}/bin/cat'
       '';
   });
-  # The Mac's cmd+k tab, cmd+shift+n project and ctrl+cmd+n spawn pickers open
-  # their floats here when an Omarchy session is focused; spawned work also
-  # runs `rex-spawn --run` here, which needs wt. Switchyard holds all three.
-  switchyard = import ../modules/home-manager/packages/switchyard.nix {inherit pkgs;};
   # Mac (deploys) plus each Linux host's own key, for cross-host rsync/scp.
   # Omarchy uses OpenSSH; Miller and Drummer use Tailscale SSH (tailnet policy).
   authorizedKeys = pkgs.writeText "authorized_keys" ''
@@ -45,6 +41,9 @@ in {
     ../modules/home-manager/omarchy-nvim.nix
     ../modules/home-manager/omarchy-paddleocr.nix
     ../modules/home-manager/omarchy-vnc.nix
+    # The Mac's cmd+k tab, cmd+shift+n project and ctrl+cmd+n spawn pickers
+    # open their floats here when an Omarchy session is focused; spawned work
+    # also runs `rex-spawn --run` here, which needs wt.
     ../modules/home-manager/packages/switchyard-config.nix
     ../modules/home-manager/nix-netrc.nix
     rex.homeManagerModules.default
@@ -77,7 +76,7 @@ in {
     username = "johna";
     homeDirectory = "/home/johna";
     stateVersion = "26.05";
-    packages = [lopPackage pkgs.worktrunk switchyard];
+    packages = [lopPackage pkgs.worktrunk];
   };
 
   targets.genericLinux = {

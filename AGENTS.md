@@ -32,6 +32,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 - `mise update-system` (macOS): updates inputs, then deploys Mac, Omarchy, Miller, and Drummer in parallel. Flags: `--switch-only` (no input update), `--local-only` (skip Linux hosts), `--harness-refresh` (refresh Pi packages and the work Claude plugin after deploys succeed), `--harness-only`. Any host failing returns nonzero and reports a partial deployment.
 - `mise run harness-refresh` refreshes every host from Mac (host-local on Linux); it doesn't update Claude's binary or activate Home Manager. Restart Claude Code after a plugin update.
 - Mac-only rebuild without Pi: `mise run nix-rebuild`.
+- Switchyard (Rex floats) is the `switchyard` flake input (`~/dev/src/playground/switchyard`). Try local changes with `mise run switchyard-dev [checkout]` (Mac build, no activation). To ship: push switchyard, run `nix flake lock --update-input switchyard` here, then deploy to every host.
 - Check: `nix flake check`; search: `nix search nixpkgs <name>`.
 
 ## Policy

@@ -5,7 +5,7 @@
 # never touched.
 #
 # rex-spawn's "auto" host comes from the group's pool (`pools` in
-# ../packages/switchyard-config.nix, which writes this catalog into
+# ../packages/switchyard-config.nix, which passes this catalog to
 # switchyard's runtime config); a project's optional `hosts` list overrides
 # it, where "config" means the config host (the Mac).
 

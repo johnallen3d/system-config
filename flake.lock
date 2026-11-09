@@ -191,7 +191,28 @@
         "omarchyHomeManager": "omarchyHomeManager",
         "omarchyNixpkgs": "omarchyNixpkgs",
         "rex": "rex",
+        "switchyard": "switchyard",
         "yem": "yem"
+      }
+    },
+    "switchyard": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794240439,
+        "narHash": "sha256-nMU3apyYYtn26Yh3qhrsNfEDmZPNGinqU3JVFzrYMZw=",
+        "owner": "johnallen3d",
+        "repo": "switchyard",
+        "rev": "9cc6cd92e1d52c4e0b29f744c565cb4fe3f46e8b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "johnallen3d",
+        "repo": "switchyard",
+        "type": "github"
       }
     },
     "yem": {

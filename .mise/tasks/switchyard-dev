@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Build the Mac config against a local switchyard checkout (no activation)"
+#USAGE arg "[checkout]" help="Switchyard checkout (default ~/dev/src/playground/switchyard)"
+set -euo pipefail
+
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+checkout="${usage_checkout:-$HOME/dev/src/playground/switchyard}"
+
+# --override-input leaves flake.lock alone; deploying needs a pushed switchyard
+# and `nix flake lock --update-input switchyard` here.
+exec nix build --impure --no-link --print-out-paths \
+  --override-input switchyard "path:$(cd "$checkout" && pwd)" \
+  "$repo#darwinConfigurations.m4-mbp.system"

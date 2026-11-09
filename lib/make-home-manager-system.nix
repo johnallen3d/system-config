@@ -2,6 +2,7 @@
   home-manager,
   lop,
   nixpkgs,
+  switchyard,
   yem,
   user,
   full_name,
@@ -20,7 +21,7 @@ in
     inherit pkgs;
 
     extraSpecialArgs = {
-      inherit home lop yem user full_name;
+      inherit home lop switchyard yem user full_name;
       op_path = "${pkgs._1password-cli}/bin/op";
     };
 

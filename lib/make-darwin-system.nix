@@ -4,6 +4,7 @@
   lop,
   nix-darwin,
   nixpkgs,
+  switchyard,
   yem,
   user,
   full_name,
@@ -66,7 +67,7 @@ in
             useUserPackages = true;
             backupFileExtension = "hm-backup";
             extraSpecialArgs = {
-              inherit brew_bin credits full_name home lop yem op_path;
+              inherit brew_bin credits full_name home lop switchyard yem op_path;
             };
             users.${user}.imports = [
               ../modules/home-manager
