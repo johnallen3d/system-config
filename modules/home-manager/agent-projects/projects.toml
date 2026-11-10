@@ -21,6 +21,7 @@ clone_url = "https://github.com/johnallen3d/credits.git"
 [[personal]]
 path = "~/dev/src/playground/switchyard"
 clone_url = "https://github.com/johnallen3d/switchyard.git"
+hosts = ["config"]
 
 [[personal]]
 path = "~/dev/src/playground/pi-cielo"
