@@ -141,8 +141,44 @@ def entries(repo, tree):
     return result
 
 
+def lock_supersedes(repo, newer, base, change):
+    """Whether lock entry `newer` already holds every input that `change` relocked from `base`.
+
+    flake.lock is generated: a later relock of the same inputs replaces an
+    earlier one rather than merging with it. Each node the change added or
+    relocked must exist in `newer` with the same `original` source and a locked
+    revision no older (`lastModified`). Unlocked nodes (root) must match
+    exactly; removed nodes follow from their relocked parents.
+    """
+    if newer is None or change is None:
+        return False
+    try:
+        new, ours = (json.loads(subprocess.check_output(["git", "-C", str(repo), "cat-file", "blob", entry[1]]))["nodes"]
+                     for entry in (newer, change))
+        old = {} if base is None else json.loads(
+            subprocess.check_output(["git", "-C", str(repo), "cat-file", "blob", base[1]]))["nodes"]
+    except (subprocess.CalledProcessError, ValueError, KeyError, TypeError):
+        return False
+    for name, node in ours.items():
+        held = new.get(name)
+        if old.get(name) == node or held == node:
+            continue
+        if held is None or "locked" not in node or "locked" not in held:
+            return False
+        ours_time, held_time = node["locked"].get("lastModified"), held["locked"].get("lastModified")
+        if held.get("original") != node.get("original") or not isinstance(ours_time, int) \
+                or not isinstance(held_time, int) or held_time < ours_time:
+            return False
+    return True
+
+
 def compose(repo, main, layers):
-    """File-level ownership is intentional: no speculative textual auto-merges."""
+    """File-level ownership is intentional: no speculative textual auto-merges.
+
+    The one exception is flake.lock, which is never merged: a lock that already
+    holds every input another owner relocked, at that revision or newer,
+    supersedes that owner's lock (see lock_supersedes).
+    """
     baseline = entries(repo, main)
     changes = {}
     for item in layers:
@@ -152,14 +188,20 @@ def compose(repo, main, layers):
             if old == new or integrated == new:
                 continue
             if integrated != old:
+                if path == "flake.lock" and lock_supersedes(repo, integrated, old, new):
+                    continue
                 raise RuntimeError(f"Overlapping change: {path!r}; owner {item['owner']} versus integrated main. No activation started.")
             if path in changes and changes[path][0] != new:
-                raise RuntimeError(f"Overlapping change: {path!r}; owners {changes[path][1]} and {item['owner']}. No activation started.")
-            changes[path] = (new, item["owner"])
+                prior, owner, prior_base = changes[path]
+                if path == "flake.lock" and lock_supersedes(repo, prior, old, new):
+                    continue
+                if not (path == "flake.lock" and lock_supersedes(repo, new, prior_base, prior)):
+                    raise RuntimeError(f"Overlapping change: {path!r}; owners {owner} and {item['owner']}. No activation started.")
+            changes[path] = (new, item["owner"], old)
     with tempfile.TemporaryDirectory(prefix="deployment-compose-") as directory:
         env = dict(os.environ, GIT_INDEX_FILE=str(Path(directory) / "index"))
         git(repo, "read-tree", main, env=env)
-        for path, (entry, _) in changes.items():
+        for path, (entry, _, _) in changes.items():
             if entry is None:
                 git(repo, "update-index", "--force-remove", "--", path, env=env)
             else:

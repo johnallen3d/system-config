@@ -73,9 +73,14 @@ out-of-band commands or a privileged process killing a deployment's process tree
   already-deployed task's working copy.
 - Composition is deliberately conservative **per file**, including file modes,
   symlinks, binary content, additions, and deletions. Identical edits coexist;
-  different changes to the same path stop with both owners. This includes
-  `flake.lock`. Even disjoint text hunks in one file require owner coordination;
-  there is no speculative auto-merge.
+  different changes to the same path stop with both owners. Even disjoint text
+  hunks in one file require owner coordination; there is no speculative
+  auto-merge.
+- `flake.lock` is never merged, but a lock that already holds every input
+  another owner relocked (same `original`, `lastModified` no older) supersedes
+  that owner's lock, whether it comes from integrated main or another layer. A
+  layer whose only change is superseded by main is retired. Locks where
+  neither covers the other (for example, different inputs bumped) still stop.
 - Main changes already identical to an active layer are absorbed and retired
   from that layer (including individual files in a multi-file layer). Later
   integrated edits are not mistaken for an unfinished task. When main integrates
