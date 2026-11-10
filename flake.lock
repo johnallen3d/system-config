@@ -62,11 +62,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791551599,
-        "narHash": "sha256-zhZDqBYWrtpjhCGzYeglOQGCGx48OgxoKnG1XfpAGTc=",
+        "lastModified": 1794332176,
+        "narHash": "sha256-U44cZoNFbt7j6VhnpU1MhQAFxUGEqK4JOIH09IWQ0LQ=",
         "owner": "johnallen3d",
         "repo": "lop",
-        "rev": "41f53f520e92c3fbd37c455414e59d7ab41a0d62",
+        "rev": "2b1f36e13633652e1081a758bb86e147a4535401",
         "type": "github"
       },
       "original": {
@@ -216,11 +216,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1794329780,
-        "narHash": "sha256-J0fw/zu2KwQk0ALYfxqH3L5ndrOJGOV307D54AnpMWc=",
+        "lastModified": 1794335975,
+        "narHash": "sha256-trhsXswqMhlYQCnkvJrdbRqsIdX7zo51U/Q4VE17yUQ=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "263e70c60fd6fe8df98ac39694bf9a4802cb1bdf",
+        "rev": "cbc77f367265fde6a3ab0799ad35ab3700c8d882",
         "type": "github"
       },
       "original": {
@@ -232,11 +232,11 @@
     "yem": {
       "flake": false,
       "locked": {
-        "lastModified": 1790799820,
-        "narHash": "sha256-bQXUH2Pyg+dZRO1Zf/Kqg8vsm+Pp2Z33KuZiqZO42rk=",
+        "lastModified": 1794332176,
+        "narHash": "sha256-GmgbYONtwexDVpgchKqa0RMQ651mfiDmmPQzofk88vk=",
         "ref": "main",
-        "rev": "59fc42e053e8b3fb73076627ce79b3891547ddeb",
-        "revCount": 82,
+        "rev": "b5a47b7c366bb9f780acf5d5d531fe3acf6cf5ce",
+        "revCount": 83,
         "type": "git",
         "url": "https://github.com/johnallen3d/cue.git"
       },
