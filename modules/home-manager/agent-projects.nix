@@ -5,6 +5,19 @@
   ...
 }: let
   amfaroConfig = "${config.home.homeDirectory}/dev/src/amfaro/mise.toml";
+  # Personal projects whose tracker is a Fizzy board get a .fizzy.yaml.
+  fizzyProjects = lib.concatMap (p: let
+    m = builtins.match "fizzy:([^/]+)/(.+)" (p.tracker or "");
+  in
+    lib.optional (m != null) {
+      dir = config.home.homeDirectory + lib.removePrefix "~" p.path;
+      file = pkgs.writeText "fizzy.yaml" ''
+        account: "${builtins.elemAt m 0}"
+        api_url: https://app.fizzy.do
+        board: ${builtins.elemAt m 1}
+      '';
+    })
+  (builtins.fromTOML (builtins.readFile ./agent-projects/projects.toml)).personal;
   attributionInstructions = builtins.readFile ./agent-projects/attribution-instructions.md;
   delegationInstructions = builtins.readFile ./agent-projects/delegation-instructions.md;
   taskScopeInstructions = builtins.readFile ./agent-projects/task-scope-instructions.md;
@@ -123,4 +136,30 @@ in {
   home.activation.trustAgentProjects = lib.hm.dag.entryAfter ["linkGeneration"] ''
     $DRY_RUN_CMD ${lib.getExe pkgs.mise} trust ${lib.escapeShellArg amfaroConfig}
   '';
+
+  # Write .fizzy.yaml only into existing checkouts: creating a missing project
+  # directory would make rex-spawn skip its clone. Each repo's info/exclude
+  # keeps the file out of Git; a still-tracked copy is left alone with a warning.
+  home.activation.fizzyProjectConfig = lib.hm.dag.entryAfter ["linkGeneration"] (
+    ''
+      fizzyProject() {
+        local dir=$1 src=$2 git=${lib.getExe pkgs.git} exclude
+        [[ -e "$dir/.git" ]] || return 0
+        if $git -C "$dir" ls-files --error-unmatch .fizzy.yaml >/dev/null 2>&1; then
+          warnEcho "$dir/.fizzy.yaml is tracked by Git; untrack it to manage it"
+          return 0
+        fi
+        if ! $git -C "$dir" check-ignore -q .fizzy.yaml; then
+          exclude=$($git -C "$dir" rev-parse --path-format=absolute --git-path info/exclude)
+          $DRY_RUN_CMD mkdir -p "$(dirname "$exclude")"
+          $DRY_RUN_CMD sh -c 'printf "%s\n" .fizzy.yaml >> "$1"' sh "$exclude"
+        fi
+        cmp -s "$src" "$dir/.fizzy.yaml" || $DRY_RUN_CMD install -m 644 "$src" "$dir/.fizzy.yaml"
+      }
+    ''
+    + lib.concatMapStrings (p: ''
+      fizzyProject ${lib.escapeShellArg p.dir} ${p.file}
+    '')
+    fizzyProjects
+  );
 }

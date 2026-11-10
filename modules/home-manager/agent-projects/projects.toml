@@ -11,6 +11,8 @@
 #
 # `tracker` tells switchyard what refs like #42 mean: personal projects name
 # their Fizzy board; work projects default to the GitHub repo in clone_url.
+# Home Manager also writes each Fizzy board to the checkout's .fizzy.yaml
+# (../agent-projects.nix).
 
 [[personal]]
 path = "~/dev/src/system-config"
@@ -39,6 +41,30 @@ clone_url = "~/.local/share/herdr/project-seeds/pi-cielo.bundle"
 path = "~/dev/src/playground/home-assistant"
 tracker = "fizzy:6284043/03h33xahxdknp52oy29uqbfva"
 clone_url = "https://github.com/johnallen3d/home-assistant.git"
+
+[[personal]]
+path = "~/dev/src/playground/herdr-project-picker"
+tracker = "fizzy:6284043/03gxphnyvhvz0wq9xw5lhkj79"
+clone_url = "https://github.com/johnallen3d/herdr-project-picker.git"
+hosts = ["config"]
+
+[[personal]]
+path = "~/dev/src/playground/herdr-worktree-gc"
+tracker = "fizzy:6284043/03gvqcmeyq4skfggdvyadadkf"
+clone_url = "https://github.com/johnallen3d/herdr-worktree-gc.git"
+hosts = ["config"]
+
+[[personal]]
+path = "~/dev/src/playground/lop"
+tracker = "fizzy:6284043/03gwt0vkkffcygex6p33vi1bv"
+clone_url = "https://github.com/johnallen3d/lop.git"
+hosts = ["config"]
+
+[[personal]]
+path = "~/dev/src/playground/yem"
+tracker = "fizzy:6284043/03gvqdn8j7zah76vg12s50l9i"
+clone_url = "https://github.com/johnallen3d/cue.git"
+hosts = ["config"]
 
 [[work]]
 path = "~/dev/src/amfaro/actions"
