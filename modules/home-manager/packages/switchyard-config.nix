@@ -5,6 +5,8 @@
 # host: the floats and `rex-spawn --run` run on whichever host the focused
 # session lives on. Settings edits only rewrite the config file.
 {
+  config,
+  host ? "local",
   lib,
   pkgs,
   switchyard,
@@ -12,6 +14,16 @@
 }: let
   palette = (import ../managed-theme.nix {inherit lib;}).activePalette;
   catalog = builtins.fromTOML (builtins.readFile ../agent-projects/projects.toml);
+  homeDir = config.home.homeDirectory;
+  # subscription-proxy/manager.py pairs these profile roots with the personal
+  # (8317) and work (8318) gateways. Pi selection is host-local: Mac/Omarchy
+  # use those gateways; Miller/Drummer still use native Codex. Do not pool an
+  # unverified native login with a gateway account (or another host's login).
+  gatewayPi = pkgs.stdenv.hostPlatform.isDarwin || host == "omarchy";
+  piAccount = profile:
+    if gatewayPi
+    then profile
+    else "${profile} Pi on ${host} (login unverified)";
   githubTracker = url: let
     m = builtins.match "https://github.com/([^/]+/[^/]+)\\.git" url;
   in
@@ -61,6 +73,59 @@ in {
         iris = "purple";
       };
       projects = projects "personal" ++ projects "work";
+      usage = {
+        # The only declared schema-v2 collector is the Mac launchd agent in
+        # ../default.nix: WORK CLIProxyAPI, port 8318. No personal cache exists.
+        # Linux intentionally has no quota-file fallback. The Mac's aggregate
+        # view supplies this snapshot; Linux-local views have no quota cache.
+        quotas = lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+          {
+            path = "${config.xdg.cacheHome}/llm-usage/usage.json";
+            account = "work";
+            profile = "work";
+          }
+        ];
+        sessions =
+          [
+            {
+              harness = "claude";
+              path = "${homeDir}/.config/claude-personal/projects";
+              account = "personal";
+              profile = "personal";
+            }
+            {
+              harness = "claude";
+              path = "${homeDir}/.config/claude-gmatter/projects";
+              account = "work";
+              profile = "work";
+            }
+            {
+              harness = "pi";
+              path = "${homeDir}/.config/pi/sessions";
+              account = piAccount "personal";
+              profile = "personal";
+            }
+            {
+              harness = "pi";
+              path = "${homeDir}/.config/pi-work/sessions";
+              account = piAccount "work";
+              profile = "work";
+            }
+          ]
+          ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+            {
+              # Standalone Codex has local logs but no declarative login/profile
+              # binding. Keep its counters visible without claiming gateway use.
+              harness = "codex";
+              path = "${homeDir}/.codex/sessions";
+              account = "local Codex (login unverified)";
+              profile = "unverified";
+            }
+          ];
+        # No trustworthy exact-model rates are pinned here. Recorded costs
+        # remain available; missing API-equivalent estimates must stay unknown.
+        rates = [];
+      };
     };
   };
 }
