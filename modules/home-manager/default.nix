@@ -10,6 +10,7 @@
   llmUsage = import ./packages/llm-usage.nix {inherit pkgs;};
   llmUsageJson = "${config.xdg.cacheHome}/llm-usage/usage.json";
   llmUsageState = "${config.home.homeDirectory}/.local/state/llm-usage";
+  llmUsagePersonalJson = "${config.xdg.cacheHome}/llm-usage/personal.json";
   llmUsageAgent = pkgs.writeShellApplication {
     name = "llm-usage-agent";
     text = ''
@@ -22,6 +23,29 @@
       export LLM_USAGE_CLIPROXY_MANAGEMENT_KEY="$key"
       exec ${llmUsage}/bin/llm-usage json --source cliproxy --interval 60 \
         --output ${lib.escapeShellArg llmUsageJson}
+    '';
+  };
+  llmUsagePersonalAgent = pkgs.writeShellApplication {
+    name = "llm-usage-personal-agent";
+    text = ''
+      umask 077
+      # Personal collection never inherits work endpoint/account selectors.
+      unset LLM_USAGE_CLIPROXY_URL LLM_USAGE_CLIPROXY_MANAGEMENT_KEY
+      unset LLM_USAGE_CLIPROXY_CODEX_AUTH_INDEX WORK_LLM_USAGE_CLIPROXY_CODEX_AUTH_INDEX
+      unset LLM_USAGE_CLIPROXY_CLAUDE_AUTH_INDEX WORK_LLM_USAGE_CLIPROXY_CLAUDE_AUTH_INDEX
+      unset LLM_USAGE_CLIPROXY_CODEX_ACCOUNT_ID WORK_LLM_USAGE_CLIPROXY_CODEX_ACCOUNT_ID
+      # The child expands the URL only after the two selected Doppler settings
+      # are injected. The management key stays in the child's environment.
+      # shellcheck disable=SC2016
+      exec ${lib.getExe pkgs.doppler} run --no-read-env --no-check-version \
+        --project system-config --config dev_personal --no-fallback \
+        --only-secrets PERSONAL_LLM_USAGE_CLIPROXY_URL,PERSONAL_LLM_USAGE_CLIPROXY_MANAGEMENT_KEY -- \
+        ${pkgs.bash}/bin/bash -eu -c '
+          exec "$@" --cliproxy-url "$PERSONAL_LLM_USAGE_CLIPROXY_URL"
+        ' -- ${llmUsage}/bin/llm-usage json --source cliproxy \
+        --provider claude-code --provider codex \
+        --cliproxy-key-env PERSONAL_LLM_USAGE_CLIPROXY_MANAGEMENT_KEY --interval 60 \
+        --output ${lib.escapeShellArg llmUsagePersonalJson}
     '';
   };
   solidWallpaper = pkgs.runCommand "solid-wallpaper.png" {
@@ -78,10 +102,14 @@ in {
         # launchd opens its log files before applying the job's umask.
         ${pkgs.coreutils}/bin/touch \
           ${lib.escapeShellArg "${llmUsageState}/agent.log"} \
-          ${lib.escapeShellArg "${llmUsageState}/agent.err.log"}
+          ${lib.escapeShellArg "${llmUsageState}/agent.err.log"} \
+          ${lib.escapeShellArg "${llmUsageState}/personal.log"} \
+          ${lib.escapeShellArg "${llmUsageState}/personal.err.log"}
         ${pkgs.coreutils}/bin/chmod 0600 \
           ${lib.escapeShellArg "${llmUsageState}/agent.log"} \
-          ${lib.escapeShellArg "${llmUsageState}/agent.err.log"}
+          ${lib.escapeShellArg "${llmUsageState}/agent.err.log"} \
+          ${lib.escapeShellArg "${llmUsageState}/personal.log"} \
+          ${lib.escapeShellArg "${llmUsageState}/personal.err.log"}
       fi
     '');
 
@@ -113,6 +141,21 @@ in {
       Umask = 63;
       StandardOutPath = "${llmUsageState}/agent.log";
       StandardErrorPath = "${llmUsageState}/agent.err.log";
+    };
+  };
+
+  launchd.agents.llm-usage-personal = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+    enable = true;
+    config = {
+      Label = "org.nix-community.home.llm-usage-personal";
+      ProgramArguments = ["${llmUsagePersonalAgent}/bin/llm-usage-personal-agent"];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ThrottleInterval = 60;
+      ProcessType = "Background";
+      Umask = 63;
+      StandardOutPath = "${llmUsageState}/personal.log";
+      StandardErrorPath = "${llmUsageState}/personal.err.log";
     };
   };
 

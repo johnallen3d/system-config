@@ -74,15 +74,20 @@ in {
       };
       projects = projects "personal" ++ projects "work";
       usage = {
-        # The only declared schema-v2 collector is the Mac launchd agent in
-        # ../default.nix: WORK CLIProxyAPI, port 8318. No personal cache exists.
+        # Separate Mac collectors in ../default.nix supply work and personal
+        # quota snapshots; credentials and caches stay separate.
         # Linux intentionally has no quota-file fallback. The Mac's aggregate
-        # view supplies this snapshot; Linux-local views have no quota cache.
+        # view supplies these snapshots; Linux-local views have no quota cache.
         quotas = lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
           {
             path = "${config.xdg.cacheHome}/llm-usage/usage.json";
             account = "work";
             profile = "work";
+          }
+          {
+            path = "${config.xdg.cacheHome}/llm-usage/personal.json";
+            account = "personal";
+            profile = "personal";
           }
         ];
         sessions =
