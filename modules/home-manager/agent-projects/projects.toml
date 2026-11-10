@@ -8,28 +8,36 @@
 # ../packages/switchyard-config.nix, which passes this catalog to
 # switchyard's runtime config); a project's optional `hosts` list overrides
 # it, where "config" means the config host (the Mac).
+#
+# `tracker` tells switchyard what refs like #42 mean: personal projects name
+# their Fizzy board; work projects default to the GitHub repo in clone_url.
 
 [[personal]]
 path = "~/dev/src/system-config"
+tracker = "fizzy:6284043/03gv1w497my2qlkqbmngcmfsi"
 clone_url = "https://github.com/johnallen3d/system-config.git"
 hosts = ["config"]
 
 [[personal]]
 path = "~/dev/src/playground/credits"
+tracker = "fizzy:6284043/03h2w30lm3tgf7jxuok6v7rll"
 clone_url = "https://github.com/johnallen3d/credits.git"
 
 [[personal]]
 path = "~/dev/src/playground/switchyard"
+tracker = "fizzy:6284043/03h7f11emprus7nifd286mh8n"
 clone_url = "https://github.com/johnallen3d/switchyard.git"
 hosts = ["config"]
 
 [[personal]]
 path = "~/dev/src/playground/pi-cielo"
+tracker = "fizzy:6284043/03gv2g025j1zwf7c6s311cgkg"
 # No remote: a machine-local bundle seeded from the Mac.
 clone_url = "~/.local/share/herdr/project-seeds/pi-cielo.bundle"
 
 [[personal]]
 path = "~/dev/src/playground/home-assistant"
+tracker = "fizzy:6284043/03h33xahxdknp52oy29uqbfva"
 clone_url = "https://github.com/johnallen3d/home-assistant.git"
 
 [[work]]

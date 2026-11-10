@@ -12,11 +12,19 @@
 }: let
   palette = (import ../managed-theme.nix {inherit lib;}).activePalette;
   catalog = builtins.fromTOML (builtins.readFile ../agent-projects/projects.toml);
+  githubTracker = url: let
+    m = builtins.match "https://github.com/([^/]+/[^/]+)\\.git" url;
+  in
+    if m == null
+    then throw "switchyard-config: no tracker for ${url}"
+    else "github:${builtins.head m}";
   projects = profile:
     map (p: {
       inherit profile;
       inherit (p) path clone_url;
       hosts = p.hosts or [];
+      # Personal projects set their Fizzy board; work projects use GitHub.
+      tracker = p.tracker or (githubTracker p.clone_url);
     })
     (catalog.${profile} or []);
 in {
