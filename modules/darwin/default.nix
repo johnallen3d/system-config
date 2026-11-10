@@ -28,8 +28,14 @@
         "john.allen"
       ];
 
-      extra-substituters = [ "https://nix-community.cachix.org" ];
-      extra-trusted-public-keys = [ "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUage0tHzD5IbNoKnQ3p2anhjLmQ=" ];
+      extra-substituters = [
+        "https://johnallen3d.cachix.org"
+        "https://nix-community.cachix.org"
+      ];
+      extra-trusted-public-keys = [
+        "johnallen3d.cachix.org-1:E4yp86sK2e9gDTQ998xFR8NWFU+YhKMGIBAy0e+EjeM="
+        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUage0tHzD5IbNoKnQ3p2anhjLmQ="
+      ];
     };
 
     extraOptions = ''

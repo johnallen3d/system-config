@@ -38,8 +38,8 @@
     switchyard = {
       # The Rex float tools (~/dev/src/playground/switchyard). Develop against
       # the checkout with --override-input switchyard path:<checkout>.
+      # Keep its own nixpkgs so the package matches what CI pushed to Cachix.
       url = "github:johnallen3d/switchyard";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 

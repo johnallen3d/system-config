@@ -24,10 +24,7 @@ in {
 
   programs.switchyard = {
     enable = true;
-    package = (pkgs.callPackage "${switchyard}/nix/package.nix" {}).overrideAttrs (old: {
-      # Upstream folder-resolution checks use Git to create their repositories.
-      nativeCheckInputs = (old.nativeCheckInputs or []) ++ [pkgs.gitMinimal];
-    });
+    package = switchyard.packages.${pkgs.stdenv.hostPlatform.system}.default;
     settings = {
       # Rex host labels of the Linux dev machines the spawn picker offers
       # (ctrl+o). The Mac is added at runtime as the config host's own label.
