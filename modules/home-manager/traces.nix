@@ -1,13 +1,35 @@
 # Personal-only Traces integrations, vendored from `traces setup` v0.6.45.
-# Authentication, folder-sharing rules, and the local database stay host-local.
+# Authentication and the local database stay host-local; folder-sharing rules
+# are declared here.
 {
   config,
   lib,
   pkgs,
   ...
 }: let
+  home = config.home.homeDirectory;
   traces = import ./packages/traces.nix {inherit pkgs;};
   tracesBin = lib.getExe traces;
+  # Traces ignores CLAUDE_CONFIG_DIR and hardcodes Pi discovery to ~/.pi/agent.
+  claudeDir = "${home}/.config/claude-personal";
+  piSessions = "${home}/.config/pi/sessions";
+  # Traces keys share rules by the first 12 hex chars of sha256(API URL).
+  tracesConfigDir =
+    if pkgs.stdenv.hostPlatform.isDarwin
+    then "Library/Preferences/traces"
+    else ".config/traces";
+  shareFile = "share-${builtins.substring 0 12 (builtins.hashString "sha256" "https://actions.traces.com")}.json";
+  personalNamespace = {
+    id = "k972xspteyrdfjc4getqaf9dex8ht790";
+    slug = "johnallen3d";
+    type = "individual";
+  };
+  shareRules = {
+    "//" = "Managed by system-config modules/home-manager/traces.nix.";
+    rules = {
+      "${home}/dev/src/playground/switchyard" = personalNamespace;
+    };
+  };
   piExtension = name:
     pkgs.writeText name (lib.replaceStrings ["@traces@"] [tracesBin]
       (builtins.readFile (./traces/pi + "/${name}")));
@@ -21,7 +43,7 @@
     inherit command;
     timeout = 5;
   };
-  agentHook = event: hook "${tracesBin} hook agent ${event} --agent claude-code";
+  agentHook = event: hook "TRACES_CLAUDE_DIR=${lib.escapeShellArg claudeDir} ${tracesBin} hook agent ${event} --agent claude-code";
   claudeHooks = {
     SessionStart = [
       {
@@ -63,7 +85,21 @@ in {
       source = "${sessionEnv}/bin/traces-session-env";
       executable = true;
     };
+    "${tracesConfigDir}/${shareFile}".text = builtins.toJSON shareRules;
   };
+
+  home.sessionVariables.TRACES_CLAUDE_DIR = claudeDir;
+
+  # Point Traces' fixed Pi discovery path at personal Pi sessions. Legacy
+  # sessions are moved aside, never deleted.
+  home.activation.tracesPiSessions = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    legacy="$HOME/.pi/agent/sessions"
+    if [ -e "$legacy" ] && [ ! -L "$legacy" ]; then
+      run mv "$legacy" "$legacy.pre-traces-$(${pkgs.coreutils}/bin/date +%Y%m%d%H%M%S)"
+    fi
+    run mkdir -p ${lib.escapeShellArg piSessions} "$HOME/.pi/agent"
+    run ln -sfn ${lib.escapeShellArg piSessions} "$legacy"
+  '';
 
   # Own only Traces registrations in the writable personal settings file.
   # Refresh commands on upgrades without duplicating them or removing other hooks.
