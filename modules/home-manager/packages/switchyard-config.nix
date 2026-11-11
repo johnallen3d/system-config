@@ -2,7 +2,7 @@
 # ~/dev/src/playground/switchyard). Its Home Manager module installs the
 # binaries, writes ~/.config/switchyard/config.toml from these settings and,
 # on the Mac, links the Rex Lua to ~/.config/rex/switchyard. Imported on every
-# host: the floats and `rex-spawn --run` run on whichever host the focused
+# host: the floats and spawned work run on whichever host the focused
 # session lives on. Settings edits only rewrite the config file.
 {
   config,

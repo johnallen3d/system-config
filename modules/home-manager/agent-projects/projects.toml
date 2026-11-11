@@ -1,10 +1,10 @@
-# Projects that rex-spawn (ctrl+cmd+n) offers on every host. Revived from the
+# Projects that switchyard new (ctrl+cmd+n) offers on every host. Revived from the
 # old herdr picker catalog. The group sets the agent profile: work runs through
 # ~/dev/src/amfaro's mise env, personal uses the default profile. clone_url is
 # only used when the path is missing on the chosen host; existing checkouts are
 # never touched.
 #
-# rex-spawn's "auto" host comes from the group's pool (`pools` in
+# switchyard new's "auto" host comes from the group's pool (`pools` in
 # ../packages/switchyard-config.nix, which passes this catalog to
 # switchyard's runtime config); a project's optional `hosts` list overrides
 # it, where "config" means the config host (the Mac).

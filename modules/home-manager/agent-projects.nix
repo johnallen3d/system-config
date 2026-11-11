@@ -138,7 +138,7 @@ in {
   '';
 
   # Write .fizzy.yaml only into existing checkouts: creating a missing project
-  # directory would make rex-spawn skip its clone. Each repo's info/exclude
+  # directory would make switchyard skip its clone. Each repo's info/exclude
   # keeps the file out of Git; a still-tracked copy is left alone with a warning.
   home.activation.fizzyProjectConfig = lib.hm.dag.entryAfter ["linkGeneration"] (
     ''

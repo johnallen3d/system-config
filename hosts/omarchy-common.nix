@@ -43,7 +43,7 @@ in {
     ../modules/home-manager/omarchy-vnc.nix
     # The Mac's cmd+k tab, cmd+shift+n project and ctrl+cmd+n spawn pickers
     # open their floats here when an Omarchy session is focused; spawned work
-    # also runs `rex-spawn --run` here, which needs wt.
+    # also runs here through switchyard, which needs wt.
     ../modules/home-manager/packages/switchyard-config.nix
     ../modules/home-manager/nix-netrc.nix
     rex.homeManagerModules.default
