@@ -71,7 +71,8 @@ EOF'') managedTheme.variantNames}
     substituteInPlace "$out/sketchybar/sketchybarrc.sh" \
       --replace-fail 'source "$HOME/.local/share/theme/tokyo-night-sketchybar.sh"' 'source "$HOME/.local/share/theme/${managedTheme.activeTheme.hyphenName}-sketchybar.sh"'
     substituteInPlace "$out/sketchybar/plugins/llm-usage.sh" \
-      --replace-fail '@usageJson@' '${llmUsageJson}'
+      --replace-fail '@workUsageJson@' '${llmUsageJson}' \
+      --replace-fail '@personalUsageJson@' '${llmUsagePersonalJson}'
     cat > "$out/sketchybar/colors.lua" <<'EOF'
 ${managedTheme.sketchybarColorsLua}
 EOF

@@ -1,7 +1,7 @@
 local settings = require("settings")
 -- local apple = require("items.apple")
 local app_items = require("items.front_app")
-local llm_usage = { "llm_usage_logo", "llm_usage" }
+local llm_usage = { "llm_usage_logo", "llm_usage", "llm_usage_personal" }
 
 local items = settings.flatten({
 	-- apple,

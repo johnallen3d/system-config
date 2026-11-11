@@ -22,6 +22,7 @@ in {
       mas
       mpv
       (python3.withPackages (ps: [ps.pyobjc-framework-Quartz]))
+      sketchybar-app-font
     ]
     ++ scripts;
 }
