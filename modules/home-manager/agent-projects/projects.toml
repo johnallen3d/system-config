@@ -83,6 +83,10 @@ path = "~/dev/src/amfaro/dataops"
 clone_url = "https://github.com/amfaro/dataops.git"
 
 [[work]]
+path = "~/dev/src/amfaro/docs"
+clone_url = "https://github.com/amfaro/docs.git"
+
+[[work]]
 path = "~/dev/src/amfaro/duckdb-embedded"
 clone_url = "https://github.com/amfaro/duckdb-embedded.git"
 
