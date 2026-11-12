@@ -187,10 +187,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1794506255,
-        "narHash": "sha256-d95DK7CQi/WHfHIjPyJUUNrnA6WEUzHpOWIVPINw4Ew=",
+        "lastModified": 1794513892,
+        "narHash": "sha256-56kDaLKzykITRoPvZ66NpI7vip42etMrZlhij0P4YyI=",
         "type": "tarball",
-        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.0.1794506255-gc343d1.tar.gz"
+        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.0.1794513892-g115444.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -216,11 +216,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1794487756,
-        "narHash": "sha256-GjUEP/0Z9/xatd1hTE6rvroodzrEmtWo4k8YvNuQnv0=",
+        "lastModified": 1794511783,
+        "narHash": "sha256-v3/x3Y8U2aQ8FLKE9xP5sEXDI31l//nyrHVEHdKOr+g=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "721cf2892517af90831a2cd2dc4397a2738334b3",
+        "rev": "ac3c84f2f5a2b5e4e814fb58b9d845f2631b3c86",
         "type": "github"
       },
       "original": {
