@@ -9,67 +9,13 @@ Its `~/.config/lop/config.toml` uses the same Nix-owned source as the Mac:
 The Lop input is pinned to the revision used by the Mac's installed package,
 including sibling `exclusions.toml` support.
 
-The Mac's `prune --yes` command and 60-second interval are mirrored by the
-Home Manager-owned `lop.service` and `lop.timer`. Lop's native `lop schedule`
-commands only support macOS; on Omarchy use systemd instead:
-
-```bash
-systemctl --user status lop.timer lop.service
-systemctl --user list-timers lop.timer
-journalctl --user -u lop.service -n 30 --no-pager
-```
-
-The timer starts on activation/startup and runs every minute. Its oneshot service
-cannot overlap itself. Existing Lop integration and dirty/locked-worktree
-safety gates remain intact; Lop's optional Herdr gate is skipped because Herdr
-is not installed. Git, Worktrunk, and SSH are explicitly available in the service PATH. Credentials remain machine-local;
-fetches are noninteractive, using Omarchy's existing Git credential helpers.
-No Mac SSH socket or credentials are copied. Omarchy already has user lingering
-enabled, so the timer does not depend on an open SSH connection.
+Scheduled pruning is disabled on every host ([#1100](https://app.fizzy.do/6284043/cards/1100)):
+the Mac's `lop schedule` agent is uninstalled and Linux hosts no longer declare
+`lop.service`/`lop.timer`. Run `lop scan` or `lop prune` manually when needed.
 
 `~/.config/lop/exclusions.toml` stays writable and host-local, matching the Mac's
-ownership. Initial parity copies the Mac's home-relative exclusion paths without
-copying its home directory or embedding personal paths in Nix. Review this file
-when repositories move or new host-specific exclusions are needed. The scheduled
-mode and interval are declared in `hosts/omarchy.nix`; change them there and
-reactivate Home Manager rather than using `lop schedule edit` on Linux.
-
-Apply using the standalone procedure in [omarchy-agents.md](omarchy-agents.md).
-Home Manager starts new timers automatically. For first provisioning, hold the
-timer with a temporary runtime condition **before activation**, then validate a
-read-only scan in the scheduled environment before releasing it. A runtime mask
-alone is insufficient because the Home Manager unit in `~/.config/systemd/user`
-has higher lookup priority.
-
-```bash
-runtime="/run/user/$(id -u)/systemd/user/lop.timer.d"
-mkdir -p "$runtime"
-printf '[Unit]\nConditionPathExists=/run/user/%s/lop-preflight-approved\n' "$(id -u)" > "$runtime/preflight.conf"
-systemctl --user daemon-reload
-# Build and activate Home Manager as documented in omarchy-agents.md.
-systemd-run --user --wait --pipe --collect --unit=lop-preflight \
-  --property=Type=oneshot --property="WorkingDirectory=$HOME" --property=UMask=0077 \
-  --property="Environment=$(systemctl --user show lop.service -p Environment --value)" \
-  -- "$HOME/.nix-profile/bin/lop" scan
-```
-
-The preflight fetches repositories but does not prune. Inspect its summary for
-`apply: false`, zero fetch/operational failures, and successful exit before
-releasing the timer hold. If it fails, retain the hold and investigate. Only
-after that review:
-
-```bash
-rm "$runtime/preflight.conf"
-rmdir "$runtime"
-systemctl --user daemon-reload
-systemctl --user start lop.timer
-systemctl --user status lop.timer lop.service
-systemctl --user show lop.service -p Result -p ExecMainStatus
-```
-
-Wait for the service’s first scheduled run to finish and confirm success; do not
-initiate extra pruning as a verification step. Inspect changed policy/exclusions
-and the installed unit directly when those settings are modified.
+ownership. Review it when repositories move or new host-specific exclusions are
+needed.
 
 Linux package overrides keep the full test suite enabled while replacing the
 fixture's `/bin/cat` with Nix coreutils and serializing flaky executable-fixture
