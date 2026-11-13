@@ -4,4 +4,4 @@ model: gpt-5.6-luna
 ---
 
 Follow the appended personal completion lifecycle. Verify the implementation attribution handoff before committing.
-Commit message: use "$@" verbatim if non-empty; otherwise derive one.
+Derive the commit message; this command takes no arguments.
