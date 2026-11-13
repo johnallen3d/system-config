@@ -45,6 +45,7 @@ Nix flake for macOS (nix-darwin), NixOS, and Home Manager.
 
 ## Deployment
 
+- An actual `/wrap` in this repo deploys its committed shared-config changes: after integration into local `main` and before cleanup, it runs the deployment and verification below on every host. It closes the card only when every host succeeds; a failed or unreachable host keeps the card open, and the handoff names it. `/wrap` still never authorizes a push.
 - Changes to config shared by Mac, Omarchy, Miller, and Drummer (agents, project context, user automation) must be applied and verified on **every** host unless John requests fewer. A Mac rebuild is not a Linux deployment.
 - Deploy shared changes with `mise exec -- system-config-deploy "$task_path" --switch-only` (works for older task worktrees too) or `mise update-system --switch-only` from the Mac task worktree. Use `mise run nix-rebuild --switch-only` only for explicitly Mac-only changes; `docs/omarchy-agents.md` has the manual Linux-only/recovery procedure.
 - Before activation, check each host: `mise exec -- python3 ~/.local/share/system-config-deploy/.mise/scripts/deployment_state.py status "$task_path"`. Only the kernel lock means busy; wait or retry, never bypass it. Manual Home Manager activation must use the same coordinator.
@@ -78,4 +79,4 @@ Use Fizzy only (board from `.fizzy.yaml`; use the CLI's `--jq`). Card commands t
 3. Run `git status` and report staged/unstaged changes.
 4. Hand off changes, validation, and next steps, with Mac, Omarchy, Miller, and Drummer deployment status reported separately.
 
-Wrap-up never authorizes a rebuild or `git push`. Say `ready to push when you are` only if a local commit exists and push is the only remaining step; otherwise `ready to commit when you are`.
+Outside an actual `/wrap`, wrap-up never authorizes a rebuild or `git push`. An actual `/wrap` in this repo deploys per the Deployment section; it never authorizes `git push`. Say `ready to push when you are` only if a local commit exists and push is the only remaining step; otherwise `ready to commit when you are`.

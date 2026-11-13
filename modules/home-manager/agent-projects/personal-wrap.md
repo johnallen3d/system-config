@@ -6,8 +6,10 @@ and personal worktree, attribution, and deployment policies.
 Actual `/wrap` invocation (including its expanded prompt) authorizes scoped
 commit, guarded rebase, fast-forward integration, safe cleanup, and closing
 completed in-scope Fizzy cards. Reading or mentioning it does not.
-It does not authorize push/fetch, deployment, input updates, amend/squash/reset/stash,
-force deletion, killing processes, or bypassing hooks/signing.
+It does not authorize push/fetch, input updates, amend/squash/reset/stash,
+force deletion, killing processes, or bypassing hooks/signing. Deployment is
+authorized only where the repository's `AGENTS.md` says `/wrap` deploys; then
+it follows that repository's deployment rules.
 
 1. **Validate and commit.** Inspect status and canonical worktree metadata;
    identify this task's repository, branch, worktree, and session start directory.
@@ -40,20 +42,25 @@ force deletion, killing processes, or bypassing hooks/signing.
    files), and containment in `main`; then use `wt remove --foreground` from
    primary. Never force. Verify this task's worktree and branch are gone.
 
-   **Explicit archive requests run without deferral.** When John asks to archive
-   this session, do it: `switchyard stop_task` for this task, or the Rex picker
-   when that tool is unavailable. This overrides the retain-by-default rule above
-   for that request only. Do not replace John's decision with your own judgement
-   about the worktree. Run the archive once the steps before it (commit,
-   integration) have succeeded; if one failed, stop and report instead, because
-   archiving removes the worktree that recovery needs. `stop_task` still refuses
-   uncommitted changes, and that refusal is its safety gate. A session anchored
-   in its own worktree archives as the last action: write the full handoff as
-   text first, since closing the tab ends the session before it can report.
+   **Archive only on John's explicit request, and never with open cards.** A wrap
+   never archives on its own. When John asks to archive this session, run the
+   archive (`switchyard stop_task` for this task, or the Rex picker when that tool
+   is unavailable) only after commit, integration, and card closure (step 4) are
+   done and no in-scope card is still open. If any card is open or a step failed,
+   report that and ask whether to archive anyway; do not archive. `stop_task` still
+   refuses uncommitted changes. A session anchored in its own worktree archives as
+   the last action: write the full handoff as text first, since closing the tab
+   ends the session before it can report.
 4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
-   separately. Close completed in-scope cards; keep blocked or partially deployed
-   cards open; never finish with untracked work. Follow repository release order: later push/deployment does not
-   block Git integration or cleanup, but required acceptance checks still apply.
+   separately. **Deploy, where the repository requires it.** If `AGENTS.md` says
+   `/wrap` deploys and the commit changes shared config, run that deployment after
+   integration and before cleanup, following the repository's deployment rules.
+   **Close the card.** Before reporting, close every in-scope card that this wrap
+   completed (`fizzy card close NUMBER`) and comment the commit on it. A card is
+   complete once its commit is on `main` and, where deployment applies, deployment
+   succeeded on every host. A failed or unreachable host keeps the card open; name
+   that host in the handoff. Never finish with untracked work. A later push does
+   not block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.
 
