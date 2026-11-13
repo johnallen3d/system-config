@@ -1,5 +1,6 @@
 -- cmd+o: go to the `marvin` tab in the `notes` session. If it isn't open, open
 -- it in ~/notes running Claude Code on Haiku at high effort, then show it.
+-- A new notes session is placed right after `agents`, or first without it.
 --
 -- An action can only view (or add windows to) sessions its connection is
 -- attached to, so the find-or-open runs as a `rex do` script that attaches to
@@ -32,6 +33,20 @@ if notes == nil then
     } } },
   })
   if created == nil then error(create_err, 0) end
+  -- A new session goes last; put it just after agents, or first without
+  -- agents. Best effort: it still opens.
+  local sessions = list.sessions or {}
+  local before = sessions[1]
+  for i, session in ipairs(sessions) do
+    if session.label == "agents" then before = sessions[i + 1] break end
+  end
+  -- Moving needs this connection attached; session.create doesn't attach.
+  if before ~= nil then
+    local _, attach_err = rex.session.attach{ session_id = created.session_id }
+    if attach_err == nil then
+      rex.call("session.move", { session_id = created.session_id, before_session_id = before.session_id })
+    end
+  end
   local first = (created.initial_windows or {})[1] or {}
   return rex.json.encode({ session_id = created.session_id, window_id = first.window_id })
 end
