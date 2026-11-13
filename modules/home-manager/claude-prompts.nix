@@ -20,6 +20,9 @@
     "savvy-progress"
     "skins"
   ];
+  # Personal-only plugin directories appended to CLAUDE_CODE_PLUGIN_DIRS.
+  # vault-search registers /search only inside the notes vault.
+  personalPluginPaths = ["${config.home.homeDirectory}/notes/.claude/mods/vault-search"];
   # Standalone agent-kit presentation: no plugin, auth, or profile-state lookup.
   # Both profiles use this renderer so plugin upgrades cannot split their UI.
   claudeStatusLine = pkgs.writeShellApplication {
@@ -184,8 +187,10 @@ in {
       for profile in claude-personal claude-gmatter; do
         settings="$HOME/.config/$profile/settings.json"
         managed=${lib.escapeShellArg (builtins.toJSON footerSettings)}
+        plugins=${lib.escapeShellArg (builtins.toJSON personalPluginPaths)}
         if [ "$profile" = claude-gmatter ]; then
           managed=${lib.escapeShellArg (builtins.toJSON workSettings)}
+          plugins='[]'
         fi
         mkdir -p "$(dirname "$settings")"
         if [ ! -e "$settings" ]; then
@@ -195,10 +200,12 @@ in {
         if ${pkgs.jq}/bin/jq --argjson managed "$managed" \
           --argjson retired ${lib.escapeShellArg (builtins.toJSON retiredPluginPaths)} \
           --argjson allowed ${lib.escapeShellArg (builtins.toJSON allowedTools)} \
+          --argjson plugins "$plugins" \
           '. + $managed |
            .permissions.allow = ((.permissions.allow // []) + $allowed | unique) |
            (.env.CLAUDE_CODE_PLUGIN_DIRS // "" | split(":") |
-            map(select(length > 0)) - $retired) as $dirs |
+            map(select(length > 0)) - $retired |
+            . + ($plugins - .)) as $dirs |
            if $dirs == [] then del(.env.CLAUDE_CODE_PLUGIN_DIRS)
            else .env.CLAUDE_CODE_PLUGIN_DIRS = ($dirs | join(":")) end' \
           "$settings" > "$tmp"; then
