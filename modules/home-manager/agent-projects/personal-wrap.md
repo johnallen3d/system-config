@@ -39,6 +39,17 @@ force deletion, killing processes, or bypassing hooks/signing.
    contents require John. Recheck task identity, clean status (excluding ignored
    files), and containment in `main`; then use `wt remove --foreground` from
    primary. Never force. Verify this task's worktree and branch are gone.
+
+   **Explicit archive requests run without deferral.** When John asks to archive
+   this session, do it: `switchyard stop_task` for this task, or the Rex picker
+   when that tool is unavailable. This overrides the retain-by-default rule above
+   for that request only. Do not replace John's decision with your own judgement
+   about the worktree. Run the archive once the steps before it (commit,
+   integration) have succeeded; if one failed, stop and report instead, because
+   archiving removes the worktree that recovery needs. `stop_task` still refuses
+   uncommitted changes, and that refusal is its safety gate. A session anchored
+   in its own worktree archives as the last action: write the full handoff as
+   text first, since closing the tab ends the session before it can report.
 4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
    separately. Close completed in-scope cards; keep blocked or partially deployed
    cards open; never finish with untracked work. Follow repository release order: later push/deployment does not
