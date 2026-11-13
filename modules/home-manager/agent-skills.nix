@@ -7,10 +7,19 @@
   skill = ./agent-skills/authoring-commits/SKILL.md;
   # Keep Rex's upstream stub: the installed CLI supplies the current guide.
   rexSkill = ./agent-skills/rex/SKILL.md;
-  rexClaudeTargets = map (profile: ".config/${profile}/skills/rex") [
-    "claude-personal"
-    "claude-gmatter"
-  ];
+  # Global skills: one copy both Pi profiles discover, linked into both Claude profiles.
+  sharedSkills = {
+    rex = rexSkill;
+    switchyard-links = ./agent-skills/switchyard-links/SKILL.md;
+  };
+  sharedSkillClaudeLinks = lib.concatMapAttrs (name: _:
+    lib.genAttrs (map (profile: ".config/${profile}/skills/${name}") [
+      "claude-personal"
+      "claude-gmatter"
+    ]) (_: {
+      source = config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.agents/skills/${name}";
+    }))
+  sharedSkills;
   # Home Manager owns this hook, so Rex's app toggle can't rewrite it; keep naming off here.
   rexHook = {
     hooks = [
@@ -39,13 +48,9 @@ in {
   home.file =
     lib.genAttrs targets (_: {source = skill;})
     // personalSkills
-    // {
-      # Both Pi profiles discover this location without profile-local copies.
-      ".agents/skills/rex/SKILL.md".source = rexSkill;
-    }
-    // lib.genAttrs rexClaudeTargets (_: {
-      source = config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.agents/skills/rex";
-    });
+    # Both Pi profiles discover ~/.agents/skills without profile-local copies.
+    // lib.mapAttrs' (name: source: lib.nameValuePair ".agents/skills/${name}/SKILL.md" {inherit source;}) sharedSkills
+    // sharedSkillClaudeLinks;
 
   # Adopt only the exact upstream stub and direct shared-directory links.
   # Foreign skills remain subject to Home Manager's normal collision checks.

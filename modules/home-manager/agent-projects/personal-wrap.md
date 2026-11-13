@@ -12,7 +12,11 @@ force deletion, killing processes, or bypassing hooks/signing.
 1. **Validate and commit.** Inspect status and canonical worktree metadata;
    identify this task's repository, branch, worktree, and session start directory.
    Run only relevant code gates. Read the canonical commit skill and verify
-   implementation attribution. Commit scoped changes only; no empty commits.
+   implementation attribution. If the repository tracks work in Fizzy and no
+   card covers this task, create one describing the completed work now. Link
+   every card or issue the task covers with `switchyard link REF` while the
+   branch still exists (`switchyard-links` skill), and reference them in the
+   commit. Commit scoped changes only; no empty commits.
 2. **Integrate.** Require clean primary already on local `main`, clean task
    checkout on its recorded branch in the same repository, and no Git operation
    in progress. Skip already-contained tasks. If diverged, rebase only verified
@@ -37,9 +41,7 @@ force deletion, killing processes, or bypassing hooks/signing.
    primary. Never force. Verify this task's worktree and branch are gone.
 4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
    separately. Close completed in-scope cards; keep blocked or partially deployed
-   cards open. If the repository tracks work in Fizzy and no card covers this
-   task, create one describing the completed work before closing it; never
-   finish with untracked work. Follow repository release order: later push/deployment does not
+   cards open; never finish with untracked work. Follow repository release order: later push/deployment does not
    block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.

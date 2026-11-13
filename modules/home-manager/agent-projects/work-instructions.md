@@ -45,3 +45,5 @@
   If safe worktree setup is blocked, stop and report the blocker instead of
   falling back to the primary checkout.
 - Never commit, merge, push, or remove a worktree unless explicitly requested.
+- When you create or adopt a card, issue, or PR on a task branch, run
+  `switchyard link REF` (`switchyard-links` skill).
