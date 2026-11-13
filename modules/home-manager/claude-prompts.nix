@@ -35,10 +35,18 @@
     };
   };
   workSettings = footerSettings // {outputStyle = "ELI5";};
-  # Public OAuth client configuration published by Slack for Claude Code:
-  # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
-  # Tokens remain in Claude's machine-local credential store, never in Nix.
+  # Pre-allowed tools, merged into each profile's permissions.allow.
+  allowedTools = ["mcp__switchyard"];
+  switchyardMcp = {
+    type = "http";
+    inherit (import ./switchyard-mcp.nix) url;
+  };
+  personalMcpServers = {switchyard = switchyardMcp;};
   workMcpServers = {
+    switchyard = switchyardMcp;
+    # Public OAuth client configuration published by Slack for Claude Code:
+    # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
+    # Tokens remain in Claude's machine-local credential store, never in Nix.
     slack = {
       type = "http";
       url = "https://mcp.slack.com/mcp";
@@ -132,14 +140,19 @@ in {
     ln -sfn "$HOME/.config/claude-personal/agents" "$HOME/.config/claude-gmatter/agents"
   '';
 
-  # Own only the Slack registration, not Claude's writable runtime/config file.
-  # Run after plugin bootstrap, which can also update the profile's .claude.json.
+  # Own only the managed MCP registrations, not Claude's writable runtime/config
+  # file. Run after plugin bootstrap, which can also update the work .claude.json.
   home.activation.claudeGmatterMcp = lib.hm.dag.entryAfter ["writeBoundary" "claudeGmatterAgentKit"] ''
     if [ -z "''${DRY_RUN_CMD:-}" ]; then
+      for profile in claude-personal claude-gmatter; do
       (
-        config="$HOME/.config/claude-gmatter/.claude.json"
+        config="$HOME/.config/$profile/.claude.json"
+        servers=${lib.escapeShellArg (builtins.toJSON personalMcpServers)}
+        if [ "$profile" = claude-gmatter ]; then
+          servers=${lib.escapeShellArg (builtins.toJSON workMcpServers)}
+        fi
         if [ -L "$config" ]; then
-          echo "Refusing to replace symlinked Claude work MCP config" >&2
+          echo "Refusing to replace symlinked Claude MCP config: $config" >&2
           exit 1
         fi
         mkdir -p "$(dirname "$config")"
@@ -149,7 +162,7 @@ in {
         fi
         tmp="$(${pkgs.coreutils}/bin/mktemp "$config.mcp-XXXXXX")"
         trap 'rm -f "$tmp"' EXIT
-        if ! ${pkgs.jq}/bin/jq -e --argjson servers ${lib.escapeShellArg (builtins.toJSON workMcpServers)} \
+        if ! ${pkgs.jq}/bin/jq -e --argjson servers "$servers" \
           'if type != "object" then error("Claude config must be an object")
            elif has("mcpServers") and (.mcpServers | type) != "object"
            then error("Claude mcpServers must be an object")
@@ -159,11 +172,13 @@ in {
         fi
         chmod 0600 "$tmp"
         mv "$tmp" "$config"
-      )
+      ) || exit 1
+      done
     fi
   '';
 
-  # Replace statusLine completely; preserve unrelated settings and plugin paths.
+  # Replace statusLine completely; add allowedTools; preserve unrelated settings
+  # and plugin paths.
   home.activation.claudeGmatterSettings = lib.hm.dag.entryAfter ["writeBoundary" "claudeProfileDefaults"] ''
     if [ -z "''${DRY_RUN_CMD:-}" ]; then
       for profile in claude-personal claude-gmatter; do
@@ -179,7 +194,9 @@ in {
         tmp="$(${pkgs.coreutils}/bin/mktemp "$settings.XXXXXX")"
         if ${pkgs.jq}/bin/jq --argjson managed "$managed" \
           --argjson retired ${lib.escapeShellArg (builtins.toJSON retiredPluginPaths)} \
+          --argjson allowed ${lib.escapeShellArg (builtins.toJSON allowedTools)} \
           '. + $managed |
+           .permissions.allow = ((.permissions.allow // []) + $allowed | unique) |
            (.env.CLAUDE_CODE_PLUGIN_DIRS // "" | split(":") |
             map(select(length > 0)) - $retired) as $dirs |
            if $dirs == [] then del(.env.CLAUDE_CODE_PLUGIN_DIRS)

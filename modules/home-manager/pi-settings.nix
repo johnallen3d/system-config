@@ -32,6 +32,7 @@
     packages;
   managedTheme = import ./managed-theme.nix {inherit lib;};
   jq = "${pkgs.jq}/bin/jq";
+  switchyardMcp = {inherit (import ./switchyard-mcp.nix) url;};
 
   mkPiSettingsActivation = settingsFile: settings: ''
     if [ -n "''${DRY_RUN:-}" ]; then
@@ -58,6 +59,7 @@
 
   piMcpSettings = {
     mcpServers = {
+      switchyard = switchyardMcp;
       "mcp-server-doppler" = {
         command = "bash";
         args = [
@@ -135,7 +137,7 @@
   # for subprocess MCP servers come from the selected launch environment.
   linuxMcpSettings = {
     mcpServers = {
-      inherit (piMcpSettings.mcpServers) mcp-server-motherduck;
+      inherit (piMcpSettings.mcpServers) mcp-server-motherduck switchyard;
       mcp-server-doppler = piWorkMcpSettings.mcpServers.doppler;
     };
   };
@@ -158,6 +160,7 @@
         callbackUrl = "http://localhost:3118/callback";
       };
     };
+    switchyard = switchyardMcp;
   };
 
   piSystemMd = ''
