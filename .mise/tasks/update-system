@@ -48,6 +48,53 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Commit and push an input-update lock only when it is the sole change on the
+# primary checkout's main. Called only after every attempted deployment succeeded.
+commit_lock_if_only_change() {
+  local git_dir common_dir branch op changed
+  git_dir="$(git -C "$repo" rev-parse --path-format=absolute --git-dir)"
+  common_dir="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)"
+  if [[ "$git_dir" != "$common_dir" ]]; then
+    echo "[lock] skipped: $repo is a linked worktree, not the primary checkout" >&2
+    return 0
+  fi
+  branch="$(git -C "$repo" symbolic-ref --quiet --short HEAD || true)"
+  if [[ "$branch" != main ]]; then
+    echo "[lock] skipped: primary checkout is not on main" >&2
+    return 0
+  fi
+  for op in MERGE_HEAD REBASE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG rebase-merge rebase-apply; do
+    if [[ -e "$git_dir/$op" ]]; then
+      echo "[lock] skipped: Git operation in progress ($op)" >&2
+      return 0
+    fi
+  done
+  changed="$({ git -C "$repo" diff --name-only HEAD; git -C "$repo" ls-files --others --exclude-standard; } | sort -u)"
+  if [[ -z "$changed" ]]; then
+    return 0
+  fi
+  if [[ "$changed" != flake.lock ]]; then
+    echo "[lock] skipped: other changes on main; commit flake.lock manually:" >&2
+    echo "$changed" >&2
+    return 0
+  fi
+  git -C "$repo" fetch --quiet origin main || {
+    echo "[lock] skipped: could not fetch origin/main; flake.lock left uncommitted" >&2
+    return 0
+  }
+  if ! git -C "$repo" merge-base --is-ancestor origin/main main; then
+    echo "[lock] skipped: local main is not based on origin/main (diverged or behind); flake.lock left uncommitted" >&2
+    return 0
+  fi
+  git -C "$repo" add -- flake.lock
+  git -C "$repo" commit --quiet -m 'chore(nix): update lock'
+  if ! git -C "$repo" push --quiet origin main; then
+    echo "[lock] committed flake.lock locally, but push to origin/main was rejected; resolve and push manually" >&2
+    return 1
+  fi
+  echo "[lock] committed and pushed flake.lock to origin/main"
+}
+
 rebuild() {
   if [[ "$tool_root" == "$repo" ]]; then
     mise run nix-rebuild "$@"
@@ -80,6 +127,7 @@ if [[ "${usage_local_only:-false}" == true ]]; then
   rebuild --switch-only
   python3 "$tool_root/.mise/scripts/deployment_state.py" finish "$repo"
   echo '[Mac] SUCCESS (Linux hosts explicitly skipped)'
+  commit_lock_if_only_change || exit 1
 else
   worker="$tool_root/.mise/scripts/update-system-omarchy"
   python3 "$worker" prepare "$repo" "$payload" "$SYSTEM_CONFIG_SOURCE"
@@ -124,6 +172,7 @@ else
     echo 'Shared deployment is incomplete/partial; see per-host status and log paths above.' >&2
     exit "$status"
   fi
+  commit_lock_if_only_change || exit 1
   echo "Mac, $(IFS=,; echo "${linux_labels[*]}") configurations applied and deployment source unchanged."
 fi
 
