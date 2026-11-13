@@ -11,3 +11,4 @@ require("config.keymaps")
 
 require("switchyard")
 require("actions.yem")
+require("actions.marvin")
