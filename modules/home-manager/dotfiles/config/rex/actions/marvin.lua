@@ -21,7 +21,20 @@ local notes
 for _, session in ipairs(list.sessions or {}) do
   if session.label == SESSION then notes = session.session_id break end
 end
-if notes == nil then error("no session labelled " .. SESSION, 0) end
+if notes == nil then
+  -- No notes session yet: create it with the marvin tab as its only window.
+  local created, create_err = rex.call("session.create", {
+    label = SESSION,
+    initial_windows = { { window_label = LABEL, layout = rex.layout.block{
+      flavor  = "com.superlogical.terminal.shell",
+      label   = LABEL,
+      options = { command = COMMAND, cwd = CWD },
+    } } },
+  })
+  if created == nil then error(create_err, 0) end
+  local first = (created.initial_windows or {})[1] or {}
+  return rex.json.encode({ session_id = created.session_id, window_id = first.window_id })
+end
 
 local _, attach_err = rex.session.attach{ session_id = notes }
 if attach_err ~= nil then error(attach_err, 0) end
