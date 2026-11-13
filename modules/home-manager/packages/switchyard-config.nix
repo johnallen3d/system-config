@@ -55,6 +55,8 @@ in {
         personal = ["omarchy"];
         work = ["miller" "drummer"];
       };
+      # Paths the Inbox skips. Older switchyard binaries ignore this key.
+      inbox.exclude = ["~/notes"];
       # Rosé Pine names for the managed theme's colours.
       palette = lib.mapAttrs (_: key: palette.${key}) {
         base = "bg";
