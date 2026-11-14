@@ -13,10 +13,6 @@
 
     taps = [
       {
-        name = "basecamp/tap";
-        trusted = true;
-      }
-      {
         name = "FelixKratz/homebrew-formulae";
         trusted = true;
       }
@@ -110,7 +106,6 @@
       "font-jetbrains-mono-nerd-font"
       "font-monaspace"
       "fluidvoice"
-      "fizzy"
       "ghostty"
       "istat-menus"
       "karabiner-elements"

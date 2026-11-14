@@ -26,6 +26,7 @@
   ];
   ai-intercept = import ./ai-intercept.nix {inherit pkgs;};
   context-mode = import ./context-mode.nix {inherit pkgs;};
+  fizzy = import ./fizzy.nix {inherit pkgs;};
   fizzy-tui = import ./fizzy-tui.nix {inherit pkgs;};
   pi = import ./pi.nix {inherit pkgs;};
   yemPackage = import ./yem.nix {
@@ -172,7 +173,7 @@ in {
       zellij
     ]
     ++ scripts
-    ++ [context-mode fizzy-tui llm-usage nail-parquet pi traces vlt]
+    ++ [context-mode fizzy fizzy-tui llm-usage nail-parquet pi traces vlt]
     ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ai-intercept yemPackage];
 
   # writes settings to the wrong location for macOS (~/.config vs Library/Application Support)
