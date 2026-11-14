@@ -39,7 +39,7 @@
     then theme.source
     else "${theme.pkg}/themes/${theme.file}";
 in {
-  imports = [./traces.nix];
+  imports = [./agent-log.nix ./traces.nix];
 
   options.codingAgents = {
     enableCrossProfileUsageFooter = lib.mkOption {

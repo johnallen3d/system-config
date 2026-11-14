@@ -7,6 +7,6 @@
       let
         name = builtins.baseNameOf (toString path);
       in
-      !(name == "session-capture.fixtures.json" || name == "session-capture-check.ts");
+      !(name == "session-capture.fixtures.json" || name == "session-capture-check.ts" || name == "agent-log.ts");
   };
 }

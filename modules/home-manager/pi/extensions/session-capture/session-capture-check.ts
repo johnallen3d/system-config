@@ -296,15 +296,7 @@ async function checkDeferredCapture() {
 async function main() {
   const here = dirname(fileURLToPath(import.meta.url));
   const fixturePath = join(here, "session-capture.fixtures.json");
-  let fixtureText = await readFile(fixturePath, "utf8");
-  // Fixtures describe the personal profile and its opposite section. Swap both
-  // headings when exercising the work profile, preserving separation checks.
-  if (process.env["PI_CODING_AGENT_DIR"]?.endsWith("pi-work")) {
-    fixtureText = fixtureText.replace(/### (personal|work)/g, (_, profile) =>
-      profile === "personal" ? "### work" : "### personal"
-    );
-  }
-  const fixtures = JSON.parse(fixtureText) as Fixture[];
+  const fixtures = JSON.parse(await readFile(fixturePath, "utf8")) as Fixture[];
 
   for (const fixture of fixtures) {
     switch (fixture.kind) {

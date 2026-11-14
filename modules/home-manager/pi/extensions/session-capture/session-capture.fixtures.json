@@ -30,71 +30,68 @@
     "expected": null
   },
   {
-    "name": "new daily note gets Pi Log and profile headings",
+    "name": "new daily note gets Agent Log heading",
     "kind": "upsert",
     "existingText": "# 2026-06-02\n\nExisting note\n",
     "blockLines": [
-      "- 09:01 AM \u2014 Worked on session-capture simplification"
+      "- 09:00 AM \u2014 Worked on session-capture simplification"
     ],
     "expected": {
       "changed": true,
       "contains": [
-        "## Pi Log",
-        "### personal",
-        "- 09:01 AM \u2014 Worked on session-capture simplification"
+        "Existing note\n\n## Agent Log\n\n- 09:00 AM \u2014 Worked on session-capture simplification"
       ],
       "counts": {
-        "### personal": 1
+        "## Agent Log": 1
       }
     }
   },
   {
-    "name": "existing profile appends one bullet",
+    "name": "existing log appends one bullet",
     "kind": "upsert",
-    "existingText": "# 2026-06-02\n\n## Pi Log\n\n### personal\n\n- 08:00 AM \u2014 Earlier work\n",
+    "existingText": "# 2026-06-02\n\n## Agent Log\n\n- 08:00 AM \u2014 Earlier work #pi\n",
     "blockLines": [
       "- 09:00 AM \u2014 Worked on session-capture simplification"
     ],
     "expected": {
       "changed": true,
       "contains": [
-        "- 08:00 AM \u2014 Earlier work\n- 09:00 AM \u2014 Worked on session-capture simplification"
+        "- 08:00 AM \u2014 Earlier work #pi\n- 09:00 AM \u2014 Worked on session-capture simplification"
       ],
       "counts": {
-        "### personal": 1
+        "## Agent Log": 1
       }
     }
   },
   {
-    "name": "new profile stays separated from next heading",
+    "name": "legacy Pi Log heading is renamed and stays separated from next heading",
     "kind": "upsert",
-    "existingText": "# 2026-06-02\n\n## Pi Log\n\n### work\n\n- 08:00 AM \u2014 Earlier work\n\n## Misc\n",
+    "existingText": "# 2026-06-02\n\n## Pi Log\n\n## Misc\n",
     "blockLines": [
       "- 09:00 AM \u2014 Worked on session-capture simplification"
     ],
     "expected": {
       "changed": true,
       "contains": [
-        "### personal\n\n- 09:00 AM \u2014 Worked on session-capture simplification\n\n## Misc"
+        "## Agent Log\n\n- 09:00 AM \u2014 Worked on session-capture simplification\n\n## Misc"
       ],
       "counts": {
-        "### personal": 1,
-        "### work": 1
+        "## Pi Log": 0,
+        "## Agent Log": 1
       }
     }
   },
   {
     "name": "duplicate bullet is unchanged",
     "kind": "upsert",
-    "existingText": "# 2026-06-02\n\n## Pi Log\n\n### personal\n\n- 09:00 AM \u2014 Worked on session-capture simplification\n",
+    "existingText": "# 2026-06-02\n\n## Agent Log\n\n- 09:00 AM \u2014 Worked on session-capture simplification\n",
     "blockLines": [
       "- 09:00 AM \u2014 Worked on session-capture simplification"
     ],
     "expected": {
       "changed": false,
       "counts": {
-        "Worked on session-capture simplification": 1,
-        "### personal": 1
+        "Worked on session-capture simplification": 1
       }
     }
   },

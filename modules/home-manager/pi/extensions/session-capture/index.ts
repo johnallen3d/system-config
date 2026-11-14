@@ -11,8 +11,9 @@ export type JournalEntry = {
 
 const PROFILE = process.env["PI_CODING_AGENT_DIR"]?.endsWith("pi-work") ? "work" : "personal";
 const SUMMARY_LIMIT = 100;
-const PI_LOG_HEADING = "## Pi Log";
-const PROFILE_HEADING = `### ${PROFILE}`;
+const LOG_HEADING = "## Agent Log";
+// Notes created before the shared log (and older templates) use this heading.
+const LEGACY_LOG_HEADING = "## Pi Log";
 
 function homeDir(): string {
   return process.env["HOME"] ?? process.cwd();
@@ -97,8 +98,17 @@ export function formatClock(epochMs: number): string {
   }).format(new Date(epochMs));
 }
 
-export function buildBullet(entry: JournalEntry): string {
-  return `- ${formatClock(entry.endedAtMs)} — ${entry.summary}`;
+// Tags identify the harness (and work profile) within one chronological list.
+export function logTags(harness = process.env["AGENT_LOG_HARNESS"]?.trim() || "pi"): string[] {
+  const work = harness === "claude"
+    ? process.env["CLAUDE_CONFIG_DIR"]?.endsWith("claude-gmatter")
+    : PROFILE === "work";
+  return work ? [harness, "work"] : [harness];
+}
+
+export function buildBullet(entry: JournalEntry, tags: string[] = logTags()): string {
+  const suffix = tags.map((tag) => ` #${tag}`).join("");
+  return `- ${formatClock(entry.endedAtMs)} — ${entry.summary}${suffix}`;
 }
 
 export function isChildSessionFile(sessionFile: string | null | undefined): boolean {
@@ -249,30 +259,29 @@ export function upsertLogEntries(existingText: string, blockLines: string[]): { 
   const normalized = existingText.replace(/\r\n/g, "\n");
   const lines = normalized.length > 0 ? normalized.split("\n") : [];
 
-  const piLogStart = findHeadingIndex(lines, PI_LOG_HEADING, 0, lines.length);
-  if (piLogStart === -1) {
-    const sections = [PI_LOG_HEADING, "", PROFILE_HEADING, "", ...blockLines];
+  let logStart = findHeadingIndex(lines, LOG_HEADING, 0, lines.length);
+  let renamed = false;
+  if (logStart === -1) {
+    logStart = findHeadingIndex(lines, LEGACY_LOG_HEADING, 0, lines.length);
+    if (logStart !== -1) {
+      lines[logStart] = LOG_HEADING;
+      renamed = true;
+    }
+  }
+
+  if (logStart === -1) {
     const base = normalized.trimEnd();
-    const content = [base, sections.join("\n")].filter(Boolean).join("\n\n");
+    const content = [base, [LOG_HEADING, "", ...blockLines].join("\n")].filter(Boolean).join("\n\n");
     return { content: ensureTrailingNewline(content), changed: true };
   }
 
-  const piLogEnd = nextHeadingIndex(lines, piLogStart + 1, lines.length, /^##\s+/);
-  const profileStart = findHeadingIndex(lines, PROFILE_HEADING, piLogStart + 1, piLogEnd);
-
-  if (profileStart === -1) {
-    const nextLines = spliceWithSpacing(lines, piLogEnd, [PROFILE_HEADING, "", ...blockLines]);
-    return { content: ensureTrailingNewline(nextLines.join("\n").trimEnd()), changed: true };
+  const logEnd = nextHeadingIndex(lines, logStart + 1, lines.length, /^##\s+/);
+  const existingLog = lines.slice(logStart + 1, logEnd).join("\n");
+  if (existingLog.includes(blockLines.join("\n"))) {
+    return { content: ensureTrailingNewline(lines.join("\n").trimEnd()), changed: renamed };
   }
 
-  const profileEnd = nextHeadingIndex(lines, profileStart + 1, piLogEnd, /^###\s+/);
-  const block = blockLines.join("\n");
-  const existingProfile = lines.slice(profileStart + 1, profileEnd).join("\n");
-  if (existingProfile.includes(block)) {
-    return { content: ensureTrailingNewline(lines.join("\n").trimEnd()), changed: false };
-  }
-
-  const nextLines = spliceWithSpacing(lines, profileEnd, blockLines);
+  const nextLines = spliceWithSpacing(lines, logEnd, blockLines);
   return { content: ensureTrailingNewline(nextLines.join("\n").trimEnd()), changed: true };
 }
 
@@ -345,8 +354,8 @@ export async function resolveDailyNotePath(
   return join(vaultPath, folder, `${formatDailyNoteDate(now, format)}.md`);
 }
 
-export async function readDailyNote(): Promise<{ path: string; text: string } | undefined> {
-  const path = await resolveDailyNotePath();
+export async function readDailyNote(now = new Date()): Promise<{ path: string; text: string } | undefined> {
+  const path = await resolveDailyNotePath(homeDir(), configuredVault(), now);
   if (!path) return undefined;
   try {
     return { path, text: await readFile(path, "utf8") };
@@ -366,7 +375,7 @@ export default function (pi: ExtensionAPI) {
     if (lastLoggedBullet === bullet) return "unchanged";
 
     try {
-      const dailyNote = await readDailyNote();
+      const dailyNote = await readDailyNote(new Date(entry.endedAtMs));
       if (!dailyNote) {
         // Journaling is optional on hosts without a vault. Keep pending entries
         // for replay after configuration, without warning on every startup.
