@@ -52,6 +52,10 @@
         name = "steipete/tap";
         trusted = true;
       }
+      {
+        name = "victorkildahl/tap";
+        trusted = true;
+      }
     ];
 
     brews = [
@@ -129,6 +133,7 @@
       "tailscale-app"
       "tableplus"
       "telegram-desktop"
+      "victorkildahl/tap/cra"
       # "utm"
       "visual-studio-code"
       "vorssaint"
