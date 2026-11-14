@@ -46,6 +46,12 @@
       - John's requested outcome is the scope boundary; workflow rules never
         authorize extra deliverables. Ask before adding optional edits, worktrees,
         docs, tests, deployment, or investigation.
+      - In a repository that tracks work in Fizzy, if no card covers the task,
+        create one as soon as the task is understood, before implementation,
+        and link it with `switchyard link REF` (`switchyard-links` skill).
+        Card creation and linking are tracking bookkeeping, not extra
+        deliverables; do them without asking. When John asks for a sub-agent,
+        delegate first.
       - A direct operation on a user-owned file outside a repository needs no
         repository edits or worktree; a Nix-managed file needs its declarative
         source and deployment workflow.

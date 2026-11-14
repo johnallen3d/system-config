@@ -14,8 +14,9 @@ it follows that repository's deployment rules.
 1. **Validate and commit.** Inspect status and canonical worktree metadata;
    identify this task's repository, branch, worktree, and session start directory.
    Run only relevant code gates. Read the canonical commit skill and verify
-   implementation attribution. If the repository tracks work in Fizzy and no
-   card covers this task, create one describing the completed work now. Link
+   implementation attribution. Cards are normally created when the task starts;
+   as a fallback, if the repository tracks work in Fizzy and still no card
+   covers this task, create one describing the completed work now. Link
    every card or issue the task covers with `switchyard link REF` while the
    branch still exists (`switchyard-links` skill), and reference them in the
    commit. Commit scoped changes only; no empty commits.
