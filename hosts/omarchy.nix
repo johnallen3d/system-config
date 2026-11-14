@@ -1,5 +1,9 @@
 # Omarchy: the primary Arch host. It alone runs the singleton services.
-{config, ...}: {
+{
+  config,
+  pkgs,
+  ...
+}: {
   imports = [
     ./omarchy-common.nix
     ../modules/home-manager/omarchy-credits.nix
@@ -20,4 +24,6 @@
 
   # The Syncthing-paired Obsidian vault is local to Omarchy.
   home.sessionVariables.PI_SESSION_CAPTURE_VAULT_PATH = "${config.home.homeDirectory}/notes";
+  # The notes repo's mise tasks read and write that vault through vlt.
+  home.packages = [(import ../modules/home-manager/packages/vlt.nix {inherit pkgs;})];
 }
