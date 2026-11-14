@@ -10,7 +10,13 @@ pkgs.buildGoModule {
     hash = "sha256-OTyH9Ay5LL81Vy0XSysfbtFcJoE8uG9qKy7rGuucvxU=";
   };
 
-  vendorHash = "sha256-fwld+5KAVNSFdwc6VmS/BnMZ11GzWhSI7d6mC+4IDqw=";
+  # fizzy CLI 4.x wraps responses in {"ok": ...}; upstream still reads "success".
+  postPatch = ''
+    substituteInPlace internal/fizzy/client.go \
+      --replace-fail 'json:"success"' 'json:"ok"'
+  '';
+
+  vendorHash ="sha256-fwld+5KAVNSFdwc6VmS/BnMZ11GzWhSI7d6mC+4IDqw=";
   ldflags = ["-s" "-w"];
 
   meta = with pkgs.lib; {
