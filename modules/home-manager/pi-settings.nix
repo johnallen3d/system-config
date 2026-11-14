@@ -32,7 +32,12 @@
     packages;
   managedTheme = import ./managed-theme.nix {inherit lib;};
   jq = "${pkgs.jq}/bin/jq";
-  switchyardMcp = {inherit (import ./switchyard-mcp.nix) url;};
+  switchyardMcp = let
+    s = import ./switchyard-mcp.nix;
+  in {
+    inherit (s) url;
+    headers = s.piHeaders;
+  };
 
   mkPiSettingsActivation = settingsFile: settings: ''
     if [ -n "''${DRY_RUN:-}" ]; then

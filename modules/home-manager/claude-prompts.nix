@@ -43,6 +43,7 @@
   switchyardMcp = {
     type = "http";
     inherit (import ./switchyard-mcp.nix) url;
+    headers = (import ./switchyard-mcp.nix).claudeHeaders;
   };
   personalMcpServers = {switchyard = switchyardMcp;};
   workMcpServers = {
