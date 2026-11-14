@@ -42,15 +42,16 @@ it follows that repository's deployment rules.
    files), and containment in `main`; then use `wt remove --foreground` from
    primary. Never force. Verify this task's worktree and branch are gone.
 
-   **Archive only on John's explicit request, and never with open cards.** A wrap
-   never archives on its own. When John asks to archive this session, run the
-   archive (`switchyard stop_task` for this task, or the Rex picker when that tool
-   is unavailable) only after commit, integration, and card closure (step 4) are
-   done and no in-scope card is still open. If any card is open or a step failed,
-   report that and ask whether to archive anyway; do not archive. `stop_task` still
-   refuses uncommitted changes. A session anchored in its own worktree archives as
-   the last action: write the full handoff as text first, since closing the tab
-   ends the session before it can report.
+   **When John asks to archive this session, archive it. Do not ask first.** A
+   wrap never archives on its own, but an explicit request from John is the
+   decision; carry it out with `switchyard stop_task` for this task (or the Rex
+   picker when that tool is unavailable). Open cards, pending deploys, lock
+   updates, unapproved follow-ups, or a failed wrap step are not reasons to
+   withhold or re-confirm the archive: cards stay open in Fizzy, and archiving
+   keeps unmerged branches. The only gate is `stop_task` refusing uncommitted
+   changes; if it refuses, report that. Archive as the last action: first write
+   the full handoff as text, naming any open cards and pending actions, since
+   closing the tab ends the session before it can report.
 4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
    separately. **Deploy, where the repository requires it.** If `AGENTS.md` says
    `/wrap` deploys and the commit changes shared config, run that deployment after
