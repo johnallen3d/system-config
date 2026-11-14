@@ -1,19 +1,25 @@
--- cmd+o: go to the `marvin` tab in the `notes` session. If it isn't open, open
--- it in ~/notes running Claude Code on Haiku at high effort, then show it.
--- A new notes session is placed right after `agents`, or first without it.
+-- cmd+o: go to the `marvin` tab in the `notes` session on Omarchy. If it isn't
+-- open, open it in Omarchy's ~/notes running Claude Code on Haiku at high
+-- effort, then show it. A new notes session is placed first.
 --
 -- An action can only view (or add windows to) sessions its connection is
--- attached to, so the find-or-open runs as a `rex do` script that attaches to
--- the notes session first, the same way switchyard's tab picker does.
+-- attached to, so the find-or-open runs as a `rex -S omarchy do` script that
+-- attaches to the notes session first, the same way switchyard's tab picker
+-- does, and the jump goes through Omarchy's app connection.
 local util = require("switchyard.float")
 
+local HOST = "omarchy"
 local SESSION = "notes"
 local LABEL = "marvin"
-local CWD = (os.getenv("HOME") or "") .. "/notes"
-local COMMAND = util.float_command("claude", "--model", "haiku", "--effort", "high")
+-- `rex -S` runs the script below here and only its calls on the host, so
+-- the pane itself changes to the host's ~/notes.
+local COMMAND = { "sh", "-c", 'cd "$HOME/notes" && exec "$@"', "sh" }
+for _, arg in ipairs(util.float_command("claude", "--model", "haiku", "--effort", "high")) do
+  COMMAND[#COMMAND + 1] = arg
+end
 
 local SCRIPT = string.format([==[
-local SESSION, LABEL, CWD, COMMAND = %q, %q, %q, %q
+local SESSION, LABEL, COMMAND = %q, %q, %q
 COMMAND = rex.json.decode(COMMAND)
 
 local list, list_err = rex.call("session.list")
@@ -29,17 +35,12 @@ if notes == nil then
     initial_windows = { { window_label = LABEL, layout = rex.layout.block{
       flavor  = "com.superlogical.terminal.shell",
       label   = LABEL,
-      options = { command = COMMAND, cwd = CWD },
+      options = { command = COMMAND },
     } } },
   })
   if created == nil then error(create_err, 0) end
-  -- A new session goes last; put it just after agents, or first without
-  -- agents. Best effort: it still opens.
-  local sessions = list.sessions or {}
-  local before = sessions[1]
-  for i, session in ipairs(sessions) do
-    if session.label == "agents" then before = sessions[i + 1] break end
-  end
+  -- A new session goes last; put it first. Best effort: it still opens.
+  local before = (list.sessions or {})[1]
   -- Moving needs this connection attached; session.create doesn't attach.
   if before ~= nil then
     local _, attach_err = rex.session.attach{ session_id = created.session_id }
@@ -68,12 +69,12 @@ local window, err = rex.session.new_window{
   layout       = rex.layout.block{
     flavor  = "com.superlogical.terminal.shell",
     label   = LABEL,
-    options = { command = COMMAND, cwd = CWD },
+    options = { command = COMMAND },
   },
 }
 if window == nil then error(err, 0) end
 return rex.json.encode({ session_id = notes, window_id = window.window_id })
-]==], SESSION, LABEL, CWD, rex.json.encode(COMMAND))
+]==], SESSION, LABEL, rex.json.encode(COMMAND))
 
 -- `rex do` prints the returned string as JSON.
 local function decode_tab(output)
@@ -89,11 +90,12 @@ rex.action{
   name  = "marvin_open",
   title = "Go to marvin (notes)",
   run   = function(ctx, args)
-    local r, err = rex.exec({ "rex", "do", "-e", SCRIPT }, { env = util.cli_env() })
+    local env = util.cli_env()
+    local r, err = rex.exec({ "rex", "-S", HOST, "do", "-e", SCRIPT }, { env = env })
     if r == nil then error(err, 0) end
     if not r.ok then error((r.stderr:gsub("%s+$", "")), 0) end
     local tab = decode_tab(r.stdout)
-    rex.client.queue("session.select", { session_id = tab.session_id, window_id = tab.window_id })
+    util.select_on_host(HOST, "marvin.log", env, tab.session_id, tab.window_id)
   end,
 }
 
