@@ -114,10 +114,35 @@ rebuild() {
   fi
 }
 
+# A tarball server can advertise an "immutable" URL that later serves other
+# content; the Mac then builds from its cache while every Linux host fails the
+# narHash check. Re-fetch each locked tarball before any host starts.
+verify_locked_tarballs() {
+  local name url want got
+  while IFS=$'\t' read -r name url want; do
+    if ! got="$(nix flake prefetch --json --option tarball-ttl 0 "tarball+$url" |
+      python3 -c 'import json, sys; print(json.load(sys.stdin)["hash"])')"; then
+      echo "[inputs] $name: could not fetch locked $url; no deployments started." >&2
+      return 1
+    fi
+    if [[ "$got" != "$want" ]]; then
+      echo "[inputs] $name: locked $url now fetches as $got, but flake.lock records $want; upstream served different content for that URL. No deployments started." >&2
+      return 1
+    fi
+  done < <(python3 -c '
+import json, sys
+for name, node in json.load(open(sys.argv[1]))["nodes"].items():
+    locked = node.get("locked", {})
+    if locked.get("type") == "tarball":
+        print(name, locked["url"], locked["narHash"], sep="\t")
+' "$repo/flake.lock")
+}
+
 # Resolve inputs exactly once, before any host starts building.
 if [[ "${usage_switch_only:-false}" != true ]]; then
   rebuild --update-only
 fi
+verify_locked_tarballs
 
 python3 "$tool_root/.mise/scripts/deployment_state.py" plan "$repo" "$payload/mac-source"
 SYSTEM_CONFIG_SOURCE="$(<"$payload/mac-source")"
