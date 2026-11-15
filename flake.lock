@@ -216,11 +216,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1794768685,
-        "narHash": "sha256-JOPsc7PFryxsYHt7FtL5XtKmrh5jmp//VisJooGLZt4=",
+        "lastModified": 1794773456,
+        "narHash": "sha256-1Dg0eH1WFB0aQ2a1wVH28FyTwEeNsgnk5GUTdJvQexk=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "9fe06ef6766f91924076789e5bd829d2ea2d47a8",
+        "rev": "bd7e5b59893434d85831174a1f73171eeae3ee28",
         "type": "github"
       },
       "original": {
