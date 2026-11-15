@@ -116,19 +116,34 @@ rebuild() {
 
 # A tarball server can advertise an "immutable" URL that later serves other
 # content; the Mac then builds from its cache while every Linux host fails the
-# narHash check. Re-fetch each locked tarball before any host starts.
+# narHash check. Re-fetch each locked tarball before any host starts. After an
+# input update, re-lock a mismatch to what its URL serves, which every host
+# fetches identically; with --switch-only the lock is not ours to change.
 verify_locked_tarballs() {
-  local name url want got
+  local name url want fetched got modified
   while IFS=$'\t' read -r name url want; do
-    if ! got="$(nix flake prefetch --json --option tarball-ttl 0 "tarball+$url" |
-      python3 -c 'import json, sys; print(json.load(sys.stdin)["hash"])')"; then
+    if ! fetched="$(nix flake prefetch --json --option tarball-ttl 0 "tarball+$url" |
+      python3 -c 'import json, sys; l = json.load(sys.stdin)["locked"]; print(l["narHash"], l["lastModified"])')"; then
       echo "[inputs] $name: could not fetch locked $url; no deployments started." >&2
       return 1
     fi
-    if [[ "$got" != "$want" ]]; then
+    read -r got modified <<<"$fetched"
+    [[ "$got" == "$want" ]] && continue
+    if [[ "${usage_switch_only:-false}" == true ]]; then
       echo "[inputs] $name: locked $url now fetches as $got, but flake.lock records $want; upstream served different content for that URL. No deployments started." >&2
       return 1
     fi
+    python3 -c '
+import json, sys
+path, name, nar_hash, modified = sys.argv[1:]
+with open(path) as f:
+    lock = json.load(f)
+lock["nodes"][name]["locked"].update(narHash=nar_hash, lastModified=int(modified))
+with open(path, "w") as f:
+    json.dump(lock, f, indent=2)
+    f.write("\n")
+' "$repo/flake.lock" "$name" "$got" "$modified"
+    echo "[inputs] warning: $name: upstream resolved to $want, but its locked $url serves $got; re-locked $name to $got so every host fetches the same content." >&2
   done < <(python3 -c '
 import json, sys
 for name, node in json.load(open(sys.argv[1]))["nodes"].items():
