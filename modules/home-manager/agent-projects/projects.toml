@@ -67,6 +67,12 @@ clone_url = "https://github.com/johnallen3d/cue.git"
 hosts = ["config"]
 
 [[personal]]
+# Upstream n8n Nod (self-hosted on Omarchy by ../omarchy-nod.nix); no Fizzy
+# board, so refs resolve to the upstream GitHub repo.
+path = "~/dev/src/playground/nod"
+clone_url = "https://github.com/n8n-io/nod.git"
+
+[[personal]]
 # Browser extension: runs on the Mac. No remote yet, so nothing to clone.
 path = "~/dev/src/playground/repo-jump"
 tracker = "fizzy:6284043/03h8xxdsdxeocbulic6jayzk7"
