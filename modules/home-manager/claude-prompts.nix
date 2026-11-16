@@ -204,6 +204,7 @@ in {
           --argjson plugins "$plugins" \
           '. + $managed |
            .env.CLAUDE_CODE_EXPERIMENTAL_CODE_MODE = "1" |
+           .env.ENABLE_TOOL_SEARCH = "true" |
            .permissions.allow = ((.permissions.allow // []) + $allowed | unique) |
            (.env.CLAUDE_CODE_PLUGIN_DIRS // "" | split(":") |
             map(select(length > 0)) - $retired |
