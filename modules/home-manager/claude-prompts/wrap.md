@@ -1,7 +1,10 @@
 ---
-description: "Commit, integrate, and clean up personal work"
+description: "Commit, integrate, push, and clean up personal work"
+argument-hint: "[no-push]"
 model: haiku
 ---
 
 Follow the appended personal completion lifecycle. Verify the implementation attribution handoff before committing.
-Derive the commit message; this command takes no arguments.
+Derive the commit message. The only argument is `no-push`, which skips the push step.
+
+Arguments: $ARGUMENTS

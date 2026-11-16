@@ -90,7 +90,8 @@
       - An actual personal `/wrap` invocation authorizes the scoped commit,
         guarded rebase/fast-forward integration, and worktree cleanup its
         command describes. Mentioning or quoting `/wrap`, reading its prompt
-        file, or "wrap up" does not. `/wrap` never authorizes a push. It
+        file, or "wrap up" does not. `/wrap` also authorizes a plain push of
+        integrated local `main` unless invoked as `/wrap no-push`. It
         authorizes a rebuild or deployment only where the repository's
         `AGENTS.md` says `/wrap` deploys.
       - An authorized deployment includes clean fast-forward sync of a deployment

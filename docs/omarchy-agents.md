@@ -150,7 +150,8 @@ Uncertain ownership/publication, conflicts, signing/hook failures, unrelated
 changes, unknown ignored files, failed validation/deployment, or an unverifiable
 cwd block subsequent integration/cleanup. After rewriting, rerun relevant gates
 and recheck source/deployment compatibility; unchanged deployed content does not
-require an unconditional rebuild. No fetch, push, shared-history rewrite, squash,
+require an unconditional rebuild. It then plainly pushes local `main` to its upstream unless invoked as
+`/wrap no-push`; a failed push is reported, not retried. No fetch, force push, shared-history rewrite, squash,
 forced deletion, or merge fallback is authorized. An opt-out task gets validation/tracking/commit without unrelated
 worktree integration or cleanup. The external shared `wrapping-up` skill and work
 PR workflow are unchanged. Plain “wrap up” or mentioning `/wrap` does not authorize

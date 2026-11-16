@@ -6,7 +6,10 @@ and personal worktree, attribution, and deployment policies.
 Actual `/wrap` invocation (including its expanded prompt) authorizes scoped
 commit, guarded rebase, fast-forward integration, safe cleanup, and closing
 completed in-scope Fizzy cards. Reading or mentioning it does not.
-It does not authorize push/fetch, input updates, amend/squash/reset/stash,
+It also authorizes a plain `git push` of integrated local `main` (step 4),
+unless invoked as `/wrap no-push` or John said not to push this session.
+It does not authorize fetch, force push, pushing other refs, input updates,
+amend/squash/reset/stash,
 force deletion, killing processes, or bypassing hooks/signing. Deployment is
 authorized only where the repository's `AGENTS.md` says `/wrap` deploys; then
 it follows that repository's deployment rules.
@@ -53,16 +56,22 @@ it follows that repository's deployment rules.
    changes; if it refuses, report that. Archive as the last action: first write
    the full handoff as text, naming any open cards and pending actions, since
    closing the tab ends the session before it can report.
-4. **Hand off.** Report final status, commit, integration/cleanup, and deployment
-   separately. **Deploy, where the repository requires it.** If `AGENTS.md` says
+4. **Hand off.** Report final status, commit, integration/cleanup, push, and
+   deployment separately. **Push.** Unless opted out, after integration (and
+   deployment, where it applies) run `git -C "$repo_root" push` for local `main`
+   to its configured upstream: no `--force`, no fetch, no other refs. Skip it
+   when `main` has no upstream or nothing new to push. A rejected or failed push
+   is reported as pending (`ready to push when you are`), not a wrap blocker;
+   never fetch, pull, or rebase to make it succeed. Work-in-place pushes the
+   committed branch the same way only if it is `main`. **Deploy, where the repository requires it.** If `AGENTS.md` says
    `/wrap` deploys and the commit changes shared config, run that deployment after
    integration and before cleanup, following the repository's deployment rules.
    **Close the card.** Before reporting, close every in-scope card that this wrap
    completed (`fizzy card close NUMBER`) and comment the commit on it. A card is
    complete once its commit is on `main` and, where deployment applies, deployment
    succeeded on every host. A failed or unreachable host keeps the card open; name
-   that host in the handoff. Never finish with untracked work. A later push does
-   not block Git integration or cleanup, but required acceptance checks still apply.
+   that host in the handoff. Never finish with untracked work. Push does not
+   block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.
 
@@ -110,5 +119,5 @@ state these fields, using concrete paths, hosts, and actions where relevant:
 Then briefly list what did succeed, the commit if any, retained branch/worktree,
 per-host deployment status when applicable, and the card left open. Never lead
 with "done", "fixed", "completed", or "ready to push" while a required step is
-blocked. Optional follow-up work and an unrequested push are not wrap blockers.
+blocked. Optional follow-up work and a failed or opted-out push are not wrap blockers.
 This reporting requirement changes no authorization or safety gates above.
