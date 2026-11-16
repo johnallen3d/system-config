@@ -66,6 +66,13 @@ tracker = "fizzy:6284043/03gvqdn8j7zah76vg12s50l9i"
 clone_url = "https://github.com/johnallen3d/cue.git"
 hosts = ["config"]
 
+[[personal]]
+# Browser extension: runs on the Mac. No remote yet, so nothing to clone.
+path = "~/dev/src/playground/repo-jump"
+tracker = "fizzy:6284043/03h8xxdsdxeocbulic6jayzk7"
+clone_url = ""
+hosts = ["config"]
+
 [[work]]
 path = "~/dev/src/amfaro/actions"
 clone_url = "https://github.com/amfaro/actions.git"
