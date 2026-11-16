@@ -48,6 +48,7 @@
     ./homebrew
     ./system
     ./environment
+    ./xcode.nix
   ];
 
   system.activationScripts.extraActivation.text = builtins.readFile ./activation.sh;
