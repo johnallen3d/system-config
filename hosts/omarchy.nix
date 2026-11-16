@@ -7,6 +7,7 @@
   imports = [
     ./omarchy-common.nix
     ../modules/home-manager/omarchy-credits.nix
+    ../modules/home-manager/omarchy-nod.nix
     ../modules/home-manager/omarchy-pi-pocket.nix
     ../modules/home-manager/omarchy-syncthing-lan.nix
   ];
