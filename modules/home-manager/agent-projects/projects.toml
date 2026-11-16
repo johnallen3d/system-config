@@ -24,6 +24,7 @@ hosts = ["config"]
 path = "~/dev/src/playground/credits"
 tracker = "fizzy:6284043/03h2w30lm3tgf7jxuok6v7rll"
 clone_url = "https://github.com/johnallen3d/credits.git"
+hosts = ["config"]
 
 [[personal]]
 path = "~/dev/src/playground/switchyard"
