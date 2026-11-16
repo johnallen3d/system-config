@@ -19,6 +19,10 @@
   envFile = pkgs.writeText "nod.env" ''
     NOD_ANALYTICS_ENABLED=false
   '';
+  # Expose John's notes to the agent's workspace container (same uid 1000).
+  overrideFile = pkgs.writeText "nod-compose.override.yaml" (builtins.toJSON {
+    services.workspace.volumes = ["/home/johna/notes:/notes"];
+  });
   port = 4310;
   # Omarchy's reserved physical LAN address, never the Tailscale interface.
   lanAddress = "192.168.4.26";
@@ -29,7 +33,7 @@
   compose = pkgs.writeShellScript "nod-compose" ''
     set -euo pipefail
     cmd=(/usr/bin/docker compose --project-directory ${selfHost} \
-      --file ${selfHost}/compose.yaml "$@")
+      --file ${selfHost}/compose.yaml --file ${overrideFile} "$@")
     if id -nG | grep -qw docker; then exec "''${cmd[@]}"; fi
     SHELL=/bin/sh exec /usr/bin/newgrp docker -c "exec ''${cmd[*]@Q}"
   '';
