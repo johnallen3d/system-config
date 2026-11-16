@@ -203,6 +203,7 @@ in {
           --argjson allowed ${lib.escapeShellArg (builtins.toJSON allowedTools)} \
           --argjson plugins "$plugins" \
           '. + $managed |
+           .env.CLAUDE_CODE_EXPERIMENTAL_CODE_MODE = "1" |
            .permissions.allow = ((.permissions.allow // []) + $allowed | unique) |
            (.env.CLAUDE_CODE_PLUGIN_DIRS // "" | split(":") |
             map(select(length > 0)) - $retired |
