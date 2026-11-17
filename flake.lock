@@ -21,11 +21,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1794878998,
-        "narHash": "sha256-LDX1kp/M97KfSSi3vfb0b9/AiFgqMCCljxmipGSHBag=",
+        "lastModified": 1794931972,
+        "narHash": "sha256-p4qVVCsyHErf1EnJ1cx+geMj+bNi1GucPPfJh+a6HqQ=",
         "owner": "johnallen3d",
         "repo": "credits",
-        "rev": "76d195359bfae238fec9b8656827acf735fbb8f5",
+        "rev": "4a6601149ba714bb814253dcf6e78cb6afba3833",
         "type": "github"
       },
       "original": {
@@ -216,11 +216,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1794929458,
-        "narHash": "sha256-9/SlYm6Csc0pLhctx21sYeF3VO5WnEt7BO0pKFkB5dM=",
+        "lastModified": 1794931568,
+        "narHash": "sha256-SZYNuCCGS/R0jPYmLm8YHNdJuWyiTBQKCa/MgZeD3Dg=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "9693627e508539d6bb1fc2b2aec9be0eccc80506",
+        "rev": "40156a83b36f3daa0d03ce9a7cb8d2cb2eb4ce8a",
         "type": "github"
       },
       "original": {
