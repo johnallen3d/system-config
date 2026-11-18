@@ -18,6 +18,8 @@ rex.bind("ctrl+shift+tab", "client.tab.previous")
 rex.bind("cmd+w", "pane.close")
 rex.bind("cmd+d", "pane.split.right")
 rex.bind("cmd+shift+d", "pane.split.down")
+-- Pass cmd+enter to terminals (default: pane.split.auto).
+rex.unbind("cmd+enter")
 
 local directions = { h = "left", j = "down", k = "up", l = "right" }
 for key, direction in pairs(directions) do
