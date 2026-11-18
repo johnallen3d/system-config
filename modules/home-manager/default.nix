@@ -94,6 +94,14 @@ in {
 
   subscriptionProxy.enable = pkgs.stdenv.hostPlatform.isDarwin;
 
+  # Copy (not symlink) apps into ~/Applications/Home Manager Apps so
+  # Spotlight and Siri index them; the 25.11+ default, but stateVersion pins
+  # the old symlink behaviour here.
+  targets.darwin = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+    linkApps.enable = false;
+    copyApps.enable = true;
+  };
+
   home.activation.llmUsageState = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
     (lib.hm.dag.entryAfter ["writeBoundary"] ''
       if [ -z "''${DRY_RUN:-}" ]; then
