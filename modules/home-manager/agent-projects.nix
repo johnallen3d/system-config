@@ -22,6 +22,7 @@
   delegationInstructions = builtins.readFile ./agent-projects/delegation-instructions.md;
   taskScopeInstructions = builtins.readFile ./agent-projects/task-scope-instructions.md;
   deploymentInstructions = builtins.readFile ./agent-projects/deployment-instructions.md;
+  htmlReportInstructions = builtins.readFile ./agent-projects/html-report-instructions.md;
   omarchyInstructions = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
 
     ## Arch/Omarchy
@@ -115,7 +116,9 @@
         edits, or tests beforehand. Read the `delegating-to-subagents` skill for
         the brief, handoff, and failure recovery (reading it counts as launch
         discovery).
+
     ''
+    + htmlReportInstructions
     + omarchyInstructions;
   workInstructions =
     builtins.readFile ./agent-projects/work-instructions.md
@@ -124,6 +127,8 @@
     + taskScopeInstructions
     + deploymentInstructions
     + delegationInstructions
+    + "\n"
+    + htmlReportInstructions
     + omarchyInstructions;
 in {
   imports = [./agent-skills.nix ./claude-work-context.nix ./deployment-coordination.nix];
