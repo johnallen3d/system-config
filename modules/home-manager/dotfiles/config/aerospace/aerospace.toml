@@ -34,6 +34,14 @@ default-root-container-layout = 'tiles'
 #               tall monitor (anything higher than wide) gets vertical orientation
 default-root-container-orientation = 'auto'
 
+# AeroSpace has no sticky windows, so carry Cra picture-in-picture windows to
+# whichever workspace becomes focused instead of leaving them hidden behind.
+exec-on-workspace-change = [
+  '/bin/bash',
+  '-c',
+  '''/opt/homebrew/bin/aerospace list-windows --monitor all --app-bundle-id dk.kildahl.cra --format '%{window-id}|%{window-title}' | while IFS='|' read -r id title; do [ "$title" = 'Picture in Picture' ] && /opt/homebrew/bin/aerospace move-node-to-workspace --window-id "$id" "$AEROSPACE_FOCUSED_WORKSPACE"; done; true''',
+]
+
 # Mouse follows focus when focused monitor changes
 on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 
@@ -246,6 +254,18 @@ run = 'move-node-to-workspace 8'
 [[on-window-detected]]
 if.app-id = 'company.thebrowser.Browser'
 run = 'move-node-to-workspace 9'
+
+# Cra picture-in-picture: float on the current workspace instead of being
+# sent to (and hidden on) workspace 9 with the other Cra windows.
+[[on-window-detected]]
+if = "test %{app-bundle-id} = dk.kildahl.cra && test %{window-title} ~= '^picture.in.picture$'"
+run = 'layout floating'
+
+# Cra Little Windows (mini browser) have no fullscreen button, so AeroSpace
+# floats them by default; tile them on the workspace they open over.
+[[on-window-detected]]
+if = 'test %{app-bundle-id} = dk.kildahl.cra && test %{window-layout} = floating'
+run = 'layout tiling'
 
 [[on-window-detected]]
 if.app-id = 'dk.kildahl.cra'
