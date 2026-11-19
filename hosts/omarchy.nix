@@ -25,6 +25,10 @@
 
   # The Syncthing-paired Obsidian vault is local to Omarchy.
   home.sessionVariables.PI_SESSION_CAPTURE_VAULT_PATH = "${config.home.homeDirectory}/notes";
-  # The notes repo's mise tasks read and write that vault through vlt.
-  home.packages = [(import ../modules/home-manager/packages/vlt.nix {inherit pkgs;})];
+  # The notes repo's mise tasks read and write that vault through vlt, and
+  # reach Gmail and Calendar through gog.
+  home.packages = [
+    (import ../modules/home-manager/packages/vlt.nix {inherit pkgs;})
+    pkgs.gogcli
+  ];
 }
