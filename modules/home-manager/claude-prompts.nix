@@ -48,6 +48,11 @@
   personalMcpServers = {switchyard = switchyardMcp;};
   workMcpServers = {
     switchyard = switchyardMcp;
+    # Better Stack's remote MCP; OAuth tokens stay in Claude's credential store.
+    betterstack = {
+      type = "http";
+      url = "https://mcp.betterstack.com";
+    };
     # Public OAuth client configuration published by Slack for Claude Code:
     # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
     # Tokens remain in Claude's machine-local credential store, never in Nix.
