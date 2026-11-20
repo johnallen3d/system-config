@@ -166,8 +166,7 @@
       };
     };
     switchyard = switchyardMcp;
-    # Better Stack's remote MCP; OAuth tokens stay in mcp-auth.json.
-    betterstack.url = "https://mcp.betterstack.com";
+    betterstack = import ./betterstack-mcp.nix;
   };
 
   piSystemMd = ''
