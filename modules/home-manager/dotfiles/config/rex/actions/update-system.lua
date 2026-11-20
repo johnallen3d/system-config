@@ -1,7 +1,7 @@
 -- cmd+shift+u: open a new `update-system` tab in this Mac's system-config
 -- session (creating the session if there is none), run `mise update-system`
--- in ~/dev/src/system-config, then show the tab. A login shell stays open
--- afterwards so the output can be read.
+-- in ~/dev/src/system-config, then show the tab. The tab closes when the
+-- update succeeds; on failure a login shell stays open so the output can be read.
 --
 -- Server actions see only the focused session's server, so the find-or-open
 -- runs as a local `rex do` script (as yem.lua does) and the jump is queued on
@@ -13,7 +13,7 @@ local LABEL = "update-system"
 local COMMAND = {
   "sh", "-c",
   'PATH="$HOME/.local/bin:/etc/profiles/per-user/$(id -un)/bin:/opt/homebrew/bin:$PATH"; export PATH; '
-    .. 'cd "$HOME/dev/src/system-config" && mise update-system; exec "${SHELL:-fish}" -l',
+    .. 'cd "$HOME/dev/src/system-config" && mise update-system || exec "${SHELL:-fish}" -l',
 }
 
 local SCRIPT = string.format([==[
