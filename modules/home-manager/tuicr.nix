@@ -23,7 +23,7 @@ in {
         no_update_check = true;
         diff_watch_interval_ms = 1000;
         comment_vim = true;
-        diff_view = "side-by-side";
+        diff_view = "unified";
         show_reviewed = false;
         comment_types = [
           {
