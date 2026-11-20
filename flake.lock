@@ -187,10 +187,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1795191045,
-        "narHash": "sha256-5ZAsCO8T0czl4gOF86yFPvQHSTmwJqwWUe4r5KqOVDc=",
+        "lastModified": 1795195777,
+        "narHash": "sha256-U6lvQ1AJZpnMCk82lrBz6tD1Rhz1bHhGP3TXelmTjOk=",
         "type": "tarball",
-        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.0.1795191045-g7da303.tar.gz"
+        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.0.1795195777-gf42776.tar.gz"
       },
       "original": {
         "type": "tarball",
