@@ -122,6 +122,7 @@
       "raycast"
       "rocket"
       "royal-tsx"
+      "search-browser"
       "signal"
       "supacode"
       "syncthing-app"
