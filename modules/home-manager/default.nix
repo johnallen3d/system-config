@@ -171,7 +171,6 @@ in {
 
   home.sessionVariables = {
     CLAUDE_CONFIG_DIR = "$HOME/.config/claude-personal";
-    CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS = "1";
   };
 
   home.activation.desktopprPrepareWallpaper = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin

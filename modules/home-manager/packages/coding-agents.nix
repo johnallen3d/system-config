@@ -23,7 +23,6 @@
   claude = pkgs.writeShellScriptBin "claude" ''
     export PATH="${runtimePath}:$PATH"
     export CLAUDE_CONFIG_DIR="''${CLAUDE_CONFIG_DIR:-$HOME/.config/claude-personal}"
-    export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
     exec ${claudeCode}/bin/claude "$@"
   '';
   managedPi = pkgs.writeShellScriptBin "pi" ''
