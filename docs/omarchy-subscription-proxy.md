@@ -217,7 +217,7 @@ Use plain `claude` in the shared Amfaro context and `/model` to switch; explicit
 accounts. The curated picker replaces the built-in lineup, rather than relying
 on discovery that filters out non-Claude IDs. Sonnet 5.5 remains a pinned helper
 alias for existing subagents, not an extra picker entry. Omarchy's Nix-managed
-Claude is pinned to official 2.1.295 because Haiku 5.5 needs >=2.1.293; Mac's
+Claude is pinned to official 2.1.329; Haiku 5.5 needs >=2.1.293 and gateway tool search >=2.1.305; Mac's
 existing native Claude must also meet that minimum.
 
 Codex through Claude Code uses the gateway's Messages-to-Responses translation.

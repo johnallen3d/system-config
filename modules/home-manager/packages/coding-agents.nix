@@ -6,15 +6,15 @@
   # independently of Omarchy's older nixpkgs lock; retain Nix's native wrapper.
   claudeCode = pkgs.claude-code.override {
     manifest = {
-      version = "2.1.295";
+      version = "2.1.329";
       platforms = {
         linux-x64 = {
           binary = "claude.zst";
-          checksum = "71164c85f9d226928dec7acda1baf000f1991eb14fcec106536d84bd914032f8";
+          checksum = "e5e52a50cfab8a3573a4896846f499488d822b34e89a4994d8bc990aaf2846c4";
         };
         linux-arm64 = {
           binary = "claude.zst";
-          checksum = "9b32b47ec4b3fa5b884e12b7e130e94338e7787d5db031adf48e1b20e3a893ee";
+          checksum = "d5ffa30ef2d305feb76882125a7d2ed4524baf08843ebd21f4bff0409b2c62e9";
         };
       };
     };

@@ -9,7 +9,7 @@ is verified. Work Claude Code uses the work proxy as its managed default on both
 hosts, with six curated Claude/Codex choices; no separate Claude activation is
 needed. Restart existing Claude sessions when convenient to pick up routing.
 The pinned official model catalog includes Haiku 5.5, and Omarchy's Nix-managed
-Claude Code is pinned to 2.1.295 to support it.
+Claude Code is pinned to 2.1.329 (>=2.1.293 for Haiku 5.5; >=2.1.305 for gateway tool search).
 
 `hosts/omarchy-common.nix` (shared by Omarchy, Miller, and Drummer) opts into `modules/home-manager/coding-agents.nix`, without
 importing the Mac's shell/desktop configuration. Pi uses the same Nix-managed
