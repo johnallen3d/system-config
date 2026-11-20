@@ -257,6 +257,7 @@
       blue = "#9CCFD8";
       accentText = "#191724";
       green = "#31748F";
+      diffAdd = "#9CCFD8";
       red = "#EB6F92";
       orange = "#EBBCBA";
       yellow = "#F6C177";
@@ -300,6 +301,7 @@
       blue = "#9CCFD8";
       accentText = "#232136";
       green = "#3E8FB0";
+      diffAdd = "#9CCFD8";
       red = "#EB6F92";
       orange = "#EA9A97";
       yellow = "#F6C177";
@@ -868,6 +870,66 @@
     selection-foreground = ${c.text}
   '';
 
+  mkTuicrTheme = c: let
+    added = c.diffAdd or c.green;
+  in {
+    panel_bg = c.bg;
+    bg_highlight = c.bgHighlight;
+    fg_primary = c.text;
+    fg_secondary = c.muted;
+    fg_dim = c.comment;
+
+    diff_add = added;
+    diff_add_bg = c.yankBar;
+    diff_del = c.red;
+    diff_del_bg = c.cutBar;
+    diff_context = c.text;
+    diff_hunk_header = c.accent;
+    expanded_context_fg = c.comment;
+
+    syntax_add_bg = c.yankBar;
+    syntax_del_bg = c.cutBar;
+
+    file_added = added;
+    file_modified = c.yellow;
+    file_deleted = c.red;
+    file_renamed = c.magenta;
+
+    reviewed = added;
+    pending = c.yellow;
+
+    comment_note = c.blue;
+    comment_suggestion = c.teal;
+    comment_issue = c.red;
+    comment_praise = c.green;
+
+    border_focused = c.accent;
+    border_unfocused = c.borderBright;
+    status_bar_bg = c.bgDark;
+    cursor_color = c.yellow;
+    cursor_line_bg = c.bgHighlight;
+    branch_name = c.magenta;
+    help_indicator = c.comment;
+
+    message_info_fg = c.bg;
+    message_info_bg = c.blue;
+    message_warning_fg = c.bg;
+    message_warning_bg = c.yellow;
+    message_error_fg = c.bg;
+    message_error_bg = c.red;
+    update_badge_fg = c.bg;
+    update_badge_bg = c.yellow;
+
+    mode_fg = c.bg;
+    mode_bg = c.accent;
+  };
+
+  # syntax_theme resolves beside the TOML; default.nix writes the bat tmTheme there.
+  mkTuicrThemeToml = variant: c:
+    "# Generated from modules/home-manager/managed-theme.nix.\n"
+    + lib.concatStrings (lib.mapAttrsToList (key: value: "${key} = \"${value}\"\n") (mkTuicrTheme c))
+    + "syntax_theme = \"${hyphenThemeName variant}.tmTheme\"\n";
+
   mkFishTheme = c: ''
     # Generated from modules/home-manager/managed-theme.nix.
     fish_color_normal ${stripHex c.text}
@@ -932,6 +994,7 @@
   telegramThemes = lib.mapAttrs (_: palette: mkTelegramTheme palette) palettes;
   piThemes = lib.mapAttrs (variant: palette: mkPiTheme variant palette) palettes;
   ghosttyThemes = lib.mapAttrs (_: palette: mkGhosttyTheme palette) palettes;
+  tuicrThemes = lib.mapAttrs (variant: palette: mkTuicrThemeToml variant palette) palettes;
   fishThemes = lib.mapAttrs (_: palette: mkFishTheme palette) palettes;
   sketchybarThemes = lib.mapAttrs (_: palette: mkSketchybarSh palette) palettes;
   sketchybarLuaThemes = lib.mapAttrs (_: palette: mkSketchybarLua palette) palettes;
@@ -967,6 +1030,7 @@ in {
   inherit fishThemes;
   inherit ghosttyThemes;
   inherit telegramThemes;
+  inherit tuicrThemes;
   inherit piThemes;
   inherit sketchybarThemes;
   inherit sketchybarLuaThemes;

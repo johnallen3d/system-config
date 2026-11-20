@@ -90,6 +90,7 @@ in {
     ./pi-prompts.nix
     ./pi-settings.nix
     ./subscription-proxy.nix
+    ./tuicr.nix
   ];
 
   subscriptionProxy.enable = pkgs.stdenv.hostPlatform.isDarwin;

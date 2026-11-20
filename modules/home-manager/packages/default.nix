@@ -145,11 +145,6 @@ in {
       stylua
       television
       tree-sitter
-      (tuicr.overrideAttrs (old: lib.optionalAttrs stdenv.hostPlatform.isDarwin {
-        # The Rust setup hook requires system libraries instead of vendored copies.
-        nativeBuildInputs = (old.nativeBuildInputs or []) ++ [pkg-config];
-        buildInputs = (old.buildInputs or []) ++ [libgit2 oniguruma zlib];
-      }))
       uv
       vals
       (viddy.overrideAttrs (old: lib.optionalAttrs stdenv.hostPlatform.isDarwin {
