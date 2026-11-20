@@ -272,6 +272,11 @@ if.app-id = 'dk.kildahl.cra'
 run = 'move-node-to-workspace 9'
 
 [[on-window-detected]]
+# Search Browser
+if.app-id = 'com.officecommun.search'
+run = 'move-node-to-workspace 9'
+
+[[on-window-detected]]
 if.app-id = 'app.zen-browser.zen'
 run = 'move-node-to-workspace 9'
 
