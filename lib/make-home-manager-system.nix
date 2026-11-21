@@ -1,4 +1,6 @@
 {
+  cliproxyModels,
+  cliproxyPanel,
   home-manager,
   lop,
   nixpkgs,
@@ -21,7 +23,7 @@ in
     inherit pkgs;
 
     extraSpecialArgs = {
-      inherit home lop switchyard yem user full_name;
+      inherit cliproxyModels cliproxyPanel home lop switchyard yem user full_name;
       op_path = "${pkgs._1password-cli}/bin/op";
     };
 

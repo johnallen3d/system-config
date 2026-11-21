@@ -31,23 +31,12 @@ bytecode exceptions were removed in #787. The recovered subscription-proxy and
 agent configuration remains independent of that removal.
 No credentials, mutable profile state, or sessions are source inputs.
 
-## Host-only locked revisions
+## Shared inputs
 
-Omarchy's deployed snapshot had three older revisions than local `main`.
-Neither wholesale lockfile replacement nor an incidental package upgrade is
-appropriate for source cleanup. Existing shared lock nodes stay unchanged;
-only Omarchy's Home Manager output uses these additional, exact inputs:
-
-| Input | Deployed revision |
-| --- | --- |
-| `omarchyNixpkgs` | `151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4` |
-| `omarchyHomeManager` | `fae6e9e42c3b762ab47635cddcfaf6f52374a61b` |
-
-A third pin, `omarchyHerdrProjectPicker`, was dropped with Herdr in #953.
-The Omarchy Home Manager input follows `omarchyNixpkgs`. Mac and other hosts
-continue using their existing shared inputs. These pins preserve deployed
-package/unit identities without downgrading other hosts; upgrading them is a
-separate reviewed deployment, not part of directory cleanup.
+Omarchy, Miller, Drummer and the homelab hosts use the shared `nixpkgs` and
+`home-manager` inputs, so `mise update-system` moves them with the Mac. The
+#781 host-only pins (`omarchyNixpkgs`, `omarchyHomeManager`) were retired in
+#1392 after they left Linux packages months behind.
 
 Build without updating inputs and follow [the normal deployment
 procedure](omarchy-agents.md#apply). Hermes does not gate Home Manager activation.

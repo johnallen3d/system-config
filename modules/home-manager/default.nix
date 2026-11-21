@@ -83,6 +83,7 @@ in {
   imports = [
     ./packages
     ./agent-projects.nix
+    ./antigravity.nix
     ./claude-prompts.nix
     ./doppler.nix
     ./obsidian.nix
@@ -94,6 +95,8 @@ in {
   ];
 
   subscriptionProxy.enable = pkgs.stdenv.hostPlatform.isDarwin;
+  # Personal-only agy (no profiles): Mac and Omarchy.
+  antigravity.enable = pkgs.stdenv.hostPlatform.isDarwin;
 
   # Copy (not symlink) apps into ~/Applications/Home Manager Apps so
   # Spotlight and Siri index them; the 25.11+ default, but stateVersion pins

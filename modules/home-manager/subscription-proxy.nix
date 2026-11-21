@@ -1,4 +1,6 @@
 {
+  cliproxyModels,
+  cliproxyPanel,
   config,
   lib,
   pkgs,
@@ -12,22 +14,15 @@
     runtimeInputs = [pkgs.curl] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [pkgs.wl-clipboard];
     text = ''exec ${python}/bin/python3 ${./subscription-proxy}/manager.py "$@"'';
   };
-  panelHtml = pkgs.fetchurl {
-    url = "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/download/v1.26.0/management.html";
-    hash = "sha256-quBlPmXcgWaN7XWcjpPUdM4pXgsVmhyiBb8LYxZlXfE=";
-  };
-  # An immutable, versioned official frontend; upstream auto-updates stay off.
-  panel = pkgs.runCommand "subscription-proxy-management-center-1.26.0" {} ''
+  # The official panel and model catalog are flake inputs: locked, served from
+  # the store, and bumped by `mise update-system` with everything else. The
+  # panel's own auto-update stays off.
+  panel = pkgs.runCommand "subscription-proxy-management-center" {} ''
     mkdir -p "$out"
-    ln -s ${panelHtml} "$out/management.html"
+    ln -s ${cliproxyPanel} "$out/management.html"
   '';
-  proxy = import ./packages/cliproxyapi.nix {inherit pkgs;};
-  # The 8.0.23 embedded catalog predates Haiku 5.5. Use an immutable,
-  # independently hash-pinned official catalog; never a mutable remote URL.
-  modelCatalog = pkgs.fetchurl {
-    url = "https://raw.githubusercontent.com/router-for-me/models/e63af9856bda19828dfe93a6fa0559a5ab32965c/models.json";
-    hash = "sha256-GEJ8psZGWTxDRla9/ChbuVcLb3vD3BpRhjm5yGAAXMY=";
-  };
+  proxy = pkgs.cliproxyapi;
+  modelCatalog = "${cliproxyModels}/models.json";
   template = pkgs.writeText "subscription-proxy-server.json" (builtins.toJSON {
     host = cfg.address;
     catalog = modelCatalog;
@@ -78,12 +73,13 @@
       ];
     };
   });
-  # Personal Claude and Codex use only the personal gateway/account.
+  # Personal Claude uses only the personal gateway: the paid Claude login, plus
+  # Antigravity extras (AI Pro). Neon is the fallback default for new sessions.
   personalClaudeSettings = pkgs.writeText "subscription-proxy-personal-claude.json" (builtins.toJSON {
     env = {
       # A fallback, not a forced selection: /model choices survive new sessions.
-      ANTHROPIC_DEFAULT_MODEL = "gpt-6-luna";
-      ANTHROPIC_SMALL_FAST_MODEL = "gpt-6-luna";
+      ANTHROPIC_DEFAULT_MODEL = "gemini-4-neon-xhigh";
+      ANTHROPIC_SMALL_FAST_MODEL = "claude-haiku-5-5";
       ANTHROPIC_DEFAULT_OPUS_MODEL = "claude-opus-5-5";
       ANTHROPIC_DEFAULT_SONNET_MODEL = "claude-sonnet-5-5";
       ANTHROPIC_DEFAULT_HAIKU_MODEL = "claude-haiku-5-5";
@@ -91,10 +87,19 @@
     };
     modelPicker = {
       replaceBuiltInOptions = true;
-      # Only Codex entries need client capability compatibility. Sonnet 4.6
-      # keeps their safe 200k window below the gateway's 272k Codex limit.
-      # Claude entries use their own native capability/context catalog.
+      # Non-native IDs borrow a known client capability profile. Gemini keeps
+      # Sonnet 4.6's conservative 200k window, well under its 1M upstream limit.
       options = [
+        {
+          model = "gemini-4-neon-xhigh";
+          label = "Gemini 4 Neon";
+          behavesAs = "claude-sonnet-4-6";
+        }
+        {
+          model = "gemini-4-hydrogen-xhigh";
+          label = "Gemini 4 Hydrogen";
+          behavesAs = "claude-sonnet-4-6";
+        }
         {
           model = "claude-haiku-5-5";
           label = "Claude Haiku 5.5";
@@ -112,19 +117,14 @@
           label = "Claude Fable 5.1";
         }
         {
-          model = "gpt-6-luna";
-          label = "Codex 6 Luna";
-          behavesAs = "claude-sonnet-4-6";
+          model = "claude-opus-5-5-high";
+          label = "Claude Opus 5.5 High (Antigravity)";
+          behavesAs = "claude-opus-5-5";
         }
         {
-          model = "gpt-6.1-sol";
-          label = "Codex 6.1 Sol";
-          behavesAs = "claude-sonnet-4-6";
-        }
-        {
-          model = "gpt-6-astra";
-          label = "Codex 6 Astra";
-          behavesAs = "claude-sonnet-4-6";
+          model = "claude-sonnet-5-5-high";
+          label = "Claude Sonnet 5.5 High (Antigravity)";
+          behavesAs = "claude-sonnet-5-5";
         }
       ];
     };
@@ -166,7 +166,7 @@ in {
     personalClaude.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Manage personal Claude Code through the isolated personal Claude/Codex gateway.";
+      description = "Manage personal Claude Code through the isolated personal Claude/Antigravity gateway.";
     };
     address = lib.mkOption {
       type = lib.types.str;
@@ -196,6 +196,11 @@ in {
       (lib.hm.dag.entryAfter ["linkGeneration"] ''
         if [ -z "''${DRY_RUN:-}" ]; then
           ${lib.getExe manager} seed-server --template ${template}
+          # Tailnet-only HTTPS front of the personal proxy for agy, which rejects
+          # remote plain HTTP. Persistent in tailscaled; other Serve ports untouched.
+          if ! /usr/bin/tailscale serve --bg --https=8443 --yes "${endpoints.personal}" >/dev/null; then
+            echo "subscription-proxy: could not publish the personal HTTPS endpoint (Tailscale Serve :8443)" >&2
+          fi
           for profile in personal work; do
             if ${pkgs.systemd}/bin/systemctl --user is-active --quiet "subscription-proxy-$profile.service"; then
               ${lib.getExe manager} reload-catalog "$profile" --catalog ${modelCatalog}

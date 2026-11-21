@@ -6,6 +6,7 @@
 }: {
   imports = [
     ./omarchy-common.nix
+    ../modules/home-manager/antigravity.nix
     ../modules/home-manager/tuicr.nix
     ../modules/home-manager/omarchy-credits.nix
     ../modules/home-manager/omarchy-nod.nix
@@ -23,6 +24,10 @@
 
   # Central gateway for every other host's clients.
   subscriptionProxy.server.enable = true;
+
+  # Personal-only agy (no profiles), routed through the personal proxy.
+  antigravity.enable = true;
+  nixpkgs.config.allowUnfreePackages = ["antigravity-cli"];
 
   # The Syncthing-paired Obsidian vault is local to Omarchy.
   home.sessionVariables.PI_SESSION_CAPTURE_VAULT_PATH = "${config.home.homeDirectory}/notes";

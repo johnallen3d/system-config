@@ -120,10 +120,10 @@ rebuild() {
 # input update, re-lock a mismatch to what its URL serves, which every host
 # fetches identically; with --switch-only the lock is not ours to change.
 verify_locked_tarballs() {
-  local name url want fetched got modified
-  while IFS=$'\t' read -r name url want; do
-    if ! fetched="$(nix flake prefetch --json --option tarball-ttl 0 "tarball+$url" |
-      python3 -c 'import json, sys; l = json.load(sys.stdin)["locked"]; print(l["narHash"], l["lastModified"])')"; then
+  local name url want scheme fetched got modified
+  while IFS=$'\t' read -r name url want scheme; do
+    if ! fetched="$(nix flake prefetch --json --option tarball-ttl 0 "$scheme+$url" |
+      python3 -c 'import json, sys; l = json.load(sys.stdin)["locked"]; print(l["narHash"], l.get("lastModified", 0))')"; then
       echo "[inputs] $name: could not fetch locked $url; no deployments started." >&2
       return 1
     fi
@@ -138,7 +138,10 @@ import json, sys
 path, name, nar_hash, modified = sys.argv[1:]
 with open(path) as f:
     lock = json.load(f)
-lock["nodes"][name]["locked"].update(narHash=nar_hash, lastModified=int(modified))
+locked = lock["nodes"][name]["locked"]
+locked["narHash"] = nar_hash
+if "lastModified" in locked:
+    locked["lastModified"] = int(modified)
 with open(path, "w") as f:
     json.dump(lock, f, indent=2)
     f.write("\n")
@@ -148,9 +151,11 @@ with open(path, "w") as f:
 import json, sys
 for name, node in json.load(open(sys.argv[1]))["nodes"].items():
     locked = node.get("locked", {})
-    if locked.get("type") == "tarball":
-        print(name, locked["url"], locked["narHash"], sep="\t")
-' "$repo/flake.lock")
+    # A "latest" file URL (the proxy panel) moves on purpose; check it only
+    # while updating inputs, since every host already has the locked copy.
+    if locked.get("type") == "tarball" or (locked.get("type") == "file" and sys.argv[2] != "true"):
+        print(name, locked["url"], locked["narHash"], locked["type"], sep="\t")
+' "$repo/flake.lock" "${usage_switch_only:-false}")
 }
 
 # Resolve inputs exactly once, before any host starts building.

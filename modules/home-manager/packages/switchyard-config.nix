@@ -128,6 +128,15 @@ in {
               account = "local Codex (login unverified)";
               profile = "unverified";
             }
+          ]
+          # agy has no profile dir; it is personal-only (Mac, Omarchy).
+          ++ lib.optionals ((config.antigravity or {}).enable or false) [
+            {
+              harness = "agy";
+              path = "${homeDir}/.gemini/antigravity-cli/brain";
+              account = "personal";
+              profile = "personal";
+            }
           ];
         # No trustworthy exact-model rates are pinned here. Recorded costs
         # remain available; missing API-equivalent estimates must stay unknown.

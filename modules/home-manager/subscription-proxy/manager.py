@@ -30,6 +30,23 @@ GO_HEADERS = {"User-Agent": "$User-Agent", "x-opencode-session": "$session_id"}
 RETIRED_GO_GROUPS = {"xai": "opencode-go-responses", "claude": "opencode-go-messages"}
 CODEX_MODELS = ("gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna")
 CLAUDE_MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1")
+# Personal Pi runs on the personal Antigravity login (no personal Codex plan).
+ANTIGRAVITY_PI_MODELS = (
+    ("gemini-4-neon-xhigh", "Gemini 4 Neon", 1048576),
+    ("gemini-4-hydrogen-xhigh", "Gemini 4 Hydrogen", 1048576),
+    ("gemini-4-argon-high", "Gemini 4 Argon", 1048576),
+    ("gemini-3.8-flash-high", "Gemini 3.8 Flash", 1048576),
+    ("claude-opus-5-5-high", "Claude Opus 5.5 (High, Antigravity)", 1000000),
+    ("claude-sonnet-5-5-high", "Claude Sonnet 5.5 (High, Antigravity)", 1000000),
+)
+ANTIGRAVITY_DEFAULT = "gemini-4-neon-xhigh"
+PI_PROVIDER = {"personal": "subscription-antigravity", "work": "subscription-codex"}
+# Personal Claude: the paid Claude login plus these Antigravity extras.
+PERSONAL_CLAUDE_EXTRAS = ("claude-opus-5-5-high", "claude-sonnet-5-5-high", "gemini-4-neon-xhigh", "gemini-4-hydrogen-xhigh")
+# agy (gateway mode) sends Gemini 4 IDs without the effort suffix, which
+# Antigravity bakes into its model names. Publish the bare names as forks.
+ANTIGRAVITY_ALIASES = [{"name": f"gemini-4-{m}-{effort}", "alias": f"gemini-4-{m}", "fork": True}
+                       for m, effort in (("neon", "xhigh"), ("hydrogen", "xhigh"), ("argon", "high"), ("carbon", "high"))]
 ROOT = Path.home() / ".config/subscription-proxy"
 
 
@@ -256,8 +273,8 @@ def configure_claude(profile, settings):
         raise ValueError(f"Invalid managed {profile} Claude settings; refusing unrelated settings changes.")
     if profile == "personal":
         targets = set(mapped.values()) | {row["model"] for row in settings["modelPicker"]["options"]}
-        if not targets or not targets <= set(CODEX_MODELS + CLAUDE_MODELS):
-            raise ValueError("Personal Claude must use only curated personal Claude/Codex routes.")
+        if not targets or not targets <= set(CLAUDE_MODELS + PERSONAL_CLAUDE_EXTRAS):
+            raise ValueError("Personal Claude must use only curated personal Claude/Antigravity routes.")
     path, prefix = claude_profile(profile)
     save_rollback(profile, True, mapped)
     backup = load_json(ROOT / "rollback.json")
@@ -298,10 +315,17 @@ def client_config(command, claude_settings=None, personal_claude_settings=None):
         path = Path.home() / ".config" / dirname / "models.json"
         data = load_json(path)
         providers = data.setdefault("providers", {})
-        providers["subscription-codex"] = {
-            "baseUrl": endpoints[profile] + "/v1", "api": "openai-responses", "authHeader": True,
-            "apiKey": f"!{shlex.quote(command)} client-key {profile}",
-            "models": [model(m) for m in CODEX_MODELS]}
+        if profile == "personal":
+            providers.pop("subscription-codex", None)
+            providers["subscription-antigravity"] = {
+                "baseUrl": endpoints[profile] + "/v1", "api": "openai-completions", "authHeader": True,
+                "apiKey": f"!{shlex.quote(command)} client-key personal",
+                "models": [dict(model(i), name=n, contextWindow=w) for i, n, w in ANTIGRAVITY_PI_MODELS]}
+        else:
+            providers["subscription-codex"] = {
+                "baseUrl": endpoints[profile] + "/v1", "api": "openai-responses", "authHeader": True,
+                "apiKey": f"!{shlex.quote(command)} client-key {profile}",
+                "models": [model(m) for m in CODEX_MODELS]}
         if profile == "work":
             providers["subscription-go"] = {
                 "baseUrl": endpoints[profile] + "/v1", "api": "openai-completions", "authHeader": True,
@@ -323,8 +347,13 @@ def apply_selection():
             continue
         path = Path.home() / ".config" / dirname / "settings.json"
         data = load_json(path)
-        data["defaultProvider"] = "subscription-codex"
-        # Preserve the selected model; the initial curated model list covers the managed default.
+        provider = PI_PROVIDER[profile]
+        if data.get("defaultProvider") != provider:
+            # Switching providers: start on the managed default, then preserve
+            # later choices (Codex IDs do not exist on Antigravity).
+            data["defaultProvider"] = provider
+            if profile == "personal":
+                data["defaultModel"] = ANTIGRAVITY_DEFAULT
         for entry in data.get("subagents", {}).get("agentOverrides", {}).values():
             old = entry.get("model", "")
             if old.startswith("opencode-go/"):
@@ -392,7 +421,7 @@ def deactivate(profile, claude=False):
             dirname = "pi" if profile == "personal" else "pi-work"
             path = Path.home() / ".config" / dirname / "settings.json"
             data = load_json(path)
-            if data.get("defaultProvider") == "subscription-codex":
+            if data.get("defaultProvider") in PI_PROVIDER.values():
                 data["defaultProvider"] = backup.get(profile, {}).get("defaultProvider", "openai-codex")
             for entry in data.get("subagents", {}).get("agentOverrides", {}).values():
                 old = entry.get("model", "")
@@ -420,8 +449,9 @@ def activate(profile, claude=False):
         selected = load_json(ROOT / "selected.json")
         selected.update(claude=True, claudeModels=mapped)
     else:
-        if not provider_ready(profile, "codex"):
-            raise ValueError(f"{profile}: complete and verify central Codex login first.")
+        upstream = "antigravity" if profile == "personal" else "codex"
+        if not provider_ready(profile, upstream):
+            raise ValueError(f"{profile}: complete and verify central {upstream} login first.")
         # Codex can be selected before Go provisioning. Work Go subagents are
         # still mapped to the gateway: absent central keys must fail there,
         # never silently retain a native/direct Go account.
@@ -485,6 +515,10 @@ def seed_server(template):
             data.setdefault("models", {})["catalog"] = definition["catalog"]
         data.setdefault("server", {}).update(host=definition["host"], port=definition["ports"][profile])
         data.setdefault("oauth", {})["auth-dir"] = str(directory / "auth")
+        if profile == "personal":
+            aliases = data["oauth"].setdefault("model-alias", {})
+            ours = {a["alias"] for a in ANTIGRAVITY_ALIASES}
+            aliases["antigravity"] = [a for a in aliases.get("antigravity") or [] if a.get("alias") not in ours] + ANTIGRAVITY_ALIASES
         management = data.setdefault("management", {})
         management.update({"allow-remote": True, "disable-control-panel": False, "disable-auto-update-panel": True})
         management.setdefault("secret-key", keys[profile]["management"])

@@ -5,13 +5,6 @@
     # Deliberately not following nixpkgs: the derivation must match what CI pushed to Cachix.
     credits.url = "github:johnallen3d/credits/main";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # #781: retain Omarchy's deployed inputs without downgrading other hosts.
-    # Updating these pins is a separate, reviewed deployment/identity change.
-    omarchyNixpkgs.url = "github:NixOS/nixpkgs/151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4";
-    omarchyHomeManager = {
-      url = "github:nix-community/home-manager/fae6e9e42c3b762ab47635cddcfaf6f52374a61b";
-      inputs.nixpkgs.follows = "omarchyNixpkgs";
-    };
     home-manager = {
       # Stay on Home Manager master while nixpkgs tracks nixos-unstable.
       url = "github:nix-community/home-manager";
@@ -33,7 +26,16 @@
     rex = {
       # Pre-release; fetching needs the netrc from modules/home-manager/nix-netrc.nix.
       url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
-      inputs.nixpkgs.follows = "omarchyNixpkgs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # Subscription proxy data, locked like any input and bumped by update-system.
+    cliproxyModels = {
+      url = "github:router-for-me/models";
+      flake = false;
+    };
+    cliproxyPanel = {
+      url = "file+https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/latest/download/management.html";
+      flake = false;
     };
     switchyard = {
       # The Rex float tools (~/dev/src/playground/switchyard). Develop against
@@ -50,8 +52,8 @@
     nix-darwin,
     nixpkgs,
     yem,
-    omarchyNixpkgs,
-    omarchyHomeManager,
+    cliproxyModels,
+    cliproxyPanel,
     rex,
     switchyard,
     ...
@@ -60,10 +62,10 @@
     full_name = "John Allen";
 
     makeDarwinSystem = import ./lib/make-darwin-system.nix {
-      inherit credits home-manager lop nix-darwin nixpkgs switchyard yem user full_name;
+      inherit cliproxyModels cliproxyPanel credits home-manager lop nix-darwin nixpkgs switchyard yem user full_name;
     };
     makeHomeManagerSystem = import ./lib/make-home-manager-system.nix {
-      inherit home-manager lop nixpkgs switchyard yem user full_name;
+      inherit cliproxyModels cliproxyPanel home-manager lop nixpkgs switchyard yem user full_name;
     };
   in {
     darwinConfigurations = {
@@ -82,13 +84,13 @@
     homeConfigurations = let
       # Keep Omarchy (Arch) hosts isolated from the shared dotfiles and desktop setup.
       makeOmarchyHome = host:
-        omarchyHomeManager.lib.homeManagerConfiguration {
-          pkgs = import omarchyNixpkgs {
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = import nixpkgs {
             system = "x86_64-linux";
             overlays = [(import ./lib/worktrunk-overlay.nix)];
           };
           extraSpecialArgs = {
-            inherit credits full_name host lop rex switchyard;
+            inherit cliproxyModels cliproxyPanel credits full_name host lop rex switchyard;
           };
           modules = [./hosts/${host}.nix];
         };
@@ -98,8 +100,8 @@
         user,
         system,
       }:
-        omarchyHomeManager.lib.homeManagerConfiguration {
-          pkgs = import omarchyNixpkgs {inherit system;};
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = import nixpkgs {inherit system;};
           extraSpecialArgs = {inherit host rex user;};
           modules = [./hosts/homelab-common.nix];
         };

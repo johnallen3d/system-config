@@ -1,4 +1,6 @@
 {
+  cliproxyModels,
+  cliproxyPanel,
   credits,
   home-manager,
   lop,
@@ -67,7 +69,7 @@ in
             useUserPackages = true;
             backupFileExtension = "hm-backup";
             extraSpecialArgs = {
-              inherit brew_bin credits full_name home lop switchyard yem op_path;
+              inherit brew_bin cliproxyModels cliproxyPanel credits full_name home lop switchyard yem op_path;
             };
             users.${user}.imports = [
               ../modules/home-manager

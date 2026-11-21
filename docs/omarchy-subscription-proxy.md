@@ -7,25 +7,25 @@ There is no custom OAuth/login/key editor: use the upstream panel.
 
 ## Accounts and separation
 
-- Personal service: personal Codex OAuth, port 8317.
+- Personal service: personal Claude (paid) and Antigravity (AI Pro) OAuth, port
+  8317. Its Codex login is a free tier; only Pi Pocket still uses it.
 - Work service: work Codex OAuth, work Claude OAuth, work OpenCode Go key, port 8318.
-- Personal Pi: personal Codex only.
+- Personal Pi: personal Antigravity models (`subscription-antigravity`), Neon default.
 - Work Pi: work Codex and curated non-Claude Go models.
 - Work Claude Code: the work proxy's Anthropic endpoint. Claude is not used in Pi.
-- Personal Claude Code: personal proxy's Messages endpoint translated to Codex;
-  no Claude subscription or Claude OAuth login is required.
+- Personal Claude Code: personal proxy's Messages endpoint; the paid Claude
+  login plus Antigravity extras (Gemini 4, Claude 5.5 High).
 
-CLIProxyAPI is pinned to source **8.0.23** and official Management Center to
-**1.26.0**, independently of either host's nixpkgs lock. The official HTML asset
-is hash-pinned in Nix, served from an immutable store path, and not auto-updated.
-The official general model catalog is separately pinned to commit
-`e63af9856bda19828dfe93a6fa0559a5ab32965c` and its content hash: 8.0.23's
-embedded catalog predates Haiku 5.5. Both services load this immutable local
-catalog; Codex-specific catalogs remain embedded. No mutable catalog URL or
-automatic upstream catalog update is enabled. Activation explicitly PATCHes
-only the pinned catalog path on already-active services and verifies runtime
-publication: an atomic config-file write alone did not refresh the live registry.
-This reload does not restart the services or agents.
+CLIProxyAPI is nixpkgs' `cliproxyapi`. The official general model catalog
+(`router-for-me/models`) and Management Center (`management.html` from its
+latest release) are flake inputs (`cliproxyModels`, `cliproxyPanel`). All three
+are locked in `flake.lock` and move forward with every `mise update-system`;
+nobody edits versions or hashes. Both services load the catalog from the store,
+and the panel is served from the store with its own auto-update disabled.
+Codex-specific catalogs remain embedded. Activation explicitly PATCHes the
+catalog path on already-active services and verifies runtime publication: an
+atomic config-file write alone did not refresh the live registry. This reload
+does not restart the services or agents; a new proxy binary does restart them.
 
 Both services bind only to Omarchy's Tailscale IPv4 address `100.97.112.40`.
 Mac and Omarchy use the same endpoints; no SSH tunnels, public/LAN listeners,
@@ -91,8 +91,9 @@ named-profile collection in the pinned TUI; a small endpoint launcher is enough.
 
 ### Personal panel
 
-Authenticate only **personal Codex**. Do not add work Claude, work Go, or any
-work account to this instance.
+Authenticate only the personal accounts: Claude,
+Antigravity and the free Codex login Pi Pocket uses. Do not add work Claude,
+work Go, or any work account to this instance.
 
 If a browser on the Mac redirects to localhost and cannot connect, copy the
 complete final callback URL into the official panel's callback field. The panel
@@ -237,49 +238,57 @@ for managed clients.
 Private `selected.json` records host-local selections for future Home Manager
 activation. Configuration/credential runtime data never belongs in Git.
 
-### Personal Claude Code without a Claude subscription
+### Personal Pi and Claude Code (Claude + Antigravity)
 
-Tracked in [Fizzy #764](https://app.fizzy.do/6284043/cards/764).
+Tracked in [Fizzy #1393](https://app.fizzy.do/6284043/cards/1393), replacing the
+Codex-backed personal setup from #764 (there is no personal Codex plan).
 `subscriptionProxy.personalClaude.enable` defaults true wherever proxy clients
-are enabled (Mac and Omarchy). Home Manager manages only owned routing variables
-and the model picker in `~/.config/claude-personal/settings.json`, preserving
-permissions, hooks, plugins, sessions and unrelated settings. The personal
-client key authenticates only against port **8317**; work keys/accounts are never
-used. `ANTHROPIC_API_KEY` is cleared, and upstream Codex OAuth credentials stay on
-Omarchy. No Claude account/login or Claude subscription is needed for inference.
+are enabled. Home Manager manages only owned routing variables and the model
+picker in `~/.config/claude-personal/settings.json`; permissions, hooks,
+plugins, sessions and unrelated settings are preserved. The personal client key
+authenticates only against port **8317**; work keys/accounts are never used.
 
-Use plain `claude` outside the Amfaro work context. The default is **Codex 6 Luna**
-(`gpt-6-luna`); `/model` offers Luna, **Codex 6.1 Sol** (`gpt-6.1-sol`) and
-**Codex 6 Astra** (`gpt-6-astra`). Explicit `claude --model <id>` also works.
-`ANTHROPIC_DEFAULT_MODEL` supplies Luna only as a fallback; a choice saved with
-`/model` takes precedence on new sessions. Activation removes the old managed
-`ANTHROPIC_MODEL` forcing Luna only if it still matches the previous managed
-value, preserving operator changes and the saved `model` field.
-`ANTHROPIC_SMALL_FAST_MODEL` uses Luna; `sonnet`/`haiku` aliases use Luna, `opus`
-uses Sol, and `fable` uses Astra, including managed agent roles. These are
-compatibility aliases, not calls to Claude models. This does not change personal
-Pi selection or work Claude routing.
+Personal Pi gets one provider, `subscription-antigravity` (OpenAI Chat
+Completions): Gemini 4 Neon, Hydrogen and Argon, Gemini 3.8 Flash, and Claude
+Opus/Sonnet 5.5 High. Moving onto that provider sets the default model to
+`gemini-4-neon-xhigh` once; later choices are preserved. Pi Pocket keeps its
+own `subscription-codex` configuration.
 
-Each personal picker entry sets `behavesAs = "claude-sonnet-4-6"` for Claude Code's
-client-side capability catalog. The displayed label and outgoing model ID remain
-Codex. This removes the unknown-model startup warning and retains a conservative
-**200K** context/compaction window, below the pinned gateway Codex catalog's
-**272K** window. No 1M window is claimed, and neither context enforcement nor
-compaction is disabled. Client effort/capability defaults come from this
-compatibility profile, not a declaration that Codex is a Claude model. See the
-[official picker reference](https://code.claude.com/docs/en/settings-reference#fields-for-modelpicker)
-and [fallback-default precedence](https://code.claude.com/docs/en/model-config#set-a-default-model-for-new-sessions).
+Personal Claude Code's picker lists Gemini 4 Neon and Hydrogen, the paid
+Claude models (Haiku/Sonnet/Opus 5.5, Fable 5.1), then Antigravity's Claude
+Opus/Sonnet 5.5 High. `ANTHROPIC_DEFAULT_MODEL` is Neon, but only as a fallback:
+a model saved with `/model` (or the settings `model` field) takes precedence.
+The `opus`/`sonnet`/`haiku`/`fable` aliases and `ANTHROPIC_SMALL_FAST_MODEL`
+resolve to the paid Claude models, so managed agent roles stay on real Claude.
+Gemini entries set `behavesAs = "claude-sonnet-4-6"` (a conservative 200K
+client window under Gemini's 1M); the Antigravity Claude entries borrow their
+native family profile. Gemini through Claude Code relies on the gateway's
+Messages translation, which Anthropic does not support.
 
-CLIProxyAPI translates Claude Code's Messages/streaming/tools to Codex Responses.
-This is not an Anthropic-supported non-Claude backend; compatibility and
-provider policies can change. It uses the personal Codex account's access/quota,
-not a free Claude entitlement. Tailscale and the Omarchy gateway must be online;
-there is no silent work-account or native-Claude fallback. Start a new personal
-Claude session to load routing; active agents are never restarted automatically.
-After routing changes, inspect the selected model in a new personal session on
-each host and compare its alias with the gateway catalog. Live streaming/tool or
-subagent verification makes real model calls and must be explicitly scoped; it
-is not an ordinary deployment gate. Never print credentials or raw transcripts.
+### Antigravity CLI (agy), personal only
+
+Tracked in [Fizzy #1393](https://app.fizzy.do/6284043/cards/1393). agy has no
+profiles, so it is installed only where John does personal work: the Mac and
+Omarchy (`antigravity.enable`, `modules/home-manager/antigravity.nix`). Miller
+and Drummer do not get it.
+
+agy runs in enterprise-gateway mode against the **personal** proxy, whose
+Antigravity login (the AI Pro account) lives on Omarchy. The `agy` wrapper sets
+`AGY_LLM_GATEWAY_URL` and resolves the personal client key at launch with
+`subscription-proxy client-key personal`; there is no fallback to a direct
+Google login. agy rejects remote plain HTTP, so Omarchy's server activation
+publishes `https://omarchy.taila14c2.ts.net:8443` with Tailscale Serve
+(tailnet only, no Funnel) in front of port 8317. Gateway mode has no Google
+session: features tied to one, such as `--remote-agent`, are unavailable.
+agy sends Gemini 4 IDs without the effort suffix that Antigravity bakes into
+its names, so the personal server seed also publishes `gemini-4-{neon,hydrogen,argon,carbon}`
+as `oauth.model-alias` forks of the upstream `-xhigh`/`-high` models, keeping
+any aliases added in the panel.
+
+The module builds agy from Google's release bucket until nixpkgs reaches that
+version, then uses nixpkgs. Activation merges only the Switchyard MCP server
+into `~/.gemini/config/mcp_config.json`; `~/.gemini/antigravity-cli/settings.json`
+stays writable for Switchyard's `trustedWorkspaces`.
 
 ## Runtime ownership and operations
 
