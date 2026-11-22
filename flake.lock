@@ -3,11 +3,11 @@
     "cliproxyModels": {
       "flake": false,
       "locked": {
-        "lastModified": 1795249473,
-        "narHash": "sha256-gnfE5aRqirAmod1X8jUSg5Qn0B+t6Ldg2pMXx/xipjQ=",
+        "lastModified": 1795363205,
+        "narHash": "sha256-qgiqxK3FCxL7z/HYbJoLW0VrbdB3XNE/1iuhEZ/AI8A=",
         "owner": "router-for-me",
         "repo": "models",
-        "rev": "40d4d41e5ac3d6adb789be16bd0b380294e8805e",
+        "rev": "b298b240d5962e91e4a948b780916de253209bb2",
         "type": "github"
       },
       "original": {
@@ -19,7 +19,7 @@
     "cliproxyPanel": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-abV27PsMPeYetHDSx6vNjQHp/Qg/qqxwOCL69PHy57M=",
+        "narHash": "sha256-kVRZMw3k55cMAHABc9G9Ry4SLyCD+zbYDX35buJbYBA=",
         "type": "file",
         "url": "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/latest/download/management.html"
       },
@@ -70,11 +70,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795340038,
-        "narHash": "sha256-RtgZbV+4BDtJqMImbiPJri3fmVDbCbrz/B0cuPQUJQY=",
+        "lastModified": 1795366757,
+        "narHash": "sha256-Tp4Kh4R7ID1f2mMCDlb2PiFQ/DZZsnXB2u2juWN+TT4=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "03885bcd0b477bdecebebc57b213b0f8f0826d51",
+        "rev": "3b8140d21fa0a70b1b38c2ed29853dfe686234a6",
         "type": "github"
       },
       "original": {
@@ -207,11 +207,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1795365903,
-        "narHash": "sha256-8I4K93LlKW57+Zd8r1/xK6KhmyXxZ8A/7bk7RABGI5M=",
+        "lastModified": 1795372031,
+        "narHash": "sha256-905D5CBIuWKYPQqFR71LsSKRHnITPC8kx8dFvwwsuGA=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "084336be27201098a9f951574d3310f4649bd19a",
+        "rev": "82eddc33f21edd1c92f7f9cb0524b553e10d202c",
         "type": "github"
       },
       "original": {
