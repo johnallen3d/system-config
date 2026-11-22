@@ -73,7 +73,11 @@ in {
     username = "johna";
     homeDirectory = "/home/johna";
     stateVersion = "26.05";
-    packages = [lopPackage pkgs.worktrunk];
+    packages = [
+      (import ../modules/home-manager/packages/fizzy.nix {inherit pkgs;})
+      lopPackage
+      pkgs.worktrunk
+    ];
   };
 
   targets.genericLinux = {
