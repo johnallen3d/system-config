@@ -5,7 +5,7 @@ and personal worktree, attribution, and deployment policies.
 
 Actual `/wrap` invocation (including its expanded prompt) authorizes scoped
 commit, guarded rebase, fast-forward integration, safe cleanup, and closing
-completed in-scope Fizzy cards. Reading or mentioning it does not.
+every Fizzy card linked to or covered by the task. Reading or mentioning it does not.
 It also authorizes a plain `git push` of integrated local `main` (step 4),
 unless invoked as `/wrap no-push` or John said not to push this session.
 It does not authorize fetch, force push, pushing other refs, input updates,
@@ -49,13 +49,14 @@ it follows that repository's deployment rules.
    **When John asks to archive this session, archive it. Do not ask first.** A
    wrap never archives on its own, but an explicit request from John is the
    decision; carry it out with `switchyard stop_task` for this task (or the Rex
-   picker when that tool is unavailable). Open cards, pending deploys, lock
-   updates, unapproved follow-ups, or a failed wrap step are not reasons to
-   withhold or re-confirm the archive: cards stay open in Fizzy, and archiving
-   keeps unmerged branches. The only gate is `stop_task` refusing uncommitted
-   changes; if it refuses, report that. Archive as the last action: first write
-   the full handoff as text, naming any open cards and pending actions, since
-   closing the tab ends the session before it can report.
+   picker when that tool is unavailable). Pending lock updates, unapproved
+   follow-ups, or a failed push are not reasons to withhold or re-confirm the
+   archive. Archive only after step 4 has closed every linked card: archiving
+   never substitutes for closing. If a genuine blocker (below) keeps a card
+   open, report WRAP BLOCKED and leave the session unarchived so John can act
+   on it. The other gate is `stop_task` refusing uncommitted changes; if it
+   refuses, report that. Archive as the last action: first write the full
+   handoff as text, since closing the tab ends the session before it can report.
 4. **Hand off.** Report final status, commit, integration/cleanup, push, and
    deployment separately. **Push.** Unless opted out, after integration (and
    deployment, where it applies) run `git -C "$repo_root" push` for local `main`
@@ -66,11 +67,18 @@ it follows that repository's deployment rules.
    committed branch the same way only if it is `main`. **Deploy, where the repository requires it.** If `AGENTS.md` says
    `/wrap` deploys and the commit changes shared config, run that deployment after
    integration and before cleanup, following the repository's deployment rules.
-   **Close the card.** Before reporting, close every in-scope card that this wrap
-   completed (`fizzy card close NUMBER`) and comment the commit on it. A card is
-   complete once its commit is on `main` and, where deployment applies, deployment
-   succeeded on every host. A failed or unreachable host keeps the card open; name
-   that host in the handoff. Never finish with untracked work. Push does not
+   **Close every card.** A wrap ends with every card linked to or covered by the
+   task closed (`fizzy card close NUMBER`), with a comment naming the commit, or
+   the outcome when there is no commit. Leaving a card open is a failure John has
+   to clean up later, not a cautious default. Tasks without a commit (operational,
+   user-action, investigation) close too once the outcome holds. Before treating
+   any card as incomplete, re-check its live state now (rerun the status command,
+   query the host); observations from earlier in the session are stale. Scope John
+   narrows during the task or the wrap ("not doing X for now") counts as done for
+   the dropped part; say so in the closing comment. The only reason to keep a card
+   open is a freshly re-verified blocker: a failed or unreachable deploy host, or
+   a required check that ran and failed. Then report WRAP BLOCKED, name the host or
+   check, and don't archive. Never finish with untracked work. Push does not
    block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.
