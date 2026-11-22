@@ -50,6 +50,24 @@
   mcpServers = {
     switchyard.serverUrl = cfg.switchyardMcpUrl;
   };
+  # Personal instructions, skills, and prompts as one agy plugin. agy has no
+  # slash-command prompts, so Claude's prompts become argument-free skills.
+  plugin = ".gemini/config/plugins/personal";
+  prompt = name: description: let
+    file = config.home.file.".config/claude-personal/commands/${name}.md";
+    raw =
+      if file.text != null
+      then file.text
+      else builtins.readFile file.source;
+    body = lib.concatStringsSep "\n---\n" (lib.drop 2 (lib.splitString "\n---\n" ("\n" + raw)));
+    args = "the text John gave after the skill name (empty if none)";
+  in ''
+    ---
+    name: ${name}
+    description: ${builtins.toJSON description}
+    ---
+    ${builtins.replaceStrings ["$ARGUMENTS"] [args] body}
+  '';
 in {
   options.antigravity = {
     enable = lib.mkEnableOption "agy routed through the personal subscription proxy";
@@ -73,6 +91,37 @@ in {
       }
     ];
     home.packages = [agy];
+    home.file = {
+      "${plugin}/plugin.json".text = builtins.toJSON {name = "personal";};
+      "${plugin}/rules/AGENTS.md".text = config.home.file.".config/pi/AGENTS.md".text;
+      "${plugin}/skills/authoring-commits/SKILL.md".source = ./agent-skills/authoring-commits/SKILL.md;
+      "${plugin}/skills/delegating-to-subagents/SKILL.md".source = ./agent-skills/delegating-to-subagents/SKILL.md;
+      "${plugin}/skills/implementation-attribution/SKILL.md".source = ./agent-skills/implementation-attribution/SKILL.md;
+      "${plugin}/skills/wrap/SKILL.md".text = prompt "wrap" "Use only when John invokes /wrap: commit, integrate, push, and clean up personal work.";
+      "${plugin}/skills/pkg-install/SKILL.md".text = prompt "pkg-install" "Use when John invokes /pkg-install to install a package via the optimal method.";
+    };
+    # Mirror Pi's shared ~/.agents/skills (host-specific, partly unmanaged) as
+    # per-file links: agy ignores skills.json and skips directory symlinks.
+    # Touch only links into ~/.agents/skills; the plugin's own names win.
+    home.activation.antigravitySharedSkills = lib.hm.dag.entryAfter ["linkGeneration"] ''
+      if [ -z "''${DRY_RUN:-}" ]; then
+        shared="$HOME/.agents/skills" dest="$HOME/.gemini/config/skills"
+        for link in "$dest"/*/SKILL.md; do
+          [ -L "$link" ] || continue
+          case "$(readlink "$link")" in "$shared"/*) ;; *) continue ;; esac
+          [ -e "$link" ] && [ ! -e "$HOME/${plugin}/skills/$(basename "$(dirname "$link")")" ] && continue
+          rm "$link"; rmdir "$(dirname "$link")" 2>/dev/null || true
+        done
+        for skill in "$shared"/*/SKILL.md; do
+          [ -e "$skill" ] || continue
+          name="$(basename "$(dirname "$skill")")"
+          [ -e "$HOME/${plugin}/skills/$name" ] && continue
+          [ -e "$dest/$name/SKILL.md" ] && [ ! -L "$dest/$name/SKILL.md" ] && continue
+          mkdir -p "$dest/$name"
+          ln -sfn "$skill" "$dest/$name/SKILL.md"
+        done
+      fi
+    '';
     # Merge only the switchyard server into agy's MCP config; agy and the user
     # own the rest. settings.json is left writable for Switchyard's
     # trustedWorkspaces.
