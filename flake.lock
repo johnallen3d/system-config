@@ -19,7 +19,7 @@
     "cliproxyPanel": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-kjuHqc148ShZ1xKeCDyFKP6txpnznmYMAElIKCCvzUo=",
+        "narHash": "sha256-abV27PsMPeYetHDSx6vNjQHp/Qg/qqxwOCL69PHy57M=",
         "type": "file",
         "url": "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/latest/download/management.html"
       },
@@ -207,11 +207,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1795356914,
-        "narHash": "sha256-sPKyMFsYwmxF/abBG7jsMHM1SyHg3iYUjiFcc65QKbw=",
+        "lastModified": 1795361259,
+        "narHash": "sha256-UgSzJMs2WbFOzfVlKn5xPp2xpgQkvT2CJG8RnlcrS2k=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "2a33214f7ca5b06fedf61677c239c0f1b3263e9c",
+        "rev": "10f17715fd2b9dd10097d93fc70184f6e387c1a2",
         "type": "github"
       },
       "original": {
