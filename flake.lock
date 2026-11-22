@@ -49,11 +49,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1795210109,
-        "narHash": "sha256-OOeNf8kFU4k+nNSZSnBjUhggNDYIN3EqMXigq3/Oc1I=",
+        "lastModified": 1795381645,
+        "narHash": "sha256-F2pdI1DdzK/MkzyIhy2AohJV/6YFPwkoF1gZw4sg96c=",
         "owner": "johnallen3d",
         "repo": "credits",
-        "rev": "054887d0e163e3fcc8d544b3962bc25137255168",
+        "rev": "22e0e703cd100771281ef2fe2b13f6ce74824095",
         "type": "github"
       },
       "original": {
@@ -110,11 +110,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795309925,
-        "narHash": "sha256-xpgrKyUvEMz0yCb+zklEpOFd0VnHyH0oBYce4Umj4e8=",
+        "lastModified": 1795373241,
+        "narHash": "sha256-Gd1+Oaj8nS+p1qLpKk4MGv/qGh62+lTkX4262e2UDgc=",
         "owner": "LnL7",
         "repo": "nix-darwin",
-        "rev": "f673885103fa92c1c5b1d16b8bf2b858906809e2",
+        "rev": "663d8b962a11cda261b6e9f14e03911fac94baf0",
         "type": "github"
       },
       "original": {
@@ -207,11 +207,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1795372031,
-        "narHash": "sha256-905D5CBIuWKYPQqFR71LsSKRHnITPC8kx8dFvwwsuGA=",
+        "lastModified": 1795373816,
+        "narHash": "sha256-NgrSbPp7EMJn42sdpU+e4XiSToIOMfBDqjABkbS0W68=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "82eddc33f21edd1c92f7f9cb0524b553e10d202c",
+        "rev": "f45479234de4b5186e5345a52c9f6cca0a8349d9",
         "type": "github"
       },
       "original": {
