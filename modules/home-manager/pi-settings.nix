@@ -217,23 +217,23 @@
       packages = mkPiPackageSettings piPackages.workPackageSpecs;
       subagents.agentOverrides = {
         context-builder = {
-          model = "opencode-go/glm-5.2";
+          model = "opencode-go/glm-5.3";
           thinking = "off";
         };
         delegate = {
-          model = "opencode-go/glm-5.2";
+          model = "opencode-go/glm-5.3";
           thinking = "medium";
         };
         planner = {
-          model = "opencode-go/glm-5.2";
+          model = "opencode-go/glm-5.3";
           thinking = "medium";
         };
         researcher = {
-          model = "opencode-go/glm-5.2";
+          model = "opencode-go/glm-5.3";
           thinking = "low";
         };
         worker = {
-          model = "opencode-go/glm-5.2";
+          model = "opencode-go/glm-5.3";
           thinking = "medium";
         };
       };
