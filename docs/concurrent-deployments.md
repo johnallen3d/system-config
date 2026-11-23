@@ -6,7 +6,7 @@ in [#878](https://app.fizzy.do/6284043/cards/878).
 Concurrent tasks are normal; deployment preservation is not Git integration.
 Only the invoking task's authorized changes and **verified already-active** task
 layers enter a deployment. Other dirty worktrees and pending implementations are
-never automatically collected. For example, preserving active PaddleOCR/Pocket
+never automatically collected. For example, preserving active PaddleOCR
 #819 does not authorize activating the pending Credits replacement #823.
 
 ## Entry points and discovery

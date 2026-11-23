@@ -385,8 +385,7 @@ deployment targets. Synchronize Omarchy's local `main` with reviewed, integrated
 its task worktree. Do not copy newer source over an old Git baseline or reuse a
 historical deployment worktree. Preserve independent changes before reconciliation;
 see #781/#792 for the archived overlay cleanup. The Omarchy-only input pins remain unchanged.
-Pi Pocket is the production personal assistant ([pi-pocket.md](pi-pocket.md));
-no assistant gates activation.
+No assistant gates activation.
 See [source reconciliation](omarchy-source-consolidation.md).
 
 Ordinary SSH commands use Omarchy's Fish login shell. Execute Bash scripts with
@@ -437,8 +436,8 @@ ssh -t johna@omarchy sudo bash /home/johna/dev/src/system-config/.mise/scripts/o
 ### Hosts and adding another Omarchy machine
 
 `hosts/omarchy-common.nix` is shared by every Omarchy (Arch) host. Per-host files
-add only what is unique: `hosts/omarchy.nix` runs the singletons (Pi Pocket, the
-subscription proxy server, credits, the Syncthing LAN forwarder) and
+add only what is unique: `hosts/omarchy.nix` runs the singletons (the subscription
+proxy server, credits, the Syncthing LAN forwarder) and
 `hosts/miller.nix` (2013 Mac Pro, [#951](https://app.fizzy.do/6284043/cards/951))
 and `hosts/drummer.nix` (2013 Mac Pro,
 [#957](https://app.fizzy.do/6284043/cards/957)) are proxy clients only; hardware is in

@@ -16,7 +16,7 @@ Collected 2026-11-06. Config: `hosts/<name>.nix`.
 
 Notes:
 
-- Omarchy runs the singletons (Pi Pocket, subscription proxy server, credits,
-  Syncthing LAN forwarder); Miller and Drummer mirror it without them.
+- Omarchy runs the singletons (subscription proxy server, credits, Syncthing
+  LAN forwarder); Miller and Drummer mirror it without them.
 - Refresh on Linux with `lscpu`, `free -h`, `lspci -k`, `lsblk`, and
   `/sys/class/dmi/id/*`; on macOS with `system_profiler SPHardwareDataType`.

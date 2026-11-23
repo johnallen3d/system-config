@@ -10,7 +10,6 @@
     ../modules/home-manager/tuicr.nix
     ../modules/home-manager/omarchy-credits.nix
     ../modules/home-manager/omarchy-nod.nix
-    ../modules/home-manager/omarchy-pi-pocket.nix
     ../modules/home-manager/omarchy-syncthing-lan.nix
   ];
 
@@ -18,9 +17,6 @@
 
   # Tailscale-only VNC listener (this node's stable tailnet IP).
   omarchyVnc.address = "100.97.112.40";
-
-  # John's production assistant (Pi Pocket / Pi Durable).
-  piPocket.enable = true;
 
   # Central gateway for every other host's clients.
   subscriptionProxy.server.enable = true;

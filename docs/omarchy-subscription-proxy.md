@@ -8,7 +8,7 @@ There is no custom OAuth/login/key editor: use the upstream panel.
 ## Accounts and separation
 
 - Personal service: personal Claude (paid) and Antigravity (AI Pro) OAuth, port
-  8317. Its Codex login is a free tier; only Pi Pocket still uses it.
+  8317. Its Codex login is a free tier that no client uses.
 - Work service: work Codex OAuth, work Claude OAuth, work OpenCode Go key, port 8318.
 - Personal Pi: personal Antigravity models (`subscription-antigravity`), Neon default.
 - Work Pi: work Codex and curated non-Claude Go models.
@@ -92,7 +92,7 @@ named-profile collection in the pinned TUI; a small endpoint launcher is enough.
 ### Personal panel
 
 Authenticate only the personal accounts: Claude,
-Antigravity and the free Codex login Pi Pocket uses. Do not add work Claude,
+Antigravity and the free Codex login. Do not add work Claude,
 work Go, or any work account to this instance.
 
 If a browser on the Mac redirects to localhost and cannot connect, copy the
@@ -251,8 +251,7 @@ authenticates only against port **8317**; work keys/accounts are never used.
 Personal Pi gets one provider, `subscription-antigravity` (OpenAI Chat
 Completions): Gemini 4 Neon, Hydrogen and Argon, Gemini 3.8 Flash, and Claude
 Opus/Sonnet 5.5 High. Moving onto that provider sets the default model to
-`gemini-4-neon-xhigh` once; later choices are preserved. Pi Pocket keeps its
-own `subscription-codex` configuration.
+`gemini-4-neon-xhigh` once; later choices are preserved.
 
 Personal Claude Code's picker lists Gemini 4 Neon and Hydrogen, the paid
 Claude models (Haiku/Sonnet/Opus 5.5, Fable 5.1), then Antigravity's Claude
