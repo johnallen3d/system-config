@@ -1,12 +1,15 @@
-# Omarchy VNC over Tailscale
+# Miller and Drummer VNC over Tailscale
 
 Tracked in [Fizzy #689](https://app.fizzy.do/6284043/cards/689); virtual
 output and Miller in [#952](https://app.fizzy.do/6284043/cards/952); Drummer in
 [#958](https://app.fizzy.do/6284043/cards/958).
 
-Home Manager runs Nix-packaged WayVNC as `johna`'s `wayvnc.service` on every
-Omarchy host (`omarchy`, `miller`, and `drummer`). It does not enable login-screen access or
-arrange an unattended GUI login; a Hyprland session must be running.
+Home Manager runs Nix-packaged WayVNC as `johna`'s `wayvnc.service` on Miller
+and Drummer. **Omarchy no longer runs WayVNC**: it uses the
+voxl browser desktop instead (`modules/home-manager/omarchy-voxl.nix`)
+([#1439](https://app.fizzy.do/6284043/cards/1439)). WayVNC does not enable
+login-screen access or arrange an unattended GUI login; a Hyprland session must
+be running.
 
 ## Virtual `VNC` output
 
@@ -21,6 +24,7 @@ WayVNC exits with "No fallback outputs left". It exits **0**, so the unit uses
 `Restart=always` (with `StartLimitIntervalSec=0`), not `on-failure`. Omarchy
 previously relied on the same output created by hand; it is now declared. To see
 the physical desktop, move windows/workspaces to `VNC` from the remote session.
+Omarchy's `VNC` output was removed by hand when WayVNC was dropped there.
 
 The service starts with `graphical-session.target` and stops with it. It
 inherits the GUI environment (`HYPRLAND_INSTANCE_SIGNATURE`, `WAYLAND_DISPLAY`)
@@ -31,9 +35,10 @@ environment configuration is managed here.
 
 ## Verified outcome
 
-WayVNC 0.10.2 listens only on each host's Tailscale IPv4: `omarchy`
-`100.97.112.40:5900`, `miller` `100.113.199.114:5900` (both reachable from the
-Mac with physical monitors asleep, 2026-11-05). On Omarchy, a direct connection from the Mac over Tailscale passed
+WayVNC 0.10.2 listens only on each host's Tailscale IPv4: `miller`
+`100.113.199.114:5900`, `drummer` `100.78.246.113:5900` (Miller reachable from
+the Mac with its physical monitor asleep, 2026-11-05). Historically, on Omarchy
+(then also running WayVNC), a direct connection from the Mac over Tailscale passed
 RFB 3.8 negotiation, existing-password authentication, and framebuffer delivery
 for the then-shared 3840×2160 desktop, without an SSH tunnel. Unauthenticated VNC was not
 offered. Test pixels were discarded, not displayed or saved. MagicDNS resolved
@@ -48,8 +53,8 @@ autostart/stop dependency and enablement link were verified instead.
 With Tailscale connected, open Screen Sharing directly:
 
 ```bash
-open 'vnc://omarchy.taila14c2.ts.net:5900'   # or vnc://100.97.112.40:5900
 open 'vnc://miller.taila14c2.ts.net:5900'    # or vnc://100.113.199.114:5900
+open 'vnc://drummer.taila14c2.ts.net:5900'   # or vnc://100.78.246.113:5900
 ```
 
 Use that host's WayVNC password, not the SSH/Linux login password. No SSH
@@ -107,7 +112,7 @@ hyprctl monitors all | grep -E '^Monitor|dpmsStatus'   # expect a "VNC" monitor
 ```
 
 Configure through `modules/home-manager/omarchy-vnc.nix`, imported by
-`hosts/omarchy-common.nix`. Each host file sets its bind address with
+`hosts/miller.nix` and `hosts/drummer.nix`. Each host file sets its bind address with
 `omarchyVnc.address`; if a node is recreated with a different Tailscale IPv4,
 update it there and deploy before reconnecting (see
 [the Omarchy agents guide](omarchy-agents.md#apply)); activation reloads and

@@ -37,7 +37,6 @@ in {
     ../modules/home-manager/omarchy-fish.nix
     ../modules/home-manager/omarchy-nvim.nix
     ../modules/home-manager/omarchy-paddleocr.nix
-    ../modules/home-manager/omarchy-vnc.nix
     # The Mac's cmd+k tab, cmd+shift+n project and ctrl+cmd+n spawn pickers
     # open their floats here when an Omarchy session is focused; spawned work
     # also runs here through switchyard, which needs wt.
@@ -45,6 +44,18 @@ in {
     ../modules/home-manager/nix-netrc.nix
     rex.homeManagerModules.default
   ];
+
+  # Home Manager otherwise adds a generic tray target when systemd is enabled.
+  # Leave unrelated desktop/session units under Omarchy's ownership.
+  xdg.configFile."systemd/user/tray.target".enable = false;
+
+  systemd.user = {
+    enable = true;
+    startServices = "sd-switch";
+    systemctlPath = "/usr/bin/systemctl";
+    # UWSM/Omarchy owns the GUI environment; only manage declared services.
+    sessionVariables = lib.mkForce {};
+  };
 
   # Personal Rex server as a user service (lingering keeps it up). Omarchy owns
   # ~/.ssh/config, so `rex terminfo setup` installs the ssh guard there instead.

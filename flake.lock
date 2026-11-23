@@ -199,6 +199,7 @@
         "nixpkgs": "nixpkgs_2",
         "rex": "rex",
         "switchyard": "switchyard",
+        "voxl": "voxl",
         "yem": "yem"
       }
     },
@@ -217,6 +218,22 @@
       "original": {
         "owner": "johnallen3d",
         "repo": "switchyard",
+        "type": "github"
+      }
+    },
+    "voxl": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795122669,
+        "narHash": "sha256-7bUDLCRoEQhQXJQ57eWtZ27fj1zArmURWHAvpGRIsyM=",
+        "owner": "tembo",
+        "repo": "voxl",
+        "rev": "21f194f9e446e7073abd7bbd52e0b397c3800b42",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tembo",
+        "repo": "voxl",
         "type": "github"
       }
     },

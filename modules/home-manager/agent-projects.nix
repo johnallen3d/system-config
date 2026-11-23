@@ -119,7 +119,8 @@
 
     ''
     + htmlReportInstructions
-    + omarchyInstructions;
+    + omarchyInstructions
+    + config.agentProjects.personalHostInstructions;
   workInstructions =
     builtins.readFile ./agent-projects/work-instructions.md
     + "\n"
@@ -133,10 +134,16 @@
 in {
   imports = [./agent-skills.nix ./claude-work-context.nix ./deployment-coordination.nix];
 
+  options.agentProjects.personalHostInstructions = lib.mkOption {
+    type = lib.types.lines;
+    default = "";
+    description = "Host-specific rules appended to personal agents' global instructions.";
+  };
+
   # Shared directory context, not project dependencies (those stay in mise).
   # Home Manager must fail on unexpected unmanaged files; review/back up before
   # adopting an existing config rather than forcing replacement.
-  home.file = {
+  config.home.file = {
     "dev/src/amfaro/mise.toml".source = ./agent-projects/amfaro-mise.toml;
     # Global instructions follow the selected profile even outside the parent tree.
     ".config/pi/AGENTS.md".text = personalInstructions;
@@ -147,14 +154,14 @@ in {
 
   # Trust only this managed config, after the new generation's link is installed.
   # Use a pinned CLI for activation, without replacing either host's native mise.
-  home.activation.trustAgentProjects = lib.hm.dag.entryAfter ["linkGeneration"] ''
+  config.home.activation.trustAgentProjects = lib.hm.dag.entryAfter ["linkGeneration"] ''
     $DRY_RUN_CMD ${lib.getExe pkgs.mise} trust ${lib.escapeShellArg amfaroConfig}
   '';
 
   # Write .fizzy.yaml only into existing checkouts: creating a missing project
   # directory would make switchyard skip its clone. Each repo's info/exclude
   # keeps the file out of Git; a still-tracked copy is left alone with a warning.
-  home.activation.fizzyProjectConfig = lib.hm.dag.entryAfter ["linkGeneration"] (
+  config.home.activation.fizzyProjectConfig = lib.hm.dag.entryAfter ["linkGeneration"] (
     ''
       fizzyProject() {
         local dir=$1 src=$2 git=${lib.getExe pkgs.git} exclude

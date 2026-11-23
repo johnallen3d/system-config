@@ -43,6 +43,11 @@
       # Keep its own nixpkgs so the package matches what CI pushed to Cachix.
       url = "github:johnallen3d/switchyard";
     };
+    # Omarchy's browser desktop streamer; built from its own default.nix.
+    voxl = {
+      url = "github:tembo/voxl";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -56,6 +61,7 @@
     cliproxyPanel,
     rex,
     switchyard,
+    voxl,
     ...
   }: let
     user = "john.allen";
@@ -90,7 +96,7 @@
             overlays = [(import ./lib/worktrunk-overlay.nix)];
           };
           extraSpecialArgs = {
-            inherit cliproxyModels cliproxyPanel credits full_name host lop rex switchyard;
+            inherit cliproxyModels cliproxyPanel credits full_name host lop rex switchyard voxl;
           };
           modules = [./hosts/${host}.nix];
         };

@@ -12,12 +12,13 @@
     ../modules/home-manager/omarchy-morning-brief.nix
     ../modules/home-manager/omarchy-nod.nix
     ../modules/home-manager/omarchy-syncthing-lan.nix
+    ../modules/home-manager/omarchy-voxl.nix
   ];
 
   services.rex.tailscale.hostname = "rex-omarchy";
 
-  # Tailscale-only VNC listener (this node's stable tailnet IP).
-  omarchyVnc.address = "100.97.112.40";
+  # Headless browser desktop for agents and John, in place of WayVNC.
+  omarchyVoxl.host = "omarchy.taila14c2.ts.net";
 
   # Central gateway for every other host's clients.
   subscriptionProxy.server.enable = true;

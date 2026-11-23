@@ -21,18 +21,7 @@ in {
   };
 
   config = {
-    # Home Manager otherwise adds a generic tray target when systemd is enabled.
-    # Leave unrelated desktop/session units under Omarchy's ownership.
-    xdg.configFile."systemd/user/tray.target".enable = false;
-
     systemd.user = {
-      enable = true;
-      startServices = "sd-switch";
-      systemctlPath = "/usr/bin/systemctl";
-
-      # UWSM/Omarchy owns the GUI environment; only manage this service.
-      sessionVariables = lib.mkForce {};
-
       services.wayvnc = {
         Unit = {
           Description = "Omarchy desktop sharing over Tailscale-only VNC";
