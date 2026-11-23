@@ -43,7 +43,7 @@
         ${pkgs.bash}/bin/bash -eu -c '
           exec "$@" --cliproxy-url "$PERSONAL_LLM_USAGE_CLIPROXY_URL"
         ' -- ${llmUsage}/bin/llm-usage json --source cliproxy \
-        --provider claude-code --provider codex \
+        --provider claude-code --provider gemini \
         --cliproxy-key-env PERSONAL_LLM_USAGE_CLIPROXY_MANAGEMENT_KEY --interval 60 \
         --output ${lib.escapeShellArg llmUsagePersonalJson}
     '';

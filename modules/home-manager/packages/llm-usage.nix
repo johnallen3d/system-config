@@ -1,16 +1,16 @@
 {pkgs}:
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "llm-usage";
-  version = "2026-11-10";
+  version = "2026-11-23";
 
   src = pkgs.fetchFromGitHub {
     owner = "amfaro";
     repo = "llm-usage";
-    rev = "5c126d4e80a4dd8ecda9fa91d2bd5b64b90cce90";
-    hash = "sha256-SXcuwK1zpcw9SrxyMV+8Cq4LsXFnOhgojvRuc722FDM=";
+    rev = "6752e46a0d7ef47cd8c07de3103938e771e370bf";
+    hash = "sha256-PM8cXTECJcvTc/Ws/YsBDXx/F+sf+Qiyn4qTYbFk+HE=";
   };
 
-  cargoHash = "sha256-CPqzl6B0Qe6tdifnJfrSI2IYdJfgjQpWPt6MrEfJbH4=";
+  cargoHash = "sha256-mPpEMITx+3g5cc63suNdCil2jeyUzz3qr1Vdza+55zo=";
 
   postPatch = ''
     substituteInPlace src/main.rs \
@@ -34,7 +34,7 @@ pkgs.rustPlatform.buildRustPackage rec {
   '';
 
   meta = {
-    description = "Subscription quota dashboard for Codex, OpenCode Go, and Claude Code";
+    description = "Subscription quota dashboard for Codex, OpenCode Go, Claude Code, and Gemini";
     mainProgram = "llm-usage";
   };
 }

@@ -4,7 +4,7 @@ set -u
 work_cache="@workUsageJson@"
 personal_cache="@personalUsageJson@"
 accounts=(work personal)
-providers=(claude_code codex opencode_go)
+providers=(claude_code codex gemini opencode_go)
 
 cache_for() {
   case "$1" in

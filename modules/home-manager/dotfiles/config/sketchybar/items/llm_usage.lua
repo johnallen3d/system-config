@@ -35,7 +35,7 @@ Sbar.add("item", "llm_usage_personal", {
 })
 
 local accounts = { work = 0xF0B1, personal = 0xF015 }
-local providers = { claude_code = ":claude:", codex = ":codex:", opencode_go = ":opencode:" }
+local providers = { claude_code = ":claude:", codex = ":codex:", gemini = ":gemini:", opencode_go = ":opencode:" }
 for _, account in ipairs({ "work", "personal" }) do
 	Sbar.add("item", "llm_usage." .. account, {
 		position = "popup.llm_usage",
@@ -43,7 +43,7 @@ for _, account in ipairs({ "work", "personal" }) do
 		label = { string = "Loading…", font = row_font, color = colors.white, padding_right = 10 },
 		background = { drawing = false },
 	})
-	for _, provider in ipairs({ "claude_code", "codex", "opencode_go" }) do
+	for _, provider in ipairs({ "claude_code", "codex", "gemini", "opencode_go" }) do
 		Sbar.add("item", "llm_usage." .. account .. "_" .. provider, {
 			position = "popup.llm_usage",
 			drawing = false,
