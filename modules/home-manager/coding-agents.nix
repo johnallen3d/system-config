@@ -1,5 +1,6 @@
 # Reuse the Mac's agent resources without importing its shell/desktop dotfiles.
 {
+  host,
   lib,
   pkgs,
   ...
@@ -14,11 +15,18 @@ in {
     ./agent-projects.nix
     ./claude-prompts.nix
     ./doppler.nix
+    ./executor.nix
     ./pi-extensions.nix
     ./pi-prompts.nix
     ./pi-settings.nix
     ./subscription-proxy.nix
   ];
+
+  # Personal Executor clients on every Omarchy host; singleton server on Omarchy only.
+  executor = {
+    enable = true;
+    server.enable = host == "omarchy";
+  };
 
   codingAgents = {
     enableCrossProfileUsageFooter = false;

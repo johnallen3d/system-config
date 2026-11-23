@@ -47,9 +47,13 @@
       exec ${lib.getExe unwrapped} "$@"
     '';
   };
-  mcpServers = {
-    switchyard.serverUrl = cfg.switchyardMcpUrl;
-  };
+  mcpServers =
+    {
+      switchyard.serverUrl = cfg.switchyardMcpUrl;
+    }
+    // lib.optionalAttrs config.executor.enable {
+      executor.serverUrl = config.executor.mcpUrl;
+    };
   # Personal instructions, skills, and prompts as one agy plugin. agy has no
   # slash-command prompts, so Claude's prompts become argument-free skills.
   plugin = ".gemini/config/plugins/personal";

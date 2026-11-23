@@ -45,7 +45,14 @@
     inherit (import ./switchyard-mcp.nix) url;
     headers = (import ./switchyard-mcp.nix).claudeHeaders;
   };
-  personalMcpServers = {switchyard = switchyardMcp;};
+  personalMcpServers =
+    {switchyard = switchyardMcp;}
+    // lib.optionalAttrs config.executor.enable {
+      executor = {
+        type = "http";
+        url = config.executor.mcpUrl;
+      };
+    };
   workMcpServers = {
     switchyard = switchyardMcp;
     betterstack = {type = "http";} // import ./betterstack-mcp.nix;

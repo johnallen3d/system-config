@@ -14,6 +14,7 @@
 # Extensions are managed for each profile in pi-extensions.nix; work themes
 # symlink back to the personal profile.
 {
+  config,
   pkgs,
   lib,
   ...
@@ -62,35 +63,43 @@
     fi
   '';
 
-  piMcpSettings = {
-    mcpServers = {
-      switchyard = switchyardMcp;
-      "mcp-server-doppler" = {
-        command = "bash";
-        args = [
-          "-lc"
-          "export DOPPLER_TOKEN=\"$(security find-generic-password -s 'doppler-work' -a 'john.allen' -w)\" && exec npx -y @dopplerhq/mcp-server"
-        ];
-      };
-      "mcp-server-motherduck" = {
-        command = "uvx";
-        args = [
-          "mcp-server-motherduck"
-          "--db-path"
-          ":memory:"
-          "--read-write"
-        ];
-      };
-      "headroom" = {
-        "command" = "/Users/john.allen/.pi/headroom-venv/bin/headroom";
-        "args" = [
-          "mcp"
-          "serve"
-          "--proxy-url"
-          "http://127.0.0.1:8787"
-        ];
-      };
+  executorMcp = lib.optionalAttrs config.executor.enable {
+    executor = {
+      url = config.executor.mcpUrl;
     };
+  };
+
+  piMcpSettings = {
+    mcpServers =
+      {
+        switchyard = switchyardMcp;
+        "mcp-server-doppler" = {
+          command = "bash";
+          args = [
+            "-lc"
+            "export DOPPLER_TOKEN=\"$(security find-generic-password -s 'doppler-work' -a 'john.allen' -w)\" && exec npx -y @dopplerhq/mcp-server"
+          ];
+        };
+        "mcp-server-motherduck" = {
+          command = "uvx";
+          args = [
+            "mcp-server-motherduck"
+            "--db-path"
+            ":memory:"
+            "--read-write"
+          ];
+        };
+        "headroom" = {
+          "command" = "/Users/john.allen/.pi/headroom-venv/bin/headroom";
+          "args" = [
+            "mcp"
+            "serve"
+            "--proxy-url"
+            "http://127.0.0.1:8787"
+          ];
+        };
+      }
+      // executorMcp;
   };
 
   piWorkMcpSettings = {
@@ -141,10 +150,12 @@
   # Linux has no macOS Keychain or Mac-local headroom/calc services. Credentials
   # for subprocess MCP servers come from the selected launch environment.
   linuxMcpSettings = {
-    mcpServers = {
-      inherit (piMcpSettings.mcpServers) mcp-server-motherduck switchyard;
-      mcp-server-doppler = piWorkMcpSettings.mcpServers.doppler;
-    };
+    mcpServers =
+      {
+        inherit (piMcpSettings.mcpServers) mcp-server-motherduck switchyard;
+        mcp-server-doppler = piWorkMcpSettings.mcpServers.doppler;
+      }
+      // executorMcp;
   };
   linuxWorkMcpSettings = {
     mcpServers = {

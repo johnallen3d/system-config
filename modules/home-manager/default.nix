@@ -86,6 +86,7 @@ in {
     ./antigravity.nix
     ./claude-prompts.nix
     ./doppler.nix
+    ./executor.nix
     ./obsidian.nix
     ./pi-extensions.nix
     ./pi-prompts.nix
@@ -95,6 +96,7 @@ in {
   ];
 
   subscriptionProxy.enable = pkgs.stdenv.hostPlatform.isDarwin;
+  executor.enable = pkgs.stdenv.hostPlatform.isDarwin;
   # Personal-only agy (no profiles): Mac and Omarchy.
   antigravity.enable = pkgs.stdenv.hostPlatform.isDarwin;
 
