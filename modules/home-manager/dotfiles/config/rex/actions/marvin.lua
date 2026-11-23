@@ -1,6 +1,6 @@
 -- cmd+o: go to the `marvin` tab in the `notes` session on Omarchy. If it isn't
--- open, open it in Omarchy's ~/notes running Claude Code on Haiku at high
--- effort, then show it. A new notes session is placed first.
+-- open, open it in Omarchy's ~/notes running agy on Gemini 4 Hydrogen (Flash tier)
+-- with permission prompts skipped, then show it. A new notes session is placed first.
 --
 -- An action can only view (or add windows to) sessions its connection is
 -- attached to, so the find-or-open runs as a `rex -S omarchy do` script that
@@ -14,7 +14,7 @@ local LABEL = "marvin"
 -- `rex -S` runs the script below here and only its calls on the host, so
 -- the pane itself changes to the host's ~/notes.
 local COMMAND = { "sh", "-c", 'cd "$HOME/notes" && exec "$@"', "sh" }
-for _, arg in ipairs(util.float_command("claude", "--model", "haiku", "--effort", "high")) do
+for _, arg in ipairs(util.float_command("agy", "--dangerously-skip-permissions", "--model", "gemini-4-hydrogen")) do
   COMMAND[#COMMAND + 1] = arg
 end
 
