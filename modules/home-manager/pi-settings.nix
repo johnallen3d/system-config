@@ -168,17 +168,21 @@
   # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
   # Its registered redirect is Claude Code's localhost callback. Tokens stay in
   # Pi's machine-local mcp-auth.json, never in Nix.
-  piWorkManagedMcpServers = {
-    slack = {
-      url = "https://mcp.slack.com/mcp";
-      oauth = {
-        clientId = "1601185624273.8899143856786";
-        callbackUrl = "http://localhost:3118/callback";
+  piWorkManagedMcpServers =
+    {
+      slack = {
+        url = "https://mcp.slack.com/mcp";
+        oauth = {
+          clientId = "1601185624273.8899143856786";
+          callbackUrl = "http://localhost:3118/callback";
+        };
       };
+      switchyard = switchyardMcp;
+      betterstack = import ./betterstack-mcp.nix;
+    }
+    // lib.optionalAttrs config.executor.enable {
+      executor.url = config.executor.work.mcpUrl;
     };
-    switchyard = switchyardMcp;
-    betterstack = import ./betterstack-mcp.nix;
-  };
 
   piSystemMd = ''
     - ALWAYS RESPOND IN ENGLISH

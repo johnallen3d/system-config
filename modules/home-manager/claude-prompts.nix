@@ -53,21 +53,28 @@
         url = config.executor.mcpUrl;
       };
     };
-  workMcpServers = {
-    switchyard = switchyardMcp;
-    betterstack = {type = "http";} // import ./betterstack-mcp.nix;
-    # Public OAuth client configuration published by Slack for Claude Code:
-    # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
-    # Tokens remain in Claude's machine-local credential store, never in Nix.
-    slack = {
-      type = "http";
-      url = "https://mcp.slack.com/mcp";
-      oauth = {
-        clientId = "1601185624273.8899143856786";
-        callbackPort = 3118;
+  workMcpServers =
+    {
+      switchyard = switchyardMcp;
+      betterstack = {type = "http";} // import ./betterstack-mcp.nix;
+      # Public OAuth client configuration published by Slack for Claude Code:
+      # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
+      # Tokens remain in Claude's machine-local credential store, never in Nix.
+      slack = {
+        type = "http";
+        url = "https://mcp.slack.com/mcp";
+        oauth = {
+          clientId = "1601185624273.8899143856786";
+          callbackPort = 3118;
+        };
+      };
+    }
+    // lib.optionalAttrs config.executor.enable {
+      executor = {
+        type = "http";
+        url = config.executor.work.mcpUrl;
       };
     };
-  };
 in {
   home.file = {
     # Personal prompts → ~/.config/claude-personal/commands/
