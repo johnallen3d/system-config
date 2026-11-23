@@ -19,7 +19,7 @@
     "cliproxyPanel": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-kVRZMw3k55cMAHABc9G9Ry4SLyCD+zbYDX35buJbYBA=",
+        "narHash": "sha256-XHguVA8+iqE/3BGz2as8bUbhhg8nmJ3k92SZgV1ddXQ=",
         "type": "file",
         "url": "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/latest/download/management.html"
       },
@@ -178,10 +178,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1795273534,
-        "narHash": "sha256-52aUJUzMub7btGorbGpbhW9vkuyM7jB7AxvbTVXdJ0w=",
+        "lastModified": 1795409103,
+        "narHash": "sha256-MsjofTyfTR9W8lgT1XdeCdlob/hZ9SDuR39FPGLTyRE=",
         "type": "tarball",
-        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.1.0-snapshot.2506.tar.gz"
+        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.1.0-snapshot.2513.tar.gz"
       },
       "original": {
         "type": "tarball",
