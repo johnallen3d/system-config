@@ -43,6 +43,21 @@
         "type": "github"
       }
     },
+    "crane_2": {
+      "locked": {
+        "lastModified": 1794962885,
+        "narHash": "sha256-zrweT2tXbcWiJMACOhOr2eYFJKVa6g59ouRaZ3BS5Do=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "95e62def851e9d650f0eab63cb4f59a3306e20bd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "type": "github"
+      }
+    },
     "credits": {
       "inputs": {
         "crane": "crane",
@@ -61,6 +76,28 @@
         "ref": "main",
         "repo": "credits",
         "type": "github"
+      }
+    },
+    "forkful": {
+      "inputs": {
+        "crane": "crane_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795476182,
+        "narHash": "sha256-ttjdlkx5VyfrC9q9BUHd4ranKVE24MPSJFlkZ+z9bc0=",
+        "ref": "main",
+        "rev": "2d615d93de123b4a30bc8866c18992fe1f936007",
+        "revCount": 1,
+        "type": "git",
+        "url": "https://github.com/johnallen3d/forkful.git"
+      },
+      "original": {
+        "ref": "main",
+        "type": "git",
+        "url": "https://github.com/johnallen3d/forkful.git"
       }
     },
     "home-manager": {
@@ -193,6 +230,7 @@
         "cliproxyModels": "cliproxyModels",
         "cliproxyPanel": "cliproxyPanel",
         "credits": "credits",
+        "forkful": "forkful",
         "home-manager": "home-manager",
         "lop": "lop",
         "nix-darwin": "nix-darwin",

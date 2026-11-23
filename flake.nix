@@ -4,6 +4,11 @@
   inputs = {
     # Deliberately not following nixpkgs: the derivation must match what CI pushed to Cachix.
     credits.url = "github:johnallen3d/credits/main";
+    forkful = {
+      # Private: fetched with Git's configured credentials, like yem.
+      url = "git+https://github.com/johnallen3d/forkful.git?ref=main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
       # Stay on Home Manager master while nixpkgs tracks nixos-unstable.
@@ -52,6 +57,7 @@
 
   outputs = {
     credits,
+    forkful,
     home-manager,
     lop,
     nix-darwin,
@@ -96,7 +102,7 @@
             overlays = [(import ./lib/worktrunk-overlay.nix)];
           };
           extraSpecialArgs = {
-            inherit cliproxyModels cliproxyPanel credits full_name host lop rex switchyard voxl;
+            inherit cliproxyModels cliproxyPanel credits forkful full_name host lop rex switchyard voxl;
           };
           modules = [./hosts/${host}.nix];
         };

@@ -27,6 +27,14 @@ clone_url = "https://github.com/johnallen3d/credits.git"
 hosts = ["config"]
 
 [[personal]]
+# Food-logging PWA, deployed on Omarchy by ../omarchy-forkful.nix; developed
+# on the Mac (native iOS/macOS clients may follow).
+path = "~/dev/src/playground/forkful"
+tracker = "fizzy:6284043/03hairucnu02oe9eka6s6qccl"
+clone_url = "https://github.com/johnallen3d/forkful.git"
+hosts = ["config"]
+
+[[personal]]
 path = "~/dev/src/playground/switchyard"
 tracker = "fizzy:6284043/03h7f11emprus7nifd286mh8n"
 clone_url = "https://github.com/johnallen3d/switchyard.git"
