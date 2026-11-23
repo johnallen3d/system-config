@@ -56,18 +56,6 @@
   workMcpServers =
     {
       switchyard = switchyardMcp;
-      betterstack = {type = "http";} // import ./betterstack-mcp.nix;
-      # Public OAuth client configuration published by Slack for Claude Code:
-      # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
-      # Tokens remain in Claude's machine-local credential store, never in Nix.
-      slack = {
-        type = "http";
-        url = "https://mcp.slack.com/mcp";
-        oauth = {
-          clientId = "1601185624273.8899143856786";
-          callbackPort = 3118;
-        };
-      };
     }
     // lib.optionalAttrs config.executor.enable {
       executor = {
@@ -167,8 +155,11 @@ in {
       (
         config="$HOME/.config/$profile/.claude.json"
         servers=${lib.escapeShellArg (builtins.toJSON personalMcpServers)}
+        retired='[]'
         if [ "$profile" = claude-gmatter ]; then
           servers=${lib.escapeShellArg (builtins.toJSON workMcpServers)}
+          # Slack and Better Stack now come through Executor.
+          retired='["slack","betterstack"]'
         fi
         if [ -L "$config" ]; then
           echo "Refusing to replace symlinked Claude MCP config: $config" >&2
@@ -181,11 +172,11 @@ in {
         fi
         tmp="$(${pkgs.coreutils}/bin/mktemp "$config.mcp-XXXXXX")"
         trap 'rm -f "$tmp"' EXIT
-        if ! ${pkgs.jq}/bin/jq -e --argjson servers "$servers" \
+        if ! ${pkgs.jq}/bin/jq -e --argjson servers "$servers" --argjson retired "$retired" \
           'if type != "object" then error("Claude config must be an object")
            elif has("mcpServers") and (.mcpServers | type) != "object"
            then error("Claude mcpServers must be an object")
-           else .mcpServers = ((.mcpServers // {}) + $servers) end' \
+           else .mcpServers = (((.mcpServers // {}) | delpaths($retired | map([.]))) + $servers) end' \
           "$input" > "$tmp"; then
           exit 1
         fi

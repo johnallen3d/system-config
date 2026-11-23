@@ -163,22 +163,9 @@
     };
   };
 
-  # Slack's MCP server has no dynamic client registration; reuse the public
-  # OAuth client Slack publishes for Claude Code (see claude-prompts.nix):
-  # https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude/
-  # Its registered redirect is Claude Code's localhost callback. Tokens stay in
-  # Pi's machine-local mcp-auth.json, never in Nix.
   piWorkManagedMcpServers =
     {
-      slack = {
-        url = "https://mcp.slack.com/mcp";
-        oauth = {
-          clientId = "1601185624273.8899143856786";
-          callbackUrl = "http://localhost:3118/callback";
-        };
-      };
       switchyard = switchyardMcp;
-      betterstack = import ./betterstack-mcp.nix;
     }
     // lib.optionalAttrs config.executor.enable {
       executor.url = config.executor.work.mcpUrl;
@@ -354,7 +341,7 @@ in {
           'if type != "object" then error("Pi MCP config must be an object")
            elif has("mcpServers") and (.mcpServers | type) != "object"
            then error("Pi mcpServers must be an object")
-           else .mcpServers = ((.mcpServers // {}) + $servers) end' \
+           else .mcpServers = ((.mcpServers // {} | del(.slack, .betterstack)) + $servers) end' \
           "$input" > "$tmp"; then
           exit 1
         fi
