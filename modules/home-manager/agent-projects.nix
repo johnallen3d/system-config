@@ -120,7 +120,7 @@
     ''
     + htmlReportInstructions
     + omarchyInstructions
-    + config.agentProjects.personalHostInstructions;
+    + config.agentProjects.hostInstructions;
   workInstructions =
     builtins.readFile ./agent-projects/work-instructions.md
     + "\n"
@@ -130,14 +130,15 @@
     + delegationInstructions
     + "\n"
     + htmlReportInstructions
-    + omarchyInstructions;
+    + omarchyInstructions
+    + config.agentProjects.hostInstructions;
 in {
   imports = [./agent-skills.nix ./claude-work-context.nix ./deployment-coordination.nix];
 
-  options.agentProjects.personalHostInstructions = lib.mkOption {
+  options.agentProjects.hostInstructions = lib.mkOption {
     type = lib.types.lines;
     default = "";
-    description = "Host-specific rules appended to personal agents' global instructions.";
+    description = "Host-specific rules appended to personal and work agents' global instructions.";
   };
 
   # Shared directory context, not project dependencies (those stay in mise).

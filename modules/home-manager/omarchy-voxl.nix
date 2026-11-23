@@ -187,9 +187,9 @@ in {
       };
     };
 
-    agentProjects.personalHostInstructions = ''
+    agentProjects.hostInstructions = ''
 
-      ## Shared browser (Omarchy)
+      ## Shared browser (this host)
 
       - One persistent Chromium runs on the virtual display `${display}`, with
         John's logins. For web work that needs a login or a human, attach with
@@ -200,7 +200,7 @@ in {
       - When a login, 2FA, or CAPTCHA blocks you, leave that page open and ask
         John to finish it at ${url}, then wait for John to confirm.
       - Headed GUI apps for John go on `DISPLAY=${display}` with
-        `WAYLAND_DISPLAY` unset; nobody sees the Hyprland session.
+        `WAYLAND_DISPLAY` unset, not on the Hyprland session.
     '';
   };
 }

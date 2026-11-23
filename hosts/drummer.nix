@@ -4,6 +4,7 @@
   imports = [
     ./omarchy-common.nix
     ../modules/home-manager/omarchy-vnc.nix
+    ../modules/home-manager/omarchy-voxl.nix
     ../modules/home-manager/tuicr.nix
   ];
 
@@ -11,4 +12,7 @@
 
   # Tailscale-only VNC listener (this node's stable tailnet IP).
   omarchyVnc.address = "100.78.246.113";
+
+  # Headless browser desktop with the shared agent browser, beside WayVNC.
+  omarchyVoxl.host = "drummer.taila14c2.ts.net";
 }
