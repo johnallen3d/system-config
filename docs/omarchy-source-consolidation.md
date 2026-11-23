@@ -25,10 +25,6 @@ history. Inspect and preserve any independent changes before synchronization.
 
 Reconciliation keeps current local `main` as the baseline, including its newer
 Pi wrapper formatting, worktree policy, rebuild routing, and stronger tests.
-Hermes now uses the upstream gateway and ordinary systemd management. The
-migration controller, bespoke lifecycle guards, fixture suites, and historical
-bytecode exceptions were removed in #787. The recovered subscription-proxy and
-agent configuration remains independent of that removal.
 No credentials, mutable profile state, or sessions are source inputs.
 
 ## Shared inputs
@@ -39,4 +35,4 @@ Omarchy, Miller, Drummer and the homelab hosts use the shared `nixpkgs` and
 #1392 after they left Linux packages months behind.
 
 Build without updating inputs and follow [the normal deployment
-procedure](omarchy-agents.md#apply). Hermes does not gate Home Manager activation.
+procedure](omarchy-agents.md#apply).

@@ -1,9 +1,7 @@
 # Pi Pocket / Pi Durable on Omarchy
 
 John's production personal assistant. It began as the [#796](https://app.fizzy.do/6284043/cards/796)
-trial and replaced Hermes in [#906](https://app.fizzy.do/6284043/cards/906);
-the Hermes Telegram bot is gone, but the morning brief still sends its summary
-to Telegram (see below). Mac configuration is unchanged. `hosts/omarchy.nix`
+trial; the morning brief sends its summary to Telegram (see below). Mac configuration is unchanged. `hosts/omarchy.nix`
 alone enables `omarchy-pi-pocket.nix` (`piPocket.enable`).
 
 Skills, prompts, Pocket extensions and the tasks they call belong to the notes
@@ -212,8 +210,3 @@ To pause Pocket: `systemctl --user stop pi-pocket.service`. Disabling
 `piPocket.enable` and activating Home Manager removes its service, timer and
 launchers, not writable data. Do not delete data, rotate tokens, or roll back a
 database schema without an explicit decision and compatible private backup.
-
-Hermes's former state remains on disk, unused, under
-`~/.local/state/hermes-native`, `~/.local/share/hermes-native`,
-`~/.config/hermes-native` and `~/.cache/hermes-native`. Deleting it is a
-separate decision.

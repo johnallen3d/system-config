@@ -386,7 +386,7 @@ its task worktree. Do not copy newer source over an old Git baseline or reuse a
 historical deployment worktree. Preserve independent changes before reconciliation;
 see #781/#792 for the archived overlay cleanup. The Omarchy-only input pins remain unchanged.
 Pi Pocket is the production personal assistant ([pi-pocket.md](pi-pocket.md));
-Hermes was removed in #906 and no assistant gates activation.
+no assistant gates activation.
 See [source reconciliation](omarchy-source-consolidation.md).
 
 Ordinary SSH commands use Omarchy's Fish login shell. Execute Bash scripts with

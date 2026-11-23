@@ -19,7 +19,7 @@
   # Tailscale-only VNC listener (this node's stable tailnet IP).
   omarchyVnc.address = "100.97.112.40";
 
-  # John's production assistant (Pi Pocket / Pi Durable); replaced Hermes.
+  # John's production assistant (Pi Pocket / Pi Durable).
   piPocket.enable = true;
 
   # Central gateway for every other host's clients.

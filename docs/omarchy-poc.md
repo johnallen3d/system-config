@@ -74,15 +74,13 @@ Deployment source now belongs to the normal `~/dev/src/system-config` Git
 repository. The recovered deployed version is in its linked worktree
 `.worktrees/consolidate-omarchy-config` on `feature/consolidate-omarchy-config`;
 the stale primary checkout's independent uncommitted changes remain untouched.
-The Hermes migration controller, bespoke guards, and fixture suites were removed
-in #787; Hermes itself was replaced by [Pi Pocket](pi-pocket.md) in #906.
 
 ## Build and apply on Omarchy (no sudo)
 
 ```bash
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 export NIX_CONFIG='extra-experimental-features = nix-command flakes'
-cd ~/dev/src/system-config/.worktrees/remove-hermes-guards
+cd ~/dev/src/system-config/.worktrees/<task>
 
 nix build --no-write-lock-file \
   'path:.#homeConfigurations."johna@omarchy".activationPackage' \
