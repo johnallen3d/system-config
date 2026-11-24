@@ -34,9 +34,9 @@ it follows that repository's deployment rules.
 3. **Clean up.** First return to the primary checkout. In Claude, run a standalone
    `cd "$repo_root"`, then verify the harness cwd and a fresh `pwd -P` in a separate
    call. If the session was launched inside the task worktree (Rex spawn tabs
-   are), `cd` does not move its anchor: skip removal and report the worktree as
-   left for archive from the Rex tab picker (cmd+k, ctrl-x), which
-   closes the tab and removes it. That is not a blocker once commit and integration succeed. A subshell,
+   are), `cd` does not move its anchor: skip removal. If John asked to archive,
+   the archive below removes it; otherwise report the worktree as left for
+   archive. That is not a blocker once commit and integration succeed. A subshell,
    command cwd override, `wt switch`, or Pi `process.chdir` is not proof of a
    safe cwd. Never delete the running session's directory; retain the worktree
    if the session anchor or cwd is uncertain. Wait for task
@@ -48,15 +48,15 @@ it follows that repository's deployment rules.
 
    **When John asks to archive this session, archive it. Do not ask first.** A
    wrap never archives on its own, but an explicit request from John is the
-   decision; carry it out with `switchyard stop_task` for this task (or the Rex
-   picker when that tool is unavailable). Pending lock updates, unapproved
-   follow-ups, or a failed push are not reasons to withhold or re-confirm the
-   archive. Archive only after step 4 has closed every linked card: archiving
-   never substitutes for closing. If a genuine blocker (below) keeps a card
-   open, report WRAP BLOCKED and leave the session unarchived so John can act
-   on it. The other gate is `stop_task` refusing uncommitted changes; if it
-   refuses, report that. Archive as the last action: first write the full
-   handoff as text, since closing the tab ends the session before it can report.
+   decision; carry it out with `switchyard stop_task` for this task. Never hand
+   it back to John (no "archive it from the picker"). Nothing else in this
+   lifecycle withholds or re-confirms it: open cards, WRAP BLOCKED, pending
+   deploys or lock updates, unapproved follow-ups, and a failed push all go in
+   the handoff, and the archive still happens (it keeps branches, and cards
+   stay open in Fizzy). Close cards first where step 4 says to; archiving never
+   substitutes for closing. The only gate is `stop_task` refusing uncommitted
+   changes; if it refuses, report that. Archive as the last action: first write
+   the full handoff as text, since closing the tab ends the session.
 4. **Hand off.** Report final status, commit, integration/cleanup, push, and
    deployment separately. **Push.** Unless opted out, after integration (and
    deployment, where it applies) run `git -C "$repo_root" push` for local `main`
@@ -77,8 +77,8 @@ it follows that repository's deployment rules.
    narrows during the task or the wrap ("not doing X for now") counts as done for
    the dropped part; say so in the closing comment. The only reason to keep a card
    open is a freshly re-verified blocker: a failed or unreachable deploy host, or
-   a required check that ran and failed. Then report WRAP BLOCKED, name the host or
-   check, and don't archive. Never finish with untracked work. Push does not
+   a required check that ran and failed. Then report WRAP BLOCKED and name the host
+   or check (still archive if John asked). Never finish with untracked work. Push does not
    block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.

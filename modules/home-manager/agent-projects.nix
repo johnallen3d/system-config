@@ -95,6 +95,12 @@
         integrated local `main` unless invoked as `/wrap no-push`. It
         authorizes a rebuild or deployment only where the repository's
         `AGENTS.md` says `/wrap` deploys.
+      - John asking to archive a session (this one, or a task you spawned or
+        are told to relay to) is the authorization, with or without `/wrap`:
+        write any handoff, then archive with `switchyard stop_task`. Don't ask
+        again or leave the archive to John. Open cards, a blocked wrap,
+        and pending pushes or deploys go in the handoff; only `stop_task`
+        refusing uncommitted changes stops it.
       - An authorized deployment includes clean fast-forward sync of a deployment
         host's `main` to integrated local `main`, without separate merge
         permission; stop on dirty source, divergence, or uncertain ownership.
