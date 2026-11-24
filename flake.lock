@@ -86,11 +86,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795476182,
-        "narHash": "sha256-ttjdlkx5VyfrC9q9BUHd4ranKVE24MPSJFlkZ+z9bc0=",
+        "lastModified": 1795479488,
+        "narHash": "sha256-gJa72sV3mPaprwXf4ri1QlxacSfBRQqaThMVq1mR9O0=",
         "ref": "main",
-        "rev": "2d615d93de123b4a30bc8866c18992fe1f936007",
-        "revCount": 1,
+        "rev": "7c2d5a29018e7c583aedf4d7cfbc9a6d098a7f8c",
+        "revCount": 5,
         "type": "git",
         "url": "https://github.com/johnallen3d/forkful.git"
       },
@@ -246,11 +246,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1795469583,
-        "narHash": "sha256-oL4Az+oXZU0hCCryejDFHqIMkKSFuV2oc7v1+D2Glec=",
+        "lastModified": 1795475334,
+        "narHash": "sha256-Gs3JvkEqRSr+HmWPOynUriHZxgHURgtu1qv4aKZ4dQA=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "1d2010506e11f26d8632a0a660ea2f0f53660e49",
+        "rev": "d543cc3772e6a17c4406a64f1605951213cefa68",
         "type": "github"
       },
       "original": {
