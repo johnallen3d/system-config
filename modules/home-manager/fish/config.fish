@@ -47,6 +47,13 @@ if command -q tv
     tv init fish | source
 end
 
+# Atuin owns history search; replace tv's Ctrl+R whichever init ran first.
+if command -q atuin
+    for mode in default insert
+        bind --mode $mode ctrl-r _atuin_search
+    end
+end
+
 # Mise refreshes PATH on directory changes; restore managed tools last.
 function __fish_prefer_managed_paths --on-variable PWD
     fish_add_path --global --move --prepend /nix/var/nix/profiles/default/bin

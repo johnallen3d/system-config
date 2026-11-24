@@ -76,6 +76,5 @@ in {
       # Managed by Home Manager: disables the vendor mise activation snippet.
     '';
     "television/config.toml".source = ./dotfiles/config/television/config.toml;
-    "television/cable/fish-history.toml".source = ./dotfiles/config/television/cable/fish-history.toml;
   };
 }

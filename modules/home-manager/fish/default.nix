@@ -39,6 +39,7 @@ in {
     };
 
   imports = [
+    ../atuin.nix
     ./functions.nix
   ];
 }
