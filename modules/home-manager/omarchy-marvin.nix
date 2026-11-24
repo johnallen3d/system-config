@@ -1,8 +1,9 @@
-# Omarchy-only Forkful food-logging PWA. The vault on this host is the data
-# owner; Omarchy centralizes writes so phones never create Syncthing conflicts.
-# pi-01 Caddy serves it at https://forkful.jallen7usa.com through a LAN-only
-# forwarder (private DNS, never the tunnel: there is no app authentication).
-# Native UFW must allow pi-01 to lanAddress:lanPort:
+# Omarchy-only Marvin food-logging PWA (the forkful repo and flake input). The
+# vault on this host is the data owner; Omarchy centralizes writes so phones
+# never create Syncthing conflicts. pi-01 Caddy serves it at
+# https://marvin.jallen7usa.com (forkful.jallen7usa.com permanently redirects)
+# through a LAN-only forwarder (private DNS, never the tunnel: there is no app
+# authentication). Native UFW must allow pi-01 to lanAddress:lanPort:
 #   sudo ufw allow in on enp3s0 proto tcp from 192.168.5.11 to 192.168.4.26 port 4410 comment 'forkful from pi-01 only'
 {
   config,
@@ -15,25 +16,26 @@
   package = packages.default;
   port = 4411;
   chatPort = 4412;
+  # Predates the Marvin rename; kept so chat.sqlite (threads) never moves.
   chatState = "${config.xdg.stateHome}/forkful-chat";
   lanPort = 4410;
   # Omarchy's reserved physical LAN address, never the Tailscale interface.
   lanAddress = "192.168.4.26";
   # Vault tasks shell out to vlt from the Home Manager profile, which the user
   # manager's PATH lacks. Environment= can't extend PATH, so prepend here.
-  start = pkgs.writeShellScript "forkful-start" ''
+  start = pkgs.writeShellScript "marvin-start" ''
     export PATH="${config.home.profileDirectory}/bin''${PATH:+:$PATH}"
     exec ${lib.getExe package}
   '';
 in {
-  home.activation.forkfulChatState = lib.hm.dag.entryAfter ["writeBoundary"] ''
+  home.activation.marvinChatState = lib.hm.dag.entryAfter ["writeBoundary"] ''
     $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -d -m 0700 ${lib.escapeShellArg chatState}
   '';
 
   systemd.user.services = {
-    forkful = {
+    marvin = {
       Unit = {
-        Description = "Forkful food-logging PWA (loopback backend)";
+        Description = "Marvin food-logging PWA (loopback backend)";
         StartLimitIntervalSec = 0;
       };
       Service = {
@@ -52,15 +54,16 @@ in {
     };
 
     # Food-logging chat agent (pi-durable). Loopback only, reached through
-    # forkful's /api/chat proxy; its tools call forkful's HTTP API, so vault
-    # writes stay on forkful's locked tasks. Only its OpenRouter key comes from
-    # Doppler notes/prd, never John's interactive pi/claude profiles.
-    forkful-chat = {
+    # marvin's /api/chat proxy; its tools call marvin's HTTP API, so vault
+    # writes stay on marvin's locked tasks. FORKFUL_* names are the app's own.
+    # Only its OpenRouter key comes from Doppler notes/prd, never John's
+    # interactive pi/claude profiles.
+    marvin-chat = {
       Unit = {
-        Description = "Forkful chat agent sidecar (loopback backend)";
+        Description = "Marvin chat agent sidecar (loopback backend)";
         # Soft ordering only: each side tolerates the other being down.
-        Wants = ["forkful.service"];
-        After = ["forkful.service"];
+        Wants = ["marvin.service"];
+        After = ["marvin.service"];
         StartLimitIntervalSec = 0;
       };
       Service = {
@@ -80,8 +83,8 @@ in {
       Install.WantedBy = ["default.target"];
     };
 
-    forkful-lan = {
-      Unit.Description = "LAN-only TCP proxy for Forkful";
+    marvin-lan = {
+      Unit.Description = "LAN-only TCP proxy for Marvin";
       Service = {
         ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 127.0.0.1:${toString port}";
         NoNewPrivileges = true;
@@ -89,8 +92,8 @@ in {
     };
   };
 
-  systemd.user.sockets.forkful-lan = {
-    Unit.Description = "Forkful on ${lanAddress}:${toString lanPort} (not the Tailscale interface)";
+  systemd.user.sockets.marvin-lan = {
+    Unit.Description = "Marvin on ${lanAddress}:${toString lanPort} (not the Tailscale interface)";
     Socket = {
       ListenStream = "${lanAddress}:${toString lanPort}";
       FreeBind = true;

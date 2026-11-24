@@ -27,8 +27,8 @@ clone_url = "https://github.com/johnallen3d/credits.git"
 hosts = ["config"]
 
 [[personal]]
-# Food-logging PWA, deployed on Omarchy by ../omarchy-forkful.nix; developed
-# on the Mac (native iOS/macOS clients may follow).
+# Food-logging PWA, deployed on Omarchy as Marvin by ../omarchy-marvin.nix;
+# developed on the Mac (native iOS/macOS clients may follow).
 path = "~/dev/src/playground/forkful"
 tracker = "fizzy:6284043/03hairucnu02oe9eka6s6qccl"
 clone_url = "https://github.com/johnallen3d/forkful.git"
@@ -74,12 +74,6 @@ path = "~/dev/src/playground/yem"
 tracker = "fizzy:6284043/03gvqdn8j7zah76vg12s50l9i"
 clone_url = "https://github.com/johnallen3d/cue.git"
 hosts = ["config"]
-
-[[personal]]
-# Upstream n8n Nod (self-hosted on Omarchy by ../omarchy-nod.nix); no Fizzy
-# board, so refs resolve to the upstream GitHub repo.
-path = "~/dev/src/playground/nod"
-clone_url = "https://github.com/n8n-io/nod.git"
 
 [[personal]]
 # Browser extension: runs on the Mac. No remote yet, so nothing to clone.

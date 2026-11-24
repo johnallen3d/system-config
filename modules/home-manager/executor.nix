@@ -16,7 +16,7 @@
   };
 
   # Arch's Docker Engine is a socket-activated system service; a user manager
-  # started before docker group membership needs newgrp (same pattern as nod).
+  # started before docker group membership needs newgrp (same pattern as other Compose services).
   docker = pkgs.writeShellScript "executor-docker" ''
     set -euo pipefail
     cmd=(/usr/bin/docker "$@")

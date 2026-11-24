@@ -9,9 +9,8 @@
     ../modules/home-manager/antigravity.nix
     ../modules/home-manager/tuicr.nix
     ../modules/home-manager/omarchy-credits.nix
-    ../modules/home-manager/omarchy-forkful.nix
+    ../modules/home-manager/omarchy-marvin.nix
     ../modules/home-manager/omarchy-morning-brief.nix
-    ../modules/home-manager/omarchy-nod.nix
     ../modules/home-manager/omarchy-syncthing-lan.nix
     ../modules/home-manager/omarchy-voxl.nix
   ];
