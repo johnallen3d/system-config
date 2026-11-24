@@ -11,8 +11,11 @@
   pkgs,
   ...
 }: let
-  package = forkful.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  packages = forkful.packages.${pkgs.stdenv.hostPlatform.system};
+  package = packages.default;
   port = 4411;
+  chatPort = 4412;
+  chatState = "${config.xdg.stateHome}/forkful-chat";
   lanPort = 4410;
   # Omarchy's reserved physical LAN address, never the Tailscale interface.
   lanAddress = "192.168.4.26";
@@ -23,6 +26,10 @@
     exec ${lib.getExe package}
   '';
 in {
+  home.activation.forkfulChatState = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -d -m 0700 ${lib.escapeShellArg chatState}
+  '';
+
   systemd.user.services = {
     forkful = {
       Unit = {
@@ -34,10 +41,40 @@ in {
         Environment = [
           "FORKFUL_BIND=127.0.0.1:${toString port}"
           "VAULT_DIR=${config.home.homeDirectory}/notes"
+          "FORKFUL_CHAT_URL=http://127.0.0.1:${toString chatPort}"
         ];
         WorkingDirectory = "${config.home.homeDirectory}/notes";
         Restart = "always";
         RestartSec = 5;
+        NoNewPrivileges = true;
+      };
+      Install.WantedBy = ["default.target"];
+    };
+
+    # Food-logging chat agent (pi-durable). Loopback only, reached through
+    # forkful's /api/chat proxy; its tools call forkful's HTTP API, so vault
+    # writes stay on forkful's locked tasks. Only its OpenRouter key comes from
+    # Doppler notes/prd, never John's interactive pi/claude profiles.
+    forkful-chat = {
+      Unit = {
+        Description = "Forkful chat agent sidecar (loopback backend)";
+        # Soft ordering only: each side tolerates the other being down.
+        Wants = ["forkful.service"];
+        After = ["forkful.service"];
+        StartLimitIntervalSec = 0;
+      };
+      Service = {
+        ExecStart = "${lib.getExe pkgs.doppler} run --no-read-env --no-check-version --project notes --config prd --only-secrets OPENROUTER_API_KEY --fallback=${chatState}/doppler-fallback.json -- ${lib.getExe packages.chat}";
+        Environment = [
+          "FORKFUL_CHAT_BIND=127.0.0.1:${toString chatPort}"
+          "FORKFUL_URL=http://127.0.0.1:${toString port}"
+          "FORKFUL_CHAT_STATE=${chatState}"
+        ];
+        WorkingDirectory = chatState;
+        Restart = "always";
+        RestartSec = 5;
+        TimeoutStopSec = 30;
+        UMask = "0077";
         NoNewPrivileges = true;
       };
       Install.WantedBy = ["default.target"];
