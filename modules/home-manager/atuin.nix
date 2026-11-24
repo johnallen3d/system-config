@@ -12,6 +12,49 @@
     CLAUDE_CONFIG_DIR = "${home}/.config/claude-personal";
     PI_CODING_AGENT_DIR = "${home}/.config/pi";
   };
+
+  # Work threads (claude-gmatter + pi-work) live in a second, local-only store
+  # under its own ATUIN_HOME: separate config file, data dir, socket and daemon.
+  # Its config has no sync_address and it is never logged in, so nothing in it
+  # can reach the synced personal store on nas. Notes (pi-notes) is not captured.
+  atuin = config.programs.atuin.package;
+  workHome = "${home}/.atuin-work";
+  workAgentDirs = {
+    CLAUDE_CONFIG_DIR = "${home}/.config/claude-gmatter";
+    PI_CODING_AGENT_DIR = "${home}/.config/pi-work";
+  };
+  workEnv = workAgentDirs // {ATUIN_HOME = workHome;};
+  # Resume in the work profile with the amfaro mise env (agent-projects.nix),
+  # since the picker runs outside the project's mise activation.
+  workResumeEnv = "env -u ANTHROPIC_API_KEY -u OPENAI_API_KEY -u OPENROUTER_API_KEY"
+    + " CLAUDE_CONFIG_DIR=${workAgentDirs.CLAUDE_CONFIG_DIR}"
+    + " PI_CODING_AGENT_DIR=${workAgentDirs.PI_CODING_AGENT_DIR}"
+    + " PI_MODEL_ROUTER_JEV_MODE=primary";
+  workConfig = (pkgs.formats.toml {}).generate "atuin-work-config.toml" {
+    auto_sync = false;
+    update_check = false;
+    daemon = {
+      enabled = true;
+      socket_path = "${workHome}/daemon.sock";
+      pidfile_path = "${workHome}/data/atuin-daemon.pid";
+    };
+    threads = {
+      capture = true;
+      resume = {
+        claude = "${workResumeEnv} claude --resume {id}";
+        pi = "${workResumeEnv} pi --session {id}";
+      };
+    };
+  };
+  # The only client entry point to the work store; plain `atuin` stays personal.
+  atuinWork = pkgs.writeShellApplication {
+    name = "atuin-work";
+    text = ''
+      export ATUIN_HOME=${lib.escapeShellArg workHome}
+      exec ${atuin}/bin/atuin "$@"
+    '';
+  };
+  workCommand = "${atuin}/bin/atuin daemon start";
 in {
   # Shell history. fish binds Ctrl+R to Atuin (replacing tv's history
   # search); zsh and bash keep their own Ctrl+R, since tv never handled it there.
@@ -36,10 +79,37 @@ in {
     };
   };
 
+  home.packages = [atuinWork];
+  home.file.".atuin-work/config.toml".source = workConfig;
+
   launchd.agents.atuin-daemon.config.EnvironmentVariables = agentDirs;
+  launchd.agents.atuin-work-daemon = {
+    enable = true;
+    config = {
+      ProgramArguments = ["/bin/sh" "-c" "/bin/wait4path /nix/store && exec ${workCommand}"];
+      EnvironmentVariables = workEnv;
+      KeepAlive = {
+        Crashed = true;
+        SuccessfulExit = false;
+      };
+      ProcessType = "Background";
+      RunAtLoad = true;
+    };
+  };
   # Home Manager's macOS socket lives here; the daemon won't create the dir.
   xdg.dataFile."atuin/.keep" = lib.mkIf pkgs.stdenv.isDarwin {text = "";};
 
   systemd.user.services.atuin-daemon.Service.Environment =
-    builtins.attrValues (builtins.mapAttrs (name: value: "${name}=${value}") agentDirs);
+    lib.mapAttrsToList (name: value: "${name}=${value}") agentDirs;
+
+  systemd.user.services.atuin-work-daemon = {
+    Unit.Description = "Atuin daemon (work threads, local-only store)";
+    Service = {
+      ExecStart = workCommand;
+      Environment = lib.mapAttrsToList (name: value: "${name}=${value}") workEnv;
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+    Install.WantedBy = ["default.target"];
+  };
 }
