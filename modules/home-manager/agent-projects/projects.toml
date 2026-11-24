@@ -29,9 +29,9 @@ hosts = ["config"]
 [[personal]]
 # Food-logging PWA, deployed on Omarchy as Marvin by ../omarchy-marvin.nix;
 # developed on the Mac (native iOS/macOS clients may follow).
-path = "~/dev/src/playground/forkful"
+path = "~/dev/src/playground/marvin"
 tracker = "fizzy:6284043/03hairucnu02oe9eka6s6qccl"
-clone_url = "https://github.com/johnallen3d/forkful.git"
+clone_url = "https://github.com/johnallen3d/marvin.git"
 hosts = ["config"]
 
 [[personal]]

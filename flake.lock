@@ -78,28 +78,6 @@
         "type": "github"
       }
     },
-    "forkful": {
-      "inputs": {
-        "crane": "crane_2",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1795556518,
-        "narHash": "sha256-7zMn5pouS4yWT7Jas1QOvZARoPWZjgwZ2WxtgLQcXtQ=",
-        "ref": "main",
-        "rev": "eae766b470397ea4a52a2bfabf118418a3d511a0",
-        "revCount": 19,
-        "type": "git",
-        "url": "https://github.com/johnallen3d/forkful.git"
-      },
-      "original": {
-        "ref": "main",
-        "type": "git",
-        "url": "https://github.com/johnallen3d/forkful.git"
-      }
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -138,6 +116,28 @@
         "owner": "johnallen3d",
         "repo": "lop",
         "type": "github"
+      }
+    },
+    "marvin": {
+      "inputs": {
+        "crane": "crane_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795560381,
+        "narHash": "sha256-RqSnStAb619D52fbLibloUoMFKaULk7udMW91XkYj1A=",
+        "ref": "main",
+        "rev": "f2643a008c81e5942e53cbef5da6001fba5ee5e8",
+        "revCount": 21,
+        "type": "git",
+        "url": "https://github.com/johnallen3d/marvin.git"
+      },
+      "original": {
+        "ref": "main",
+        "type": "git",
+        "url": "https://github.com/johnallen3d/marvin.git"
       }
     },
     "nix-darwin": {
@@ -230,9 +230,9 @@
         "cliproxyModels": "cliproxyModels",
         "cliproxyPanel": "cliproxyPanel",
         "credits": "credits",
-        "forkful": "forkful",
         "home-manager": "home-manager",
         "lop": "lop",
+        "marvin": "marvin",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_2",
         "rex": "rex",
