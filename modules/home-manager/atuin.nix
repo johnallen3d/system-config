@@ -13,7 +13,7 @@
     PI_CODING_AGENT_DIR = "${home}/.config/pi";
   };
 in {
-  # Local-only shell history. fish binds Ctrl+R to Atuin (replacing tv's history
+  # Shell history. fish binds Ctrl+R to Atuin (replacing tv's history
   # search); zsh and bash keep their own Ctrl+R, since tv never handled it there.
   # Up stays with the shell, and `?` is not bound to hosted Atuin AI.
   # The daemon (launchd on macOS, socket-activated systemd user unit on Linux)
