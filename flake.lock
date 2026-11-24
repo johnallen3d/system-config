@@ -19,7 +19,7 @@
     "cliproxyPanel": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-XHguVA8+iqE/3BGz2as8bUbhhg8nmJ3k92SZgV1ddXQ=",
+        "narHash": "sha256-N/8JvK9Dw4ZqMqTUfjgAt0Rc1m/hDs71tlinK7zrA04=",
         "type": "file",
         "url": "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/latest/download/management.html"
       },
@@ -86,11 +86,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795545556,
-        "narHash": "sha256-V19t572DRs0dviYvlDnl5GZ2Cg9XpxLb7tiq0lyBY9c=",
+        "lastModified": 1795551342,
+        "narHash": "sha256-Zilho6QaepD6Vdf+v+0s4VG9aJhneCH4M3gK4EVtB0Q=",
         "ref": "main",
-        "rev": "468dae125b5bf284ee41c920c991d9fa04ea8fc6",
-        "revCount": 9,
+        "rev": "1ff7ff3e614127123889eeaf83ed9062aa62df73",
+        "revCount": 13,
         "type": "git",
         "url": "https://github.com/johnallen3d/forkful.git"
       },
@@ -107,11 +107,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795366757,
-        "narHash": "sha256-Tp4Kh4R7ID1f2mMCDlb2PiFQ/DZZsnXB2u2juWN+TT4=",
+        "lastModified": 1795534022,
+        "narHash": "sha256-xkRZ+PcPWaAyf9YrEBszYD5w2S6/Ac2tIfsufzd4dEQ=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "3b8140d21fa0a70b1b38c2ed29853dfe686234a6",
+        "rev": "b56bcd042b5e69ad188eca20d9bec1bfbf3dd453",
         "type": "github"
       },
       "original": {
@@ -215,10 +215,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1795467078,
-        "narHash": "sha256-3Q8RAtr2qBh/Kl0HvnTEhobkgm/ktPOVNmrLKWN3x9k=",
+        "lastModified": 1795546345,
+        "narHash": "sha256-wbpYJl4sGY/njIHbDl93wiWAKr3SIGTAQQJle9VPXiY=",
         "type": "tarball",
-        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.1.0-snapshot.2531.tar.gz"
+        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.1.0-snapshot.2564.tar.gz"
       },
       "original": {
         "type": "tarball",
