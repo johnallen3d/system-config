@@ -70,6 +70,7 @@ in {
           "MARVIN_CHAT_BIND=127.0.0.1:${toString chatPort}"
           "MARVIN_URL=http://127.0.0.1:${toString port}"
           "MARVIN_CHAT_STATE=${chatState}"
+          "EXECUTOR_URL=${config.executor.mcpUrl}"
         ];
         WorkingDirectory = chatState;
         Restart = "always";
