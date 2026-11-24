@@ -86,11 +86,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795555967,
-        "narHash": "sha256-KoUwt4XiGy1dTkLnIjjWdEY/bo17j0Jj7+8fs6R+xlU=",
+        "lastModified": 1795556518,
+        "narHash": "sha256-7zMn5pouS4yWT7Jas1QOvZARoPWZjgwZ2WxtgLQcXtQ=",
         "ref": "main",
-        "rev": "b7ecd370aff5c6f723ec1c73b2fa4be119a6bb59",
-        "revCount": 18,
+        "rev": "eae766b470397ea4a52a2bfabf118418a3d511a0",
+        "revCount": 19,
         "type": "git",
         "url": "https://github.com/johnallen3d/forkful.git"
       },
