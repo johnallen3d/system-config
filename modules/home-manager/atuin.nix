@@ -17,13 +17,17 @@ in {
   # search); zsh and bash keep their own Ctrl+R, since tv never handled it there.
   # Up stays with the shell, and `?` is not bound to hosted Atuin AI.
   # The daemon (launchd on macOS, socket-activated systemd user unit on Linux)
-  # captures agent threads locally; sync stays off.
+  # captures agent threads and syncs history and threads to the tailnet-only
+  # server on nas (pi-cielo hosts/nas/atuin). Sync starts after a one-time
+  # interactive `atuin login` per host; the key and password stay out of Nix.
   programs.atuin = {
     enable = true;
     flags = ["--disable-up-arrow" "--disable-ai" "--disable-ctrl-r"];
     daemon.enable = true;
     settings = {
-      auto_sync = false;
+      # Atuin 18.24 always uses records sync, so there is no sync.records.
+      sync_address = "https://nas.taila14c2.ts.net:8889";
+      auto_sync = true;
       update_check = false;
       threads.capture = true;
       # Clients find the socket-activated socket through XDG_RUNTIME_DIR, which
