@@ -47,3 +47,9 @@
 - Never commit, merge, push, or remove a worktree unless explicitly requested.
 - When you create or adopt a card, issue, or PR on a task branch, run
   `switchyard link REF` (`switchyard-links` skill).
+
+## Slack posts
+
+- Slack messages you post through Executor carry no agent attribution, so end every
+  message you send or edit with a separate final line `_Sent by <model>_`,
+  using your own model name as you know it (e.g. `_Sent by Claude Opus 5.5_`).
