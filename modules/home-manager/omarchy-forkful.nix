@@ -16,6 +16,12 @@
   lanPort = 4410;
   # Omarchy's reserved physical LAN address, never the Tailscale interface.
   lanAddress = "192.168.4.26";
+  # Vault tasks shell out to vlt from the Home Manager profile, which the user
+  # manager's PATH lacks. Environment= can't extend PATH, so prepend here.
+  start = pkgs.writeShellScript "forkful-start" ''
+    export PATH="${config.home.profileDirectory}/bin''${PATH:+:$PATH}"
+    exec ${lib.getExe package}
+  '';
 in {
   systemd.user.services = {
     forkful = {
@@ -24,7 +30,7 @@ in {
         StartLimitIntervalSec = 0;
       };
       Service = {
-        ExecStart = lib.getExe package;
+        ExecStart = "${start}";
         Environment = [
           "FORKFUL_BIND=127.0.0.1:${toString port}"
           "VAULT_DIR=${config.home.homeDirectory}/notes"
