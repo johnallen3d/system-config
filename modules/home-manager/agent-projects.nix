@@ -6,6 +6,8 @@
 }: let
   amfaroConfig = "${config.home.homeDirectory}/dev/src/amfaro/mise.toml";
   # Personal projects whose tracker is a Fizzy board get a .fizzy.yaml.
+  # Omit api_url (https://app.fizzy.do is the default/profile URL): fizzy CLI 4.x
+  # warns on stderr whenever a repo .fizzy.yaml sets api_url without being trusted.
   fizzyProjects = lib.concatMap (p: let
     m = builtins.match "fizzy:([^/]+)/(.+)" (p.tracker or "");
   in
@@ -13,7 +15,6 @@
       dir = config.home.homeDirectory + lib.removePrefix "~" p.path;
       file = pkgs.writeText "fizzy.yaml" ''
         account: "${builtins.elemAt m 0}"
-        api_url: https://app.fizzy.do
         board: ${builtins.elemAt m 1}
       '';
     })
@@ -182,7 +183,7 @@ in {
           $DRY_RUN_CMD mkdir -p "$(dirname "$exclude")"
           $DRY_RUN_CMD sh -c 'printf "%s\n" .fizzy.yaml >> "$1"' sh "$exclude"
         fi
-        cmp -s "$src" "$dir/.fizzy.yaml" || $DRY_RUN_CMD install -m 644 "$src" "$dir/.fizzy.yaml"
+        cmp -s "$src" "$dir/.fizzy.yaml" || $DRY_RUN_CMD install -m 600 "$src" "$dir/.fizzy.yaml"
       }
     ''
     + lib.concatMapStrings (p: ''
