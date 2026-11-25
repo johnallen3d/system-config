@@ -126,11 +126,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795631984,
-        "narHash": "sha256-vSPFsW0xvvYj+r4ud/uJ6Sd4OiX6TX1VQUl6JAXDLzE=",
+        "lastModified": 1795633694,
+        "narHash": "sha256-kWueu8tSzMDeP7X4DJBaN3WUg8lLR+zjtY0jO1d6Ltw=",
         "ref": "main",
-        "rev": "74eb836c7ee574ff5b22f8a7006eb1de7dd5e949",
-        "revCount": 39,
+        "rev": "ad18f8990240301f4842c0424261b998b9be5ac0",
+        "revCount": 40,
         "type": "git",
         "url": "https://github.com/johnallen3d/marvin.git"
       },
@@ -215,10 +215,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1795629339,
-        "narHash": "sha256-wcJG7JpgO/WIRARCZaBt4eug8fVZKwQEuu3wvUnw+Is=",
+        "lastModified": 1795632457,
+        "narHash": "sha256-/okJxlbSGkGIFDLnvKWBl+6QVZPPWoqUP9cI+vETrSs=",
         "type": "tarball",
-        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.1.0-snapshot.2629.tar.gz"
+        "url": "https://pkgs.superlogical.com/rex/nix/snapshot/0.1.0-snapshot.2639.tar.gz"
       },
       "original": {
         "type": "tarball",
