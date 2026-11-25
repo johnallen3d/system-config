@@ -59,6 +59,11 @@ function __fish_prefer_managed_paths --on-variable PWD
     fish_add_path --global --move --prepend /nix/var/nix/profiles/default/bin
     fish_add_path --global --move --prepend $HOME/.nix-profile/bin
     fish_add_path --global --move --prepend $HOME/.local/bin
+    # Keep Rex's CLI directory at the front of PATH when running inside Rex.
+    if set -q REX_BIN_DIR; and test -n "$REX_BIN_DIR"; and test -d "$REX_BIN_DIR"
+        fish_add_path --global --move --prepend -- "$REX_BIN_DIR"
+        fish_add_path --path --move --prepend -- "$REX_BIN_DIR"
+    end
 end
 __fish_prefer_managed_paths
 

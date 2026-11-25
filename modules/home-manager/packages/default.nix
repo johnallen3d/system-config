@@ -215,5 +215,12 @@ in {
   };
   programs.zsh = {
     enable = true;
+    initContent = ''
+      # Keep Rex's CLI directory at the front of PATH when running inside Rex.
+      if [[ -n "''${REX_BIN_DIR:-}" && -d "$REX_BIN_DIR" ]]; then
+        typeset -U path
+        path=("$REX_BIN_DIR" "''${path[@]}")
+      fi
+    '';
   };
 }
