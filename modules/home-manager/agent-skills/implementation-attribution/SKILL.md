@@ -33,8 +33,11 @@ session/message or delegated-result evidence. No tracked file is needed.
   successful scoped writes/edits (including reviewed shell writes). In Claude,
   use the task transcript's assistant `message.model` fields; in Pi,
   `runtime_model_info` locates the session file but its current model is not
-  provenance. Prose self-identification, the selected/default model, the last
-  model before `/wrap`, and attribution reminders are not proof.
+  provenance; in Antigravity (`agy`), use the task transcript's
+  `PLANNER_RESPONSE` `.model` fields paired with its `tool_calls`. Prose
+  self-identification, the selected/default model, `<USER_SETTINGS_CHANGE>` /
+  `Model Selection`, the last model before `/wrap`, and attribution reminders
+  are not proof.
 - Claude transcripts are readable JSONL under
   `$CLAUDE_CONFIG_DIR/projects/<slug>/<session-id>.jsonl`, where `<slug>` is
   the session's start directory with `/` and `.` replaced by `-` (often the
@@ -51,15 +54,59 @@ session/message or delegated-result evidence. No tracked file is needed.
     -- "$transcript"
   ```
 
+- Antigravity (`agy`) transcripts are readable JSONL under
+  `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript_full.jsonl`
+  (prefer `transcript_full.jsonl` over `transcript.jsonl`, which may truncate
+  `tool_calls`). Use `Conversation ID` from `<user_information>` in the active
+  session, or locate another task's session by branch/worktree, and list the
+  model behind each scoped write with:
+
+  ```bash
+  grep -rl "$branch_or_worktree" ~/.gemini/antigravity-cli/brain/*/.system_generated/logs/transcript.jsonl
+  jq -r 'select(.type=="PLANNER_RESPONSE") | .model as $m
+    | .tool_calls[]?
+    | "\($m)\t\(.name)\t\((.args.Path // .args.CommandLine // "")|tostring|.[0:120])"' \
+    -- "$transcript_full"
+  ```
+
   Models seen only on reads, skill lookups, or Git/tracker steps earn no
   credit. Resolve attribution from this output yourself; ask John only if the
   transcript is missing or the writes themselves are ambiguous.
 - If the handoff is missing, inspect the original task session and delegated
   handoffs only; never scan unrelated profiles or pick the newest session.
-- Use recent commits only for the trailer email/format convention, never to infer
-  contributors or invent emails.
+
+## Trailer conventions
+
+If the repository already establishes a `Co-Authored-By:` format for a
+contributor's provider, match it. Otherwise — including when a repository has no
+prior commits from that provider — use these established personal defaults
+without stopping to ask John:
+
+- **Antigravity / Gemini** (`agy`, or Gemini models via Antigravity in Pi/Claude):
+  `Co-Authored-By: Antigravity (<Model>) <noreply@google.com>` — e.g.
+  `Co-Authored-By: Antigravity (Gemini 4 Neon) <noreply@google.com>`,
+  `Co-Authored-By: Antigravity (Gemini 4 Hydrogen) <noreply@google.com>`,
+  `Co-Authored-By: Antigravity (Gemini 4 Argon) <noreply@google.com>`,
+  `Co-Authored-By: Antigravity (Gemini 3.8 Flash) <noreply@google.com>`.
+  Map model IDs to human-readable names and drop proxy effort suffixes
+  (`-xhigh`, `-high`, `-low`), e.g. `gemini-4-neon` or `gemini-4-neon-xhigh` →
+  `Gemini 4 Neon`.
+- **Claude** (including Claude models run in `agy` or via Antigravity):
+  `Co-Authored-By: Claude <Model> <noreply@anthropic.com>` — e.g.
+  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (drop proxy effort
+  suffixes such as `claude-opus-5-5-high` → `Claude Opus 5.5`).
+- **OpenAI / Codex**:
+  `Co-Authored-By: OpenAI Codex (<model-id>) <noreply@openai.com>` — e.g.
+  `Co-Authored-By: OpenAI Codex (gpt-6.1-sol) <noreply@openai.com>`.
+
+Use recent commits only to check for a repo-specific format convention, never to
+infer contributor models or invent emails for an unlisted provider.
+
+## Final check
+
 - Record the resolved contributors and evidence in the conversation, then write
   one trailer per verified contributor, deduplicated.
-- If identity, scope, delegated provenance, or the email convention can't be
-  verified, stop before committing and ask one targeted question. Never fall back
-  to the cleanup model or silently omit attribution.
+- Stop before committing and ask one targeted question only if contributor
+  identity, scope, or delegated provenance can't be verified, or if an unlisted
+  provider has neither a documented default above nor a repo convention. Never
+  fall back to the cleanup model or silently omit attribution.

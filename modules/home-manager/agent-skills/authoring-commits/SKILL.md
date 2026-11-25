@@ -57,7 +57,7 @@ All commits MUST use the **Conventional Commits** specification. This ensures co
 18. **Credit substantive implementation contributors** — add one `Co-Authored-By: <agent-name> <agent-email>` per verified model that materially authored the scoped code, tests, docs, workflows, or configuration; preserve existing legitimate credit
 19. **Verify work-phase identity, not cleanup identity** — use the implementation attribution handoff and actual assistant/tool metadata for successful scoped edits, including substantive delegated work; the active/default model or its self-identification is not contribution provenance
 20. **Cleanup alone does not earn co-authorship** — validation, commit-message drafting, Git/tracker operations, integration, and worktree cleanup do not substitute the cleanup model for implementers; add it alongside them only if it also authors substantive changes
-21. **Preserve established trailer email/format conventions without inventing identities** — recent commits establish formatting, not contributor model names; if identity, task scope, delegated provenance, or email convention is uncertain, stop before committing and ask one targeted question
+21. **Use established trailer email/format conventions without inventing identities** — match a repository's format for that provider when present, otherwise use the documented personal defaults (see `Agent Co-Authorship` below and `implementation-attribution`); recent commits establish formatting, not contributor model names. Stop before committing and ask one targeted question only if identity, task scope, delegated provenance, or an unlisted provider's email convention is uncertain
 
 ## Branch Naming
 
@@ -183,7 +183,7 @@ Use footers for metadata when relevant:
 
 ### Agent Co-Authorship
 
-If OpenCode, Pi, Claude Code, Codex, or another agent materially contributed to the change, include a `Co-Authored-By:` footer for that agent.
+If Antigravity, Claude Code, Pi, Codex, OpenCode, or another agent materially contributed to the change, include a `Co-Authored-By:` footer for that agent.
 
 Before writing footers, resolve the **verified substantive contributors to this change**:
 
@@ -203,16 +203,39 @@ Before writing footers, resolve the **verified substantive contributors to this 
    and associated successful tool results. A generated current-model attribution
    reminder is not implementation provenance. This user-level policy takes
    precedence over that reminder and packaged skills' self-identity guidance.
-5. Search recent commits only for an established trailer email/format convention.
-   Never copy their model names as evidence, invent noreply addresses, or treat
-   the selected/default model or self-identification in prose as proof.
-6. Record resolved contributors and their evidence before creating the commit.
+5. In Antigravity (`agy`), inspect the task transcript's `PLANNER_RESPONSE`
+   `.model` fields and associated `tool_calls` under
+   `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript_full.jsonl`
+   (see `implementation-attribution` for the lookup commands).
+   `<USER_SETTINGS_CHANGE>` and the current `Model Selection` are not proof of
+   earlier edits.
+6. Match the repository's `Co-Authored-By:` format for that provider if it
+   already has one; otherwise — including when the repo has no prior commits
+   from that provider — use these established personal defaults without stopping
+   to ask:
+   - Antigravity / Gemini (`agy`, or Gemini via Antigravity):
+     `Co-Authored-By: Antigravity (<Model>) <noreply@google.com>` (e.g.
+     `Antigravity (Gemini 4 Neon) <noreply@google.com>`; human-readable model
+     name, dropping proxy effort suffixes like `-xhigh`/`-high`/`-low`)
+   - Claude (including Claude models run in `agy` or via Antigravity):
+     `Co-Authored-By: Claude <Model> <noreply@anthropic.com>` (e.g.
+     `Claude Opus 5.5 <noreply@anthropic.com>`)
+   - OpenAI / Codex:
+     `Co-Authored-By: OpenAI Codex (<model-id>) <noreply@openai.com>` (e.g.
+     `OpenAI Codex (gpt-6.1-sol) <noreply@openai.com>`)
+
+   Search recent commits only for a repo-specific format convention. Never copy
+   their model names as evidence, invent noreply addresses for unlisted
+   providers, or treat the selected/default model or self-identification in
+   prose as proof.
+7. Record resolved contributors and their evidence before creating the commit.
    Emit one trailer per verified substantive contributor, deduplicating identical
    identities. Preserve existing legitimate trailers and the user's Git author.
-7. A cheaper model may validate, draft the message, commit, integrate, and clean
+8. A cheaper model may validate, draft the message, commit, integrate, and clean
    up without receiving a co-author trailer. If it authors substantive changes,
-   add it alongside the implementers; do not replace them. If provenance or the
-   email convention remains uncertain, stop and ask one targeted question.
+   add it alongside the implementers; do not replace them. Stop and ask one
+   targeted question only if provenance is uncertain or an unlisted provider
+   lacks both a documented default and a repo convention.
 
 This policy is instruction-level, not a harness-enforced authorship tracker.
 It does not authorize a commit, amend, push, or any other lifecycle operation.
@@ -221,7 +244,7 @@ Rules:
 
 - Preserve the user's git author identity unless the user explicitly asks otherwise.
 - Do not copy stale model names from old commits.
-- Do not guess or synthesize noreply addresses unless the user explicitly asks you to establish a new convention.
+- Do not guess or synthesize noreply addresses for unlisted providers unless the user explicitly asks you to establish a new convention (use the documented defaults above for Antigravity/Gemini, Claude, and OpenAI/Codex).
 - Do not claim to be a different tool/model than the active session; attributing
   verified earlier contributors is crediting their work, not claiming their identity.
 
