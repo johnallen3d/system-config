@@ -60,8 +60,8 @@ in {
       Unit = {
         Description = "Marvin chat agent sidecar (loopback backend)";
         # Soft ordering only: each side tolerates the other being down.
-        Wants = ["marvin.service"];
-        After = ["marvin.service"];
+        Wants = ["marvin.service" "agent-browser.service"];
+        After = ["marvin.service" "agent-browser.service"];
         StartLimitIntervalSec = 0;
       };
       Service = {
@@ -71,6 +71,8 @@ in {
           "MARVIN_URL=http://127.0.0.1:${toString port}"
           "MARVIN_CHAT_STATE=${chatState}"
           "EXECUTOR_URL=${config.executor.mcpUrl}"
+          "MARVIN_BROWSER_CDP_URL=http://127.0.0.1:${toString config.omarchyVoxl.cdpPort}"
+          "MARVIN_VOXL_URL=https://${config.omarchyVoxl.host}:${toString config.omarchyVoxl.port}/"
         ];
         WorkingDirectory = chatState;
         Restart = "always";

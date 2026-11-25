@@ -126,11 +126,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795566236,
-        "narHash": "sha256-ZeA/4iGmjpPgsxu7kdoKOknttcc2OV46yw5KLpYzG/k=",
+        "lastModified": 1795566402,
+        "narHash": "sha256-YGm5HYiqtgNwTkjm/dBThsYedmK4ehnSNpxD4/ChlIM=",
         "ref": "main",
-        "rev": "a5fe7ace9c1c1b456000eeb24a76e0241e554b62",
-        "revCount": 29,
+        "rev": "800aea8c835ff9738fe217c392229fb70f9e1a40",
+        "revCount": 30,
         "type": "git",
         "url": "https://github.com/johnallen3d/marvin.git"
       },
