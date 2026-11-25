@@ -126,11 +126,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795566402,
-        "narHash": "sha256-YGm5HYiqtgNwTkjm/dBThsYedmK4ehnSNpxD4/ChlIM=",
+        "lastModified": 1795567221,
+        "narHash": "sha256-M1hvVGExRAhQWosLOMJMnPrvk3rilQ9spc76yqx8rUM=",
         "ref": "main",
-        "rev": "800aea8c835ff9738fe217c392229fb70f9e1a40",
-        "revCount": 30,
+        "rev": "fb72ac43f7a9745e11b73cb2a6a5b689901cc831",
+        "revCount": 31,
         "type": "git",
         "url": "https://github.com/johnallen3d/marvin.git"
       },
@@ -246,11 +246,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1795565469,
-        "narHash": "sha256-yK4aeK5PjXQVJxTIcovyF2hO91UD6gbihwxW4xfv5q8=",
+        "lastModified": 1795567292,
+        "narHash": "sha256-WlL/cI1uYbratlfjHVqR4zknc2jlOYBRWc3vh33dcGQ=",
         "owner": "johnallen3d",
         "repo": "switchyard",
-        "rev": "c74cb00bc62a2ddfa15fc8316b5a2ed88d065819",
+        "rev": "61d257b421591b4ec4a9f32144a12b86ce159144",
         "type": "github"
       },
       "original": {
