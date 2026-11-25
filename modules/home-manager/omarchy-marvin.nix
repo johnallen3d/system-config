@@ -26,6 +26,12 @@
     export PATH="${config.home.profileDirectory}/bin''${PATH:+:$PATH}"
     exec ${lib.getExe package}
   '';
+  # Chat sidecar talks to the notes/marvin Rex tab via the rex CLI in the Home
+  # Manager profile; prepend the profile bin directory so rex is on PATH.
+  chatStart = pkgs.writeShellScript "marvin-chat-start" ''
+    export PATH="${config.home.profileDirectory}/bin''${PATH:+:$PATH}"
+    exec ${lib.getExe packages.chat}
+  '';
 in {
   home.activation.marvinChatState = lib.hm.dag.entryAfter ["writeBoundary"] ''
     $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -d -m 0700 ${lib.escapeShellArg chatState}
@@ -52,27 +58,27 @@ in {
       Install.WantedBy = ["default.target"];
     };
 
-    # Food-logging chat agent (pi-durable). Loopback only, reached through
-    # marvin's /api/chat proxy; its tools call marvin's HTTP API, so vault
-    # writes stay on marvin's locked tasks. Only its OpenRouter key comes from
-    # Doppler notes/prd, never John's interactive pi/claude profiles.
+    # Chat sidecar bridged to the cmd+o notes/marvin Rex tab (running agy in
+    # ~/notes). Loopback only, reached through marvin's /api/chat proxy.
     marvin-chat = {
       Unit = {
         Description = "Marvin chat agent sidecar (loopback backend)";
         # Soft ordering only: each side tolerates the other being down.
-        Wants = ["marvin.service" "agent-browser.service" "switchyard-server.service"];
-        After = ["marvin.service" "agent-browser.service" "switchyard-server.service"];
+        Wants = ["marvin.service" "rex.service" "switchyard-server.service"];
+        After = ["marvin.service" "rex.service" "switchyard-server.service"];
         StartLimitIntervalSec = 0;
       };
       Service = {
-        ExecStart = "${lib.getExe pkgs.doppler} run --no-read-env --no-check-version --project notes --config prd --only-secrets OPENROUTER_API_KEY --fallback=${chatState}/doppler-fallback.json -- ${lib.getExe packages.chat}";
+        ExecStart = "${chatStart}";
         Environment = [
           "MARVIN_CHAT_BIND=127.0.0.1:${toString chatPort}"
           "MARVIN_URL=http://127.0.0.1:${toString port}"
           "MARVIN_CHAT_STATE=${chatState}"
-          "EXECUTOR_URL=${config.executor.mcpUrl}"
+          "MARVIN_REX_SESSION=notes"
+          "MARVIN_REX_TAB=marvin"
+          "MARVIN_REX_CWD=${config.home.homeDirectory}/notes"
+          "MARVIN_REX_MODEL=gemini-4-hydrogen"
           "SWITCHYARD_MCP_URL=http://127.0.0.1:7391/mcp"
-          "MARVIN_BROWSER_CDP_URL=http://127.0.0.1:${toString config.omarchyVoxl.cdpPort}"
           "MARVIN_VOXL_URL=https://${config.omarchyVoxl.host}:${toString config.omarchyVoxl.port}/"
         ];
         WorkingDirectory = chatState;
