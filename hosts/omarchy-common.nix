@@ -41,7 +41,6 @@ in {
     # open their floats here when an Omarchy session is focused; spawned work
     # also runs here through switchyard, which needs wt.
     ../modules/home-manager/packages/switchyard-config.nix
-    ../modules/home-manager/nix-netrc.nix
     rex.homeManagerModules.default
   ];
 

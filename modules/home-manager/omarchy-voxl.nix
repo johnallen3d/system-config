@@ -10,13 +10,13 @@
 }: let
   cfg = config.omarchyVoxl;
   display = ":1";
-  voxlPackage = (pkgs.callPackage "${voxl}/default.nix" {}).overrideAttrs {
+  voxlPackage = (pkgs.callPackage "${voxl}/default.nix" {xorg = {libxcb = pkgs.libxcb;};}).overrideAttrs {
     # Upstream's tsc type-check fails on nixpkgs' newer TypeScript (typed-array
     # generics); esbuild still bundles the client, so skip only the check.
     preBuild = "";
   };
   # Xvfb with XTEST scroll axes, for voxl's smooth scrolling.
-  xvfb = pkgs.callPackage "${voxl}/xvfb.nix" {};
+  xvfb = pkgs.callPackage "${voxl}/xvfb.nix" {xorg = {xorgserver = pkgs.xorg-server;};};
   # The largest desktop voxl may resize to; it fits the screen to the viewer.
   maxSize = "3840x2400";
   url = "https://${cfg.host}:${toString cfg.port}/";

@@ -108,7 +108,7 @@ in {
         threads.capture = true;
         # Clients find the socket-activated socket through XDG_RUNTIME_DIR, which
         # SSH shells on Miller and Drummer lack. Pin it (johna is uid 1000).
-        daemon.socket_path = lib.mkIf pkgs.stdenv.isLinux "/run/user/1000/atuin.sock";
+        daemon.socket_path = lib.mkIf pkgs.stdenv.hostPlatform.isLinux "/run/user/1000/atuin.sock";
       };
     };
 
@@ -130,7 +130,7 @@ in {
       };
     };
     # Home Manager's macOS socket lives here; the daemon won't create the dir.
-    xdg.dataFile."atuin/.keep" = lib.mkIf pkgs.stdenv.isDarwin {text = "";};
+    xdg.dataFile."atuin/.keep" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {text = "";};
 
     systemd.user.services.atuin-daemon.Service.Environment =
       lib.mapAttrsToList (name: value: "${name}=${value}") agentDirs;
