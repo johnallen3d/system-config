@@ -22,7 +22,42 @@
     ln -s ${cliproxyPanel} "$out/management.html"
   '';
   proxy = pkgs.cliproxyapi;
-  modelCatalog = "${cliproxyModels}/models.json";
+  # Upstream router-for-me/models only defines gemini-4-neon-xhigh for the
+  # antigravity channel (and labels it "Gemini 4 Neon"). Expose all four
+  # upstream Neon effort variants with distinct display names so agy enables
+  # /effort and avoids label collisions with the bare gemini-4-neon alias.
+  modelCatalog = pkgs.runCommand "subscription-proxy-models.json" {} ''
+    ${pkgs.python3}/bin/python3 - ${cliproxyModels}/models.json "$out" <<'EOF'
+    import copy, json, sys
+    src, dst = sys.argv[1], sys.argv[2]
+    data = json.loads(open(src).read())
+    antigravity = data.get("antigravity", [])
+    by_id = {m.get("id"): m for m in antigravity if isinstance(m, dict)}
+    base = copy.deepcopy(by_id.get("gemini-4-neon-xhigh"))
+    if base is None:
+        raise SystemExit("subscription-proxy: gemini-4-neon-xhigh missing from cliproxyModels")
+    variants = (
+        ("gemini-4-neon-low", "Gemini 4 Neon (Low)"),
+        ("gemini-4-neon-medium", "Gemini 4 Neon (Medium)"),
+        ("gemini-4-neon-high", "Gemini 4 Neon (High)"),
+        ("gemini-4-neon-xhigh", "Gemini 4 Neon (XHigh)"),
+    )
+    for model_id, label in variants:
+        if model_id in by_id:
+            by_id[model_id]["display_name"] = label
+            by_id[model_id]["description"] = label
+        else:
+            entry = copy.deepcopy(base)
+            entry["id"] = model_id
+            entry["name"] = model_id
+            entry["display_name"] = label
+            entry["description"] = label
+            antigravity.append(entry)
+    with open(dst, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    EOF
+  '';
   template = pkgs.writeText "subscription-proxy-server.json" (builtins.toJSON {
     host = cfg.address;
     catalog = modelCatalog;

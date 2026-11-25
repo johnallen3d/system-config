@@ -44,9 +44,15 @@ PI_PROVIDER = {"personal": "subscription-antigravity", "work": "subscription-cod
 # Personal Claude: the paid Claude login plus these Antigravity extras.
 PERSONAL_CLAUDE_EXTRAS = ("claude-opus-5-5-high", "claude-sonnet-5-5-high", "gemini-4-neon-xhigh", "gemini-4-hydrogen-xhigh")
 # agy (gateway mode) sends Gemini 4 IDs without the effort suffix, which
-# Antigravity bakes into its model names. Publish the bare names as forks.
-ANTIGRAVITY_ALIASES = [{"name": f"gemini-4-{m}-{effort}", "alias": f"gemini-4-{m}", "fork": True}
-                       for m, effort in (("neon", "xhigh"), ("hydrogen", "xhigh"), ("argon", "high"), ("carbon", "high"))]
+# Antigravity bakes into its model names. Publish the bare names as forks;
+# Neon keeps a distinct bare display-name so it does not collide with its
+# suffixed effort variants in agy's model picker and /effort switcher.
+ANTIGRAVITY_ALIASES = [
+    {"name": "gemini-4-neon-xhigh", "alias": "gemini-4-neon", "fork": True, "display-name": "Gemini 4 Neon"},
+    {"name": "gemini-4-hydrogen-xhigh", "alias": "gemini-4-hydrogen", "fork": True},
+    {"name": "gemini-4-argon-high", "alias": "gemini-4-argon", "fork": True},
+    {"name": "gemini-4-carbon-high", "alias": "gemini-4-carbon", "fork": True},
+]
 ROOT = Path.home() / ".config/subscription-proxy"
 
 
@@ -465,24 +471,41 @@ def activate(profile, claude=False):
         print("Work Go subagents also use the proxy; add the central Go key before using them. No direct Go fallback is selected.")
 
 
+def merge_antigravity_aliases(aliases):
+    merged = copy.deepcopy(aliases) if isinstance(aliases, dict) else {}
+    ours = {a["alias"] for a in ANTIGRAVITY_ALIASES}
+    existing = [a for a in (merged.get("antigravity") or []) if a.get("alias") not in ours]
+    merged["antigravity"] = existing + [dict(a) for a in ANTIGRAVITY_ALIASES]
+    return merged
+
+
 def reload_catalog(profile, catalog):
     """Explicitly reload an active server's pinned catalog, without restarting it."""
     catalog = Path(catalog)
     definition = load_json(catalog)
     required = {m["id"] for m in definition.get("claude", [])}
+    required_ag = {m["id"] for m in definition.get("antigravity", [])} if profile == "personal" else set()
     if not catalog.is_absolute() or not required:
         raise ValueError("Pinned catalog must be an absolute local file with Claude definitions.")
+    patch = {"models": {"catalog": str(catalog)}}
+    if profile == "personal":
+        current = request(profile, "/config").get("oauth", {}).get("model-alias", {})
+        patch["oauth"] = {"model-alias": merge_antigravity_aliases(current)}
     # Atomic seed writes can update management-visible config without refreshing
     # the registry. A minimal management PATCH commits the runtime update too.
-    request(profile, "/config", "PATCH", {"models": {"catalog": str(catalog)}})
+    request(profile, "/config", "PATCH", patch)
     deadline = time.monotonic() + 15
     while True:
         registered = {m["id"] for m in request(profile, "/routing/model-definitions/claude").get("models", [])}
-        if required <= registered:
+        ag_ok = True
+        if required_ag:
+            registered_ag = {m["id"] for m in request(profile, "/routing/model-definitions/antigravity").get("models", [])}
+            ag_ok = required_ag <= registered_ag
+        if required <= registered and ag_ok:
             print(f"Pinned {profile} model catalog reloaded and verified; server was not restarted.")
             return
         if time.monotonic() >= deadline:
-            raise ValueError(f"{profile}: runtime catalog did not publish the pinned Claude definitions.")
+            raise ValueError(f"{profile}: runtime catalog did not publish the pinned definitions.")
         time.sleep(0.5)
 
 
@@ -516,9 +539,7 @@ def seed_server(template):
         data.setdefault("server", {}).update(host=definition["host"], port=definition["ports"][profile])
         data.setdefault("oauth", {})["auth-dir"] = str(directory / "auth")
         if profile == "personal":
-            aliases = data["oauth"].setdefault("model-alias", {})
-            ours = {a["alias"] for a in ANTIGRAVITY_ALIASES}
-            aliases["antigravity"] = [a for a in aliases.get("antigravity") or [] if a.get("alias") not in ours] + ANTIGRAVITY_ALIASES
+            data["oauth"]["model-alias"] = merge_antigravity_aliases(data["oauth"].get("model-alias"))
         management = data.setdefault("management", {})
         management.update({"allow-remote": True, "disable-control-panel": False, "disable-auto-update-panel": True})
         management.setdefault("secret-key", keys[profile]["management"])

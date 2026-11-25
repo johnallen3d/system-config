@@ -282,7 +282,11 @@ session: features tied to one, such as `--remote-agent`, are unavailable.
 agy sends Gemini 4 IDs without the effort suffix that Antigravity bakes into
 its names, so the personal server seed also publishes `gemini-4-{neon,hydrogen,argon,carbon}`
 as `oauth.model-alias` forks of the upstream `-xhigh`/`-high` models, keeping
-any aliases added in the panel.
+any aliases added in the panel. For Neon, `subscription-proxy.nix` also derives
+a catalog exposing all four upstream effort variants (`gemini-4-neon-{low,medium,high,xhigh}`)
+with distinct display names (and `"Gemini 4 Neon"` on the bare alias) so `agy`
+enables `/effort` and `--effort`, defaulting Switchyard (`agy:gemini-4-neon-high`)
+and new bare `agy` sessions (`Gemini 4 Neon (High)`) to `high`.
 
 The module builds agy from Google's release bucket until nixpkgs reaches that
 version, then uses nixpkgs. Activation merges only the Switchyard MCP server

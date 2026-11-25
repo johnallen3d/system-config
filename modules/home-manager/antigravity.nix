@@ -128,7 +128,7 @@ in {
     '';
     # Merge only the switchyard server into agy's MCP config; agy and the user
     # own the rest. settings.json is left writable for Switchyard's
-    # trustedWorkspaces.
+    # trustedWorkspaces and interactive /model or /effort changes.
     home.activation.antigravityMcp = lib.hm.dag.entryAfter ["linkGeneration"] ''
       if [ -z "''${DRY_RUN:-}" ]; then
         ${pkgs.python3}/bin/python3 - "$HOME/.gemini/config/mcp_config.json" ${lib.escapeShellArg (builtins.toJSON mcpServers)} <<'EOF'
@@ -146,6 +146,33 @@ in {
           tmp = path + ".tmp"
           with open(tmp, "w") as f:
               json.dump(merged, f, indent=2)
+              f.write("\n")
+          os.replace(tmp, path)
+      EOF
+      fi
+    '';
+    # Default bare agy sessions to Gemini 4 Neon (High) only when no model is
+    # saved yet or when migrating the old bare "Gemini 4 Neon" label (which
+    # bypassed /effort once suffixed variants were exposed). Later /model and
+    # /effort choices are preserved.
+    home.activation.antigravityDefaultModel = lib.hm.dag.entryAfter ["linkGeneration"] ''
+      if [ -z "''${DRY_RUN:-}" ]; then
+        ${pkgs.python3}/bin/python3 - "$HOME/.gemini/antigravity-cli/settings.json" <<'EOF'
+      import json, os, sys
+      path = sys.argv[1]
+      try:
+          with open(path) as f:
+              text = f.read()
+      except FileNotFoundError:
+          text = ""
+      data = json.loads(text) if text.strip() else {}
+      if data.get("model") in (None, "", "Gemini 4 Neon"):
+          data["model"] = "Gemini 4 Neon (High)"
+          os.makedirs(os.path.dirname(path), exist_ok=True)
+          tmp = path + ".tmp"
+          fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+          with os.fdopen(fd, "w") as f:
+              json.dump(data, f, indent=2)
               f.write("\n")
           os.replace(tmp, path)
       EOF

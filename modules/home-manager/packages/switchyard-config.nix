@@ -62,7 +62,7 @@ in {
         work = ["miller" "drummer"];
       };
       # Default "HARNESS[:MODEL]" per profile group; unset groups use claude.
-      harnesses.personal = "agy:gemini-4-neon";
+      harnesses.personal = "agy:gemini-4-neon-high";
       # Paths the Inbox skips. Older switchyard binaries ignore this key.
       inbox.exclude = ["~/notes"];
       # Rosé Pine names for the managed theme's colours.
