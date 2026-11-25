@@ -21,7 +21,12 @@
     mkdir -p "$out"
     ln -s ${cliproxyPanel} "$out/management.html"
   '';
-  proxy = pkgs.cliproxyapi;
+  # Upstream 8.0.75 builds GetAvailableModels by iterating r.models directly,
+  # shuffling /v1beta/models and /v1/models on every token-refresh rebuild.
+  # Sort by model ID so agy's 32 positional custom-model slots stay stable.
+  proxy = pkgs.cliproxyapi.overrideAttrs (old: {
+    patches = (old.patches or []) ++ [./subscription-proxy/cliproxyapi-sort-available-models.patch];
+  });
   # Upstream router-for-me/models only defines gemini-4-neon-xhigh for the
   # antigravity channel (and labels it "Gemini 4 Neon"). Expose all four
   # upstream Neon effort variants with distinct display names so agy enables

@@ -16,7 +16,10 @@ There is no custom OAuth/login/key editor: use the upstream panel.
 - Personal Claude Code: personal proxy's Messages endpoint; the paid Claude
   login plus Antigravity extras (Gemini 4, Claude 5.5 High).
 
-CLIProxyAPI is nixpkgs' `cliproxyapi`. The official general model catalog
+CLIProxyAPI is nixpkgs' `cliproxyapi` with a small local patch sorting
+`ModelRegistry.GetAvailableModels` by model ID so `/v1beta/models` and
+`/v1/models` return deterministic order instead of random Go map iteration
+order. The official general model catalog
 (`router-for-me/models`) and Management Center (`management.html` from its
 latest release) are flake inputs (`cliproxyModels`, `cliproxyPanel`). All three
 are locked in `flake.lock` and move forward with every `mise update-system`;
@@ -286,7 +289,11 @@ any aliases added in the panel. For Neon, `subscription-proxy.nix` also derives
 a catalog exposing all four upstream effort variants (`gemini-4-neon-{low,medium,high,xhigh}`)
 with distinct display names (and `"Gemini 4 Neon"` on the bare alias) so `agy`
 enables `/effort` and `--effort`, defaulting Switchyard (`agy:gemini-4-neon-high`)
-and new bare `agy` sessions (`Gemini 4 Neon (High)`) to `high`.
+and new bare `agy` sessions (`Gemini 4 Neon (High)`) to `high`. The personal
+server seed and catalog reload also merge `oauth.excluded-models` to hide unused
+legacy Claude, `gpt-image-*`, older Codex, and unused Antigravity models so the
+personal gateway stays safely under `agy`'s 32 custom-model placeholder cap
+without affecting the work proxy.
 
 The module builds agy from Google's release bucket until nixpkgs reaches that
 version, then uses nixpkgs. Activation merges only the Switchyard MCP server

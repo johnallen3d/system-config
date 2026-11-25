@@ -1,0 +1,18 @@
+--- a/internal/registry/model_registry.go
++++ b/internal/registry/model_registry.go
+@@ -1665,7 +1665,14 @@ func (r *ModelRegistry) buildAvailableModelsLocked(handlerType string, now time.
+ 	models := make([]map[string]any, 0, len(r.models))
+ 	var expiresAt time.Time
+ 
+-	for _, registration := range r.models {
++	modelIDs := make([]string, 0, len(r.models))
++	for modelID := range r.models {
++		modelIDs = append(modelIDs, modelID)
++	}
++	sort.Strings(modelIDs)
++
++	for _, modelID := range modelIDs {
++		registration := r.models[modelID]
+ 		available, registrationExpiresAt := modelRegistrationAvailability(registration, now)
+ 		if !registrationExpiresAt.IsZero() && (expiresAt.IsZero() || registrationExpiresAt.Before(expiresAt)) {
+ 			expiresAt = registrationExpiresAt

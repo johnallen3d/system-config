@@ -53,6 +53,35 @@ ANTIGRAVITY_ALIASES = [
     {"name": "gemini-4-argon-high", "alias": "gemini-4-argon", "fork": True},
     {"name": "gemini-4-carbon-high", "alias": "gemini-4-carbon", "fork": True},
 ]
+# Keep personal /v1beta/models safely under agy's 32 custom-model placeholder
+# cap by excluding legacy/unused OAuth models (work proxy is unaffected).
+PERSONAL_EXCLUDED_MODELS = {
+    "claude": [
+        "claude-3-5-*",
+        "claude-3-7-*",
+        "claude-opus-4-2025*",
+        "claude-sonnet-4-2025*",
+        "claude-opus-4-1-*",
+        "claude-haiku-4-5-*",
+        "claude-sonnet-4-5-*",
+        "claude-opus-4-5-*",
+        "claude-opus-4-7",
+        "claude-opus-4-8",
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "claude-fable-5",
+    ],
+    "codex": [
+        "gpt-image-*",
+        "gpt-5.6-*",
+        "codex-auto-review",
+    ],
+    "antigravity": [
+        "gpt-oss-*",
+        "gemini-3.1-flash-image",
+        "gemini-3.8-flash-tiered",
+    ],
+}
 ROOT = Path.home() / ".config/subscription-proxy"
 
 
@@ -479,6 +508,17 @@ def merge_antigravity_aliases(aliases):
     return merged
 
 
+def merge_personal_excluded_models(excluded):
+    merged = copy.deepcopy(excluded) if isinstance(excluded, dict) else {}
+    for provider, patterns in PERSONAL_EXCLUDED_MODELS.items():
+        existing = list(merged.get(provider) or [])
+        for pattern in patterns:
+            if pattern not in existing:
+                existing.append(pattern)
+        merged[provider] = existing
+    return merged
+
+
 def reload_catalog(profile, catalog):
     """Explicitly reload an active server's pinned catalog, without restarting it."""
     catalog = Path(catalog)
@@ -489,8 +529,11 @@ def reload_catalog(profile, catalog):
         raise ValueError("Pinned catalog must be an absolute local file with Claude definitions.")
     patch = {"models": {"catalog": str(catalog)}}
     if profile == "personal":
-        current = request(profile, "/config").get("oauth", {}).get("model-alias", {})
-        patch["oauth"] = {"model-alias": merge_antigravity_aliases(current)}
+        oauth = request(profile, "/config").get("oauth", {})
+        patch["oauth"] = {
+            "model-alias": merge_antigravity_aliases(oauth.get("model-alias", {})),
+            "excluded-models": merge_personal_excluded_models(oauth.get("excluded-models", {})),
+        }
     # Atomic seed writes can update management-visible config without refreshing
     # the registry. A minimal management PATCH commits the runtime update too.
     request(profile, "/config", "PATCH", patch)
@@ -540,6 +583,7 @@ def seed_server(template):
         data.setdefault("oauth", {})["auth-dir"] = str(directory / "auth")
         if profile == "personal":
             data["oauth"]["model-alias"] = merge_antigravity_aliases(data["oauth"].get("model-alias"))
+            data["oauth"]["excluded-models"] = merge_personal_excluded_models(data["oauth"].get("excluded-models"))
         management = data.setdefault("management", {})
         management.update({"allow-remote": True, "disable-control-panel": False, "disable-auto-update-panel": True})
         management.setdefault("secret-key", keys[profile]["management"])
