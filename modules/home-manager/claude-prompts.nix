@@ -39,14 +39,20 @@
   };
   workSettings = footerSettings // {outputStyle = "ELI5";};
   # Pre-allowed tools, merged into each profile's permissions.allow.
-  allowedTools = ["mcp__switchyard"];
+  # Atuin's MCP tools are read-only.
+  allowedTools = ["mcp__switchyard" "mcp__atuin"];
   switchyardMcp = {
     type = "http";
     inherit (import ./switchyard-mcp.nix) url;
     headers = (import ./switchyard-mcp.nix).claudeHeaders;
   };
+  # Each profile reaches only its own Atuin store (atuin.nix).
+  atuinMcp = store: {type = "stdio";} // config.atuin.mcpServers.${store};
   personalMcpServers =
-    {switchyard = switchyardMcp;}
+    {
+      switchyard = switchyardMcp;
+      atuin = atuinMcp "personal";
+    }
     // lib.optionalAttrs config.executor.enable {
       executor = {
         type = "http";
@@ -56,6 +62,7 @@
   workMcpServers =
     {
       switchyard = switchyardMcp;
+      atuin = atuinMcp "work";
     }
     // lib.optionalAttrs config.executor.enable {
       executor = {

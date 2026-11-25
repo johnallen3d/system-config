@@ -26,7 +26,8 @@
   workEnv = workAgentDirs // {ATUIN_HOME = workHome;};
   # Resume in the work profile with the amfaro mise env (agent-projects.nix),
   # since the picker runs outside the project's mise activation.
-  workResumeEnv = "env -u ANTHROPIC_API_KEY -u OPENAI_API_KEY -u OPENROUTER_API_KEY"
+  workResumeEnv =
+    "env -u ANTHROPIC_API_KEY -u OPENAI_API_KEY -u OPENROUTER_API_KEY"
     + " CLAUDE_CONFIG_DIR=${workAgentDirs.CLAUDE_CONFIG_DIR}"
     + " PI_CODING_AGENT_DIR=${workAgentDirs.PI_CODING_AGENT_DIR}"
     + " PI_MODEL_ROUTER_JEV_MODE=primary";
@@ -55,61 +56,94 @@
     '';
   };
   workCommand = "${atuin}/bin/atuin daemon start";
+
+  # Read-only MCP servers (`atuin mcp`, stdio) for agents, one per store. Each
+  # drops every inherited ATUIN_* variable before choosing its store, so a
+  # personal agent started with ATUIN_HOME pointing at the work store (or the
+  # reverse) still reaches only its own profile's threads and history.
+  mkAtuinMcp = name: storeSetup:
+    pkgs.writeShellApplication {
+      inherit name;
+      text = ''
+        for var in "''${!ATUIN_@}"; do
+          unset "$var"
+        done
+        ${storeSetup}
+        exec ${atuin}/bin/atuin mcp
+      '';
+    };
+  personalMcp = mkAtuinMcp "atuin-mcp-personal" "";
+  workMcp = mkAtuinMcp "atuin-mcp-work" "export ATUIN_HOME=${lib.escapeShellArg workHome}";
 in {
-  # Shell history. fish binds Ctrl+R to Atuin (replacing tv's history
-  # search); zsh and bash keep their own Ctrl+R, since tv never handled it there.
-  # Up stays with the shell, and `?` is not bound to hosted Atuin AI.
-  # The daemon (launchd on macOS, socket-activated systemd user unit on Linux)
-  # captures agent threads and syncs history and threads to the tailnet-only
-  # server on nas (pi-cielo hosts/nas/atuin). Sync starts after a one-time
-  # interactive `atuin login` per host; the key and password stay out of Nix.
-  programs.atuin = {
-    enable = true;
-    flags = ["--disable-up-arrow" "--disable-ai" "--disable-ctrl-r"];
-    daemon.enable = true;
-    settings = {
-      # Atuin 18.24 always uses records sync, so there is no sync.records.
-      sync_address = "https://nas.taila14c2.ts.net:8889";
-      auto_sync = true;
-      update_check = false;
-      threads.capture = true;
-      # Clients find the socket-activated socket through XDG_RUNTIME_DIR, which
-      # SSH shells on Miller and Drummer lack. Pin it (johna is uid 1000).
-      daemon.socket_path = lib.mkIf pkgs.stdenv.isLinux "/run/user/1000/atuin.sock";
-    };
+  # Registered by claude-prompts.nix and pi-settings.nix for each profile.
+  options.atuin.mcpServers = lib.mkOption {
+    type = lib.types.attrsOf lib.types.attrs;
+    readOnly = true;
+    internal = true;
+    description = "Per-profile Atuin MCP server definitions (personal, work).";
   };
 
-  home.packages = [atuinWork];
-  home.file.".atuin-work/config.toml".source = workConfig;
+  config = {
+    atuin.mcpServers = {
+      personal.command = "${personalMcp}/bin/atuin-mcp-personal";
+      work.command = "${workMcp}/bin/atuin-mcp-work";
+    };
 
-  launchd.agents.atuin-daemon.config.EnvironmentVariables = agentDirs;
-  launchd.agents.atuin-work-daemon = {
-    enable = true;
-    config = {
-      ProgramArguments = ["/bin/sh" "-c" "/bin/wait4path /nix/store && exec ${workCommand}"];
-      EnvironmentVariables = workEnv;
-      KeepAlive = {
-        Crashed = true;
-        SuccessfulExit = false;
+    # Shell history. fish binds Ctrl+R to Atuin (replacing tv's history
+    # search); zsh and bash keep their own Ctrl+R, since tv never handled it there.
+    # Up stays with the shell, and `?` is not bound to hosted Atuin AI.
+    # The daemon (launchd on macOS, socket-activated systemd user unit on Linux)
+    # captures agent threads and syncs history and threads to the tailnet-only
+    # server on nas (pi-cielo hosts/nas/atuin). Sync starts after a one-time
+    # interactive `atuin login` per host; the key and password stay out of Nix.
+    programs.atuin = {
+      enable = true;
+      flags = ["--disable-up-arrow" "--disable-ai" "--disable-ctrl-r"];
+      daemon.enable = true;
+      settings = {
+        # Atuin 18.24 always uses records sync, so there is no sync.records.
+        sync_address = "https://nas.taila14c2.ts.net:8889";
+        auto_sync = true;
+        update_check = false;
+        threads.capture = true;
+        # Clients find the socket-activated socket through XDG_RUNTIME_DIR, which
+        # SSH shells on Miller and Drummer lack. Pin it (johna is uid 1000).
+        daemon.socket_path = lib.mkIf pkgs.stdenv.isLinux "/run/user/1000/atuin.sock";
       };
-      ProcessType = "Background";
-      RunAtLoad = true;
     };
-  };
-  # Home Manager's macOS socket lives here; the daemon won't create the dir.
-  xdg.dataFile."atuin/.keep" = lib.mkIf pkgs.stdenv.isDarwin {text = "";};
 
-  systemd.user.services.atuin-daemon.Service.Environment =
-    lib.mapAttrsToList (name: value: "${name}=${value}") agentDirs;
+    home.packages = [atuinWork];
+    home.file.".atuin-work/config.toml".source = workConfig;
 
-  systemd.user.services.atuin-work-daemon = {
-    Unit.Description = "Atuin daemon (work threads, local-only store)";
-    Service = {
-      ExecStart = workCommand;
-      Environment = lib.mapAttrsToList (name: value: "${name}=${value}") workEnv;
-      Restart = "on-failure";
-      RestartSec = 5;
+    launchd.agents.atuin-daemon.config.EnvironmentVariables = agentDirs;
+    launchd.agents.atuin-work-daemon = {
+      enable = true;
+      config = {
+        ProgramArguments = ["/bin/sh" "-c" "/bin/wait4path /nix/store && exec ${workCommand}"];
+        EnvironmentVariables = workEnv;
+        KeepAlive = {
+          Crashed = true;
+          SuccessfulExit = false;
+        };
+        ProcessType = "Background";
+        RunAtLoad = true;
+      };
     };
-    Install.WantedBy = ["default.target"];
+    # Home Manager's macOS socket lives here; the daemon won't create the dir.
+    xdg.dataFile."atuin/.keep" = lib.mkIf pkgs.stdenv.isDarwin {text = "";};
+
+    systemd.user.services.atuin-daemon.Service.Environment =
+      lib.mapAttrsToList (name: value: "${name}=${value}") agentDirs;
+
+    systemd.user.services.atuin-work-daemon = {
+      Unit.Description = "Atuin daemon (work threads, local-only store)";
+      Service = {
+        ExecStart = workCommand;
+        Environment = lib.mapAttrsToList (name: value: "${name}=${value}") workEnv;
+        Restart = "on-failure";
+        RestartSec = 5;
+      };
+      Install.WantedBy = ["default.target"];
+    };
   };
 }

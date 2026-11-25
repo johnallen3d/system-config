@@ -69,10 +69,14 @@
     };
   };
 
+  # Each profile reaches only its own Atuin store (atuin.nix).
+  atuinMcp = config.atuin.mcpServers;
+
   piMcpSettings = {
     mcpServers =
       {
         switchyard = switchyardMcp;
+        atuin = atuinMcp.personal;
         "mcp-server-doppler" = {
           command = "bash";
           args = [
@@ -152,7 +156,7 @@
   linuxMcpSettings = {
     mcpServers =
       {
-        inherit (piMcpSettings.mcpServers) mcp-server-motherduck switchyard;
+        inherit (piMcpSettings.mcpServers) atuin mcp-server-motherduck switchyard;
         mcp-server-doppler = piWorkMcpSettings.mcpServers.doppler;
       }
       // executorMcp;
@@ -166,6 +170,7 @@
   piWorkManagedMcpServers =
     {
       switchyard = switchyardMcp;
+      atuin = atuinMcp.work;
     }
     // lib.optionalAttrs config.executor.enable {
       executor.url = config.executor.work.mcpUrl;
