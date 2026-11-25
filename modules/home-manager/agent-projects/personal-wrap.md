@@ -46,17 +46,21 @@ it follows that repository's deployment rules.
    files), and containment in `main`; then use `wt remove --foreground` from
    primary. Never force. Verify this task's worktree and branch are gone.
 
-   **When John asks to archive this session, archive it. Do not ask first.** A
-   wrap never archives on its own, but an explicit request from John is the
-   decision; carry it out with `switchyard stop_task` for this task. Never hand
-   it back to John (no "archive it from the picker"). Nothing else in this
-   lifecycle withholds or re-confirms it: open cards, WRAP BLOCKED, pending
-   deploys or lock updates, unapproved follow-ups, and a failed push all go in
-   the handoff, and the archive still happens (it keeps branches, and cards
-   stay open in Fizzy). Close cards first where step 4 says to; archiving never
-   substitutes for closing. The only gate is `stop_task` refusing uncommitted
-   changes; if it refuses, report that. Archive as the last action: first write
-   the full handoff as text, since closing the tab ends the session.
+   **When John asks to archive this session, archive it — unless this wrap is
+   blocked (`WRAP BLOCKED`).** A wrap never archives on its own. When wrap
+   succeeds and John asked to archive, carry it out immediately with
+   `switchyard stop_task` for this task without asking again or handing it back
+   to John (no "archive it from the picker"). Close linked cards first (step 4);
+   archiving never substitutes for closing. Non-blockers — pending lock updates,
+   unapproved follow-ups, or a failed/opted-out push — go in the handoff and do
+   not withhold the archive. **If any required step hits a blocker (`WRAP
+   BLOCKED` — e.g. merge/rebase conflict, dirty primary, failed required check,
+   or failed/unreachable deploy host), DO NOT archive even if John asked to
+   wrap and archive:** leave the session open so John can act on the blocker,
+   and archive only if John explicitly asks to archive anyway afterwards. The
+   only other gate is `stop_task` refusing uncommitted changes; if it refuses,
+   report that. Archive as the last action: first write the full handoff as
+   text, since closing the tab ends the session.
 4. **Hand off.** Report final status, commit, integration/cleanup, push, and
    deployment separately. **Push.** Unless opted out, after integration (and
    deployment, where it applies) run `git -C "$repo_root" push` for local `main`
@@ -77,8 +81,8 @@ it follows that repository's deployment rules.
    narrows during the task or the wrap ("not doing X for now") counts as done for
    the dropped part; say so in the closing comment. The only reason to keep a card
    open is a freshly re-verified blocker: a failed or unreachable deploy host, or
-   a required check that ran and failed. Then report WRAP BLOCKED and name the host
-   or check (still archive if John asked). Never finish with untracked work. Push does not
+   a required check that ran and failed. Then report WRAP BLOCKED, name the host
+   or check, and do not archive — leave the session open so John can resolve it. Never finish with untracked work. Push does not
    block Git integration or cleanup, but required acceptance checks still apply.
    Link follow-ups and name pending hosts/actions. Work-in-place skips integration
    and cleanup. Any failure stops subsequent integration/deletion steps.
@@ -122,7 +126,9 @@ state these fields, using concrete paths, hosts, and actions where relevant:
   targeted question if John's decision or new authorization is required; never
   suggest discarding unrelated changes or bypassing a safety gate.
 - **Resume:** how to continue after the blocker is resolved (normally rerun
-  `/wrap` in this task's session). State that wrap has not automatically resumed.
+  `/wrap` in this task's session). State that wrap has not automatically resumed,
+  and leave the session unarchived (do not call `switchyard stop_task`) even if
+  John asked to archive as part of `/wrap`.
 
 Then briefly list what did succeed, the commit if any, retained branch/worktree,
 per-host deployment status when applicable, and the card left open. Never lead
