@@ -82,7 +82,7 @@ in {
     };
     switchyardMcpUrl = lib.mkOption {
       type = lib.types.str;
-      default = "http://johns-macbook-pro.taila14c2.ts.net:7391/mcp";
+      default = (import ./switchyard-mcp.nix).url;
       description = "Switchyard MCP endpoint for spawned agy tasks. No X-Rex-* headers: agy does not expand them.";
     };
   };

@@ -23,6 +23,9 @@
   # Central gateway for every other host's clients.
   subscriptionProxy.server.enable = true;
 
+  # Always-on Switchyard control plane and MCP server for all hosts.
+  programs.switchyard.server.enable = true;
+
   # Personal-only agy (no profiles), routed through the personal proxy.
   antigravity.enable = true;
   nixpkgs.config.allowUnfreePackages = ["antigravity-cli"];

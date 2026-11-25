@@ -45,10 +45,16 @@ in {
   programs.switchyard = {
     enable = true;
     package = switchyard.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    # Single control plane on Omarchy (hosts/omarchy.nix enables it there).
+    server.enable = lib.mkDefault false;
     settings = {
-      # Rex host labels of the Linux dev machines the spawn picker offers
-      # (ctrl+o). The Mac is added at runtime as the config host's own label.
-      hosts = ["miller" "drummer" "omarchy"];
+      control_plane = {
+        host = "omarchy";
+        url = "http://omarchy.taila14c2.ts.net:7391";
+      };
+      # Rex host labels offered across pickers and background tracking; the
+      # running host's own label is deduplicated at runtime.
+      hosts = ["m4-mbp" "miller" "drummer" "omarchy"];
       # Hosts "auto" chooses from per group (least busy wins when there are
       # several); a project's `hosts` in projects.toml overrides its group.
       pools = {

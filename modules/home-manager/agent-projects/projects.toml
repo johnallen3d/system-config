@@ -7,7 +7,7 @@
 # switchyard new's "auto" host comes from the group's pool (`pools` in
 # ../packages/switchyard-config.nix, which passes this catalog to
 # switchyard's runtime config); a project's optional `hosts` list overrides
-# it, where "config" means the config host (the Mac).
+# it, where "config" means the control-plane host (Omarchy).
 #
 # `tracker` tells switchyard what refs like #42 mean: personal projects name
 # their Fizzy board; work projects default to the GitHub repo in clone_url.
@@ -15,10 +15,11 @@
 # (../agent-projects.nix).
 
 [[personal]]
+# Needs the Mac for darwin-rebuild / system-config-deploy.
 path = "~/dev/src/system-config"
 tracker = "fizzy:6284043/03gv1w497my2qlkqbmngcmfsi"
 clone_url = "https://github.com/johnallen3d/system-config.git"
-hosts = ["config"]
+hosts = ["m4-mbp"]
 
 [[personal]]
 path = "~/dev/src/playground/credits"
@@ -27,8 +28,7 @@ clone_url = "https://github.com/johnallen3d/credits.git"
 hosts = ["config"]
 
 [[personal]]
-# Food-logging PWA, deployed on Omarchy as Marvin by ../omarchy-marvin.nix;
-# developed on the Mac (native iOS/macOS clients may follow).
+# Food-logging PWA, deployed on Omarchy as Marvin by ../omarchy-marvin.nix.
 path = "~/dev/src/playground/marvin"
 tracker = "fizzy:6284043/03hairucnu02oe9eka6s6qccl"
 clone_url = "https://github.com/johnallen3d/marvin.git"
@@ -80,7 +80,7 @@ hosts = ["config"]
 path = "~/dev/src/playground/repo-jump"
 tracker = "fizzy:6284043/03h8xxdsdxeocbulic6jayzk7"
 clone_url = ""
-hosts = ["config"]
+hosts = ["m4-mbp"]
 
 [[work]]
 path = "~/dev/src/amfaro/actions"
