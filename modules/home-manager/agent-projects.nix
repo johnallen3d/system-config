@@ -113,7 +113,7 @@
 
       - Before staging or committing, read the personal `authoring-commits` skill
         (`~/.config/claude-personal/skills/` for Claude, `~/.config/pi/skills/`
-        for Pi, the `personal` plugin for agy; prefer it over packaged copies) and the
+        for Pi, `~/.gemini/config/skills/` for agy; prefer it over packaged copies) and the
         `implementation-attribution` skill. Not for work profiles.
       - During implementation, keep an attribution handoff in the conversation
         (branch/worktree, each contributor's model, paths it authored, evidence)

@@ -54,9 +54,11 @@
     // lib.optionalAttrs config.executor.enable {
       executor.serverUrl = config.executor.mcpUrl;
     };
-  # Personal instructions, skills, and prompts as one agy plugin. agy has no
-  # slash-command prompts, so Claude's prompts become argument-free skills.
-  plugin = ".gemini/config/plugins/personal";
+  # Personal instructions, skills, and prompts directly under ~/.gemini/config
+  # (not a plugin): agy namespaces plugin skills as /<plugin>:<skill>, which
+  # keeps bare /wrap from submitting on Enter and breaks tab completion.
+  # agy has no slash-command prompts, so Claude's prompts become argument-free skills.
+  skillsDir = ".gemini/config/skills";
   prompt = name: description: let
     file = config.home.file.".config/claude-personal/commands/${name}.md";
     raw =
@@ -72,6 +74,14 @@
     ---
     ${builtins.replaceStrings ["$ARGUMENTS"] [args] body}
   '';
+  personalSkills = {
+    authoring-commits.source = ./agent-skills/authoring-commits/SKILL.md;
+    delegating-to-subagents.source = ./agent-skills/delegating-to-subagents/SKILL.md;
+    implementation-attribution.source = ./agent-skills/implementation-attribution/SKILL.md;
+    shepherd.source = ./agent-skills/shepherd/SKILL.md;
+    wrap.text = prompt "wrap" "Use only when John invokes /wrap: commit, integrate, push, and clean up personal work.";
+    pkg-install.text = prompt "pkg-install" "Use when John invokes /pkg-install to install a package via the optimal method.";
+  };
 in {
   options.antigravity = {
     enable = lib.mkEnableOption "agy routed through the personal subscription proxy";
@@ -95,35 +105,46 @@ in {
       }
     ];
     home.packages = [agy];
-    home.file = {
-      "${plugin}/plugin.json".text = builtins.toJSON {name = "personal";};
-      "${plugin}/rules/AGENTS.md".text = config.home.file.".config/pi/AGENTS.md".text;
-      "${plugin}/skills/authoring-commits/SKILL.md".source = ./agent-skills/authoring-commits/SKILL.md;
-      "${plugin}/skills/delegating-to-subagents/SKILL.md".source = ./agent-skills/delegating-to-subagents/SKILL.md;
-      "${plugin}/skills/implementation-attribution/SKILL.md".source = ./agent-skills/implementation-attribution/SKILL.md;
-      "${plugin}/skills/shepherd/SKILL.md".source = ./agent-skills/shepherd/SKILL.md;
-      "${plugin}/skills/wrap/SKILL.md".text = prompt "wrap" "Use only when John invokes /wrap: commit, integrate, push, and clean up personal work.";
-      "${plugin}/skills/pkg-install/SKILL.md".text = prompt "pkg-install" "Use when John invokes /pkg-install to install a package via the optimal method.";
-    };
+    home.file =
+      {
+        ".gemini/config/AGENTS.md".text = config.home.file.".config/pi/AGENTS.md".text;
+      }
+      // lib.mapAttrs' (name: file: lib.nameValuePair "${skillsDir}/${name}/SKILL.md" file) personalSkills;
+    # Clear any shared-skills mirror link whose name is now managed as a
+    # personal skill before Home Manager checks for target collisions.
+    home.activation.antigravityPersonalSkillMigration = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
+      if [ -z "''${DRY_RUN:-}" ]; then
+        shared="$HOME/.agents/skills" dest="$HOME/.gemini/config/skills"
+        for name in ${lib.escapeShellArgs (builtins.attrNames personalSkills)}; do
+          link="$dest/$name/SKILL.md"
+          [ -L "$link" ] || continue
+          case "$(readlink "$link")" in "$shared"/*) ;; *) continue ;; esac
+          rm "$link"; rmdir "$(dirname "$link")" 2>/dev/null || true
+        done
+      fi
+    '';
     # Mirror Pi's shared ~/.agents/skills (host-specific, partly unmanaged) as
     # per-file links: agy ignores skills.json and skips directory symlinks.
-    # Touch only links into ~/.agents/skills; the plugin's own names win.
+    # Touch only links into ~/.agents/skills; managed personal skills win.
     home.activation.antigravitySharedSkills = lib.hm.dag.entryAfter ["linkGeneration"] ''
       if [ -z "''${DRY_RUN:-}" ]; then
         shared="$HOME/.agents/skills" dest="$HOME/.gemini/config/skills"
         for link in "$dest"/*/SKILL.md; do
           [ -L "$link" ] || continue
           case "$(readlink "$link")" in "$shared"/*) ;; *) continue ;; esac
-          [ -e "$link" ] && [ ! -e "$HOME/${plugin}/skills/$(basename "$(dirname "$link")")" ] && continue
+          [ -e "$link" ] && continue
           rm "$link"; rmdir "$(dirname "$link")" 2>/dev/null || true
         done
         for skill in "$shared"/*/SKILL.md; do
           [ -e "$skill" ] || continue
           name="$(basename "$(dirname "$skill")")"
-          [ -e "$HOME/${plugin}/skills/$name" ] && continue
-          [ -e "$dest/$name/SKILL.md" ] && [ ! -L "$dest/$name/SKILL.md" ] && continue
+          target="$dest/$name/SKILL.md"
+          if [ -e "$target" ] || [ -L "$target" ]; then
+            [ -L "$target" ] || continue
+            case "$(readlink "$target")" in "$shared"/*) ;; *) continue ;; esac
+          fi
           mkdir -p "$dest/$name"
-          ln -sfn "$skill" "$dest/$name/SKILL.md"
+          ln -sfn "$skill" "$target"
         done
       fi
     '';
