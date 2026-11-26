@@ -2,6 +2,7 @@
 """Transport a Git-based deployment to Omarchy (Arch) hosts; never transport host profiles."""
 
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -62,6 +63,72 @@ def source_tree(repo):
         run("git", "-C", str(repo), "read-tree", "HEAD", env=env)
         run("git", "-C", str(repo), "add", "-A", "--", ".", env=env)
         return run("git", "-C", str(repo), "write-tree", env=env)
+
+
+def preflight_host(repo, local_main, host):
+    if host not in HOSTS:
+        return host, f"Unknown Omarchy host {host!r}"
+    script = f"""set -euo pipefail
+[ "$(uname -s)" = Linux ] && [ "$HOME" = /home/johna ] && [ "$(hostname -s)" = {host} ]
+repo=/home/johna/dev/src/system-config
+repo_real="$(cd "$repo" && pwd -P)"
+first_wt="$(git -C "$repo" worktree list --porcelain | head -n 1)"
+[ "$first_wt" = "worktree $repo_real" ] || {{ echo "ERR:deployment repository is not its primary checkout"; exit 0; }}
+branch="$(git -C "$repo" symbolic-ref --quiet --short HEAD || true)"
+[ "$branch" = main ] || {{ echo "ERR:primary checkout is on '${{branch:-detached}}', not main"; exit 0; }}
+dirty="$(git -C "$repo" status --porcelain --untracked-files=all)"
+if [ -n "$dirty" ]; then
+  summary="$(printf '%s' "$dirty" | head -n 3 | tr '\\n' '; ' | sed 's/; $//')"
+  echo "ERR:primary checkout has uncommitted changes ($summary)"
+  exit 0
+fi
+head_sha="$(git -C "$repo" rev-parse refs/heads/main)"
+head_subj="$(git -C "$repo" log -1 --format=%s refs/heads/main)"
+printf 'OK\\t%s\\t%s\\n' "$head_sha" "$head_subj"
+"""
+    result = subprocess.run(ssh(host), input=script, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        msg = detail[-1] if detail else f"SSH failed (exit {result.returncode})"
+        return host, msg
+    line = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else ""
+    if line.startswith("ERR:"):
+        return host, line.removeprefix("ERR:")
+    parts = line.split("\t", 2)
+    if len(parts) < 2 or parts[0] != "OK":
+        return host, f"unexpected preflight response: {line!r}"
+    remote_main = parts[1]
+    remote_subj = parts[2] if len(parts) > 2 else ""
+    if len(remote_main) != 40 or any(c not in "0123456789abcdef" for c in remote_main):
+        return host, f"invalid remote main commit: {remote_main!r}"
+    is_ancestor = subprocess.run(
+        ["git", "-C", str(repo), "merge-base", "--is-ancestor", remote_main, local_main],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    if not is_ancestor:
+        desc = f"{remote_main[:12]}: {remote_subj}" if remote_subj else remote_main[:12]
+        return host, f"main is ahead or diverged ({desc}); push it from {host} and fast-forward Mac main before deploying"
+    return host, None
+
+
+def preflight(repo, hosts):
+    repo = repo.resolve()
+    if git(repo, "ls-files", "--unmerged"):
+        raise RuntimeError("Resolve local Git conflicts before deploying")
+    local_main = git(repo, "rev-parse", "refs/heads/main")
+    targets = tuple(hosts) if hosts else HOSTS
+    errors = []
+    with ThreadPoolExecutor(max_workers=len(targets)) as pool:
+        results = list(pool.map(lambda h: preflight_host(repo, local_main, h), targets))
+    for host, error in results:
+        if error is not None:
+            errors.append(f"[{label(host)}] {error}")
+    if errors:
+        for msg in errors:
+            print(msg, file=sys.stderr, flush=True)
+        raise RuntimeError("Preflight failed; no flake updates or deployments started.")
+    labels = ", ".join(label(host) for host in targets)
+    print(f"[Preflight] {labels} ready (clean main, ancestor of {local_main[:12]})", flush=True)
 
 
 def prepare(repo, directory, planned_source=None):
@@ -246,7 +313,9 @@ def activate_omarchy(repo, record):
 
 def main():
     mode = sys.argv[1]
-    if mode == "prepare":
+    if mode == "preflight":
+        preflight(Path(sys.argv[2]), sys.argv[3:])
+    elif mode == "prepare":
         prepare(Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4]) if len(sys.argv) > 4 else None)
     elif mode == "deploy":
         deploy(Path(sys.argv[2]), sys.argv[3])

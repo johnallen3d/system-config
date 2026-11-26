@@ -17,6 +17,18 @@ Nice=19
 CPUSchedulingPolicy=idle
 IOSchedulingClass=idle'
 effective=(Nice=19 CPUSchedulingPolicy=5 IOSchedulingClass=3)
+# AT&T residential gateway DNS intermittently times out / SERVFAILs cache.nixos.org.
+bad_dns_ip=192.168.1.254
+resolved_conf=/etc/systemd/resolved.conf
+resolved_conf_text='[Resolve]
+DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com
+FallbackDNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net
+DNSOverTLS=opportunistic'
+
+has_bad_dns() {
+  command -v resolvectl >/dev/null 2>&1 &&
+    resolvectl status 2>/dev/null | grep -Eq "^[[:space:]]*(Current DNS Server|DNS Servers):.*\b${bad_dns_ip//./\\.}\b"
+}
 
 check() {
   local drift=0 line property
@@ -28,7 +40,32 @@ check() {
     systemctl show nix-daemon.service -p "${property%%=*}" | grep -qxF -- "$property" ||
       { echo "nix-daemon not running with $property (reload/restart pending?)"; drift=1; }
   done
+  if has_bad_dns; then
+    echo "AT&T gateway DNS ($bad_dns_ip) active in systemd-resolved; causes intermittent cache.nixos.org errors"
+    drift=1
+  fi
   return "$drift"
+}
+
+apply_dns_fix_if_needed() {
+  has_bad_dns || return 0
+  if command -v nmcli >/dev/null 2>&1; then
+    local name type
+    while IFS=: read -r name type; do
+      case "$type" in
+        802-3-ethernet|802-11-wireless)
+          if nmcli -g IP4.DNS con show "$name" 2>/dev/null | grep -Eq "(^|[|[:space:]])${bad_dns_ip//./\\.}([|[:space:]]|$)"; then
+            nmcli con mod "$name" ipv4.dns "1.1.1.1 1.0.0.1" ipv4.ignore-auto-dns yes ipv6.ignore-auto-dns yes
+            nmcli con up "$name"
+          fi
+          ;;
+      esac
+    done < <(nmcli -t -f NAME,TYPE con show --active)
+  fi
+  if ! grep -Eq '^[[:space:]]*DNS=' "$resolved_conf" 2>/dev/null; then
+    printf '%s\n' "$resolved_conf_text" >"$resolved_conf"
+  fi
+  systemctl restart systemd-resolved
 }
 
 apply() {
@@ -41,6 +78,7 @@ apply() {
   printf '%s\n' "$drop_in_text" >"$drop_in"
   systemctl daemon-reload
   systemctl restart nix-daemon.service
+  apply_dns_fix_if_needed
   check && echo "Omarchy Nix system settings applied"
 }
 

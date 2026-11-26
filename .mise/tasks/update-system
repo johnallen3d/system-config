@@ -48,6 +48,47 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Fast-forward a clean primary checkout's main from origin/main before running
+# preflight or updating inputs, so commits pushed from other hosts don't stall
+# deployments. Never touches linked task worktrees or dirty checkouts.
+sync_primary_main_if_clean() {
+  local git_dir common_dir branch op changed old_main new_main
+  git_dir="$(git -C "$repo" rev-parse --path-format=absolute --git-dir)"
+  common_dir="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)"
+  if [[ "$git_dir" != "$common_dir" ]]; then
+    return 0
+  fi
+  branch="$(git -C "$repo" symbolic-ref --quiet --short HEAD || true)"
+  if [[ "$branch" != main ]]; then
+    return 0
+  fi
+  for op in MERGE_HEAD REBASE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG rebase-merge rebase-apply; do
+    if [[ -e "$git_dir/$op" ]]; then
+      return 0
+    fi
+  done
+  changed="$({ git -C "$repo" diff --name-only HEAD; git -C "$repo" ls-files --others --exclude-standard; } | sort -u)"
+  if [[ -n "$changed" ]]; then
+    return 0
+  fi
+  if ! git -C "$repo" fetch --quiet origin main; then
+    echo "[sync] warning: could not fetch origin/main; continuing with local main" >&2
+    return 0
+  fi
+  old_main="$(git -C "$repo" rev-parse refs/heads/main)"
+  new_main="$(git -C "$repo" rev-parse refs/remotes/origin/main)"
+  if [[ "$old_main" == "$new_main" ]]; then
+    return 0
+  fi
+  if git -C "$repo" merge-base --is-ancestor "$old_main" "$new_main"; then
+    git -C "$repo" merge --ff-only --quiet "$new_main"
+    echo "[sync] Fast-forwarded local main ${old_main:0:12} -> ${new_main:0:12} from origin/main"
+  elif ! git -C "$repo" merge-base --is-ancestor "$new_main" "$old_main"; then
+    echo "[sync] local main (${old_main:0:12}) has diverged from origin/main (${new_main:0:12}); reconcile before deploying" >&2
+    return 1
+  fi
+}
+
 # Commit and push an input-update lock only when it is the sole change on the
 # primary checkout's main. Called only after every attempted deployment succeeded.
 commit_lock_if_only_change() {
@@ -157,6 +198,12 @@ for name, node in json.load(open(sys.argv[1]))["nodes"].items():
         print(name, locked["url"], locked["narHash"], locked["type"], sep="\t")
 ' "$repo/flake.lock" "${usage_switch_only:-false}")
 }
+
+sync_primary_main_if_clean
+
+if [[ "${usage_local_only:-false}" != true ]]; then
+  python3 "$tool_root/.mise/scripts/update-system-omarchy" preflight "$repo" "${linux_hosts[@]}"
+fi
 
 # Resolve inputs exactly once, before any host starts building.
 if [[ "${usage_switch_only:-false}" != true ]]; then
