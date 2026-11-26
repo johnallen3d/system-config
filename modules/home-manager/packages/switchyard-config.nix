@@ -31,12 +31,21 @@
     then throw "switchyard-config: no tracker for ${url}"
     else "github:${builtins.head m}";
   projects = profile:
-    map (p: {
-      inherit profile;
-      inherit (p) path clone_url;
+    map (p: let
+      clone_url = p.clone_url or "";
+    in {
+      inherit profile clone_url;
+      inherit (p) path;
       hosts = p.hosts or [];
-      # Personal projects set their Fizzy board; work projects use GitHub.
-      tracker = p.tracker or (githubTracker p.clone_url);
+      worktree = p.worktree or true;
+      # Personal projects set their Fizzy board; work projects derive GitHub
+      # from clone_url. Projects with neither (e.g. in-place vaults) leave it empty.
+      tracker =
+        if p ? tracker
+        then p.tracker
+        else if clone_url != ""
+        then githubTracker clone_url
+        else "";
     })
     (catalog.${profile} or []);
 in {

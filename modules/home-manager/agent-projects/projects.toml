@@ -82,6 +82,13 @@ tracker = "fizzy:6284043/03h8xxdsdxeocbulic6jayzk7"
 clone_url = ""
 hosts = ["m4-mbp"]
 
+[[personal]]
+# Obsidian vault: in-place sessions on Omarchy (no worktrees; kept out of desktop Inbox).
+path = "~/notes"
+worktree = false
+clone_url = ""
+hosts = ["config"]
+
 [[work]]
 path = "~/dev/src/amfaro/actions"
 clone_url = "https://github.com/amfaro/actions.git"
