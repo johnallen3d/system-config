@@ -101,6 +101,7 @@ in {
       "${plugin}/skills/authoring-commits/SKILL.md".source = ./agent-skills/authoring-commits/SKILL.md;
       "${plugin}/skills/delegating-to-subagents/SKILL.md".source = ./agent-skills/delegating-to-subagents/SKILL.md;
       "${plugin}/skills/implementation-attribution/SKILL.md".source = ./agent-skills/implementation-attribution/SKILL.md;
+      "${plugin}/skills/shepherd/SKILL.md".source = ./agent-skills/shepherd/SKILL.md;
       "${plugin}/skills/wrap/SKILL.md".text = prompt "wrap" "Use only when John invokes /wrap: commit, integrate, push, and clean up personal work.";
       "${plugin}/skills/pkg-install/SKILL.md".text = prompt "pkg-install" "Use when John invokes /pkg-install to install a package via the optimal method.";
     };

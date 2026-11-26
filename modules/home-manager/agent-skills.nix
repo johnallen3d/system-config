@@ -41,6 +41,7 @@
   }) {
     delegating-to-subagents = ./agent-skills/delegating-to-subagents/SKILL.md;
     implementation-attribution = ./agent-skills/implementation-attribution/SKILL.md;
+    shepherd = ./agent-skills/shepherd/SKILL.md;
   };
 in {
   # Personal policy must not enter global discovery or either work profile.
