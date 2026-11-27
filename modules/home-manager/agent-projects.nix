@@ -98,13 +98,16 @@
         `AGENTS.md` says `/wrap` deploys.
       - John asking to archive a session (this one, or a task you spawned or
         are told to relay to) is the authorization, with or without `/wrap`:
-        write any handoff, then archive with `switchyard stop_task`. Don't ask
-        again or leave the archive to John. **Never archive when `/wrap` hits a
-        blocker (`WRAP BLOCKED`):** leave the session open so John can resolve
-        it. Outside a blocked `/wrap` (including a standalone archive request
-        or John saying to archive anyway after seeing a blocker), open cards
-        and pending pushes or deploys go in the handoff; only `stop_task`
-        refusing uncommitted changes stops it.
+        archive with `switchyard stop_task` without asking again or leaving the
+        archive to John. Never emit a text-only reply saying you are archiving —
+        text without a tool call ends the turn and leaves the session unarchived.
+        Pass the handoff in `stop_task`'s `handoff` parameter (when supported)
+        or emit the handoff text and the `stop_task` call in the same assistant
+        turn. **Never archive when `/wrap` hits a blocker (`WRAP BLOCKED`):**
+        leave the session open so John can resolve it. Outside a blocked `/wrap`
+        (including a standalone archive request or John saying to archive anyway
+        after seeing a blocker), open cards and pending pushes or deploys go in
+        the handoff; only `stop_task` refusing uncommitted changes stops it.
       - An authorized deployment includes clean fast-forward sync of a deployment
         host's `main` to integrated local `main`, without separate merge
         permission; stop on dirty source, divergence, or uncertain ownership.

@@ -59,8 +59,14 @@ it follows that repository's deployment rules.
    wrap and archive:** leave the session open so John can act on the blocker,
    and archive only if John explicitly asks to archive anyway afterwards. The
    only other gate is `stop_task` refusing uncommitted changes; if it refuses,
-   report that. Archive as the last action: first write the full handoff as
-   text, since closing the tab ends the session.
+   report that. **Never end a turn with text-only saying you are archiving** —
+   emitting text without a tool call ends the turn and leaves the session
+   unarchived. Load the `stop_task` schema before the final turn (in lazy MCP
+   harnesses like `agy`), then call `switchyard stop_task` in the final turn
+   itself: pass the handoff in `stop_task`'s `handoff` parameter (when supported)
+   and keep any accompanying text brief, or emit the handoff text and the
+   `stop_task` tool call in the **same** assistant turn — never "write handoff
+   first, then archive".
 4. **Hand off.** Report final status, commit, integration/cleanup, push, and
    deployment separately. **Push.** Unless opted out, after integration (and
    deployment, where it applies) run `git -C "$repo_root" push` for local `main`
