@@ -126,11 +126,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795785989,
-        "narHash": "sha256-FJKhTN4nzXy0BXo5mK9c2irT0k0Lh9j761ofm3tITDg=",
+        "lastModified": 1795786612,
+        "narHash": "sha256-tmR2qPGpfhrF/iXEKdPS6ZqBMqdAq1wLy96Uh7wwGS0=",
         "ref": "main",
-        "rev": "4387532cf6a365731cc1311c4e20e5dbb605affc",
-        "revCount": 70,
+        "rev": "5a2ef38c8b835732f58efc1979071a45ca7620e1",
+        "revCount": 71,
         "type": "git",
         "url": "https://github.com/johnallen3d/marvin.git"
       },
@@ -262,11 +262,11 @@
     "voxl": {
       "flake": false,
       "locked": {
-        "lastModified": 1795122669,
-        "narHash": "sha256-7bUDLCRoEQhQXJQ57eWtZ27fj1zArmURWHAvpGRIsyM=",
+        "lastModified": 1795786385,
+        "narHash": "sha256-Xcr+UsP8yGsyfBTvUivIIay4BPgc2bDGsXc5dc9DNkU=",
         "owner": "tembo",
         "repo": "voxl",
-        "rev": "21f194f9e446e7073abd7bbd52e0b397c3800b42",
+        "rev": "4f307cba485c31fdfde00a16a89678986bc5ed4d",
         "type": "github"
       },
       "original": {
